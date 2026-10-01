@@ -828,6 +828,18 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
+// Tests planifiés : stockés dans calendar_events (category='test'), sport et
+// slug du test Performance lié encodés dans `ref` = "<sport>:<slug|custom>".
+const TEST_SPORT_COLOR: Record<string, string> = { running: '#22c55e', cycling: '#3b82f6', natation: '#06b6d4', aviron: '#14b8a6', hyrox: '#ec4899', gym: '#f97316' }
+function parseTestRef(ref?: string | null): { sport: PlannedTestInput['sport']; slug: string | null } {
+  const [sport, slug] = (ref ?? 'running:custom').split(':')
+  return { sport: (sport as PlannedTestInput['sport']) || 'running', slug: slug && slug !== 'custom' ? slug : null }
+}
+function eventToTestInput(ev: CalEvent): PlannedTestInput {
+  const { sport, slug } = parseTestRef(ev.ref)
+  return { sport, title: ev.title, protocol: ev.description ?? '', date: ev.date, ref: slug }
+}
+
 function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
   tests: CalEvent[]
@@ -884,18 +896,7 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
   }
 
   // ── Tests planifiés (objectif « Test ») ────────────────────────────
-  // Stockés dans calendar_events (category='test'). Le sport et le slug du
-  // test Performance lié sont encodés dans `ref` = "<sport>:<slug|custom>".
   const [testSheet, setTestSheet] = useState<{ mode: 'create' | 'edit'; ev?: CalEvent; initialDate?: string } | null>(null)
-  const TEST_SPORT_COLOR: Record<string, string> = { running: '#22c55e', cycling: '#3b82f6', natation: '#06b6d4', aviron: '#14b8a6', hyrox: '#ec4899', gym: '#f97316' }
-  function parseTestRef(ref?: string | null): { sport: PlannedTestInput['sport']; slug: string | null } {
-    const [sport, slug] = (ref ?? 'running:custom').split(':')
-    return { sport: (sport as PlannedTestInput['sport']) || 'running', slug: slug && slug !== 'custom' ? slug : null }
-  }
-  function eventToTestInput(ev: CalEvent): PlannedTestInput {
-    const { sport, slug } = parseTestRef(ev.ref)
-    return { sport, title: ev.title, protocol: ev.description ?? '', date: ev.date, ref: slug }
-  }
   function saveTest(input: PlannedTestInput) {
     const payload = {
       category: 'test' as const, title: input.title, description: input.protocol || undefined,
@@ -1682,9 +1683,294 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 // PAGE
 // ════════════════════════════════════════════════
+// ════════════════════════════════════════════════
+// MOBILE — Objectifs façon Strava : objectif principal (J-x + anneau),
+// filtre Tout / Course / Pro / Perso, liste « À venir », carte Année qui
+// ouvre la vue 12 mois lisible. Les éditeurs existants sont réutilisés.
+// ════════════════════════════════════════════════
+type MFilter = 'all' | 'race' | 'pro' | 'perso'
+interface MItem {
+  key: string; date: string; endDate?: string; title: string
+  group: 'race' | 'pro' | 'perso'; color: string; sub: string
+  open: () => void
+}
+
+function MobileObjectifs({ cal }: { cal: ReturnType<typeof useCalendar> }) {
+  const { t } = useI18n()
+  const { races, raceStages, events, addEvent, updateEvent, deleteEvent, addRaceWithFiles, updateRaceWithFiles, deleteRace, addRaceStage, updateRaceStage, deleteRaceStage } = cal
+  const [filter, setFilter] = useState<MFilter>('all')
+  const [yearOpen, setYearOpen] = useState(false)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [raceSheet, setRaceSheet] = useState<{ race?: Race; date?: string; level?: RaceLevel } | null>(null)
+  const [stageSheet, setStageSheet] = useState<{ stage?: RaceStage; date?: string } | null>(null)
+  const [testSheet, setTestSheet] = useState<{ ev?: CalEvent; date?: string } | null>(null)
+  const [catSheet, setCatSheet] = useState<{ category: 'pro' | 'perso'; date: string; ev?: CalEvent } | null>(null)
+  const [chooserDate, setChooserDate] = useState<string | null>(null)
+
+  const today = new Date().toISOString().split('T')[0]
+  const jx = (d: string) => { const n = daysUntil(d); return n === 0 ? t('calendar.mToday') : `J-${n}` }
+
+  const items: MItem[] = [
+    ...races.map((r): MItem => ({
+      key: 'r' + r.id, date: r.date, endDate: r.endDate, title: r.name, group: 'race',
+      color: r.level === 'gty' ? 'var(--text)' : RACE_CONFIG[r.level].color,
+      sub: r.level === 'event' ? t('calendar.eventGoal') : `${t('calendar.race')} · ${t(RACE_LEVEL_KEY[r.level])}`,
+      open: () => setRaceSheet({ race: r }),
+    })),
+    ...raceStages.map((s): MItem => ({
+      key: 's' + s.id, date: s.startDate, endDate: s.endDate, title: s.name, group: 'race', color: '#5b6fff',
+      sub: t('calendar.stage'), open: () => setStageSheet({ stage: s }),
+    })),
+    ...events.filter(e => e.category !== 'race').map((e): MItem => {
+      if (e.category === 'test') {
+        const c = TEST_SPORT_COLOR[parseTestRef(e.ref).sport] ?? '#8b5cf6'
+        return { key: 'e' + e.id, date: e.date, title: e.title, group: 'race', color: c, sub: 'Test', open: () => setTestSheet({ ev: e }) }
+      }
+      const cat = e.category as 'pro' | 'perso'
+      return {
+        key: 'e' + e.id, date: e.date, title: e.title, group: cat, color: e.color ?? eventShade(cat, e.importance),
+        sub: t(cat === 'pro' ? 'calendar.tabPro' : 'calendar.tabPerso') + (e.done ? ` · ${t('calendar.statusDone')}` : ''),
+        open: () => setCatSheet({ category: cat, date: e.date, ev: e }),
+      }
+    }),
+  ].sort((a, b) => a.date.localeCompare(b.date))
+
+  const shown = items.filter(i => filter === 'all' || i.group === filter)
+  const upcoming = shown.filter(i => (i.endDate ?? i.date) >= today)
+
+  // Objectif principal : GTY, sinon course principale, importante, puis la prochaine.
+  const nextRaces = races.filter(r => r.date >= today && r.status !== 'completed' && r.level !== 'event').sort((a, b) => a.date.localeCompare(b.date))
+  const main = (['gty', 'main', 'important'] as RaceLevel[]).map(l => nextRaces.find(r => r.level === l)).find(Boolean) ?? nextRaces[0]
+
+  function add(date: string) {
+    if (filter === 'pro' || filter === 'perso') setCatSheet({ category: filter, date })
+    else setChooserDate(date)
+  }
+
+  const card = (children: React.ReactNode, pad = '18px 20px 20px') =>
+    <div style={{ background: 'var(--dash-card, var(--bg-card2))', borderRadius: 'var(--r-lg)', padding: pad, minWidth: 0 }}>{children}</div>
+  const chevron = <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
+  const head = (icon: React.ReactNode, title: string, meta?: React.ReactNode) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <span aria-hidden style={{ display: 'flex', color: 'var(--primary)', flexShrink: 0 }}>{icon}</span>
+      <h2 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h2>
+      {meta}
+    </div>
+  )
+  const filterBar = (
+    <div role="tablist" style={{ display: 'flex', background: 'var(--dash-chip, var(--bg-card2))', borderRadius: 'var(--r-pill)', padding: 3 }}>
+      {([['all', t('calendar.tabAll')], ['race', t('calendar.tabRace')], ['pro', t('calendar.tabPro')], ['perso', t('calendar.tabPerso')]] as [MFilter, string][]).map(([v, l]) => (
+        <button key={v} role="tab" aria-selected={filter === v} type="button" onClick={() => setFilter(v)}
+          style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 0', fontSize: 14, fontWeight: filter === v ? 700 : 600, fontFamily: 'inherit',
+            background: filter === v ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: filter === v ? 'var(--text)' : 'var(--text-mid)', boxShadow: filter === v ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' }}>
+          {l}
+        </button>
+      ))}
+    </div>
+  )
+  const addBtn = (
+    <button type="button" onClick={() => add(today)} className="thw-press"
+      style={{ width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+      {t('calendar.addGoal')}
+    </button>
+  )
+  const fmtShort = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
+
+  let body: React.ReactNode
+  if (!yearOpen) {
+    const ring = main ? Math.max(0.04, Math.min(1, 1 - daysUntil(main.date) / 112)) : 0
+    const r = 26, c = 2 * Math.PI * r
+    body = <>
+      {main && (
+        <div role="button" tabIndex={0} className="dash-tap" onClick={() => setRaceSheet({ race: main })} onKeyDown={e => { if (e.key === 'Enter') setRaceSheet({ race: main }) }} style={{ cursor: 'pointer' }}>
+          {card(<>
+            {head(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22V4M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1" /></svg>, t('calendar.mMain'), chevron)}
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 14 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: '0 0 2px', fontSize: 15, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{main.name}</p>
+                <span className="tnum" style={{ display: 'block', fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)' }}>{jx(main.date)}</span>
+                <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-mid)', textTransform: 'capitalize' }}>
+                  {[new Date(main.date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' }), main.distance || main.goal].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <svg aria-hidden width="64" height="64" viewBox="0 0 64 64" style={{ flexShrink: 0 }}>
+                <circle cx="32" cy="32" r={r} fill="none" stroke="var(--bg-hover)" strokeWidth="7" />
+                <circle cx="32" cy="32" r={r} fill="none" stroke="var(--primary)" strokeWidth="7" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - ring)} transform="rotate(-90 32 32)" />
+              </svg>
+            </div>
+          </>)}
+        </div>
+      )}
+      {filterBar}
+      {card(<>
+        {head(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>, t('calendar.mUpcoming'),
+          <span className="tnum" style={{ fontSize: 14, color: 'var(--text-mid)' }}>{upcoming.length}</span>)}
+        <div style={{ marginTop: 6 }}>
+          {upcoming.length ? upcoming.map(i => (
+            <button key={i.key} type="button" onClick={i.open}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', border: 'none', borderTop: '1px solid var(--dash-line, var(--border))', background: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: 'inherit' }}>
+              <span className="tnum" style={{ width: 58, flexShrink: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{fmtShort(i.date)}</span>
+              <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: i.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>{i.title}</span>
+                <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>{i.sub} · {jx(i.date)}</span>
+              </span>
+            </button>
+          )) : <p style={{ margin: '8px 0 0', fontSize: 15, color: 'var(--text-dim)' }}>{t('calendar.mNoUpcoming')}</p>}
+        </div>
+      </>)}
+      {addBtn}
+      <div role="button" tabIndex={0} className="dash-tap" onClick={() => setYearOpen(true)} onKeyDown={e => { if (e.key === 'Enter') setYearOpen(true) }} style={{ cursor: 'pointer' }}>
+        {card(<>
+          {head(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 2v4M8 2v4M3 10h18" /></svg>,
+            t('calendar.mYear', { year }), <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 14, color: 'var(--text-mid)' }}>{t('calendar.mSee')}{chevron}</span>)}
+          <p style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.4 }}>
+            {t('calendar.mYearSub', { n: shown.filter(i => i.date.startsWith(String(year))).length })}
+          </p>
+        </>)}
+      </div>
+    </>
+  } else {
+    const yItems = shown.filter(i => i.date.startsWith(String(year)) || (i.endDate ?? '').startsWith(String(year)))
+    const colorOn = (d: string) => yItems.find(i => d >= i.date && d <= (i.endDate ?? i.date))
+    const navBtn = (dir: -1 | 1) => (
+      <button type="button" aria-label={String(year + dir)} onClick={() => setYear(y => y + dir)} className="thw-press"
+        style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--dash-card, var(--bg-card))', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={dir < 0 ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} /></svg>
+      </button>
+    )
+    const n = yItems.filter(i => (i.endDate ?? i.date) >= today).length
+    body = <>
+      <button type="button" onClick={() => setYearOpen(false)} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'inherit' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        {t('calendar.mUpcoming')}
+      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {navBtn(-1)}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <span className="tnum" style={{ display: 'block', fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{year}</span>
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{t('calendar.mYearUpcoming', { n })}</span>
+        </div>
+        {navBtn(1)}
+      </div>
+      {filterBar}
+      {card(
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 16, rowGap: 18 }}>
+          {Array.from({ length: 12 }, (_, m) => {
+            const first = getFirstDay(year, m)
+            const nd = getDaysInMonth(year, m)
+            return (
+              <div key={m} style={{ minWidth: 0 }}>
+                <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{t(`lo.month${m}`)}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', textAlign: 'center', rowGap: 1 }}>
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i} style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)' }}>{d}</span>)}
+                  {Array.from({ length: first - 1 }, (_, i) => <span key={'b' + i} />)}
+                  {Array.from({ length: nd }, (_, i) => {
+                    const ds = `${year}-${String(m + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+                    const it = colorOn(ds)
+                    const isToday = ds === today
+                    return (
+                      <button key={ds} type="button" onClick={() => it ? it.open() : add(ds)}
+                        className="tnum"
+                        style={{ border: 'none', padding: 0, height: 18, borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: it || isToday ? 800 : 500,
+                          background: it ? it.color : isToday ? 'var(--text)' : 'transparent',
+                          color: it ? (it.color === 'var(--text)' ? 'var(--bg)' : '#fff') : isToday ? 'var(--bg)' : 'var(--text-mid)' }}>
+                        {i + 1}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>, '16px 14px 18px')}
+    </>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
+      {body}
+
+      {raceSheet && (
+        <RaceModal
+          race={raceSheet.race}
+          initialDate={raceSheet.date}
+          initialLevel={raceSheet.level}
+          onClose={() => setRaceSheet(null)}
+          onSave={async (r, files, fb, fr) => {
+            if (raceSheet.race) await updateRaceWithFiles({ ...raceSheet.race, ...r }, files, fb, fr)
+            else await addRaceWithFiles(r, files, fb, fr)
+            setRaceSheet(null)
+          }}
+          onDelete={raceSheet.race ? () => { deleteRace(raceSheet.race!.id); setRaceSheet(null) } : undefined}
+        />
+      )}
+      {stageSheet && (
+        <EventModal
+          mode={stageSheet.stage ? 'edit' : 'create'}
+          initialData={stageSheet.stage}
+          initialDate={stageSheet.date}
+          onClose={() => setStageSheet(null)}
+          onDelete={stageSheet.stage ? () => { deleteRaceStage(stageSheet.stage!.id); setStageSheet(null) } : undefined}
+          onSave={async (s, dayFiles) => {
+            if (stageSheet.stage) await updateRaceStage({ ...stageSheet.stage, ...s }, dayFiles)
+            else await addRaceStage(s, dayFiles)
+            setStageSheet(null)
+          }}
+        />
+      )}
+      {testSheet && (
+        <TestEditorSheet
+          mode={testSheet.ev ? 'edit' : 'create'}
+          initial={testSheet.ev ? eventToTestInput(testSheet.ev) : undefined}
+          initialDate={testSheet.date}
+          onClose={() => setTestSheet(null)}
+          onDelete={testSheet.ev ? () => { deleteEvent(testSheet.ev!.id); setTestSheet(null) } : undefined}
+          onSave={input => {
+            const payload = {
+              category: 'test' as const, title: input.title, description: input.protocol || undefined,
+              date: input.date, color: TEST_SPORT_COLOR[input.sport] ?? '#8b5cf6',
+              ref: `${input.sport}:${input.ref ?? 'custom'}`,
+            }
+            if (testSheet.ev) updateEvent({ ...testSheet.ev, ...payload })
+            else addEvent(payload)
+            setTestSheet(null)
+          }}
+        />
+      )}
+      {catSheet && (
+        <CategoryEventModal
+          category={catSheet.category}
+          initialDate={catSheet.date}
+          initial={catSheet.ev}
+          onClose={() => setCatSheet(null)}
+          onDelete={catSheet.ev ? () => { deleteEvent(catSheet.ev!.id); setCatSheet(null) } : undefined}
+          onSave={e => {
+            if (catSheet.ev) updateEvent({ ...catSheet.ev, ...e })
+            else addEvent(e)
+            setCatSheet(null)
+          }}
+        />
+      )}
+      {chooserDate && (
+        <ObjectiveChooser
+          date={chooserDate}
+          onClose={() => setChooserDate(null)}
+          onCourse={() => { const d = chooserDate; setChooserDate(null); setRaceSheet({ date: d }) }}
+          onStage={() => { const d = chooserDate; setChooserDate(null); setStageSheet({ date: d }) }}
+          onTest={() => { const d = chooserDate; setChooserDate(null); setTestSheet({ date: d }) }}
+          onEvent={() => { const d = chooserDate; setChooserDate(null); setRaceSheet({ date: d, level: 'event' }) }}
+        />
+      )}
+    </div>
+  )
+}
+
 export default function CalendarPage() {
   const { t } = useI18n()
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const cal = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEvent, updateEvent, deleteEvent } = cal
+  const isMobile = useNarrow(640)
   const { show, dismiss } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const aiContext = {
@@ -1715,6 +2001,15 @@ export default function CalendarPage() {
   const loader = (
     <div style={{ padding:'40px',textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>{t('calendar.loading')}</div>
   )
+
+  if (isMobile) {
+    return (
+      <>
+        <PageHelp config={CALENDAR_ONBOARDING} show={show} onDismiss={dismiss} />
+        {loading ? loader : <MobileObjectifs cal={cal} />}
+      </>
+    )
+  }
 
   return (
     <>

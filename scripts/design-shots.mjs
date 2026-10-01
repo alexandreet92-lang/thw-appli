@@ -61,6 +61,8 @@ if (args[0] === '--diff') {
 const label = args[0] || 'current'
 const themes = (args.includes('--themes') ? args[args.indexOf('--themes') + 1] : 'dark,light').split(',')
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',') : null
+// --css "règle" : injecte du CSS (comparaison A/B d'une règle globale)
+const extraCss = args.includes('--css') ? args[args.indexOf('--css') + 1] : ''
 const routes = (only ?? listRoutes())
 
 const env = { ...process.env, THW_DEV_BYPASS: '1', NEXT_PUBLIC_SUPABASE_URL: 'https://dummy.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'dummy', NEXT_TELEMETRY_DISABLED: '1' }
@@ -90,7 +92,7 @@ for (const theme of themes) {
       await pg.goto(`http://localhost:${PORT}${r}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
       await pg.waitForTimeout(2200)
       await pg.evaluate(t => { document.documentElement.classList.remove('light', 'dark'); document.documentElement.classList.add(t) }, theme)
-      await pg.addStyleTag({ content: 'nextjs-portal,[data-nextjs-toast]{display:none!important}' })
+      await pg.addStyleTag({ content: 'nextjs-portal,[data-nextjs-toast]{display:none!important}' + extraCss })
       await pg.waitForTimeout(300)
       await pg.screenshot({ path: path.join(dir, `${r === '/' ? 'home' : r.slice(1).replace(/\//g, '_')}.png`) })
       process.stdout.write(`✓ ${theme} ${r}\n`)

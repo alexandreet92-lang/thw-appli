@@ -2723,6 +2723,100 @@ function intensityKey(v: string | null | undefined): DayIntensity {
   }
 }
 
+// ════════════════════════════════════════════════
+// MOBILE — Planning en liste (une semaine) + vue d'ensemble (5 semaines)
+// Logo du sport toujours visible ; durée / RPE écrits dans la couleur du sport ;
+// « aujourd'hui » = pastille pleine contrastée (noir/blanc selon le thème).
+// ════════════════════════════════════════════════
+function mSportVis(sport: string, sub?: string | null) {
+  const k = sportKeyFromType(sport)
+  const cfg = k ? SPORT_ICON[k] : null
+  const color = cfg?.color ?? (SPORT_BORDER[sport as SportType] ?? '#94a3b8')
+  const Ico = subSportIcon(sub ?? null) ?? cfg?.Icon ?? null
+  return { color, Ico }
+}
+
+function MDayCol({ abbr, num, isToday, intensity, onNum, onPick, compact }: {
+  abbr: string; num: number | string; isToday: boolean; intensity: DayIntensity
+  onNum: () => void; onPick: (i: DayIntensity) => void; compact?: boolean
+}) {
+  const { t } = useI18n()
+  const ref = useRef<HTMLButtonElement>(null)
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  useEffect(() => {
+    if (!rect) return
+    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('[data-day-picker]')) setRect(null) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [rect])
+  const cfg = INTENSITY_CONFIG[intensity]
+  const size = compact ? 30 : 34
+  return (
+    <div data-day-picker style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: compact ? '100%' : 44, flexShrink: 0 }}>
+      <span style={{ fontSize: compact ? 11 : 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: isToday ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{abbr}</span>
+      <button type="button" onClick={onNum} aria-label={t('plnp.day.label')} className="tnum"
+        style={{ width: size, height: size, borderRadius: '50%', border: 'none', padding: 0, cursor: 'pointer', display: 'grid', placeItems: 'center',
+          background: isToday ? 'var(--text)' : 'transparent', color: isToday ? 'var(--bg)' : 'var(--text)',
+          fontFamily: 'var(--font-body)', fontSize: compact ? 15 : 18, fontWeight: 800 }}>{num}</button>
+      {/* Type de journée : point coloré (anneau discret pour « Low ») → touche = changer le type */}
+      <button ref={ref} type="button" aria-label={t('plnp.day.setType')} onClick={() => setRect(r => r ? null : ref.current?.getBoundingClientRect() ?? null)}
+        style={{ width: 22, height: 14, border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: intensity === 'low' ? 'transparent' : cfg.color, boxShadow: intensity === 'low' ? 'inset 0 0 0 1.5px var(--border-mid)' : 'none' }} />
+      </button>
+      {rect && <IntensityMenuPortal anchor={rect} value={intensity} onPick={it => { onPick(it); setRect(null) }} />}
+    </div>
+  )
+}
+
+function MSessionRow({ sport, sub, title, meta, done, race, onClick, touch, lifted }: {
+  sport: string; sub?: string | null; title: string; meta: string; done?: boolean; race?: { color: string }
+  onClick: () => void; lifted?: boolean
+  touch?: { onTouchStart?: React.TouchEventHandler; onTouchMove?: React.TouchEventHandler; onTouchEnd?: React.TouchEventHandler }
+}) {
+  const v = race ? { color: race.color, Ico: null } : mSportVis(sport, sub)
+  return (
+    <button type="button" onClick={onClick} {...touch} data-noadd
+      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
+        border: 'none', borderLeft: `3px solid ${v.color}`, borderRadius: 'var(--r-md)', padding: '10px 12px',
+        background: race ? `color-mix(in srgb, ${v.color} 10%, var(--dash-soft, var(--bg-card2)))` : 'var(--dash-soft, var(--bg-card2))',
+        opacity: done ? 0.92 : 1, transform: lifted ? 'scale(1.03)' : undefined, boxShadow: lifted ? '0 8px 20px rgba(0,0,0,0.25)' : undefined,
+        transition: 'transform .12s, box-shadow .12s', touchAction: touch?.onTouchStart ? 'pan-y' : undefined, position: 'relative', zIndex: lifted ? 20 : undefined }}>
+      <span style={{ flexShrink: 0, display: 'flex', color: v.color }}>
+        {race
+          ? <Flag size={20} color={v.color} strokeWidth={2.2} />
+          : v.Ico ? <v.Ico size={22} color={v.color} stroke={2.1} /> : <span style={{ width: 10, height: 10, borderRadius: '50%', background: v.color }} />}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{title}</span>
+        {meta && <span className="tnum" style={{ display: 'block', marginTop: 2, fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: v.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</span>}
+      </span>
+      {done && <span aria-hidden style={{ flexShrink: 0, color: 'var(--success)', fontWeight: 800, fontSize: 16 }}>✓</span>}
+    </button>
+  )
+}
+
+function MSportChip({ sport, sub, label, race, onClick, touch, lifted }: {
+  sport: string; sub?: string | null; label: string; race?: { color: string }
+  onClick: () => void; lifted?: boolean
+  touch?: { onTouchStart?: React.TouchEventHandler; onTouchMove?: React.TouchEventHandler; onTouchEnd?: React.TouchEventHandler }
+}) {
+  const v = race ? { color: race.color, Ico: null } : mSportVis(sport, sub)
+  return (
+    <button type="button" onClick={onClick} {...touch} data-noadd
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, border: 'none', background: 'none', padding: 0, cursor: 'pointer', minWidth: 0, width: '100%',
+        transform: lifted ? 'scale(1.08)' : undefined, touchAction: touch?.onTouchStart ? 'pan-y' : undefined, position: 'relative', zIndex: lifted ? 20 : undefined }}>
+      <span style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', display: 'grid', placeItems: 'center', background: `color-mix(in srgb, ${v.color} 15%, transparent)`, color: v.color }}>
+        {race ? <Flag size={18} color={v.color} strokeWidth={2.2} /> : v.Ico ? <v.Ico size={20} color={v.color} stroke={2.1} /> : <span style={{ width: 8, height: 8, borderRadius: '50%', background: v.color }} />}
+      </span>
+      <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 800, color: v.color, whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+    </button>
+  )
+}
+
+function MSportRowRace({ name, meta, color, onClick }: { name: string; meta: string; color: string; onClick: () => void }) {
+  return <MSessionRow sport="race" title={name} meta={meta} race={{ color }} onClick={onClick} />
+}
+
 function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const { t } = useI18n()
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
@@ -2774,6 +2868,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const d = new Date(c.weekStart+'T00:00:00'); d.setDate(d.getDate()+c.dayIndex); return localDateStr(d)
   }
   const [view, setView] = useState<TrainingView>('vertical')
+  // Mobile : une semaine en liste, ou vue d'ensemble (5 semaines). Les flèches avancent d'UNE semaine.
+  const [mMode, setMMode] = useState<'week' | 'overview'>('week')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string;sport?:SportType}|null>(null)
   const [addModalFavorites, setAddModalFavorites] = useState(false)
   const [detailModal, setDetailModal] = useState<Session|null>(null)
@@ -3181,6 +3277,138 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   }
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
 
+  // ── MOBILE : semaine en liste / vue d'ensemble (cf. maquette validée) ──
+  function renderMobilePlan(plan: PlanVariant) {
+    const realWs = getWeekStartFromOffset(0)
+    const realToday = getTodayIdx()
+    const variants = (compareMode ? (['A', 'B'] as const) : ([plan] as const))
+    const weeks = mMode === 'week' ? allWeekStarts.slice(0, 1) : allWeekStarts.slice(0, 5)
+    const dayAbbrs = t('plnp.dayAbbrs').split(',')
+    const sessMeta = (s: Session) => [formatHM(s.durationMin), s.rpe != null ? `RPE ${s.rpe}` : null].filter(Boolean).join(' · ')
+    const raceColor = (r: { level: string }) => r.level === 'gty' ? 'var(--gty-text)' : (RACE_CONFIG[r.level as RaceLevel]?.color ?? 'var(--danger)')
+    const openSession = (s: Session) => { if (tDragRef.current) { tDragRef.current = false; return } setDetailModal(s) }
+
+    return weeks.flatMap(ws => variants.map(pv => {
+      const w = buildWeek(ws, pv); const dates = getWeekDatesFromStart(ws)
+      let planTot = 0, doneTot = 0
+      const perDay = [0, 0, 0, 0, 0, 0, 0]
+      let doneN = 0, planN = 0, hardDays = 0
+      w.forEach((d, i) => {
+        d.sessions.forEach(x => { if (countsInVolume(normalizeSportType(x.sport))) { planTot += x.durationMin; planN++ } })
+        d.activities.forEach(a => { if (countsInVolume(normalizeSportType(a.sport))) { const m = Math.round(a.elapsedTime / 60); doneTot += m; perDay[i] += m; doneN++ } })
+        if (d.intensity === 'hard' || d.intensity === 'mid') hardDays++
+      })
+      const tag = compareMode ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 800, color: pv === 'A' ? 'var(--primary)' : 'var(--ai-accent)' }}>Plan {pv}</span> : null
+
+      // ── Vue d'ensemble : carte compacte par semaine (logos + durée colorée) ──
+      if (mMode === 'overview') {
+        return (
+          <div key={`${ws}_${pv}`} style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '12px 8px 12px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, margin: '0 8px 10px' }}>
+              <button type="button" onClick={() => { const off = Math.round((new Date(ws + 'T00:00:00').getTime() - new Date(realWs + 'T00:00:00').getTime()) / (7 * 86400000)); setWeekOffset(off); setMMode('week') }}
+                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+                S{isoWeekNum(ws)}<span style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-dim)', marginLeft: 6 }}>{new Date(ws + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span>{tag}
+              </button>
+              <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}><span style={{ color: 'var(--text)' }}>{formatHM(doneTot)}</span> / {formatHM(planTot)}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2 }}>
+              {w.map((d, i) => {
+                const hid = `${ws}_${i}`
+                const isToday = ws === realWs && i === realToday
+                const sess = d.sessions.filter(x => !d.activities.some(a => matchActivity(a, d.sessions)?.id === x.id))
+                return (
+                  <div key={i} data-mday={i} data-mws={ws} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0, borderRadius: 'var(--r-sm)', background: tDrag && dragCell === hid ? 'var(--primary-dim)' : 'transparent' }}>
+                    <MDayCol compact abbr={(dayAbbrs[i] ?? '').slice(0, 1)} num={dates[i]} isToday={isToday} intensity={d.intensity}
+                      onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: pv, weekStart: ws }) }}
+                      onPick={it => { void setDayIntensityWeek(ws, i, it, pv) }} />
+                    {d.races.map(r => <MSportChip key={r.id} sport="race" label={`J-${Math.max(0, daysUntil(r.date))}`} race={{ color: raceColor(r) }} onClick={() => setRaceDetail(r)} />)}
+                    {orderBrickSessions(sess).list.map(x => (
+                      <MSportChip key={x.id} sport={x.sport} sub={x.cyclingSub ?? x.runningSub} label={formatHM(x.durationMin)}
+                        lifted={tDrag?.id === x.id} touch={bubbleTouch(x.id, ws)} onClick={() => openSession(x)} />
+                    ))}
+                    {d.activities.map(a => { const pl = matchActivity(a, d.sessions); return (
+                      <MSportChip key={a.id} sport={pl?.sport ?? a.sport} sub={pl?.cyclingSub ?? pl?.runningSub} label={formatHM(Math.round(a.elapsedTime / 60))}
+                        onClick={() => setActivityDetail({ ...a, planned: pl ?? undefined })} />
+                    ) })}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      }
+
+      // ── Semaine : carte Volume + jours en liste verticale ──
+      return (
+        <div key={`${ws}_${pv}`}>
+          <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M7 16v-4M12 16V8M17 16v-7" /></svg></span>
+              <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('plnp.mWeekVolume')}{tag}</span>
+              <button type="button" onClick={() => setDatasWeek(ws)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--primary)', whiteSpace: 'nowrap' }}>{t('plnp.datas')} ›</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)' }}>{t('plnp.mDone')}</p>
+                <p className="tnum" style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05, whiteSpace: 'nowrap', color: 'var(--text)' }}>
+                  {formatHM(doneTot)}<span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-mid)' }}> / {formatHM(planTot)}</span>
+                </p>
+                <p className="tnum" style={{ margin: '6px 0 0', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>
+                  {t('plnp.mSessionsDone', { done: doneN, total: Math.max(planN, doneN) })}{hardDays > 0 ? ` · ${t('plnp.mIntenseDays', { n: hardDays })}` : ''}
+                </p>
+              </div>
+              <svg aria-hidden width="96" height="54" viewBox="0 0 96 54" style={{ flexShrink: 0 }}>
+                {perDay.map((m, i) => { const max = Math.max(1, ...perDay); const h = m > 0 ? Math.max(4, (m / max) * 54) : 4
+                  return <rect key={i} x={i * 14} y={54 - h} width={10} height={h} rx={3} fill={ws === realWs && i === realToday ? 'var(--primary)' : m > 0 ? 'var(--dash-bar, var(--border-mid))' : 'var(--bg-hover)'} /> })}
+              </svg>
+            </div>
+            {renderDetailWeekBtn(ws)}
+          </div>
+
+          <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '14px 16px', marginBottom: 12 }}>
+            {w.map((d, i) => {
+              const hid = `${ws}_${i}`
+              const isToday = ws === realWs && i === realToday
+              const sess = d.sessions.filter(x => !d.activities.some(a => matchActivity(a, d.sessions)?.id === x.id))
+              const { list } = orderBrickSessions(sess)
+              const empty = list.length === 0 && d.activities.length === 0 && d.races.length === 0
+              return (
+                <div key={i} data-mday={i} data-mws={ws}
+                  style={{ display: 'flex', gap: 12, padding: '12px 0', borderTop: i === 0 ? 'none' : '1px solid var(--dash-line, var(--border))', paddingTop: i === 0 ? 0 : 12, paddingBottom: i === 6 ? 0 : 12,
+                    borderRadius: 'var(--r-sm)', background: tDrag && dragCell === hid ? 'var(--primary-dim)' : 'transparent', transition: 'background .12s' }}>
+                  <MDayCol abbr={d.day} num={dates[i]} isToday={isToday} intensity={d.intensity}
+                    onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: pv, weekStart: ws }) }}
+                    onPick={it => { void setDayIntensityWeek(ws, i, it, pv) }} />
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
+                    {empty ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)' }}>{t('plnp.rest')}</span>
+                        <button type="button" aria-label={t('plnp.addSession')} onClick={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: pv, weekStart: ws }) }}
+                          style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--dash-chip, var(--bg-hover))', color: 'var(--text-mid)', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>+</button>
+                      </div>
+                    ) : null}
+                    {d.races.map(r => (
+                      <MSportRowRace key={r.id} name={r.name} meta={`${r.level === 'gty' ? RACE_CONFIG.gty.label : t('plnp.raceLevel.' + r.level)} · J-${Math.max(0, daysUntil(r.date))}`} color={raceColor(r)} onClick={() => setRaceDetail(r)} />
+                    ))}
+                    {list.map(x => (
+                      <MSessionRow key={x.id} sport={x.sport} sub={x.cyclingSub ?? x.runningSub} title={x.title || x.sport} meta={sessMeta(x)} done={x.status === 'done'}
+                        lifted={tDrag?.id === x.id} touch={bubbleTouch(x.id, ws)} onClick={() => openSession(x)} />
+                    ))}
+                    {d.activities.map(a => { const pl = matchActivity(a, d.sessions); return (
+                      <MSessionRow key={a.id} sport={pl?.sport ?? a.sport} sub={pl?.cyclingSub ?? pl?.runningSub} title={pl?.title || a.name}
+                        meta={[formatHM(Math.round(a.elapsedTime / 60)), pl?.rpe != null ? `RPE ${pl.rpe}` : null].filter(Boolean).join(' · ')} done
+                        onClick={() => setActivityDetail({ ...a, planned: pl ?? undefined })} />
+                    ) })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    }))
+  }
+
   // ── PLAN multi-semaines (style Idosport) : lignes hebdo + sidebar jauges de volume ──
   function renderPlan(planParam?:PlanVariant) {
     // Plan affiché : forcé (mode Comparer, A puis B) ou plan actif courant.
@@ -3188,8 +3416,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const RAIL = 54, SB = 206
     const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
     return (
-      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
-        <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
+      <div className="wg-plan-box" style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
+        <style>{`@media(max-width:767px){.wg-desktop{display:none!important}.wg-plan-box{border:none!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;border-radius:0!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
         <div className="wg-desktop"><div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
           {/* En-tête jours */}
           <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
@@ -3294,77 +3522,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         </div></div>
         </div>{/* /wg-desktop */}
 
-        {/* ── Mobile : bandeau 7 jours compact par semaine (tout visible, pleine largeur) ── */}
-        <div className="wg-mobile">
-          <style>{`.wk-carousel{scrollbar-width:none}.wk-carousel::-webkit-scrollbar{display:none}`}</style>
-          {allWeekStarts.flatMap(ws => (compareMode ? (['A','B'] as const) : ([plan] as const)).map(pv => {
-            const w = buildWeek(ws, pv); const dates = getWeekDatesFromStart(ws)
-            const mPlan: Record<string, number> = {}; const mDone: Record<string, number> = {}
-            w.forEach(d => {
-              // Mobilité hors volume (idem vue desktop).
-              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); if (!countsInVolume(sp)) return; mPlan[sp] = (mPlan[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); if (!countsInVolume(sp)) return; mDone[sp] = (mDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
-            })
-            const mSports = Array.from(new Set([...Object.keys(mPlan), ...Object.keys(mDone)]))
-            const mPlanTot = Object.values(mPlan).reduce((a, b) => a + b, 0)
-            const mDoneTot = Object.values(mDone).reduce((a, b) => a + b, 0)
-            return (
-              <div key={`${ws}_${pv}`} style={{ background:'var(--bg-card2)', borderRadius:'var(--r-md)', padding:'10px 6px 4px', marginBottom:8 }}>
-                {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
-                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 10px 10px' }}>
-                  <span style={{ fontSize:14, fontWeight:600, color:'var(--text)', fontFamily: 'var(--font-body)' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, fontSize:12, color:'var(--text-dim)', marginLeft:6 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>{compareMode && <span style={{ fontSize:10, fontWeight:800, color: pv==='A'?'var(--primary)':'#a78bfa', marginLeft:8 }}>Plan {pv}</span>}
-                  <span data-guide="plan-volume" className="tnum" style={{ fontSize:12, fontWeight:600, color:'var(--text-dim)', fontFamily:'var(--font-body)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
-                </div>
-                {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
-                <div className="wk-carousel" style={{ display:'flex', overflowX:'auto', scrollSnapType:'x mandatory', WebkitOverflowScrolling:'touch' as React.CSSProperties['WebkitOverflowScrolling'], touchAction: tDrag ? 'none' : undefined }}>
-                  {/* PAGE 1 — jours */}
-                  <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 6px', boxSizing:'border-box' as const }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
-                      {w.map((d,i)=>{
-                        const isToday = ws===currentWeekStart && i===todayIdx
-                        const hid = `${ws}_${i}`
-                        const isDropTarget = !!tDrag && dragCell===hid
-                        const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
-                        const acts = d.activities  // toutes les activités réalisées (comme desktop)
-                        return (
-                          <div key={i} data-mday={i} data-mws={ws} data-guide="plan-day" style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius: 'var(--r-sm)', background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
-                            <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
-                              plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
-                              onPick={(it) => { void setDayIntensityWeek(ws, i, it, pv); setDayPicker(null) }}
-                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan: pv, weekStart:ws }) }} />
-                            {d.races.map(r => <RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
-                            {(() => {
-                              const { list, brickRunIds } = orderBrickSessions(sess)
-                              return list.map(s => (
-                                <Fragment key={s.id}>
-                                  {brickRunIds.has(s.id) && <BrickArrow />}
-                                  <DayBubble sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />
-                                </Fragment>
-                              ))
-                            })()}
-                            {acts.map(a=>{ const pl = matchActivity(a, d.sessions); return <ActivityBubble key={a.id} activity={a} planned={pl} onClick={()=>setActivityDetail({ ...a, planned: pl ?? undefined })} /> })}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  {/* PAGE 2 — volume / cycle + Datas (glisser de droite à gauche) */}
-                  <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 8px', boxSizing:'border-box' as const }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, marginBottom:8 }}>
-                      <span style={{ fontSize:11, fontWeight:700, color:'var(--text-mid)', textTransform:'uppercase' as const, letterSpacing:'0.04em' }}>{t('plnp.volume')}</span>
-                      <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius: 'var(--r-sm)', padding:'4px 10px', cursor:'pointer' }}>{t('plnp.datas')}</button>
-                    </div>
-                    {sideTab==='volume' ? (
-                      mSports.length ? mSports.map(sp=><VolBar key={sp} sport={sp} planned={mPlan[sp]||0} done={mDone[sp]||0} />)
-                        : (!planWeekNeedingDetail(ws) && <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' as const }}>{t('plnp.rest')}</span>)
-                    ) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
-                    {renderDetailWeekBtn(ws)}
-                  </div>
-                </div>
-              </div>
-            )
-          }))}
-        </div>
+        {/* ── Mobile : liste de la semaine / vue d'ensemble 5 semaines (cartes) ── */}
+        <div className="wg-mobile">{renderMobilePlan(plan)}</div>
       </div>
     )
   }
@@ -3961,61 +4120,68 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         </div>
       </div>
 
-      {/* ── Controls — mobile (3 lignes en carte) ── */}
-      <div id="tr-ctrl-mobile" style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const }}>
-        {/* Navigation semaine — compacte */}
-        <button data-guide="plan-weeknav" onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius: 'var(--r-sm)',lineHeight:1 }}>←</button>
-        <span style={{ fontSize:11,fontWeight:700,color:'var(--text)',minWidth:96,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-        <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius: 'var(--r-sm)',lineHeight:1 }}>→</button>
-        {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius: 'var(--r-sm)',background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>{t('plnp.today')}</button>}
-        {/* Sélecteur période — bulle compacte */}
-        <div style={{ position:'relative' }}>
-          <button onClick={()=>setShowRangeDd(x=>!x)}
-            style={{ padding:'5px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
-            <span>{t('plnp.weeksNShort', { n: weekRange })}</span>
-            <span style={{ fontSize: 10,color:'var(--text-dim)' }}>▾</span>
-          </button>
-          {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:130,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-md)',boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
-            {([5,10,20] as WeekRange[]).map(r=>(
-              <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
-                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
-                  background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',
-                  color:weekRange===r?'#06B6D4':'var(--text-mid)',
-                  fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
-                {t('plnp.weeksN', { n: r })}
+      {/* ── Controls — mobile : ‹ semaine › · Semaine | Vue d'ensemble · Plan ── */}
+      <div id="tr-ctrl-mobile" style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        {(() => {
+          const ws0 = currentWeekStart
+          const end = new Date(ws0 + 'T00:00:00'); end.setDate(end.getDate() + (mMode === 'week' ? 6 : 34))
+          const fmt = (d: Date) => d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
+          const range = `${fmt(new Date(ws0 + 'T00:00:00'))} – ${fmt(end)}`
+          const lastWs = getWeekStartFromOffset(weekOffset + 4)
+          const sub = mMode === 'week' ? `${t('plnp.week')} ${isoWeekNum(ws0)}` : `S${isoWeekNum(ws0)} → S${isoWeekNum(lastWs)}`
+          const navBtn = (dir: -1 | 1) => (
+            <button type="button" data-guide={dir < 0 ? 'plan-weeknav' : undefined} aria-label={dir < 0 ? '‹' : '›'} onClick={() => setWeekOffset(o => o + dir)} className="thw-press"
+              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--dash-card, var(--bg-card))', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={dir < 0 ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} /></svg>
+            </button>
+          )
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              {navBtn(-1)}
+              <button type="button" onClick={() => setWeekOffset(0)} style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
+                <span className="tnum" style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>{range}</span>
+                <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{sub}{weekOffset !== 0 ? ` · ${t('plnp.today')}` : ''}</span>
+              </button>
+              {navBtn(1)}
+            </div>
+          )
+        })()}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div role="tablist" style={{ flex: 1, display: 'flex', background: 'var(--dash-chip, var(--bg-card2))', borderRadius: 'var(--r-pill)', padding: 3 }}>
+            {(['week', 'overview'] as const).map(m => (
+              <button key={m} role="tab" aria-selected={mMode === m} type="button" onClick={() => setMMode(m)}
+                style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 0', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: mMode === m ? 700 : 600,
+                  background: mMode === m ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: mMode === m ? 'var(--text)' : 'var(--text-mid)',
+                  boxShadow: mMode === m ? '0 1px 3px rgba(0,0,0,0.10)' : 'none', transition: 'background .18s, color .18s' }}>
+                {m === 'week' ? t('plnp.week') : t('plnp.mOverview')}
               </button>
             ))}
-          </div>}
-        </div>
-        {/* Plan ▾ — bulle compacte */}
-        <div style={{ position:'relative' }}>
-          {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          <button data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
-            style={{ padding:'5px 11px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
-            <span>{compareMode ? 'A & B' : `Plan ${activePlan}`}</span>
-            <span style={{ fontSize: 10,color:'var(--text-dim)' }}>▾</span>
-          </button>
-          {showPlanDd && (
-            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:180,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius: 'var(--r-md)',boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
-              {(['A','B'] as PlanVariant[]).map(p=>(
-                <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
-                  style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
-                    background:!compareMode&&activePlan===p?'rgba(6,182,212,0.10)':'transparent',
-                    color:!compareMode&&activePlan===p?'#06B6D4':'var(--text-mid)',
-                    fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
-                  Plan {p} — {p==='A'?'Optimal':'Minimal'}
+          </div>
+          {/* Plan ▾ (A / B / comparer) */}
+          <div style={{ position:'relative', flexShrink: 0 }}>
+            {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
+            <button type="button" data-guide="plan-abtoggle" onClick={()=>setShowPlanDd(x=>!x)}
+              style={{ padding:'9px 14px', borderRadius:'var(--r-pill)', border:'none', background:'var(--dash-card, var(--bg-card2))', color:'var(--text)', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontWeight:700, whiteSpace:'nowrap' }}>
+              <span>{compareMode ? 'A & B' : `Plan ${activePlan}`}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            {showPlanDd && (
+              <div style={{ position:'absolute',top:'calc(100% + 6px)',right:0,minWidth:190,background:'var(--bg-card)',borderRadius:'var(--r-md)',boxShadow:'var(--shadow-float)',zIndex:50,padding:5 }}>
+                {(['A','B'] as PlanVariant[]).map(p=>(
+                  <button key={p} type="button" onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
+                    style={{ width:'100%',padding:'10px 12px',borderRadius:'var(--r-sm)',border:'none', background:!compareMode&&activePlan===p?'var(--primary-dim)':'transparent',
+                      color:!compareMode&&activePlan===p?'var(--primary)':'var(--text)', fontFamily:'var(--font-body)', fontSize:14,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:500 }}>
+                    Plan {p} — {p==='A'?'Optimal':'Minimal'}
+                  </button>
+                ))}
+                <button type="button" onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
+                  style={{ width:'100%',padding:'10px 12px',borderRadius:'var(--r-sm)',border:'none', background:compareMode?'var(--primary-dim)':'transparent',
+                    color:compareMode?'var(--primary)':'var(--text)', fontFamily:'var(--font-body)', fontSize:14,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:500 }}>
+                  {t('plnp.compareBoth')}
                 </button>
-              ))}
-              <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
-                style={{ width:'100%',padding:'8px 12px',borderRadius: 'var(--r-sm)',border:'none',
-                  background:compareMode?'rgba(255,179,64,0.10)':'transparent',
-                  color:compareMode?'#ffb340':'var(--text-mid)',
-                  fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
-                {t('plnp.compareBoth')}
-              </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -5518,7 +5684,7 @@ export default function PlanningPage() {
   }
 
   const header = (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+    <div className="thw-hide-mobile" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
       <div>
         <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>{t('plnp.pageTitle')}</h1>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>{t('plnp.pageSubtitle')}</p>

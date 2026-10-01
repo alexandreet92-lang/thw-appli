@@ -19,6 +19,7 @@ function mondayOf(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0)
 function startOfDay(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 function addDays(d: Date, n: number): Date { return new Date(d.getTime() + n * DAY) }
 function sameDay(a: Date, b: Date): boolean { return a.toDateString() === b.toDateString() }
+function isoWeek(d: Date): number { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t.getTime() - y.getTime()) / 86400000 + 1) / 7) }
 function minutesOfDay(iso: string): number { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes() }
 
 export default function PlanningWeekPage() {
@@ -26,6 +27,8 @@ export default function PlanningWeekPage() {
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()))
   const [sheet, setSheet] = useState<{ event: CalEvent | null; draft: SheetDraft | null } | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  // Mobile, vue Mois : jour sélectionné (sa liste s'affiche sous la grille).
+  const [selDay, setSelDay] = useState<Date | null>(null)
   const narrow = useNarrow(720)
   const isMobile = useNarrow(640)
   const px = narrow ? 16 : 32   // padding horizontal de contenu (DESIGN_SYSTEM §3)
@@ -69,6 +72,151 @@ export default function PlanningWeekPage() {
   const openCreate = (start: Date, end?: Date | null, allDay = false) => {
     const e = end ?? new Date(start.getTime() + 3600000)
     setSheet({ event: null, draft: { start: start.toISOString(), end: e.toISOString(), allDay } })
+  }
+
+  // ── MOBILE : cartes façon Strava (maquette validée) ──
+  if (isMobile) {
+    const kindLabel: Record<string, string> = { training: 'Entraînement', races: 'Course', objectives: 'Objectif', personal: 'Perso', google: 'Google' }
+    const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    const evRow = (e: CalEvent, i: number, n: number) => {
+      const dur = e.durationMin ?? (e.allDay ? null : Math.round((new Date(e.end).getTime() - new Date(e.start).getTime()) / 60000))
+      const durTxt = dur ? (dur >= 60 ? `${Math.floor(dur / 60)} h${dur % 60 ? ` ${String(dur % 60).padStart(2, '0')}` : ''}` : `${dur} min`) : null
+      const calName = calendars.find(c => c.id === (e.meta as { calendarId?: string } | null)?.calendarId)?.name
+      const meta = [durTxt, e.rpe != null ? `RPE ${e.rpe}` : null, calName ?? kindLabel[e.calendarKind] ?? null].filter(Boolean).join(' · ')
+      return (
+        <button key={e.id} type="button" onClick={() => setSheet({ event: e, draft: null })}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer',
+            padding: i === 0 ? '0 0 11px' : i === n - 1 ? '11px 0 0' : '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--dash-line, var(--border))' }}>
+          <span className="tnum" style={{ width: 48, flexShrink: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{e.allDay ? 'Jour' : fmtTime(e.start)}</span>
+          <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: e.color, flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>{e.title}</span>
+            {meta && <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>{meta}</span>}
+          </span>
+        </button>
+      )
+    }
+    const card = (children: React.ReactNode, pad = '16px 18px') => <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: pad }}>{children}</div>
+    const dayEvents = (d: Date) => events.filter(e => sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > addDays(d, 0) && e.allDay)).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    const sub = view === 'day' ? (sameDay(anchor, new Date()) ? "Aujourd'hui" : '') : view === 'week' ? `Semaine ${isoWeek(mondayOf(anchor))}` : view === 'agenda' ? 'Les 30 prochains jours' : ''
+    const mTitle = view === 'day'
+      ? anchor.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+      : view === 'week' ? (() => { const ms = mondayOf(anchor); const me = addDays(ms, 6); const f = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); return `${f(ms)} – ${f(me)}` })()
+      : `${MONTHS[anchor.getMonth()]} ${anchor.getFullYear()}`
+    const navBtn = (dir: -1 | 1) => (
+      <button type="button" aria-label={dir < 0 ? 'Précédent' : 'Suivant'} onClick={() => go(dir)} className="thw-press"
+        style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--dash-card, var(--bg-card))', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={dir < 0 ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} /></svg>
+      </button>
+    )
+    const create = (
+      <button type="button" onClick={() => { const b = view === 'day' ? new Date(anchor) : new Date(); b.setHours(new Date().getHours() + 1, 0, 0, 0); openCreate(b) }} className="thw-press"
+        style={{ width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>+ Créer</button>
+    )
+    const empty = (txt: string) => <p style={{ margin: 0, fontSize: 15, color: 'var(--text-dim)' }}>{txt}</p>
+
+    let body: React.ReactNode = null
+    if (view === 'day') {
+      const evs = dayEvents(anchor)
+      body = card(<>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Ma journée</span>
+          <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{evs.length} élément{evs.length > 1 ? 's' : ''}</span>
+        </div>
+        {evs.length ? evs.map((e, i) => evRow(e, i, evs.length)) : empty('Rien de prévu ce jour-là.')}
+      </>)
+    } else if (view === 'week') {
+      body = <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '6px 0', overflow: 'hidden' }}>
+        <WeekView compact days={Array.from({ length: 7 }, (_, i) => addDays(mondayOf(anchor), i))} events={events}
+          onOpen={ev => setSheet({ event: ev, draft: null })} onCreate={openCreate} onMoved={refresh} px={6} />
+      </div>
+    } else if (view === 'month') {
+      const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1)
+      const gridStart = mondayOf(first)
+      const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
+      const rows = cells.slice(35).every(d => d.getMonth() !== anchor.getMonth()) ? cells.slice(0, 35) : cells
+      const sel = selDay ?? startOfDay(new Date())
+      const selEvs = dayEvents(sel)
+      body = <>
+        {card(
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', textAlign: 'center' }}>
+            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <div key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', paddingBottom: 6 }}>{d}</div>)}
+            {rows.map((d, i) => {
+              const inMonth = d.getMonth() === anchor.getMonth()
+              const isToday = sameDay(d, new Date()); const isSel = sameDay(d, sel)
+              const evs = dayEvents(d)
+              return (
+                <button key={i} type="button" onClick={() => setSelDay(startOfDay(d))}
+                  style={{ border: 'none', background: 'none', padding: '4px 0 0', height: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', borderTop: '1px solid var(--dash-line, var(--border))', minWidth: 0 }}>
+                  <span className="tnum" style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 700,
+                    background: isToday ? 'var(--text)' : 'transparent', color: isToday ? 'var(--bg)' : inMonth ? 'var(--text)' : 'var(--text-dim)',
+                    boxShadow: isSel && !isToday ? '0 0 0 2px var(--primary)' : 'none' }}>{d.getDate()}</span>
+                  <span style={{ display: 'flex', gap: 3 }}>{evs.slice(0, 3).map(e => <i key={e.id} style={{ width: 6, height: 6, borderRadius: '50%', background: e.color, display: 'block' }} />)}</span>
+                </button>
+              )
+            })}
+          </div>, '12px 10px')}
+        {card(<>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{sel.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
+            <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{selEvs.length} élément{selEvs.length > 1 ? 's' : ''}</span>
+          </div>
+          {selEvs.length ? selEvs.map((e, i) => evRow(e, i, selEvs.length)) : empty('Rien de prévu ce jour-là.')}
+        </>)}
+      </>
+    } else {
+      const days: Date[] = []
+      for (let d = new Date(rangeStart); d < rangeEnd; d = addDays(d, 1)) if (dayEvents(d).length) days.push(new Date(d))
+      const now = startOfDay(new Date())
+      const label = (d: Date) => sameDay(d, now) ? `Aujourd’hui · ${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}`
+        : sameDay(d, addDays(now, 1)) ? `Demain · ${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}`
+        : d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+      body = days.length ? days.map(d => { const evs = dayEvents(d); return (
+        <div key={d.toDateString()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-mid)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0 4px' }}>{label(d)}</span>
+          {card(evs.map((e, i) => evRow(e, i, evs.length)))}
+        </div>) }) : card(empty('Rien de prévu sur cette période.'))
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: 'var(--font-body)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {navBtn(-1)}
+          <button type="button" onClick={today} style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', cursor: 'pointer', padding: 0, textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mTitle.charAt(0).toUpperCase() + mTitle.slice(1)}</span>
+            {sub && <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{sub}</span>}
+          </button>
+          {navBtn(1)}
+        </div>
+        <div role="tablist" style={{ display: 'flex', background: 'var(--dash-chip, var(--bg-card2))', borderRadius: 'var(--r-pill)', padding: 3 }}>
+          {(['day', 'week', 'month', 'agenda'] as View[]).map(v => (
+            <button key={v} role="tab" aria-selected={view === v} type="button" onClick={() => setView(v)}
+              style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 0', fontSize: 14, fontWeight: view === v ? 700 : 600,
+                background: view === v ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: view === v ? 'var(--text)' : 'var(--text-mid)', boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' }}>
+              {v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : v === 'month' ? 'Mois' : 'Agenda'}
+            </button>
+          ))}
+        </div>
+        {body}
+        {create}
+        {/* Mes agendas (couches + Google) — visible directement, plus de menu caché */}
+        {card(<>
+          <p style={{ margin: '0 0 10px', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Mes agendas</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {calendars.map(c => (
+              <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, color: 'var(--text)' }}>
+                <input type="checkbox" checked={c.visible} onChange={e => void toggleCalendar(c.id, e.target.checked)} style={{ width: 18, height: 18, accentColor: c.color }} />
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: c.color, flexShrink: 0 }} />
+                {c.name}
+              </label>
+            ))}
+          </div>
+          <div style={{ marginTop: 12 }}><GoogleConnectButton onChange={refresh} /></div>
+        </>)}
+        {sheet && <EventSheet event={sheet.event} draft={sheet.draft} calendars={calendars} onClose={() => setSheet(null)} onSaved={refresh} />}
+      </div>
+    )
   }
 
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
@@ -178,8 +326,10 @@ export default function PlanningWeekPage() {
 
 // ── Vue Semaine / Jour (grille horaire) ─────────────────────────────────────
 const HOUR_GUTTER = 52          // largeur colonne des heures
-function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
+function WeekView({ days, events, onOpen, onCreate, onMoved, px, compact }: {
   days: Date[]; events: CalEvent[]; onOpen: (e: CalEvent) => void; onCreate: (start: Date, end?: Date) => void; onMoved: () => void; px: number
+  /** Mobile : colonnes étroites → blocs de couleur SANS texte (jamais de texte coupé), heures courtes. */
+  compact?: boolean
 }) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ id: string; ev: CalEvent } | null>(null)
@@ -255,13 +405,13 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
           onPointerUp={createDrag ? (() => onCreateUp()) : (drag ? (e => void commitDrag(e.clientX, e.clientY)) : undefined)}
         >
           {/* En-tête jours (sticky) */}
-          <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, position: 'sticky', top: 0, zIndex: 6, background: 'var(--bg)' }}>
+          <div style={{ display: 'flex', paddingLeft: compact ? 30 : HOUR_GUTTER, position: 'sticky', top: 0, zIndex: 6, background: compact ? 'var(--dash-card, var(--bg))' : 'var(--bg)' }}>
             {days.map((d, i) => {
               const isToday = sameDay(d, new Date())
               return (
-                <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderLeft: i ? '1px solid var(--border)' : 'none', background: isToday ? 'var(--primary-dim)' : 'var(--bg)', minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: isToday ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{DAY_NAMES[(d.getDay() + 6) % 7]}</div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', marginTop: 3, fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? 'var(--primary)' : 'transparent', color: isToday ? 'var(--on-primary)' : 'var(--text)' }}>{d.getDate()}</div>
+                <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderLeft: i && !compact ? '1px solid var(--border)' : 'none', background: compact ? 'var(--dash-card, var(--bg))' : isToday ? 'var(--primary-dim)' : 'var(--bg)', minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: isToday ? (compact ? 'var(--text)' : 'var(--primary)') : 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{compact ? DAY_NAMES[(d.getDay() + 6) % 7].slice(0, 1) : DAY_NAMES[(d.getDay() + 6) % 7]}</div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: compact ? 26 : 30, height: compact ? 26 : 30, borderRadius: '50%', marginTop: 3, fontSize: compact ? 13 : 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: isToday ? (compact ? 'var(--text)' : 'var(--primary)') : 'transparent', color: isToday ? (compact ? 'var(--bg)' : 'var(--on-primary)') : 'var(--text)' }}>{d.getDate()}</div>
                 </div>
               )
             })}
@@ -269,11 +419,11 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
 
           {/* Bande all-day */}
           {allDay.length > 0 && (
-            <div style={{ display: 'flex', paddingLeft: HOUR_GUTTER, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
+            <div style={{ display: 'flex', paddingLeft: compact ? 30 : HOUR_GUTTER, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 24, background: 'var(--bg-card2)' }}>
               {days.map((d, i) => (
                 <div key={i} style={{ flex: 1, padding: '3px 3px', borderLeft: i ? '1px solid var(--border)' : 'none', minWidth: 0 }}>
                   {allDay.filter(e => new Date(e.start) <= addDays(d, 1) && new Date(e.end) >= d && (sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d))).map(e => (
-                    <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--on-primary)', background: e.color, borderRadius: 'var(--r-sm)', padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{e.title}</div>
+                    <div key={e.id} onClick={() => onOpen(e)} title={e.title} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--on-primary)', background: e.color, borderRadius: 'var(--r-sm)', padding: '2px 5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', minHeight: compact ? 10 : undefined }}>{compact ? '' : e.title}</div>
                   ))}
                 </div>
               ))}
@@ -282,10 +432,10 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
 
           <div style={{ display: 'flex', position: 'relative' }}>
             {/* Colonne heures */}
-            <div style={{ width: HOUR_GUTTER, flexShrink: 0 }}>
+            <div style={{ width: compact ? 30 : HOUR_GUTTER, flexShrink: 0 }}>
               {Array.from({ length: 24 }, (_, h) => (
                 <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                  <span style={{ position: 'absolute', top: -7, right: 8, fontSize: 10, fontVariantNumeric: 'tabular-nums', color: 'var(--text-dim)' }}>{h ? `${String(h).padStart(2, '0')}:00` : ''}</span>
+                  <span style={{ position: 'absolute', top: -7, right: compact ? 4 : 8, fontSize: 10, fontVariantNumeric: 'tabular-nums', color: 'var(--text-dim)' }}>{h ? (compact ? `${h}h` : `${String(h).padStart(2, '0')}:00`) : ''}</span>
                 </div>
               ))}
             </div>
@@ -306,8 +456,8 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
                 const isToday = sameDay(d, new Date())
                 return (
                   <div key={di}
-                    onPointerDown={e => { if (e.target === e.currentTarget && e.button === 0) { const m = yToMin(e.clientY); setCreateDrag({ dayIdx: di, aMin: m, bMin: m }) } }}
-                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0, background: isToday ? 'var(--primary-dim)' : 'transparent', touchAction: 'none' }}>
+                    onPointerDown={e => { if (!compact && e.target === e.currentTarget && e.button === 0) { const m = yToMin(e.clientY); setCreateDrag({ dayIdx: di, aMin: m, bMin: m }) } }}
+                    style={{ flex: 1, position: 'relative', borderLeft: di ? '1px solid var(--border)' : 'none', height: 24 * HOUR_H, minWidth: 0, background: isToday && !compact ? 'var(--primary-dim)' : 'transparent', touchAction: compact ? 'pan-y' : 'none' }}>
                     {/* Bloc provisoire (drag-to-create) */}
                     {createDrag && createDrag.dayIdx === di && (() => {
                       const s = Math.min(createDrag.aMin, createDrag.bMin)
@@ -322,11 +472,11 @@ function WeekView({ days, events, onOpen, onCreate, onMoved, px }: {
                       return (
                         <div key={e.id}
                           onClick={ev => { ev.stopPropagation(); onOpen(e) }}
-                          onPointerDown={e.editable ? (() => setDrag({ id: e.id, ev: e })) : undefined}
+                          onPointerDown={e.editable && !compact ? (() => setDrag({ id: e.id, ev: e })) : undefined}
                           title={`${e.title}${e.rpe ? ` · RPE ${e.rpe}` : ''}${e.durationMin ? ` · ${e.durationMin}min` : ''}${e.description ? `\n${e.description}` : ''}`}
-                          style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 'var(--r-sm)', padding: '2px 6px', color: 'var(--on-primary)', fontSize: 11, overflow: 'hidden', cursor: e.editable ? 'grab' : 'pointer', boxShadow: 'var(--shadow-card)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2, touchAction: e.editable ? 'none' : 'auto' }}>
-                          <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                          {h > 30 && <div style={{ fontSize: 10, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>{new Date(e.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.rpe ? ` · RPE ${e.rpe}` : ''}</div>}
+                          style={{ position: 'absolute', top, left: `calc(${lane * w}% + 1px)`, width: `calc(${w}% - 2px)`, height: h, background: e.color, borderRadius: 'var(--r-sm)', padding: '2px 6px', color: 'var(--on-primary)', fontSize: 11, overflow: 'hidden', cursor: e.editable && !compact ? 'grab' : 'pointer', boxShadow: compact ? 'none' : 'var(--shadow-card)', opacity: drag?.id === e.id ? 0.5 : 1, zIndex: 2, touchAction: e.editable && !compact ? 'none' : 'auto' }}>
+                          {!compact && <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>}
+                          {!compact && h > 30 && <div style={{ fontSize: 10, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>{new Date(e.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{e.rpe ? ` · RPE ${e.rpe}` : ''}</div>}
                         </div>
                       )
                     })}

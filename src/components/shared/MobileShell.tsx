@@ -33,6 +33,8 @@ const FD = 'var(--font-display)'
 const MOTION = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.42s, box-shadow 0.42s'
 const OPEN_RATIO = 0.80
 const OPEN_MAX = 360
+// Pages refaites en « cartes » façon Strava : page grise + cartes blanches (mobile).
+const CARD_PAGES = new Set(['/', '/connections', '/planning', '/planning-week', '/calendar'])
 
 // Cherche un ancêtre défilable horizontalement (tableau large, carrousel…) entre
 // l'élément touché et la page, pour NE PAS ouvrir le menu latéral quand on fait
@@ -276,7 +278,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <div ref={panelRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'var(--bg)', overflow: 'hidden',
           // Dashboard : page grise + cartes blanches façon Strava (mode clair) ; surfaces dédiées en sombre.
-          ...(pathname === '/' || pathname === '/connections' ? { '--bg': 'var(--surface-page)', '--dash-card': 'var(--surface-card)', '--dash-chip': 'var(--surface-chip)', '--dash-bar': 'var(--surface-bar)', '--dash-line': 'var(--border)' } as React.CSSProperties : null),
+          ...(CARD_PAGES.has(pathname) ? { '--bg': 'var(--surface-page)', '--dash-card': 'var(--surface-card)', '--dash-chip': 'var(--surface-chip)', '--dash-bar': 'var(--surface-bar)', '--dash-line': 'var(--border)', '--dash-soft': 'var(--surface-soft)' } as React.CSSProperties : null),
           transformOrigin: 'center',
           // Au repos : pas de transform → réactive backdrop-filter (flou) sur iOS.
           transform: open ? `translateX(min(${OPEN_RATIO * 100}vw, ${OPEN_MAX}px)) scale(0.965)` : 'none',

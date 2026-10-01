@@ -45,6 +45,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     <AnimatePresence initial={false} mode="popLayout" custom={dir}>
       <motion.div
         key={pathname}
+        className="thw-page"
         custom={dir}
         variants={variants}
         initial="enter"

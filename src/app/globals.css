@@ -212,6 +212,7 @@
   --surface-card: #FFFFFF;
   --surface-chip: #EDEDEA;
   --surface-bar:  #D5D8DD;
+  --surface-soft: #F6F6F4;
 }
 
 .dark {
@@ -245,6 +246,7 @@
   --surface-card: #14171E;
   --surface-chip: #1F232C;
   --surface-bar:  #323846;
+  --surface-soft: #1A1E26;
 }
 
 /* ── Séance home trainer (RideScreen) — tokens de tracé canvas + lignes ──
@@ -1101,3 +1103,12 @@ html.thw-glass-blur .thw-glass-bubble {
 /* Hauteur des sous-onglets mobiles collés en haut : les barres « sticky » des pages
    se placent juste dessous (top: var(--section-tabs-h, 0px)). */
 @media (max-width: 767px) { body:has(.thw-section-tabs) { --section-tabs-h: 66px; } }
+
+/* Mobile : pas de titre de page (les sous-onglets indiquent déjà où l'on est). */
+@media (max-width: 767px) { .thw-hide-mobile { display: none !important; } }
+
+/* Conteneur de page (PageTransition) : ses enfants gardent leur hauteur réelle et
+   défilent avec <main> (sinon un enfant en overflow:hidden devient un défileur
+   interne écrasé à la hauteur de l'écran → contenu coupé). Un enfant en flex:1
+   explicite (pages plein écran) reste prioritaire (style inline). */
+.thw-page > * { flex-shrink: 0; }

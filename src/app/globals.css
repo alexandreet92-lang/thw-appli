@@ -1123,3 +1123,13 @@ html.thw-glass-blur .thw-glass-bubble {
   --bg-card2: var(--dash-card, var(--bg-card2));
   --font-display: var(--font-body);
 }
+
+/* App tactile (iPhone / Capacitor) : un appui long ne sélectionne pas le texte et
+   n'ouvre pas la bulle iOS « Copier / Rechercher / Traduire ». Les champs de
+   saisie restent sélectionnables ; [data-selectable] pour l'activer ailleurs. */
+@media (hover: none) and (pointer: coarse) {
+  html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, [contenteditable="true"], [data-selectable], [data-selectable] * {
+    -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+  }
+}

@@ -212,6 +212,7 @@
   --surface-card: #FFFFFF;
   /* Boutons flottants + barre d'onglets mobile : blanc pur en clair. */
   --float-bg: #FFFFFF;
+  --shadow-capsule: 0 6px 24px rgba(0,0,0,0.13);
   --surface-chip: #EDEDEA;
   --surface-bar:  #D5D8DD;
   --surface-soft: #F6F6F4;

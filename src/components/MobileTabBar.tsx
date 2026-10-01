@@ -16,7 +16,8 @@ const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 // ── Types & constants ──────────────────────────────────────────
 
 const ACCENT = '#06B6D4'
-const DIM    = '#9CA3AF'
+// Onglets inactifs à plein contraste (comme Strava), plus gris clair.
+const DIM    = 'var(--text)'
 
 // Une sur-page BLOQUANTE est-elle ouverte ? Toutes les sur-pages (BottomSheet,
 // SlideSheet, feuilles bespoke calendar/performance/blessure/communauté,
@@ -127,7 +128,7 @@ export default function MobileTabBar() {
     const coachItems: CapsuleItem[] = [
       ...COACH_TABS.map(tab => ({
         key: tab.href, label: t(tab.labelKey), ariaLabel: t(tab.labelKey),
-        icon: (c: string) => <tab.Icon size={25} color={c} />,
+        icon: (c: string, on?: boolean) => <tab.Icon size={26} color={c} strokeWidth={on ? 2.4 : 2} />,
         onSelect: () => router.push(tab.href),
       })),
       { key: 'ai', ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o),
@@ -155,8 +156,8 @@ export default function MobileTabBar() {
   // 5 onglets façon Strava. Le Coach IA reste dans le bouton en haut à droite (MobileShell).
   const go = (href: string) => () => { if (pathname !== href) router.push(href) }
   const tabs: { key: MobileTabKey; item: CapsuleItem }[] = [
-    { key: 'home', item: { key: 'home', label: t('nav.tabHome'), ariaLabel: t('nav.tabHome'), onSelect: go('/'), icon: c => <Home size={25} color={c} /> } },
-    { key: 'plan', item: { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: go('/planning'), icon: c => <CalendarDays size={25} color={c} /> } },
+    { key: 'home', item: { key: 'home', label: t('nav.tabHome'), ariaLabel: t('nav.tabHome'), onSelect: go('/'), icon: (c, on) => <Home size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
+    { key: 'plan', item: { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: go('/planning'), icon: (c, on) => <CalendarDays size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
     { key: 'launch', item: { key: 'launch', label: t('nav.tabLaunch'), ariaLabel: t('nav.startActivity'), onSelect: go('/record'),
       icon: () => (
         <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
@@ -164,8 +165,8 @@ export default function MobileTabBar() {
           <circle cx="13" cy="13" r="5" fill={ACCENT} />
         </svg>
       ) } },
-    { key: 'forme', item: { key: 'forme', label: t('nav.tabForme'), ariaLabel: t('nav.tabForme'), onSelect: go('/recovery'), icon: c => <HeartPulse size={25} color={c} /> } },
-    { key: 'activities', item: { key: 'activities', label: t('nav.tabActivities'), ariaLabel: t('nav.tabActivities'), onSelect: go('/activities'), icon: c => <Activity size={25} color={c} /> } },
+    { key: 'forme', item: { key: 'forme', label: t('nav.tabForme'), ariaLabel: t('nav.tabForme'), onSelect: go('/recovery'), icon: (c, on) => <HeartPulse size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
+    { key: 'activities', item: { key: 'activities', label: t('nav.tabActivities'), ariaLabel: t('nav.tabActivities'), onSelect: go('/activities'), icon: (c, on) => <Activity size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
   ]
   const items = tabs.map(x => x.item)
   const current = mobileTabFor(pathname)

@@ -18,7 +18,8 @@ export interface CapsuleItem {
   key: string
   label?: string
   ariaLabel: string
-  icon: (color: string) => ReactNode
+  /** color = currentColor (la couleur est portée par le parent) ; active = onglet en avant. */
+  icon: (color: string, active?: boolean) => ReactNode
   onSelect: () => void
   /** Largeur fixe en px (ex. bouton retour) ; sinon l'onglet se partage la place. */
   fixedWidth?: number
@@ -135,7 +136,7 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
     borderRadius: 'var(--r-pill)',
     background: lens
       ? 'color-mix(in srgb, var(--text) 16%, var(--bg))'
-      : 'color-mix(in srgb, var(--text) 13%, transparent)',
+      : 'color-mix(in srgb, var(--text) 9%, transparent)',
     // Pas de backdrop-filter ici : il force un recalcul du flou à chaque image
     // (saccades sur iPhone). Fond plein + ombre = fluide et sans halo blanc.
     boxShadow: lens ? 'var(--shadow-lens), inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent)' : 'none',
@@ -160,8 +161,10 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
         bottom: 'max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px))',
         height: BAR_H, padding: PAD, boxSizing: 'border-box',
         borderRadius: 'var(--r-pill)',
-        background: 'var(--float-bg, color-mix(in srgb, var(--text) 9%, var(--bg)))',
-        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent), var(--shadow-float)',
+        // Verre façon Strava : fond légèrement translucide + flou, liseré fin.
+        background: 'color-mix(in srgb, var(--float-bg, var(--bg)) 86%, transparent)',
+        backdropFilter: 'blur(22px) saturate(1.6)', WebkitBackdropFilter: 'blur(22px) saturate(1.6)',
+        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text) 11%, transparent), var(--shadow-capsule, var(--shadow-float))',
         touchAction: 'none', WebkitTransform: 'translateZ(0)', userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >
@@ -191,9 +194,9 @@ export function TabCapsule({ items, activeIndex, motionKey, accent, dim, classNa
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, pointerEvents: 'none',
                   transform: press === i ? 'scale(1.08)' : 'scale(1)', transition: `transform 240ms ${EASE}`,
                 }}>
-                  {it.icon(col)}
+                  <span style={{ display: 'flex', color: col, transition: 'color 200ms ease' }}>{it.icon('currentColor', on)}</span>
                   {it.label && (
-                    <span style={{ fontSize: 12, lineHeight: 1, fontFamily: 'var(--font-body)', fontWeight: 600, color: col, transition: 'color 200ms ease' }}>{it.label}</span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1, fontFamily: 'var(--font-body)', fontWeight: on ? 800 : 700, letterSpacing: '-0.01em', color: col, transition: 'color 200ms ease' }}>{it.label}</span>
                   )}
                 </span>
               </button>

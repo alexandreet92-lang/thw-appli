@@ -159,10 +159,10 @@ export default function MobileTabBar() {
     { key: 'home', item: { key: 'home', label: t('nav.tabHome'), ariaLabel: t('nav.tabHome'), onSelect: go('/'), icon: (c, on) => <Home size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
     { key: 'plan', item: { key: 'plan', label: t('nav.tabPlan'), ariaLabel: t('nav.tabPlan'), onSelect: go('/planning'), icon: (c, on) => <CalendarDays size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },
     { key: 'launch', item: { key: 'launch', label: t('nav.tabLaunch'), ariaLabel: t('nav.startActivity'), onSelect: go('/record'),
-      icon: () => (
+      icon: (c, on) => (
         <svg width="27" height="27" viewBox="0 0 26 26" fill="none">
-          <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
-          <circle cx="13" cy="13" r="5" fill={ACCENT} />
+          <circle cx="13" cy="13" r="10" stroke={c} strokeWidth={on ? 2.3 : 1.9} />
+          <circle cx="13" cy="13" r="5" fill={c} />
         </svg>
       ) } },
     { key: 'forme', item: { key: 'forme', label: t('nav.tabForme'), ariaLabel: t('nav.tabForme'), onSelect: go('/recovery'), icon: (c, on) => <HeartPulse size={26} color={c} strokeWidth={on ? 2.4 : 2} /> } },

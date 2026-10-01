@@ -27,10 +27,10 @@ export function MobileSectionTabs() {
           <button key={p.href} type="button" aria-current={on ? 'page' : undefined}
             onClick={() => { if (!on) { haptic('light'); router.push(p.href) } }}
             style={{ position: 'relative', flex: 1, minWidth: 0, border: 'none', background: 'none', cursor: 'pointer',
-              padding: '8px 4px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              padding: '8px 2px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               WebkitTapHighlightColor: 'transparent' }}>
             <p.Icon size={24} color={col} strokeWidth={on ? 2.2 : 1.8} />
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: on ? 700 : 600, color: col,
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: pages.length > 3 ? 12 : 13, letterSpacing: pages.length > 3 ? '-0.01em' : undefined, fontWeight: on ? 700 : 600, color: col,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{t(p.labelKey)}</span>
             {on && (
               <motion.span layoutId="thw-section-underline" aria-hidden

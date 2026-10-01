@@ -116,6 +116,8 @@
   --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
   /* Danger / destructif (quitter un appel, erreur) — 2 thèmes, tokenisé */
   --danger:       #ef4444;
+  /* Succès / objectif atteint (anneau nutrition, validations) */
+  --success:      #22c55e;
   /* Voiles, ombres flottantes et ombre de bord des pages qui glissent (tokenisés). */
   --scrim:        rgba(0,0,0,0.5);
   --shadow-float: 0 8px 28px rgba(0,0,0,0.28);
@@ -205,6 +207,11 @@
   --gty-bg:      #111111;
   --gty-text:    #ffffff;
   --gty-border:  rgba(0,0,0,0.2);
+  /* Pages « cartes » mobiles façon Strava (Dashboard) : page grise, cartes blanches. */
+  --surface-page: #F2F2F0;
+  --surface-card: #FFFFFF;
+  --surface-chip: #EDEDEA;
+  --surface-bar:  #D5D8DD;
 }
 
 .dark {
@@ -234,6 +241,10 @@
   --gty-bg:      #111111;
   --gty-text:    #ffffff;
   --gty-border:  rgba(255,255,255,0.15);
+  --surface-page: #080A0F;
+  --surface-card: #14171E;
+  --surface-chip: #1F232C;
+  --surface-bar:  #323846;
 }
 
 /* ── Séance home trainer (RideScreen) — tokens de tracé canvas + lignes ──
@@ -1086,3 +1097,7 @@ html.thw-glass-blur .thw-glass-bubble {
    le MÊME ratio que l'image Mapbox → « cover » ne recadre pas, et le padding
    Mapbox garde le tracé entier visible. */
 .thw-card-map { object-fit: cover; }
+
+/* Hauteur des sous-onglets mobiles collés en haut : les barres « sticky » des pages
+   se placent juste dessous (top: var(--section-tabs-h, 0px)). */
+@media (max-width: 767px) { body:has(.thw-section-tabs) { --section-tabs-h: 66px; } }

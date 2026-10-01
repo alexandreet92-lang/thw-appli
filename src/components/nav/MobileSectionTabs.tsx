@@ -17,8 +17,8 @@ export function MobileSectionTabs() {
   if (pages.length < 2) return null
 
   return (
-    <nav aria-label={t('shared.menu')}
-      style={{ position: 'sticky', top: 0, zIndex: 3, display: 'flex', background: 'var(--bg)',
+    <nav aria-label={t('shared.menu')} className="thw-section-tabs"
+      style={{ position: 'sticky', top: 0, zIndex: 3, height: 'var(--section-tabs-h)', boxSizing: 'border-box', display: 'flex', background: 'var(--bg)',
         boxShadow: '0 -16px 0 var(--bg), inset 0 -1px 0 color-mix(in srgb, var(--text) 10%, transparent)' }}>
       {pages.map(p => {
         const on = p.href === pathname

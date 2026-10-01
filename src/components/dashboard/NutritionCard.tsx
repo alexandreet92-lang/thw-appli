@@ -10,8 +10,9 @@
 import { useNutrition } from '@/hooks/useNutrition'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useI18n } from '@/lib/i18n'
-import { Card, SectionTitle, Gauge, Skeleton } from './primitives'
-import { FB, NUM, todayIso } from './lib'
+import { DashCard, DASH_ICONS, Metric, Ring, Skeleton } from './primitives'
+import { todayIso } from './lib'
+import { currentLocale } from '@/lib/i18n/locale'
 
 export function NutritionCard() {
   const { t } = useI18n()
@@ -31,23 +32,14 @@ export function NutritionCard() {
   const remaining = Math.max(0, target - consumed)
 
   return (
-    <Card>
-      <SectionTitle action={<a href="/nutrition" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{t('dashboard.detail')}</a>}>
-        {t('dashboard.nutrition')}
-      </SectionTitle>
-
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
-        <span style={{ ...NUM, fontSize: 28, fontWeight: 600, lineHeight: 1 }}>{consumed}</span>
-        <span style={{ ...NUM, fontSize: 14, color: 'var(--text-mid)' }}>/ {target} kcal</span>
-      </div>
-
-      <div style={{ margin: 'var(--space-3) 0 var(--space-2)' }}>
-        <Gauge value={consumed} max={target} />
-      </div>
-
-      <p style={{ margin: 0, ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>
-        {t('dashboard.kcalRemaining', { n: remaining })}
-      </p>
-    </Card>
+    <DashCard icon={DASH_ICONS.nutrition} title={t('dashboard.nutrition')} meta={t('dashboard.today')} href="/nutrition">
+      <Metric
+        label={t('dashboard.calories')}
+        value={consumed.toLocaleString(currentLocale())}
+        unit={`/ ${target.toLocaleString(currentLocale())}`}
+        sub={t('dashboard.kcalRemaining', { n: remaining })}
+        right={<Ring value={target > 0 ? consumed / target : 0} color="var(--success)" />}
+      />
+    </DashCard>
   )
 }

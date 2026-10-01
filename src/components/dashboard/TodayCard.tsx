@@ -6,14 +6,14 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { Card, SectionTitle, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
-import { FD, FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './lib'
+import { DashCard, DASH_ICONS, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
+import { FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './lib'
+import { currentLocale } from '@/lib/i18n/locale'
 
 interface Session { id: string; sport: string; title: string; duration_min: number | null; intensity: string | null; notes: string | null }
 interface Task { id: string; title: string; completed: boolean }
@@ -66,32 +66,24 @@ export function TodayCard() {
     : ''
 
   return (
-    <Card style={{ background: 'var(--bg-elev)' }}>
-      <SectionTitle>{t('dashboard.todayTitle')}</SectionTitle>
-
+    <DashCard icon={DASH_ICONS.today} title={t('dashboard.todayTitle')} meta={todayShort()} href={`/planning?week=${weekStartIso()}`}>
       {!session ? (
-        <EmptyState title={t('dashboard.todayEmptyTitle')} hint={t('dashboard.todayEmptyHint')} href="/planning" cta={t('dashboard.plan')} />
+        <EmptyState title={t('dashboard.todayEmptyTitle')} hint={t('dashboard.todayEmptyHint')} />
       ) : (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-            <SportDot color={sportColor(session.sport)} />
-            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>
-              {sportLabel(session.sport)}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <SportDot color={sportColor(session.sport)} size={8} />
+            <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(session.sport)}</span>
           </div>
-          <Link href={`/planning?week=${weekStartIso()}`} style={{ textDecoration: 'none', cursor: 'pointer' }}>
-            <p style={{ margin: 0, fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3 }}>{session.title}</p>
-          </Link>
-          {meta && <p style={{ margin: 'var(--space-2) 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
-          {session.notes && (
-            <p style={{ margin: 'var(--space-3) 0 0', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>{session.notes}</p>
-          )}
+          <p style={{ margin: '6px 0 0', fontFamily: FB, fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{session.title}</p>
+          {meta && <p style={{ margin: '6px 0 0', ...NUM, fontSize: 14, color: 'var(--text-mid)' }}>{meta}</p>}
           <button
-            onClick={() => router.push('/session')}
+            onClick={e => { e.stopPropagation(); router.push('/session') }}
+            className="thw-press"
             style={{
-              marginTop: 'var(--space-4)', height: 40, padding: '0 18px', borderRadius: 'var(--r-sm)',
+              marginTop: 'var(--space-4)', width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)',
               border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
-              fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              fontFamily: FB, fontSize: 16, fontWeight: 700, cursor: 'pointer',
               transition: reduce ? 'none' : 'opacity 0.15s',
             }}
           >
@@ -101,23 +93,24 @@ export function TodayCard() {
       )}
 
       {tasks.length > 0 && (
-        <div style={{ marginTop: 'var(--space-5)' }}>
-          <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>{t('dashboard.todayTasks')}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ marginTop: 'var(--space-4)' }} onClick={e => e.stopPropagation()}>
+          <p style={{ margin: '0 0 var(--space-1)', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('dashboard.todayTasks')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {tasks.map(t => (
               <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px 0', cursor: 'pointer', minHeight: 44 }}>
                 <input type="checkbox" checked={t.completed} onChange={e => void toggle(t.id, e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer', flexShrink: 0 }} />
-                <span style={{
-                  fontFamily: FB, fontSize: 14, lineHeight: 1.4,
-                  color: t.completed ? 'var(--text-dim)' : 'var(--text)',
-                  textDecoration: t.completed ? 'line-through' : 'none',
-                }}>{t.title}</span>
+                  style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer', flexShrink: 0 }} />
+                <span style={{ fontFamily: FB, fontSize: 15, lineHeight: 1.4, color: t.completed ? 'var(--text-dim)' : 'var(--text)', textDecoration: t.completed ? 'line-through' : 'none' }}>{t.title}</span>
               </label>
             ))}
           </div>
         </div>
       )}
-    </Card>
+    </DashCard>
   )
+}
+
+function todayShort(): string {
+  const s = new Date().toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

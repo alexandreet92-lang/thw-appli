@@ -8,9 +8,8 @@
 import { useMemo } from 'react'
 import { useRecords } from '@/hooks/useRecords'
 import { useI18n } from '@/lib/i18n'
-import { sportColor } from '@/components/recovery/helpers'
-import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
-import { FD, FB, NUM, formatShortDate } from './lib'
+import { DashCard, DASH_ICONS, Skeleton } from './primitives'
+import { FB, NUM, formatShortDate } from './lib'
 
 export function RecentRecords() {
   const { t } = useI18n()
@@ -19,29 +18,24 @@ export function RecentRecords() {
   const recent = useMemo(() => {
     return [...records]
       .sort((a, b) => (b.achieved_at ?? '').localeCompare(a.achieved_at ?? ''))
-      .slice(0, 2)
+      .slice(0, 3)
   }, [records])
 
   if (loading) return <Skeleton height={110} />
   if (recent.length === 0) return null // bloc masqué
 
   return (
-    <Card href="/performance">
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.recentRecords')}</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+    <DashCard icon={DASH_ICONS.records} title={t('dashboard.recentRecords')} href="/performance">
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${recent.length}, minmax(0, 1fr))`, gap: 8, textAlign: 'center' }}>
         {recent.map(r => (
-          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingLeft: 'var(--space-3)', borderLeft: '2px solid var(--primary)' }}>
-            <SportDot color={sportColor(r.sport)} />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, fontFamily: FD, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>
-                <span style={NUM}>{r.performance}</span>
-                <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', fontWeight: 400 }}> — {r.distance_label}</span>
-              </p>
-            </div>
-            <span style={{ ...NUM, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{formatShortDate(r.achieved_at)}</span>
+          <div key={r.id} style={{ minWidth: 0 }}>
+            <div aria-hidden style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 8px', display: 'grid', placeItems: 'center', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: FB, fontSize: 11, fontWeight: 800 }}>PR</div>
+            <p style={{ margin: 0, ...NUM, fontSize: 20, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.performance}</p>
+            <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.distance_label}</p>
+            <p style={{ margin: '1px 0 0', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>{formatShortDate(r.achieved_at)}</p>
           </div>
         ))}
       </div>
-    </Card>
+    </DashCard>
   )
 }

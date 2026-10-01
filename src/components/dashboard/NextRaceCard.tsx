@@ -8,9 +8,10 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { Card, SectionTitle, SportDot, Skeleton, EmptyState } from './primitives'
-import { FD, FB, NUM, todayIso, formatShortDate, daysUntil } from './lib'
+import { sportLabel } from '@/components/recovery/helpers'
+import { DashCard, DASH_ICONS, Metric, Ring, Skeleton, EmptyState } from './primitives'
+import { todayIso, daysUntil } from './lib'
+import { currentLocale } from '@/lib/i18n/locale'
 
 interface Race { id: string; name: string; sport: string; date: string; goal: string | null }
 
@@ -42,25 +43,24 @@ export function NextRaceCard() {
 
   if (loading) return <Skeleton height={120} />
 
+  const d = race ? daysUntil(race.date) : 0
   return (
-    <Card href={race ? `/calendar?race=${race.id}` : undefined}>
-      <SectionTitle>{t('dashboard.nextRace')}</SectionTitle>
-
+    <DashCard icon={DASH_ICONS.race} title={t('dashboard.nextRace')} href={race ? `/calendar?race=${race.id}` : '/calendar'}>
       {!race ? (
-        <EmptyState title={t('dashboard.nextRaceEmptyTitle')} hint={t('dashboard.nextRaceEmptyHint')} href="/planning" cta={t('dashboard.addRace')} />
+        <EmptyState title={t('dashboard.nextRaceEmptyTitle')} hint={t('dashboard.nextRaceEmptyHint')} />
       ) : (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
-            <span style={{ ...NUM, fontSize: 28, fontWeight: 600, lineHeight: 1 }}>{t('dashboard.daysCountdown', { n: daysUntil(race.date) })}</span>
-            <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{formatShortDate(race.date)}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-            <SportDot color={sportColor(race.sport)} />
-            <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>{race.name}</span>
-          </div>
-          {race.goal && <p style={{ margin: 'var(--space-1) 0 0', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{sportLabel(race.sport)} · {race.goal}</p>}
-        </div>
+        <Metric
+          label={race.name}
+          value={t('dashboard.daysCountdown', { n: d })}
+          sub={[longDate(race.date), race.goal ?? sportLabel(race.sport)].filter(Boolean).join(' · ')}
+          right={<Ring value={1 - Math.min(d, 84) / 84} />}
+        />
       )}
-    </Card>
+    </DashCard>
   )
+}
+
+function longDate(isoDate: string): string {
+  const s = new Date(isoDate + 'T00:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

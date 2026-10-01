@@ -9,7 +9,8 @@ import Link from 'next/link'
 import { getMyCoachLink, setCoachWriteConsent, listCoachChanges, type CoachChange } from '@/lib/coach/consent'
 import { useI18n, currentLocale } from '@/lib/i18n'
 
-export function CoachActivityCard() {
+/** onlyLinked : masque l'invitation « Trouver un coach » (Dashboard). */
+export function CoachActivityCard({ onlyLinked = false }: { onlyLinked?: boolean } = {}) {
   const { t } = useI18n()
   const [hasCoach, setHasCoach] = useState<boolean | null>(null)
   const [enabled, setEnabled] = useState(true)
@@ -29,6 +30,7 @@ export function CoachActivityCard() {
   }, [])
 
   if (hasCoach === null) return null
+  if (onlyLinked && !hasCoach) return null
   // Pas de coach → invitation à en trouver un (annuaire).
   if (hasCoach === false) {
     return (

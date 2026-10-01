@@ -14,7 +14,8 @@ import { useI18n } from '@/lib/i18n'
 
 interface CoachRow { linkId: string; coachId: string; since: string | null; name: string; avatar: string | null }
 
-export function AthleteCoachCard() {
+/** onlyLinked : n'affiche rien tant qu'aucun coach n'est relié (Dashboard). */
+export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean } = {}) {
   const { t } = useI18n()
   const [coaches, setCoaches] = useState<CoachRow[]>([])
   const [ready, setReady] = useState(false)
@@ -55,6 +56,7 @@ export function AthleteCoachCard() {
   if (!ready) return null
   const since = (d: string | null) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) } catch { return '' } }
   const hasCoach = coaches.length > 0
+  if (onlyLinked && !hasCoach) return null
 
   const card: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px, 3.5vw, 26px)', marginBottom: 'var(--space-5)' }
 

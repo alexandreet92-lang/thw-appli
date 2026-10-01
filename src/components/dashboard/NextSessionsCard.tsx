@@ -7,13 +7,12 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor } from '@/components/recovery/helpers'
-import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
-import { FD, FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
+import { DashCard, DASH_ICONS, SportDot, Skeleton } from './primitives'
+import { FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
 import { currentLocale } from '@/lib/i18n'
 
 interface Row { week_start: string; day_index: number; sport: string; title: string; duration_min: number | null; intensity: string | null; status: string }
@@ -67,24 +66,23 @@ export function NextSessionsCard() {
   if (items.length === 0) return null // rien à venir → masqué
 
   return (
-    <Card>
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.nextSessions')}</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {items.map(s => {
+    <DashCard icon={DASH_ICONS.next} title={t('dashboard.nextSessions')} href={`/planning?week=${items[0].weekStart}`}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {items.map((s, i) => {
           const zone = s.intensity ? (ZONE_KEY[s.intensity] ? t(ZONE_KEY[s.intensity]) : s.intensity) : null
           const meta = [formatDuration(s.duration_min), zone].filter(v => v && v !== '—').join(' · ')
           return (
-            <Link key={s.key} href={`/planning?week=${s.weekStart}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
-              <span style={{ ...NUM, fontSize: 12, color: 'var(--text-dim)', width: 56, flexShrink: 0 }}>{dayShort(s.date)}</span>
-              <SportDot color={sportColor(s.sport)} />
+            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--dash-line, var(--border))', paddingTop: i === 0 ? 0 : 10 }}>
+              <span style={{ ...NUM, fontSize: 14, fontWeight: 600, color: 'var(--text-mid)', width: 60, flexShrink: 0, whiteSpace: 'nowrap' }}>{dayShort(s.date)}</span>
+              <SportDot color={sportColor(s.sport)} size={8} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontFamily: FD, fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</p>
-                {meta && <p style={{ margin: '2px 0 0', ...NUM, fontSize: 12, color: 'var(--text-mid)' }}>{meta}</p>}
+                <p style={{ margin: 0, fontFamily: FB, fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</p>
+                {meta && <p style={{ margin: '2px 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
               </div>
-            </Link>
+            </div>
           )
         })}
       </div>
-    </Card>
+    </DashCard>
   )
 }

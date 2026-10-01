@@ -5,13 +5,13 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-import { Card, SectionTitle, SportDot, Skeleton, EmptyState } from './primitives'
-import { FD, FB, NUM, formatShortDate, formatDuration, formatDistance } from './lib'
+import { DashCard, DASH_ICONS, SportDot, Skeleton, EmptyState } from './primitives'
+import { usePushNav } from '@/hooks/usePushNav'
+import { FB, NUM, formatShortDate, formatDuration, formatDistance } from './lib'
 import { useSmSn } from '@/hooks/useSmSn'
 
 interface Act {
@@ -27,6 +27,7 @@ export function LastActivityCard() {
   const [loading, setLoading] = useState(true)
   const [act, setAct] = useState<Act | null>(null)
   const { compute } = useSmSn()
+  const push = usePushNav()
 
   useEffect(() => {
     let cancelled = false
@@ -53,37 +54,32 @@ export function LastActivityCard() {
   const sport = act?.sport_type ?? 'workout'
   const smsn = act ? compute(act) : null
   const meta = act
-    ? [formatDistance(act.distance_m), formatDuration(act.moving_time_s ? Math.round(act.moving_time_s / 60) : null), smsn ? `SM ${smsn.sm} · SN ${smsn.sn}` : null]
+    ? [formatDistance(act.distance_m), formatDuration(act.moving_time_s ? Math.round(act.moving_time_s / 60) : null), smsn ? `${t('dashboard.loadShort')} ${smsn.sm} · ${t('dashboard.neuroShort')} ${smsn.sn}` : null]
         .filter(v => v && v !== '—').join(' · ')
     : ''
 
   return (
-    <Card>
-      <SectionTitle>{t('dashboard.lastActivity')}</SectionTitle>
-
+    <DashCard icon={DASH_ICONS.last} title={t('dashboard.lastActivity')} meta={act ? formatShortDate(act.started_at) : undefined} href={act ? `/activities?id=${act.id}` : '/activities'}>
       {!act ? (
-        <EmptyState title={t('dashboard.lastActivityEmptyTitle')} hint={t('dashboard.lastActivityEmptyHint')} href="/session" cta={t('dashboard.record')} />
+        <EmptyState title={t('dashboard.lastActivityEmptyTitle')} hint={t('dashboard.lastActivityEmptyHint')} />
       ) : (
         <>
-          <Link href={`/activities?id=${act.id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }} className="dash-tap">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-              <SportDot color={sportColor(sport)} />
-              <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(sport)}</span>
-              <span style={{ marginLeft: 'auto', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>{formatShortDate(act.started_at)}</span>
-            </div>
-            <p style={{ margin: 0, fontFamily: FD, fontSize: 15, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {act.title ?? sportLabel(sport)}
-            </p>
-            {meta && <p style={{ margin: 'var(--space-2) 0 0', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>{meta}</p>}
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <SportDot color={sportColor(sport)} size={8} />
+            <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(sport)}</span>
+          </div>
+          <p style={{ margin: '6px 0 0', fontFamily: FB, fontSize: 18, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {act.title ?? sportLabel(sport)}
+          </p>
+          {meta && <p style={{ margin: '6px 0 0', ...NUM, fontSize: 14, color: 'var(--text-mid)' }}>{meta}</p>}
           {/* Action rapide « Analyser une activité » → ouvre le détail + lance l'analyse IA */}
-          <Link href={`/activities?id=${act.id}&analyze=1`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-3)', padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+          <button type="button" onClick={e => { e.stopPropagation(); push(`/activities?id=${act.id}&analyze=1`) }} className="thw-press"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-4)', padding: '8px 14px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontFamily: FB, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
             {t('dashboard.analyzeWithAI')}
-          </Link>
+          </button>
         </>
       )}
-    </Card>
+    </DashCard>
   )
 }

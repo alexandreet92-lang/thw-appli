@@ -40,18 +40,18 @@ export function DashboardContent() {
 
       {/* Ma vitrine : rendu UNE seule fois (plus de doublon
           desktop/mobile). QuickActions reste à droite de la salutation en desktop. */}
-      <div className="dash-toolbar" style={{ marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="dash-desktop-only"><div className="dash-toolbar" style={{ marginBottom: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
         {vitrineBtn}
-      </div>
+      </div></div>
 
       <Suggestions />
 
-      <AthleteCoachCard />
+      <AthleteCoachCard onlyLinked />
 
       <UnreadMessagesCard />
 
       <div style={{ marginBottom: 'var(--space-5)' }}><AthleteFormsCard /></div>
-      <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard /></div>
+      <div style={{ marginBottom: 'var(--space-5)' }}><CoachActivityCard onlyLinked /></div>
 
       {/* Un seul Dashboard (le choix Classique / Datas est supprimé). */}
       <ClassiqueGrid />

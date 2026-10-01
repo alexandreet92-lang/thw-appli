@@ -1,9 +1,7 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
-// SOMMEIL (Modèle Datas) — total + barre empilée des stades +
-// interruptions. Durées NEUTRES, seuls les stades colorés.
-// Données vides aujourd'hui (health_data sans stades) → ÉTAT VIDE,
-// jamais de zéros. Cf. PROMPT_DASHBOARD_MODELES.md Étape 0.
+// SOMMEIL — durée de la dernière nuit, écart à la moyenne des 6 nuits
+// précédentes, barres des 7 dernières nuits. Source : health_data (sleep).
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
@@ -11,8 +9,7 @@ import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { parseSleepNight, type SleepNight, type SleepRow } from '@/lib/health/sleep'
-import { Card, SectionTitle, Skeleton, EmptyState, useReducedMotion } from './primitives'
-import { FB, NUM } from './lib'
+import { DashCard, DASH_ICONS, Metric, MiniBars, Skeleton, EmptyState } from './primitives'
 
 function fmtH(min: number): string {
   const h = Math.floor(min / 60), m = Math.round(min % 60)
@@ -22,10 +19,8 @@ function fmtH(min: number): string {
 
 export function SleepCard() {
   const { t } = useI18n()
-  const reduce = useReducedMotion()
   const [loading, setLoading] = useState(true)
-  const [night, setNight] = useState<SleepNight | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [nights, setNights] = useState<SleepNight[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -39,60 +34,33 @@ export function SleepCard() {
         .eq('user_id', uid)
         .eq('data_type', 'sleep')
         .order('date', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .limit(7)
       if (cancelled) return
-      setNight(parseSleepNight((data as SleepRow | null) ?? null))
+      const rows = ((data as SleepRow[] | null) ?? [])
+      setNights(rows.map(r => parseSleepNight(r)).filter((n): n is SleepNight => !!n).reverse())
       setLoading(false)
-      requestAnimationFrame(() => setMounted(true))
     })()
     return () => { cancelled = true }
   }, [])
 
   if (loading) return <Skeleton height={130} />
+  const last = nights[nights.length - 1]
+  const prev = nights.slice(0, -1)
+  const avg = prev.length ? prev.reduce((s, n) => s + n.totalMin, 0) / prev.length : null
+  const delta = last && avg != null ? Math.round(last.totalMin - avg) : null
 
   return (
-    <Card>
-      <SectionTitle>{t('dashboard.sleep')}</SectionTitle>
-
-      {!night ? (
+    <DashCard icon={DASH_ICONS.sleep} title={t('dashboard.sleep')} meta={nights.length > 1 ? t('dashboard.nNights', { n: nights.length }) : undefined} href="/recovery">
+      {!last ? (
         <EmptyState title={t('dashboard.sleepEmptyTitle')} hint={t('dashboard.sleepEmptyHint')} href="/connections" cta={t('dashboard.connect')} />
       ) : (
-        <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-            <span style={{ ...NUM, fontSize: 28, fontWeight: 600, lineHeight: 1 }}>{fmtH(night.totalMin)}</span>
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('dashboard.ofSleep')}</span>
-          </div>
-
-          {night.stages.length > 0 && (
-            <>
-              <div style={{ display: 'flex', height: 10, borderRadius: 'var(--r-pill)', overflow: 'hidden', background: 'var(--bg-hover)' }}>
-                {night.stages.map(s => (
-                  <div key={s.key} title={s.label} style={{
-                    width: mounted || reduce ? `${(s.min / night.totalMin) * 100}%` : '0%',
-                    background: s.color,
-                    transition: reduce ? 'none' : 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
-                  }} />
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-                {night.stages.map(s => (
-                  <span key={s.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>
-                    <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: s.color }} />
-                    {s.label} <span style={NUM}>{fmtH(s.min)}</span>
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-
-          {night.awakeMin > 0 && (
-            <p style={{ margin: 'var(--space-3) 0 0', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>
-              {t('dashboard.awakenings')} · {fmtH(night.awakeMin)}
-            </p>
-          )}
-        </>
+        <Metric
+          label={t('dashboard.lastNight')}
+          value={fmtH(last.totalMin)}
+          chip={delta != null && Math.abs(delta) >= 5 ? `${delta > 0 ? '▲' : '▼'} ${fmtH(Math.abs(delta))}` : undefined}
+          right={nights.length > 1 ? <MiniBars values={nights.map(n => n.totalMin)} highlight={nights.length - 1} /> : undefined}
+        />
       )}
-    </Card>
+    </DashCard>
   )
 }

@@ -1,4 +1,5 @@
 'use client'
+import { AthleteCoachCard } from '@/components/dashboard/AthleteCoachCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -941,8 +942,11 @@ function ConnectionsInner() {
             </div>
           </div>
 
+          {/* Relier son coach (code) — déplacé ici depuis le Dashboard. */}
+          <AthleteCoachCard />
+
           {/* ── Search + filters (sticky bar) ─────────────────── */}
-          <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', paddingTop: 8, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ position: 'sticky', top: 'var(--section-tabs-h, 0px)', zIndex: 2, background: 'var(--bg)', paddingTop: 8, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: searchFocused ? ACCENT : 'var(--text-dim)', display: 'flex', pointerEvents: 'none', transition: 'color 0.14s' }}>

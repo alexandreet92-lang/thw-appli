@@ -1,29 +1,37 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
-// Modèle 1 « Classique » — corps (grille). Salutation + sélecteur
-// sont gérés par le parent (DashboardContent).
+// Dashboard (unique) — cartes façon Strava, dans l'ordre validé :
+// Aujourd'hui · Forme du jour · Sommeil · Cette semaine · Charge ·
+// Prochaines séances · Prochaine compétition · Dernière activité ·
+// Nutrition · Records récents. Une carte = un sujet, tap → page détail.
 // ══════════════════════════════════════════════════════════════
 
 import { TodayCard } from './TodayCard'
-import { NutritionCard } from './NutritionCard'
+import { FormeArc } from './FormeArc'
+import { SleepCard } from './SleepCard'
 import { WeekSummary } from './WeekSummary'
+import { PmcChart } from './PmcChart'
 import { NextSessionsCard } from './NextSessionsCard'
 import { NextRaceCard } from './NextRaceCard'
 import { LastActivityCard } from './LastActivityCard'
-import { QuickActions } from './QuickActions'
+import { NutritionCard } from './NutritionCard'
 import { RecentRecords } from './RecentRecords'
+import { useDashboardActivities } from './useDashboardActivities'
 
 export function ClassiqueGrid() {
+  const { activities, loading } = useDashboardActivities()
   return (
-    <div className="dash-grid">
-      <div className="dash-a-today" data-guide="today-card"><TodayCard /></div>
-      <div className="dash-a-nutrition"><NutritionCard /></div>
-      <div className="dash-a-week"><WeekSummary /></div>
-      <div className="dash-a-nexts" data-guide="next-sessions"><NextSessionsCard /></div>
-      <div className="dash-a-race" data-guide="next-race"><NextRaceCard /></div>
-      <div className="dash-a-last" data-guide="last-activity"><LastActivityCard /></div>
-      <div className="dash-a-actions dash-mobile-only"><QuickActions /></div>
-      <div className="dash-a-records"><RecentRecords /></div>
+    <div className="dash-cards">
+      <div data-guide="today-card"><TodayCard /></div>
+      <div data-guide="forme-arc"><FormeArc activities={activities} loading={loading} /></div>
+      <div data-guide="sleep-card"><SleepCard /></div>
+      <WeekSummary />
+      <div data-guide="pmc-chart"><PmcChart activities={activities} loading={loading} /></div>
+      <div data-guide="next-sessions"><NextSessionsCard /></div>
+      <div data-guide="next-race"><NextRaceCard /></div>
+      <div data-guide="last-activity"><LastActivityCard /></div>
+      <NutritionCard />
+      <RecentRecords />
     </div>
   )
 }

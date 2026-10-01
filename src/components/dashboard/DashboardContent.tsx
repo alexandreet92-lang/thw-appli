@@ -46,7 +46,7 @@ export function DashboardContent() {
 
       <Suggestions />
 
-      <AthleteCoachCard onlyLinked />
+      <div className="dash-gap"><AthleteCoachCard onlyLinked /></div>
 
       <UnreadMessagesCard />
 

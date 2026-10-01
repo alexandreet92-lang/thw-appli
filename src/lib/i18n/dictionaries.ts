@@ -1251,7 +1251,7 @@ const fr: Dict = {
   'progression.familyMsgTest400m': 'Le suivi 400m test nécessite des tests all-out classifiés.',
   'progression.familyMsgEndurance': 'Le suivi Endurance longue nécessite des séances continues > 30 min en Z2 classifiées.',
   // connections
-  'connections.title': 'Connexions',
+  'connections.connectedApps': 'Applis connectées', 'connections.myApps': 'Mes applis', 'connections.addApp': 'Ajouter une appli', 'connections.noAppHint': 'Connecte ta montre ou Strava pour importer tes activités automatiquement.', 'connections.syncedAgo': 'Synchro {when}', 'connections.confirmDisconnect': 'Déconnecter {name} ?', 'connections.reconnect': 'Reconnecter', 'connections.reconnectNeeded': 'Reconnexion nécessaire', 'connections.title': 'Connexions',
   'connections.subtitle': 'Connecte tes applications pour centraliser tes données : entraînement, récupération, nutrition et santé.',
   'connections.syncing': 'Sync…', 'connections.syncAll': 'Synchroniser',
   'connections.searchPlaceholder': 'Rechercher une application...',
@@ -8360,7 +8360,7 @@ const en: Dict = {
   'progression.familyMsgTest400m': '400m test tracking requires classified all-out tests.',
   'progression.familyMsgEndurance': 'Long endurance tracking requires classified continuous sessions > 30 min in Z2.',
   // connections
-  'connections.title': 'Connections',
+  'connections.connectedApps': 'Connected apps', 'connections.myApps': 'My apps', 'connections.addApp': 'Add an app', 'connections.noAppHint': 'Connect your watch or Strava to import your activities automatically.', 'connections.syncedAgo': 'Synced {when}', 'connections.confirmDisconnect': 'Disconnect {name}?', 'connections.reconnect': 'Reconnect', 'connections.reconnectNeeded': 'Reconnection needed', 'connections.title': 'Connections',
   'connections.subtitle': 'Connect your apps to centralize your data: training, recovery, nutrition and health.',
   'connections.syncing': 'Sync…', 'connections.syncAll': 'Sync',
   'connections.searchPlaceholder': 'Search for an app...', 'connections.noResults': 'No app matches your search.',
@@ -15375,7 +15375,7 @@ const es: Dict = {
   'progression.familyMsgTest400m': 'El seguimiento del test de 400m requiere tests all-out clasificados.',
   'progression.familyMsgEndurance': 'El seguimiento de Resistencia larga requiere sesiones continuas > 30 min en Z2 clasificadas.',
   // connections
-  'connections.title': 'Conexiones',
+  'connections.connectedApps': 'Apps conectadas', 'connections.myApps': 'Mis apps', 'connections.addApp': 'Añadir una app', 'connections.noAppHint': 'Conecta tu reloj o Strava para importar tus actividades automáticamente.', 'connections.syncedAgo': 'Sincronizado {when}', 'connections.confirmDisconnect': '¿Desconectar {name}?', 'connections.reconnect': 'Reconectar', 'connections.reconnectNeeded': 'Hay que reconectar', 'connections.title': 'Conexiones',
   'connections.subtitle': 'Conecta tus aplicaciones para centralizar tus datos: entrenamiento, recuperación, nutrición y salud.',
   'connections.syncing': 'Sync…', 'connections.syncAll': 'Sincronizar',
   'connections.searchPlaceholder': 'Buscar una aplicación...',

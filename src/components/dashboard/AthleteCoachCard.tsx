@@ -58,21 +58,23 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
   const hasCoach = coaches.length > 0
   if (onlyLinked && !hasCoach) return null
 
-  const card: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px, 3.5vw, 26px)', marginBottom: 'var(--space-5)' }
+  // Surface de carte façon Strava (page grise / carte blanche en mobile), sans bordure.
+  const card: React.CSSProperties = { background: 'var(--dash-card, var(--bg-card2))', borderRadius: 'var(--r-lg)', padding: '18px 20px' }
 
   return (
     <div style={card}>
       {/* Pas de coach → bouton compact « Connexion coach » (ouvre une surpage) */}
       {!hasCoach && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', flexShrink: 0, background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
+        // En-tête de carte façon Strava (icône · titre), explication, puis bouton.
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
+            </span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('w2d.myCoach')}</span>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{t('w2d.myCoach')}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{t('w2d.linkCoachHint')}</div>
-          </div>
-          <button onClick={() => { setAdding(true); setMsg(null) }} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
+          <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('w2d.linkCoachHint')}</p>
+          <button onClick={() => { setAdding(true); setMsg(null) }} className="thw-press" style={{ marginTop: 14, padding: '9px 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
         </div>
       )}
       {/* Coach(s) lié(s) */}

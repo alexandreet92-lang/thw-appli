@@ -131,3 +131,4 @@
 .dash-card.dash-tap:active { transform: scale(0.985); }
 @media (prefers-reduced-motion: reduce) { .dash-card.dash-tap:active { transform: none; } }
 .dash-card.dash-tap:active { background: var(--dash-card, var(--bg-card2)); }
+.dash-gap:not(:empty) { margin-bottom: 12px; }

@@ -276,7 +276,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <div ref={panelRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'var(--bg)', overflow: 'hidden',
           // Dashboard : page grise + cartes blanches façon Strava (mode clair) ; surfaces dédiées en sombre.
-          ...(pathname === '/' ? { '--bg': 'var(--surface-page)', '--dash-card': 'var(--surface-card)', '--dash-chip': 'var(--surface-chip)', '--dash-bar': 'var(--surface-bar)', '--dash-line': 'var(--border)' } as React.CSSProperties : null),
+          ...(pathname === '/' || pathname === '/connections' ? { '--bg': 'var(--surface-page)', '--dash-card': 'var(--surface-card)', '--dash-chip': 'var(--surface-chip)', '--dash-bar': 'var(--surface-bar)', '--dash-line': 'var(--border)' } as React.CSSProperties : null),
           transformOrigin: 'center',
           // Au repos : pas de transform → réactive backdrop-filter (flou) sur iOS.
           transform: open ? `translateX(min(${OPEN_RATIO * 100}vw, ${OPEN_MAX}px)) scale(0.965)` : 'none',

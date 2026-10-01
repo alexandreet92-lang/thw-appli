@@ -1,5 +1,6 @@
 'use client'
 import { AthleteCoachCard } from '@/components/dashboard/AthleteCoachCard'
+import { DashCard } from '@/components/dashboard/primitives'
 
 export const dynamic = 'force-dynamic'
 
@@ -603,27 +604,41 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
   )
 
   return (
-    <div style={{ border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: isMobile ? 14 : 16, marginBottom: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {CalIcon}
+    <div style={isMobile
+      ? { background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '18px 20px' }
+      : { border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 16, marginBottom: 8 }}>
+      {isMobile && (
+        // Mobile : en-tête de carte façon Strava (icône · titre), texte pleine largeur dessous.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+          </span>
+          <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Calendrier</span>
+          {state === 'ready' && <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--success)' }}>Connecté</span>}
         </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {!isMobile && <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {CalIcon}
+        </div>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: isMobile ? 14 : 15, color: 'var(--text)', lineHeight: 1.25 }}>
+          {!isMobile && <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 15, color: 'var(--text)', lineHeight: 1.25 }}>
             Calendrier
-          </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, marginTop: 2 }}>
+          </div>}
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: isMobile ? 14 : 12, color: 'var(--text-mid)', lineHeight: 1.45, marginTop: isMobile ? 0 : 2 }}>
             Séances, courses et objectifs dans Apple, Google ou Outlook — à jour automatiquement.
           </div>
         </div>
         {state !== 'ready' && (
-          <button data-guide="conn-connect" onClick={connect} disabled={state === 'loading'}
-            style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: ACCENT, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <button data-guide="conn-connect" onClick={connect} disabled={state === 'loading'} className={isMobile ? 'thw-press' : undefined}
+            style={isMobile
+              ? { flexShrink: 0, padding: '9px 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }
+              : { flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: ACCENT, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
             {state === 'loading' ? <Spinner size={12} color="#fff" /> : null}
             {state === 'loading' ? 'Connexion…' : 'Connecter'}
           </button>
         )}
-        {state === 'ready' && (
+        {state === 'ready' && !isMobile && (
           <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 'var(--r-lg)', background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
             Connecté
@@ -888,6 +903,109 @@ function ConnectionsInner() {
     { id: 'coming',    label: t('connections.inProgress') },
   ]
 
+  // ── MOBILE : pages en cartes façon Strava (même grammaire que le Dashboard) ──
+  if (isMobile) {
+    const connectedApps = filteredApps.filter(a => getEffectiveStatus(a) === 'connected')
+    const availableApps = filteredApps.filter(a => getEffectiveStatus(a) !== 'connected')
+    const rowLine = (i: number) => ({ borderTop: i === 0 ? 'none' : '1px solid var(--dash-line, var(--border))', paddingTop: i === 0 ? 0 : 14, paddingBottom: 14 })
+    return (
+      <>
+        <PageHelp config={CONNECTIONS_ONBOARDING} show={show} onDismiss={dismiss} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 16px 24px', flexShrink: 0 }}>
+          <AthleteCoachCard />
+
+          {/* Applis connectées */}
+          <DashCard title={t('connections.myApps')}
+            icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z" /></svg>}
+            meta={connectedApps.length > 0 ? (
+              <button type="button" onClick={() => void handleSyncAll()} disabled={syncingAll}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>
+                <RefreshIcon size={13} spinning={syncingAll} />{syncingAll ? t('connections.syncing') : t('connections.syncAll')}
+              </button>
+            ) : undefined}>
+            {loadingStatus ? (
+              <div className="dash-skel" style={{ height: 56, borderRadius: 'var(--r-md)', background: 'var(--bg-hover)' }} />
+            ) : connectedApps.length === 0 ? (
+              <div>
+                <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('connections.noAppConnected')}</p>
+                <p style={{ margin: '6px 0 0', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('connections.noAppHint')}</p>
+              </div>
+            ) : connectedApps.map((app, i) => {
+              const reconnect = app.provider ? isPolarV3Token(connectedProviders[app.provider]) : false
+              const busy = syncingIds.has(app.id)
+              return (
+                <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: 12, ...rowLine(i), ...(i === connectedApps.length - 1 ? { paddingBottom: 0 } : null) }}>
+                  <AppLogo app={app} size={42} logoErrors={logoErrors} onError={handleLogoError} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.name}</p>
+                    <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {reconnect ? t('connections.reconnectNeeded') : (getLastSync(app) ? t('connections.syncedAgo', { when: (getLastSync(app) ?? '').replace(/^./, c => c.toLowerCase()) }) : t('connections.connected'))}
+                      {' · '}
+                      <button type="button" onClick={() => { if (confirm(t('connections.confirmDisconnect', { name: app.name }))) void handleDisconnect(app) }}
+                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--danger)' }}>
+                        {t('connections.disconnect')}
+                      </button>
+                    </p>
+                    {app.provider === 'strava' && <div style={{ marginTop: 4 }}><PoweredByStrava variant="muted" height={11} /></div>}
+                  </div>
+                  {reconnect ? (
+                    <button type="button" onClick={() => handleConnectClick(app.id)} className="thw-press"
+                      style={{ flexShrink: 0, border: 'none', borderRadius: 'var(--r-pill)', padding: '9px 14px', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                      {t('connections.reconnect')}
+                    </button>
+                  ) : (
+                    <button type="button" aria-label={t('connections.sync')} onClick={() => void handleSync(app)} disabled={busy} className="thw-press"
+                      style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'var(--dash-chip, var(--bg-hover))', color: 'var(--text)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                      {busy ? <Spinner size={16} color="var(--text-mid)" /> : <RefreshIcon size={16} />}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </DashCard>
+
+          {/* Ajouter une appli */}
+          {availableApps.length > 0 && (
+            <DashCard title={t('connections.addApp')}
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>}>
+              {availableApps.map((app, i) => (
+                <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: 12, ...rowLine(i), ...(i === availableApps.length - 1 ? { paddingBottom: 0 } : null) }}>
+                  <AppLogo app={app} size={42} logoErrors={logoErrors} onError={handleLogoError} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.name}</p>
+                    <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(`connections.appDesc.${app.id}`)}</p>
+                  </div>
+                  {getEffectiveStatus(app) === 'pending' ? (
+                    <Spinner size={16} color="var(--text-mid)" />
+                  ) : app.provider === 'strava' ? (
+                    <div style={{ flexShrink: 0 }}><ConnectWithStrava onClick={() => handleConnectClick(app.id)} height={34} /></div>
+                  ) : (
+                    <button type="button" onClick={() => handleConnectClick(app.id)} className="thw-press"
+                      style={{ flexShrink: 0, border: 'none', borderRadius: 'var(--r-pill)', padding: '9px 16px', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                      {t('connections.connect')}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </DashCard>
+          )}
+
+          <CalendarSyncCard isMobile />
+        </div>
+
+        {connectModal && modalApp && (
+          <ConnectModal modal={connectModal} app={modalApp} logoErrors={logoErrors} onLogoError={handleLogoError}
+            onCancel={() => setConnectModal(null)} onContinue={handleModalContinue} />
+        )}
+        {toasts.map((tt, i) => (
+          <div key={tt.id} style={{ position: 'fixed', left: 16, right: 16, bottom: `calc(env(safe-area-inset-bottom, 0px) + ${96 + i * 60}px)`, zIndex: 2000 + i, display: 'flex', justifyContent: 'center' }}>
+            <Toast message={tt.message} type={tt.type} onDismiss={() => dismissToast(tt.id)} />
+          </div>
+        ))}
+      </>
+    )
+  }
+
   return (
     <>
       <style>{`
@@ -943,7 +1061,7 @@ function ConnectionsInner() {
           </div>
 
           {/* Relier son coach (code) — déplacé ici depuis le Dashboard. */}
-          <AthleteCoachCard />
+          <div style={{ marginBottom: 'var(--space-4)' }}><AthleteCoachCard /></div>
 
           {/* ── Search + filters (sticky bar) ─────────────────── */}
           <div style={{ position: 'sticky', top: 'var(--section-tabs-h, 0px)', zIndex: 2, background: 'var(--bg)', paddingTop: 8, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>

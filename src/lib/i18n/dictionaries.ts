@@ -1097,6 +1097,7 @@ const fr: Dict = {
   'calendar.tabProSub': 'Professionnel', 'calendar.tabPerso': 'Perso', 'calendar.tabPersoSub': 'Personnel',
   'calendar.tabAll': 'Tout', 'calendar.tabAllSub': 'Vue globale',
   // injuries
+  'injuries.m.painRest': "Douleur au repos", 'injuries.m.painEffort': "Douleur à l’effort", 'injuries.m.save': "Enregistrer", 'injuries.m.saved': "Enregistré", 'injuries.m.report': "Signaler une gêne ou blessure", 'injuries.m.avail12': "{n} % sur 12 mois", 'injuries.m.avoid': "À éviter : {list}", 'injuries.m.ok': "OK : {list}", 'injuries.m.since': "depuis {n} j", 'injuries.m.returnIn': "retour dans {n} j", 'injuries.m.overdue': "retour dépassé de {n} j", 'injuries.m.last12': "12 derniers mois", 'injuries.m.episodes': "épisode(s)", 'injuries.m.topZone': "Zone la plus touchée : {zone}", 'injuries.m.noEpisode': "Aucun épisode", 'injuries.m.avgHealing': "Guérison moyenne", 'injuries.m.days': "jours", 'injuries.m.recid': "Récidive {n} %", 'injuries.m.avgReturn': "retour moyen {n} j",
   'injuries.pageTitle': 'Blessures', 'injuries.reportAction': 'Signaler', 'injuries.tabOverview': 'Aperçu',
   'injuries.tabOverviewSub': 'En cours', 'injuries.tabHistory': 'Historique', 'injuries.tabHistorySub': 'Épisodes',
   'injuries.tabAnalysis': 'Analyse', 'injuries.tabAnalysisSub': 'Tendances', 'injuries.loading': 'Chargement…',
@@ -1153,6 +1154,7 @@ const fr: Dict = {
   'injuries.logFallback': 'repos {rest} · effort {effort}', 'injuries.addNotePlaceholder': 'Ajouter une note…',
   'injuries.addBtn': 'Ajouter',
   // session
+  'session.m.mine': "Mes séances",
   'session.tabBiblioLabel': 'Bibliothèque', 'session.tabBiblioShort': 'Biblio',
   'session.tabBiblioSubtitle': 'Séances expliquées', 'session.tabBuilderSubtitle': 'Créer & réutiliser',
   'session.biblioEyebrow': 'Bibliothèque', 'session.biblioTitle': 'Des séances et exercices types, expliqués',
@@ -8217,6 +8219,7 @@ const en: Dict = {
   'calendar.tabPerso': 'Personal', 'calendar.tabPersoSub': 'Personal', 'calendar.tabAll': 'All',
   'calendar.tabAllSub': 'Overview',
   // injuries
+  'injuries.m.painRest': "Pain at rest", 'injuries.m.painEffort': "Pain during effort", 'injuries.m.save': "Save", 'injuries.m.saved': "Saved", 'injuries.m.report': "Report a niggle or injury", 'injuries.m.avail12': "{n} % over 12 months", 'injuries.m.avoid': "Avoid: {list}", 'injuries.m.ok': "OK: {list}", 'injuries.m.since': "for {n} d", 'injuries.m.returnIn': "back in {n} d", 'injuries.m.overdue': "return {n} d overdue", 'injuries.m.last12': "Last 12 months", 'injuries.m.episodes': "episode(s)", 'injuries.m.topZone': "Most affected area: {zone}", 'injuries.m.noEpisode': "No episode", 'injuries.m.avgHealing': "Average healing", 'injuries.m.days': "days", 'injuries.m.recid': "Recurrence {n} %", 'injuries.m.avgReturn': "avg return {n} d",
   'injuries.pageTitle': 'Injuries', 'injuries.reportAction': 'Report', 'injuries.tabOverview': 'Overview',
   'injuries.tabOverviewSub': 'Ongoing', 'injuries.tabHistory': 'History', 'injuries.tabHistorySub': 'Episodes',
   'injuries.tabAnalysis': 'Analysis', 'injuries.tabAnalysisSub': 'Trends', 'injuries.loading': 'Loading…',
@@ -8270,6 +8273,7 @@ const en: Dict = {
   'injuries.journalEmpty': 'No entry.', 'injuries.logFallback': 'rest {rest} · effort {effort}',
   'injuries.addNotePlaceholder': 'Add a note…', 'injuries.addBtn': 'Add',
   // session
+  'session.m.mine': "My sessions",
   'session.tabBiblioLabel': 'Library', 'session.tabBiblioShort': 'Library',
   'session.tabBiblioSubtitle': 'Explained sessions', 'session.tabBuilderSubtitle': 'Create & reuse',
   'session.biblioEyebrow': 'Library', 'session.biblioTitle': 'Sample sessions and exercises, explained',
@@ -15229,6 +15233,7 @@ const es: Dict = {
   'calendar.tabProSub': 'Profesional', 'calendar.tabPerso': 'Personal', 'calendar.tabPersoSub': 'Personal',
   'calendar.tabAll': 'Todo', 'calendar.tabAllSub': 'Vista global',
   // injuries
+  'injuries.m.painRest': "Dolor en reposo", 'injuries.m.painEffort': "Dolor en esfuerzo", 'injuries.m.save': "Guardar", 'injuries.m.saved': "Guardado", 'injuries.m.report': "Señalar una molestia o lesión", 'injuries.m.avail12': "{n} % en 12 meses", 'injuries.m.avoid': "Evitar: {list}", 'injuries.m.ok': "OK: {list}", 'injuries.m.since': "desde hace {n} d", 'injuries.m.returnIn': "vuelta en {n} d", 'injuries.m.overdue': "vuelta superada en {n} d", 'injuries.m.last12': "Últimos 12 meses", 'injuries.m.episodes': "episodio(s)", 'injuries.m.topZone': "Zona más afectada: {zone}", 'injuries.m.noEpisode': "Ningún episodio", 'injuries.m.avgHealing': "Curación media", 'injuries.m.days': "días", 'injuries.m.recid': "Recaída {n} %", 'injuries.m.avgReturn': "vuelta media {n} d",
   'injuries.pageTitle': 'Lesiones', 'injuries.reportAction': 'Notificar', 'injuries.tabOverview': 'Resumen',
   'injuries.tabOverviewSub': 'En curso', 'injuries.tabHistory': 'Historial', 'injuries.tabHistorySub': 'Episodios',
   'injuries.tabAnalysis': 'Análisis', 'injuries.tabAnalysisSub': 'Tendencias', 'injuries.loading': 'Cargando…',
@@ -15285,6 +15290,7 @@ const es: Dict = {
   'injuries.logFallback': 'reposo {rest} · esfuerzo {effort}', 'injuries.addNotePlaceholder': 'Añadir una nota…',
   'injuries.addBtn': 'Añadir',
   // session
+  'session.m.mine': "Mis sesiones",
   'session.tabBiblioLabel': 'Biblioteca', 'session.tabBiblioShort': 'Biblio',
   'session.tabBiblioSubtitle': 'Sesiones explicadas', 'session.tabBuilderSubtitle': 'Crear y reutilizar',
   'session.biblioEyebrow': 'Biblioteca', 'session.biblioTitle': 'Sesiones y ejercicios tipo, explicados',

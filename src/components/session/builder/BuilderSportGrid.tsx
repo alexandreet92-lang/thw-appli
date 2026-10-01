@@ -6,6 +6,8 @@
 import { IconChevronRight } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
 import { BUILDER_THEME, BUILDER_ORDER, type BuilderSportId, type BuilderSportTheme } from './builderTheme'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import { SportList } from '../mobile/SportList'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -49,6 +51,16 @@ export function BuilderSportGrid({ counts, onSelect }: {
   onSelect: (id: BuilderSportId) => void
 }) {
   const { t } = useI18n()
+  const narrow = useNarrow(767)
+  if (narrow) {
+    return (
+      <SportList onSelect={id => onSelect(id as BuilderSportId)} items={BUILDER_ORDER.map(id => {
+        const th = BUILDER_THEME[id]; const n = counts[id] ?? 0
+        return { id, Icon: th.icon, label: t(th.labelKey), tagline: t(th.taglineKey), accent: th.accent, soft: th.soft,
+          right: String(n), rightDim: n === 0 }
+      })} />
+    )
+  }
   return (
     <div>
       <style>{STYLE}</style>

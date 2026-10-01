@@ -13,6 +13,8 @@ import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout
 import { LayoutDashboard, History, LineChart } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import { MobileInjuries } from './components/MobileInjuries'
 
 type Tab = 'apercu' | 'historique' | 'analyse'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -34,6 +36,23 @@ export default function InjuriesPage() {
   const signaler = (
     <button data-guide="inj-declare" onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary-gradient)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ {t('injuries.reportAction')}</button>
   )
+
+  const isMobile = useNarrow(767)
+  const sheets = (
+    <>
+      {report && <ReportSheet onClose={() => setReport(false)} onSave={add} />}
+      {trackInj && <TrackSheet injury={trackInj} logs={logs} onClose={() => setTrackId(null)} onUpdate={update} onAddLog={addLog} onResolve={resolve} />}
+    </>
+  )
+  if (isMobile && !loading && !errorCode) {
+    return (
+      <>
+        <MobileInjuries injuries={injuries} logs={logs} onReport={() => setReport(true)} onOpen={i => setTrackId(i.id)}
+          onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
+        {sheets}
+      </>
+    )
+  }
 
   return (
     <>

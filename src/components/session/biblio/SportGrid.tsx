@@ -5,6 +5,8 @@
 import { useI18n } from '@/lib/i18n'
 import { SportCard } from './SportCard'
 import { SPORT_THEME, SPORT_ORDER, type SportId } from './sportTheme'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import { SportList } from '../mobile/SportList'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -22,6 +24,18 @@ const STYLE = `
 
 export function SportGrid({ onSelect }: { onSelect: (id: SportId) => void }) {
   const { t } = useI18n()
+  const narrow = useNarrow(767)
+  if (narrow) {
+    return (
+      <div data-guide="lib-sport-grid">
+        <SportList onSelect={id => onSelect(id as SportId)} items={SPORT_ORDER.map(id => {
+          const th = SPORT_THEME[id]; const soon = th.status === 'soon'
+          return { id, Icon: th.icon, label: t(th.labelKey), tagline: t(th.taglineKey), accent: th.accent, soft: th.soft,
+            right: soon ? t('session.bientot') : undefined, rightDim: true, disabled: soon }
+        })} />
+      </div>
+    )
+  }
   return (
     <div>
       <style>{STYLE}</style>

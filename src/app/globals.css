@@ -1115,7 +1115,7 @@ html.thw-glass-blur .thw-glass-bubble {
 
 /* Nutrition mobile — vues détail réutilisant les anciens onglets : cartes
    blanches sur page grise et titres dans la police de l'interface. */
-.nt-mdetail {
+.nt-mdetail, .thw-mdetail {
   --bg-card: var(--dash-card, var(--bg-card));
   --bg-card2: var(--dash-card, var(--bg-card2));
   --font-display: var(--font-body);

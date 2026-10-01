@@ -19,6 +19,7 @@ import type { NutritionItem } from '@/components/planning/SessionEditor'
 import { type Block, type Session, type SportType } from '@/app/planning/page'
 import { BuilderSportGrid } from './BuilderSportGrid'
 import { BUILDER_THEME, BUILDER_ORDER, builderIdFromPlanning, type BuilderSportId } from './builderTheme'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -127,6 +128,42 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
   )
 }
 
+// ── Mobile : ligne d'une séance en réserve (tap = modifier) + forme des blocs ──
+const ZONE_VAR = (z: number) => `var(--zone-${Math.min(6, Math.max(1, Math.round(z || 1)))})`
+function BlockStrip({ blocks }: { blocks: Block[] }) {
+  const parts = blocks.filter(b => (b.durationMin ?? 0) > 0)
+  if (!parts.length) return null
+  return (
+    <span aria-hidden style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 24, marginTop: 10 }}>
+      {parts.map((b, i) => (
+        <i key={b.id ?? i} style={{ display: 'block', flex: b.durationMin, minWidth: 3, height: 6 + Math.min(5, Math.max(1, b.zone || 1)) * 3.6, borderRadius: 3, background: ZONE_VAR(b.zone) }} />
+      ))}
+    </span>
+  )
+}
+function MobileReserveRow({ fav, first, onEdit, onToggleStar }: { fav: Fav; first: boolean; onEdit: () => void; onToggleStar: () => void }) {
+  const { t } = useI18n()
+  const types = favTypes(fav)
+  const meta = [fmtDur(fav.duration_min ?? 60), fav.rpe != null ? `RPE ${fav.rpe}` : null, types.join(' · ') || null].filter(Boolean).join(' · ')
+  return (
+    <div style={{ borderTop: first ? 'none' : '1px solid var(--dash-line, var(--border))', padding: '12px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button type="button" onClick={onEdit} style={{ flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <b style={{ display: 'block', fontSize: 16, color: 'var(--text)', lineHeight: 1.3 }}>{fav.name}</b>
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</span>
+        </button>
+        <button type="button" onClick={onToggleStar} aria-label={fav.starred ? t('session.retirerFavoris') : t('session.marquerFavori')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, flexShrink: 0, display: 'flex', color: fav.starred ? 'var(--lib-triathlon)' : 'var(--text-dim)' }}>
+          {fav.starred ? <IconStarFilled size={20} /> : <IconStar size={20} />}
+        </button>
+      </div>
+      <button type="button" onClick={onEdit} aria-hidden tabIndex={-1} style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+        <BlockStrip blocks={fav.blocks_data ?? []} />
+      </button>
+    </div>
+  )
+}
+
 export function BuilderReserve() {
   const { t } = useI18n()
   const [favs, setFavs] = useState<Fav[]>([])
@@ -136,6 +173,7 @@ export function BuilderReserve() {
   const [editor, setEditor] = useState<EditorState>(null)
   const [typeFilters, setTypeFilters] = useState<string[]>([])
   const [starredOnly, setStarredOnly] = useState(false)
+  const narrow = useNarrow(767)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -232,7 +270,47 @@ export function BuilderReserve() {
   return (
     <div style={{ overflowX: 'hidden' }}>
       <SlideView screenKey={sport ? `sport-${sport}` : 'grid'} direction={dir}>
-        {sport && theme ? (
+        {sport && theme && narrow ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <button type="button" onClick={backToGrid}
+              style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'inherit' }}>
+              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              {t('session.m.mine')}
+            </button>
+            <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', display: 'grid', placeItems: 'center', background: theme.soft, color: theme.accent, flexShrink: 0 }}><theme.icon size={24} /></span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ display: 'block', fontSize: 18, color: 'var(--text)' }}>{t(theme.labelKey)}</b>
+                <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)' }}>{sportFavs.length ? t('session.nSeances', { n: sportFavs.length, s: sportFavs.length > 1 ? 's' : '' }) : t('session.aucuneSeance')}</span>
+              </span>
+            </div>
+            {sportFavs.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <button onClick={() => setStarredOnly(v => !v)} style={{ ...chip(starredOnly, 'var(--lib-triathlon)'), display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, padding: '7px 14px' }}>
+                  {starredOnly ? <IconStarFilled size={14} /> : <IconStar size={14} />} {t('session.favoris')}
+                </button>
+                {availableTypes.map(tp => (
+                  <button key={tp} style={{ ...chip(typeFilters.includes(tp), theme.accent), fontSize: 13, padding: '7px 14px' }} onClick={() => toggleType(tp)}>{tp}</button>
+                ))}
+              </div>
+            )}
+            {displayed.length > 0 ? (
+              <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '4px 18px' }}>
+                {displayed.map((f, i) => (
+                  <MobileReserveRow key={f.id} fav={f} first={i === 0} onEdit={() => setEditor({ mode: 'edit', fav: f })} onToggleStar={() => void toggleStar(f)} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', fontSize: 15, color: 'var(--text-mid)' }}>
+                {sportFavs.length === 0 ? t('session.aucuneSeanceReserve', { sport: t(theme.labelKey).toLowerCase() }) : t('session.aucuneSeanceFiltres')}
+              </div>
+            )}
+            <button type="button" onClick={() => setEditor({ mode: 'create', sport: theme.planning })} className="thw-press"
+              style={{ width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              + {t('session.creerSeance')}
+            </button>
+          </div>
+        ) : sport && theme ? (
           <div>
             <button onClick={backToGrid} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none',
               border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13,

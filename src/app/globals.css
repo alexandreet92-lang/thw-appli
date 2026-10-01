@@ -1112,3 +1112,11 @@ html.thw-glass-blur .thw-glass-bubble {
    interne écrasé à la hauteur de l'écran → contenu coupé). Un enfant en flex:1
    explicite (pages plein écran) reste prioritaire (style inline). */
 .thw-page > * { flex-shrink: 0; }
+
+/* Nutrition mobile — vues détail réutilisant les anciens onglets : cartes
+   blanches sur page grise et titres dans la police de l'interface. */
+.nt-mdetail {
+  --bg-card: var(--dash-card, var(--bg-card));
+  --bg-card2: var(--dash-card, var(--bg-card2));
+  --font-display: var(--font-body);
+}

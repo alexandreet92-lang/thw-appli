@@ -2,13 +2,17 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
 import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import MobileNutrition from './components/MobileNutrition'
+import { useDaysTotals } from '@/hooks/useDaysTotals'
+import { buildPeriod, periodSummary, periodDates } from './components/suivi/suiviData'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
@@ -909,6 +913,10 @@ export default function NutritionPage() {
   // ── Journal alimentaire du jour (indépendant du plan) ─────────
   const dayMeals  = useDailyMeals(today)
   const hydration = useHydration(today)
+  // Mobile : page en cartes (MobileNutrition) ; résumé Suivi 7 jours pour sa carte.
+  const mobileUI = useNarrow(767)
+  const last7 = useMemo(() => periodDates(7, realToday), [realToday])
+  const last7Totals = useDaysTotals(last7)
   const [mealJumpSignal, setMealJumpSignal] = useState(0)
   const jumpToMeals = useCallback(() => {
     setMealJumpSignal(s => s + 1)
@@ -1118,6 +1126,47 @@ export default function NutritionPage() {
         />
       )}
 
+      {mobileUI && !coachScoped ? (
+        <MobileNutrition
+          today={today}
+          realToday={realToday}
+          onSelectDay={selectDay}
+          todayType={todayType}
+          todayKcalObj={todayKcalObj}
+          todayMacroObj={todayMacroObj}
+          activePlan={activePlan}
+          mealSet={todayMealSet}
+          dayMeals={dayMeals}
+          hydration={hydration}
+          todaySessions={todaySessions}
+          suivi7={(() => {
+            const rows = buildPeriod(dailyLogs, activePlan?.plan_data ?? null, 7, realToday, last7Totals)
+            const sm = periodSummary(rows, profile?.weight_kg ?? null)
+            return { daysLogged: sm.daysLogged, avgKcal: sm.avgKcal, adherencePct: sm.adherencePct, kcalByDay: rows.map(r => r.kcal) }
+          })()}
+          weightLogs={weightLogs}
+          onCreatePlan={() => setAiPanelOpen(true)}
+          planNode={
+            <PlanTab
+              activePlan={activePlan}
+              today={today}
+              todayType={todayType}
+              todayKcalObj={todayKcalObj}
+              todayMacroObj={todayMacroObj}
+              todaySessions={todaySessions}
+              next14Days={next14Days}
+              onOpenDay={setDayDetailOpen}
+              onOpenAI={() => setAiPanelOpen(true)}
+              onOpenShopping={() => setShoppingOpen(true)}
+              onRegen={() => setRegenConfirm(true)}
+              onDelete={() => void handleDeletePlan()}
+              isDesktop={false}
+            />
+          }
+          suiviNode={<SuiviSection dailyLogs={dailyLogs} plan={activePlan?.plan_data ?? null} weightKg={profile?.weight_kg ?? null} today={today} />}
+          bodyNode={<CompositionTab weightLogs={weightLogs} heightCm={profile?.height_cm ?? null} saveWeightLog={saveWeightLog} onGoToPlan={() => setTab('plan')} isDesktop={false} />}
+        />
+      ) : (<>
       {/* ── HEADER (mobile) — sur desktop le titre est dans le rail ─── */}
       <div style={{ display: isDesktop ? 'none' : 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, paddingLeft: 'max(22px, env(safe-area-inset-left))', paddingRight: 'max(22px, env(safe-area-inset-right))', width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>{t('nutrition.title')}</h1>
@@ -1254,6 +1303,7 @@ export default function NutritionPage() {
         </AnimatePresence>{/* end animated tab content */}
         </div>{/* end content column */}
       </div>{/* end desktop rail + content flex */}
+      </>)}
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* DAY DETAIL MODAL — portal, centered desktop / bottom mobile */}

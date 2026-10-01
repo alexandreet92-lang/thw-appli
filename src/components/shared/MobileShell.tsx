@@ -34,7 +34,7 @@ const MOTION = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.
 const OPEN_RATIO = 0.80
 const OPEN_MAX = 360
 // Pages refaites en « cartes » façon Strava : page grise + cartes blanches (mobile).
-const CARD_PAGES = new Set(['/', '/connections', '/planning', '/planning-week', '/calendar'])
+const CARD_PAGES = new Set(['/', '/connections', '/planning', '/planning-week', '/calendar', '/recovery', '/nutrition'])
 
 // Cherche un ancêtre défilable horizontalement (tableau large, carrousel…) entre
 // l'élément touché et la page, pour NE PAS ouvrir le menu latéral quand on fait

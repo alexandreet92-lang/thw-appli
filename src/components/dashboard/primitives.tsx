@@ -112,29 +112,31 @@ export function EmptyState({ title, hint, href, cta }: {
 // en mobile clair), sinon --bg-card2.
 // ══════════════════════════════════════════════════════════════
 
-export function DashCard({ icon, title, meta, href, children }: {
+export function DashCard({ icon, title, meta, href, onOpen, children }: {
   icon: React.ReactNode
   title: string
   meta?: React.ReactNode
   href?: string
+  /** Ouverture d'une vue détail interne (prioritaire sur href). */
+  onOpen?: () => void
   children: React.ReactNode
 }) {
   const push = usePushNav()
-  const open = href ? () => push(href) : undefined
+  const open = onOpen ?? (href ? () => push(href) : undefined)
   return (
     <div
-      role={href ? 'link' : undefined}
-      tabIndex={href ? 0 : undefined}
+      role={open ? 'link' : undefined}
+      tabIndex={open ? 0 : undefined}
       onClick={open}
-      onKeyDown={href ? e => { if (e.key === 'Enter') open?.() } : undefined}
-      className={href ? 'dash-card dash-tap' : 'dash-card'}
-      style={{ background: 'var(--dash-card, var(--bg-card2))', borderRadius: 'var(--r-lg)', padding: '18px 20px 20px', minWidth: 0, cursor: href ? 'pointer' : undefined }}
+      onKeyDown={open ? e => { if (e.key === 'Enter') open() } : undefined}
+      className={open ? 'dash-card dash-tap' : 'dash-card'}
+      style={{ background: 'var(--dash-card, var(--bg-card2))', borderRadius: 'var(--r-lg)', padding: '18px 20px 20px', minWidth: 0, cursor: open ? 'pointer' : undefined }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, minWidth: 0 }}>
         <span aria-hidden style={{ display: 'flex', color: 'var(--primary)', flexShrink: 0 }}>{icon}</span>
         <h2 style={{ margin: 0, flex: 1, minWidth: 0, fontFamily: FB, fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h2>
         {meta && <span style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-mid)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
-        {href && (
+        {open && (
           <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
         )}
       </div>

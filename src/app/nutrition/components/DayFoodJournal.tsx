@@ -30,9 +30,15 @@ interface Props {
   deleteEntry: (id: string) => Promise<void>
   /** Conservé pour compat (scroll depuis le Bilan) — les cartes sont toujours dépliées. */
   expandSignal?: number
+  /** Mobile : n'affiche que ce créneau (page détail d'un repas). */
+  onlySlot?: MealSlotKey
+  /** Mobile : action lancée à l'ouverture (bouton tappé sur la carte « Prochain repas »). */
+  initialAction?: { kind: 'ai' | 'manual' } | { kind: 'photo'; file: File }
+  /** Libellés traduits des créneaux (sinon SLOT_LABELS). */
+  labels?: Partial<Record<MealSlotKey, string>>
 }
 
-export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Props) {
+export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, onlySlot, initialAction, labels }: Props) {
   const [editing, setEditing]   = useState<{ slot: MealSlotKey; index: number | null; course?: MealCourse } | null>(null)
   const [aiFor, setAiFor] = useState<{ slot: MealSlotKey; course?: MealCourse } | null>(null)
   const [photoFor, setPhotoFor] = useState<{ slot: MealSlotKey; file: File } | null>(null)
@@ -49,6 +55,16 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
   }, [])
 
   const entryFor = (slot: MealSlotKey) => entries.find(e => e.meal_slot === slot)
+
+  // Action demandée depuis l'extérieur : appliquée une seule fois à l'ouverture.
+  const actionDone = useRef(false)
+  useEffect(() => {
+    if (!onlySlot || !initialAction || actionDone.current) return
+    actionDone.current = true
+    if (initialAction.kind === 'ai') setAiFor({ slot: onlySlot })
+    else if (initialAction.kind === 'manual') setEditing({ slot: onlySlot, index: null })
+    else if (initialAction.kind === 'photo') setPhotoFor({ slot: onlySlot, file: initialAction.file })
+  }, [onlySlot, initialAction])
 
   async function commit(slot: MealSlotKey, foods: EditableFood[], photoUrl?: string | null) {
     const entry = entryFor(slot)
@@ -94,7 +110,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
   if (loading && !entries.length) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {SLOT_KEYS.map(k => <div key={k} style={{ height: 64, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />)}
+        {(onlySlot ? [onlySlot] : SLOT_KEYS).map(k => <div key={k} style={{ height: 64, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />)}
       </div>
     )
   }
@@ -104,7 +120,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={onPhotoInput} style={{ display: 'none' }} />
       <input ref={galleryRef} type="file" accept="image/*" onChange={onPhotoInput} style={{ display: 'none' }} />
 
-      {SLOT_KEYS.map(slot => {
+      {(onlySlot ? [onlySlot] : SLOT_KEYS).map(slot => {
         const entry = entryFor(slot)
         const foods = foodsOf(entry)
         const m = meta[slot]
@@ -112,7 +128,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
         return foods.length ? (
           <MealCard
             key={slot}
-            slotLabel={SLOT_LABELS[slot]}
+            slotLabel={labels?.[slot] ?? SLOT_LABELS[slot]}
             foods={foods}
             courses={courses}
             photoUrl={entry?.photo_url ?? null}
@@ -129,7 +145,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
         ) : (
           <MealEmpty
             key={slot}
-            slotLabel={SLOT_LABELS[slot]}
+            slotLabel={labels?.[slot] ?? SLOT_LABELS[slot]}
             onPhoto={() => triggerPhoto(slot)}
             onSearch={() => setAiFor({ slot })}
             onAdd={() => setEditing({ slot, index: null })}
@@ -140,7 +156,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
       {editing && (
         <FoodEditSheet
           food={editing.index != null ? foodsOf(entryFor(editing.slot))[editing.index] ?? null : null}
-          slotLabel={SLOT_LABELS[editing.slot]}
+          slotLabel={labels?.[editing.slot] ?? SLOT_LABELS[editing.slot]}
           onClose={() => setEditing(null)}
           onSave={saveFood}
         />
@@ -148,7 +164,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
 
       {aiFor && (
         <AiMealSheet
-          slotLabel={SLOT_LABELS[aiFor.slot]}
+          slotLabel={labels?.[aiFor.slot] ?? SLOT_LABELS[aiFor.slot]}
           onClose={() => setAiFor(null)}
           onConfirm={food => { const { slot, course } = aiFor; setAiFor(null); const f = course ? { ...food, course } : food; void commit(slot, [...foodsOf(entryFor(slot)), f]) }}
         />

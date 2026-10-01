@@ -21,6 +21,8 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
 import { currentLocale } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
+import { useNarrow } from '@/lib/hooks/useNarrow'
+import MobileRecovery from '@/components/recovery/MobileRecovery'
 
 // Sections réelles de la coquille à onglets.
 type RecoverySection = 'overview' | 'checkin' | 'load' | 'sleep' | 'sources'
@@ -61,6 +63,7 @@ export default function RecoveryPage() {
   useGuideTabDemo('rec', (k) => { const s = GUIDE_KEY_TO_SECTION[k]; if (s) setGuideSection(s) })
   const data = useRecoveryData(reload)
   const tl = useTrainingLoad()
+  const isMobile = useNarrow(640)
   const tsb = tl.series.length > 0 ? tl.TSB_SM : null
 
   const inputs = { hrvToday: data.hrvToday, hrvBaseline: data.hrvBaseline, hrvNightsCount: data.hrvNightsCount, tsb }
@@ -92,6 +95,15 @@ export default function RecoveryPage() {
       </div>
     </div>
   )
+
+  if (isMobile) {
+    return (
+      <>
+        <PageHelp config={RECOVERY_ONBOARDING} show={show} onDismiss={dismiss} />
+        <MobileRecovery data={data} tl={tl} readiness={todayReadiness} inputs={inputs} onSaved={() => setReload(x => x + 1)} />
+      </>
+    )
+  }
 
   return (
     <>

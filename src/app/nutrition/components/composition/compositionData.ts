@@ -58,9 +58,10 @@ export function windowStats(pts: Pt[], days: number): Stats | null {
   const use = sel.length ? sel : pts.slice(-1)
   const vals = use.map(p => p.v)
   return {
-    current: pts[pts.length - 1].v,
-    min: Math.min(...vals),
-    max: Math.max(...vals),
+    // Arrondi à 0,1 : évite les « 74.020000000001 » des flottants.
+    current: +pts[pts.length - 1].v.toFixed(1),
+    min: +Math.min(...vals).toFixed(1),
+    max: +Math.max(...vals).toFixed(1),
     delta: +(vals[vals.length - 1] - vals[0]).toFixed(1),
     count: use.length,
   }

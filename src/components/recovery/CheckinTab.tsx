@@ -20,13 +20,13 @@ export interface ReadinessInputsLite {
   tsb: number | null
 }
 
-const FIELDS: { key: keyof CheckinScales; labelKey: string; loKey: string; hiKey: string }[] = [
+export const FIELDS: { key: keyof CheckinScales; labelKey: string; loKey: string; hiKey: string }[] = [
   { key: 'sleepQuality', labelKey: 'recovery.checkin.field.sleepQuality', loKey: 'recovery.checkin.field.sleepQuality.lo', hiKey: 'recovery.checkin.field.sleepQuality.hi' },
   { key: 'fatigue',      labelKey: 'recovery.checkin.field.fatigue',      loKey: 'recovery.checkin.field.fatigue.lo',      hiKey: 'recovery.checkin.field.fatigue.hi' },
   { key: 'soreness',     labelKey: 'recovery.checkin.field.soreness',     loKey: 'recovery.checkin.field.soreness.lo',     hiKey: 'recovery.checkin.field.soreness.hi' },
   { key: 'mood',         labelKey: 'recovery.checkin.field.mood',         loKey: 'recovery.checkin.field.mood.lo',         hiKey: 'recovery.checkin.field.mood.hi' },
 ]
-const DEFAULT: CheckinScales = { sleepQuality: 3, fatigue: 3, soreness: 3, mood: 3 }
+export const DEFAULT_CHECKIN: CheckinScales = { sleepQuality: 3, fatigue: 3, soreness: 3, mood: 3 }
 
 function todayStr(): string {
   const d = new Date()
@@ -58,13 +58,38 @@ function Scale({ value, onChange, lo, hi }: { value: number; onChange: (n: numbe
   )
 }
 
+/** Enregistre le check-in du jour + la readiness calculée. Renvoie null si OK,
+ *  'session' sans utilisateur, sinon le message d'erreur. */
+export async function saveCheckin(v: CheckinScales, inputs: ReadinessInputsLite): Promise<string | null> {
+  const sb = createClient()
+  const __uid = await resolvePlanningUid(sb)
+  if (!__uid) return 'session'
+  const date = todayStr()
+  const { error: e1 } = await sb.from('recovery_checkin').upsert(
+    { user_id: __uid, date, sleep_quality: v.sleepQuality, fatigue: v.fatigue, soreness: v.soreness, mood: v.mood },
+    { onConflict: 'user_id,date' },
+  )
+  const result = computeReadiness({ checkin: v, ...inputs })
+  const { error: e2 } = await sb.from('health_data').upsert(
+    {
+      user_id: __uid, provider: 'manual', provider_id: `readiness_${date}`,
+      measured_at: `${date}T12:00:00Z`, date, data_type: 'readiness',
+      readiness_score: result.score, fatigue_level: fatigueScore(v.fatigue),
+      raw_data: { components: result.components, checkin: v, source: 'recovery_checkin' },
+    },
+    { onConflict: 'user_id,provider,date,data_type' },
+  )
+  if (e1 || e2) return e1?.message ?? e2?.message ?? ''
+  return null
+}
+
 export default function CheckinTab({ initial, inputs, onSaved }: {
   initial: CheckinScales | null
   inputs: ReadinessInputsLite
   onSaved: () => void
 }) {
   const { t } = useI18n()
-  const [v, setV] = useState<CheckinScales>(initial ?? DEFAULT)
+  const [v, setV] = useState<CheckinScales>(initial ?? DEFAULT_CHECKIN)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(initial != null)
   const [err, setErr] = useState<string | null>(null)
@@ -75,27 +100,9 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
 
   async function save() {
     setSaving(true); setErr(null)
-    const sb = createClient()
-    const __uid = await resolvePlanningUid(sb)
-    if (!__uid) { setSaving(false); setErr(t('recovery.checkin.err.session')); return }
-    const date = todayStr()
-
-    const { error: e1 } = await sb.from('recovery_checkin').upsert(
-      { user_id: __uid, date, sleep_quality: v.sleepQuality, fatigue: v.fatigue, soreness: v.soreness, mood: v.mood },
-      { onConflict: 'user_id,date' },
-    )
-    const result = computeReadiness({ checkin: v, ...inputs })
-    const { error: e2 } = await sb.from('health_data').upsert(
-      {
-        user_id: __uid, provider: 'manual', provider_id: `readiness_${date}`,
-        measured_at: `${date}T12:00:00Z`, date, data_type: 'readiness',
-        readiness_score: result.score, fatigue_level: fatigueScore(v.fatigue),
-        raw_data: { components: result.components, checkin: v, source: 'recovery_checkin' },
-      },
-      { onConflict: 'user_id,provider,date,data_type' },
-    )
+    const e = await saveCheckin(v, inputs)
     setSaving(false)
-    if (e1 || e2) { setErr(e1?.message ?? e2?.message ?? t('recovery.checkin.err.save')); return }
+    if (e) { setErr(e === 'session' ? t('recovery.checkin.err.session') : e || t('recovery.checkin.err.save')); return }
     setDone(true); onSaved()
   }
 

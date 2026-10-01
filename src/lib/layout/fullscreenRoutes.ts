@@ -12,6 +12,6 @@
 // Elle ne passe pas par le routeur, donc pas par ici.)
 export function isFullscreenRoute(pathname: string | null | undefined): boolean {
   if (!pathname) return false
-  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs']
+  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs', '/defi']
   return routes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }

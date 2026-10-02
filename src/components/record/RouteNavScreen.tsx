@@ -7,17 +7,28 @@
 // on tire VERS LE HAUT pour ouvrir le profil altimétrique avec la progression.
 // Disponible même sans parcours (carte plein écran + vitesse) ; guidage virage
 // par virage (ORS) + bip + vibration uniquement si un parcours est chargé.
+// Même langage que la navigation vélo (maquette L6) : bandeau sombre, pilule
+// « puis … », feuille de données glissable (SnapSheet), parcouru en gris.
 // Mobile — overlay (portal).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
-import { navigationRoute, type NavStep } from '@/lib/openrouteservice'
-import { useI18n } from '@/lib/i18n'
+import { useReducedMotion } from 'motion/react'
+import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
+import { useI18n, currentLocale } from '@/lib/i18n'
+import { rkScope, RkFab, RkIco, RK_ICON, rkTileUrl } from './kit/RecordKit'
+import SnapSheet, { useMeasure, useSafeTop } from './kit/SnapSheet'
+import GuidePanel, { ManeuverIcon, maneuverKind, type ManeuverKind } from './live-v2/GuidePanel'
+import { TurnBanner, ThenPill, NavStats, NavProfile } from './live-v2/NavUI'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© Mapbox © OpenStreetMap'
-const tileUrl = (dark: boolean) => `https://api.mapbox.com/styles/v1/mapbox/${dark ? 'dark-v11' : 'outdoors-v12'}/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`
+// Leaflet : attributs SVG → couleurs littérales.
+const CYAN = '#06B6D4' // design-allow-color — parcours restant (= --primary)
+const RIDDEN = '#94A3B8' // design-allow-color — portion déjà parcourue (= --rk-ridden)
+const CASING = '#FFFFFF' // design-allow-color — halo blanc du tracé
+const DOT_BLUE = '#3B82F6' // design-allow-color — point de position
 
 interface LatLng { lat: number; lng: number }
 export interface NavRouteInput {
@@ -61,8 +72,10 @@ const DEFAULT_SPEED: Record<string, number> = { cycling: 22, mtb: 16, running: 1
 // Recadrage automatique sur la position — mais suspendu 15 s après chaque
 // interaction manuelle (pan / zoom) pour laisser regarder le tracé en panoramique.
 const RECENTER_DELAY_MS = 15000
-function Follow({ pos }: { pos: LatLng | null }) {
+// Position centrée dans la zone VISIBLE (entre bandeau et feuille du bas).
+function Follow({ pos, padTop, padBottom, recenterKey }: { pos: LatLng | null; padTop: number; padBottom: number; recenterKey: number }) {
   const map = useMap()
+  const reduce = useReducedMotion()
   const lastInteract = useRef(0)
   const selfMoving = useRef(false)
   useEffect(() => {
@@ -71,13 +84,17 @@ function Follow({ pos }: { pos: LatLng | null }) {
     map.on('zoomstart', onUser)
     return () => { map.off('dragstart', onUser); map.off('zoomstart', onUser) }
   }, [map])
-  useEffect(() => {
+  const center = (force: boolean) => {
     if (!pos) return
-    if (Date.now() - lastInteract.current < RECENTER_DELAY_MS) return
+    if (!force && Date.now() - lastInteract.current < RECENTER_DELAY_MS) return
+    const z = map.getZoom() < 14 ? 15 : map.getZoom()
+    const target = map.unproject(map.project([pos.lat, pos.lng], z).add([0, (padBottom - padTop) / 2]), z)
     selfMoving.current = true
-    map.setView([pos.lat, pos.lng], map.getZoom() < 14 ? 15 : map.getZoom(), { animate: true })
+    map.setView(target, z, { animate: !reduce })
     map.once('moveend', () => { selfMoving.current = false })
-  }, [map, pos])
+  }
+  useEffect(() => { center(false) }, [map, pos, padTop, padBottom]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (recenterKey) { lastInteract.current = 0; center(true) } }, [recenterKey]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
@@ -96,31 +113,20 @@ function beep() {
   } catch { /* ignore */ }
 }
 
-// Icône de manœuvre (gauche / droite / tout droit) d'après le type ORS.
-function ManeuverIcon({ type, size = 24 }: { type: number; size?: number }) {
-  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-  const right = type === 1 || type === 3 || type === 5 || type === 13
-  const left = type === 0 || type === 2 || type === 4 || type === 12
-  if (right) return <svg {...p}><path d="M5 19V11a4 4 0 014-4h8M13 3l4 4-4 4" /></svg>
-  if (left)  return <svg {...p}><path d="M19 19V11a4 4 0 00-4-4H7M11 3L7 7l4 4" /></svg>
-  return <svg {...p}><path d="M12 19V5M6 11l6-6 6 6" /></svg>
-}
-
 export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, watts, elapsedSec = 0, distanceDoneM = 0, gainDoneM = 0, onClose, embedded = false }: Props) {
   const { t } = useI18n()
   const [pos, setPos] = useState<LatLng | null>(null)
   const [speedKmh, setSpeedKmh] = useState(0)
   const [steps, setSteps] = useState<NavStep[]>([])
   const [bannerOpen, setBannerOpen] = useState(false)  // liste des manœuvres déroulée
-  const [profileOpen, setProfileOpen] = useState(false) // profil altimétrique déroulé
   const lastPosRef = useRef<{ p: LatLng; t: number } | null>(null)
   const announcedRef = useRef<Record<number, number>>({})
-  const bStartY = useRef(0)
-  const bGripY = useRef(0)
-  const pStartY = useRef(0)
-
-  const txt = isDark ? '#fff' : '#0A0A0A'
-  const txtShadow = isDark ? '0 1px 4px rgba(0,0,0,0.55)' : '0 1px 4px rgba(255,255,255,0.65)'
+  const safeTop = useSafeTop()
+  const [bannerRef, bannerH] = useMeasure<HTMLDivElement>()
+  const [statsRef, statsH] = useMeasure<HTMLDivElement>()
+  const [sheetSnap, setSheetSnap] = useState(1)
+  const [sheetSettledH, setSheetSettledH] = useState(220)
+  const [recenterKey, setRecenterKey] = useState(0)
   const line = route?.snapped_points ?? []
   const hasRoute = line.length > 1
 
@@ -193,194 +199,139 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
     }
   }, [distToTurn, nextStepIdx])
 
-  const fmtKm = (m: number) => (m / 1000).toFixed(m < 10000 ? 2 : 1)
-  const fmtDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`
+  const fmtKm = (m: number) => (m / 1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',')
+  const fmtDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(m)} m`
   const fmtTime = (sec: number) => { const h = Math.floor(sec / 3600); const m = Math.round((sec % 3600) / 60); return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min` }
   const center: [number, number] = pos ? [pos.lat, pos.lng] : (line[0] ? [line[0].lat, line[0].lng] : [48.8566, 2.3522])
-
-  // Profil altimétrique (SVG) — partie réalisée colorée, reste estompé.
   const ep = route?.elevation_profile ?? []
-  const W = 320, H = 90
-  const alts = ep.map(e => e.altitudeM)
-  const aMin = alts.length ? Math.min(...alts) : 0, aMax = alts.length ? Math.max(...alts) : 1
-  const aR = (aMax - aMin) || 1
-  const px = (d: number) => (totalM ? (d / totalM) * W : 0)
-  const py = (a: number) => H - ((a - aMin) / aR) * H
-  const ptsAll = ep.map(e => `${px(e.distanceM).toFixed(1)},${py(e.altitudeM).toFixed(1)}`).join(' ')
-  const doneEp = ep.filter(e => e.distanceM <= traveledM)
-  const ptsDone = doneEp.map(e => `${px(e.distanceM).toFixed(1)},${py(e.altitudeM).toFixed(1)}`).join(' ')
-  const doneAreaPts = doneEp.length ? `0,${H} ${ptsDone} ${px(traveledM).toFixed(1)},${H}` : ''
-  const curAlt = doneEp.length ? doneEp[doneEp.length - 1].altitudeM : (ep[0]?.altitudeM ?? 0)
-  const dotLeftPct = totalM ? (traveledM / totalM) * 100 : 0
-  const dotTopPct = (py(curAlt) / H) * 100
 
-  const Metric = ({ label, big, small }: { label: string; big: string; small: string }) => (
-    <div style={{ flex: 1, textAlign: 'center', padding: '0 6px' }}>
-      <p style={{ fontSize: 22, fontWeight: 800, color: txt, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{big}</p>
-      <p style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.45)' : 'var(--text-dim)', margin: '4px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-      <p style={{ fontSize: 12, fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.6)' : 'var(--text-mid)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>{small}</p>
-    </div>
-  )
+  // ── Bandeau (maquette L6) ──
+  const distToStart = pos && hasRoute ? haversine(pos, line[0]) : null
+  const afterStep = nextStepIdx >= 0 && nextStepIdx + 1 < steps.length ? steps[nextStepIdx + 1] : null
+  const afterGap = afterStep ? Math.max(0, stepCum[nextStepIdx + 1] - stepCum[nextStepIdx]) : null
+  const banner: { big: string | null; instruction: string; road?: string | null; sub?: string | null; kind: ManeuverKind; pending?: boolean } =
+    !hasRoute
+      ? { big: null, instruction: t('record.routeNavNoGuidance'), kind: 'straight' }
+      : pos == null
+        ? { big: null, instruction: t('w2c.locating'), kind: 'straight', pending: true }
+        : traveledM < 30 && distToStart != null && distToStart > 25
+          ? { big: fmtDist(distToStart), instruction: t('w2c.joinRoute'), kind: 'join' }
+          : nextStep && distToTurn != null
+            ? { big: fmtDist(distToTurn), instruction: maneuverShortFR(nextStep.type), road: nextStep.name ?? null, kind: maneuverKind(nextStep.type) }
+            : { big: null, instruction: steps.length ? t('record.routeNavFollowRoute') : (route?.waypoints ? t('record.routeNavGuidanceUnavailable') : t('record.routeNavFollowRoute')), sub: t('w2c.remaining', { d: fmtDist(remainingM) }), kind: 'straight' }
+
+  // Restant + arrivée prévue (heure) + D+ restant.
+  const arrival = new Date(Date.now() + remainMin * 60000).toLocaleTimeString(currentLocale(), { hour: '2-digit', minute: '2-digit' })
+  const stats = {
+    live: [
+      { value: speedKmh.toFixed(1).replace('.', ','), unit: 'km/h' },
+      ...(hr != null ? [{ value: String(Math.round(hr)), unit: 'bpm', dot: 'var(--danger)' }] : []),
+      ...(showWatts && watts != null ? [{ value: String(Math.round(watts)), unit: 'W' }] : []),
+    ],
+    cols: [
+      { label: t('record.routeNavRemaining'), value: fmtKm(remainingM), unit: 'km', sub: t('w2c.doneShort', { v: fmtKm(distanceDoneM) }) },
+      { label: t('w2c.arrivalLabel'), value: arrival, sub: t('w2c.inTime', { d: fmtTime(remainMin * 60) }) },
+      { label: t('record.routeNavGainRemaining'), value: String(Math.round(remainingGain)), unit: 'm', sub: t('w2c.doneShort', { v: Math.round(gainDoneM) }) },
+    ],
+  }
+  const routeDone = hasRoute && traveledM > 5 ? line.slice(0, nearestIdx + 1) : []
+  const routeLeft = hasRoute ? line.slice(Math.max(0, nearestIdx)) : []
+  const bannerBottom = safeTop + (embedded ? 0 : 8) + bannerH
 
   const ui = (
-    <div style={embedded
-      ? { position: 'absolute', inset: 0, background: 'var(--bg)', overflow: 'hidden' }
-      : { position: 'fixed', inset: 0, zIndex: 10010, background: 'var(--bg)' }}>
-      <MapContainer center={center} zoom={15} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
-        <TileLayer url={tileUrl(isDark)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
-        {hasRoute && <Polyline positions={line.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: '#2563EB', weight: 5, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }} />}
-        {pos && <>
-          <CircleMarker center={[pos.lat, pos.lng]} radius={15} pathOptions={{ fillColor: '#06B6D4', fillOpacity: 0.18, color: 'transparent', weight: 0 }} />
-          <CircleMarker center={[pos.lat, pos.lng]} radius={8} pathOptions={{ fillColor: '#06B6D4', fillOpacity: 1, color: '#fff', weight: 3 }} />
-        </>}
-        <Follow pos={pos} />
-      </MapContainer>
+    <div className={rkScope(isDark)} style={embedded
+      ? { position: 'absolute', inset: 0, background: 'var(--surface-page)', overflow: 'hidden' }
+      : { position: 'fixed', inset: 0, zIndex: 10010, background: 'var(--surface-page)', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, isolation: 'isolate', zIndex: 0 }}>
+        <MapContainer center={center} zoom={15} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
+          <TileLayer url={rkTileUrl('std', TOKEN)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
+          {routeLeft.length > 1 && <>
+            <Polyline positions={routeLeft.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: CASING, weight: 12, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={routeLeft.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: CYAN, weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
+          </>}
+          {routeDone.length > 1 && <>
+            <Polyline positions={routeDone.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: CASING, weight: 11, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={routeDone.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: RIDDEN, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} />
+          </>}
+          {pos && <>
+            <CircleMarker center={[pos.lat, pos.lng]} radius={16} pathOptions={{ fillColor: DOT_BLUE, fillOpacity: 0.18, color: 'transparent', weight: 0 }} />
+            <CircleMarker center={[pos.lat, pos.lng]} radius={8} pathOptions={{ fillColor: DOT_BLUE, fillOpacity: 1, color: CASING, weight: 3 }} />
+          </>}
+          <Follow pos={pos} padTop={bannerBottom} padBottom={hasRoute ? sheetSettledH : 0} recenterKey={recenterKey} />
+        </MapContainer>
+      </div>
 
-      {/* Fermer (uniquement en overlay plein écran) */}
-      {!embedded && (
-      <button onClick={onClose} aria-label={t('record.routeNavClose')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1200, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
-      </button>
-      )}
-
-      {/* Bannière manœuvre (façon app Plan). Repliée : carte flottante, tirer VERS
-          LE BAS pour déployer la liste plein écran. Déployée : panneau quasi plein
-          écran, défilable ; on remonte en donnant un coup VERS LE HAUT sur la poignée du bas. */}
-      {hasRoute && (
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: bannerOpen ? 1300 : 1100, paddingTop: embedded ? 0 : 'env(safe-area-inset-top)', pointerEvents: 'none' }}>
-        <div
-          style={{
-            pointerEvents: 'auto',
-            margin: bannerOpen ? '0' : (embedded ? '8px 12px 0' : '8px 12px 0 64px'),
-            background: 'var(--bg)',
-            border: bannerOpen ? 'none' : '1px solid var(--border)',
-            borderTopLeftRadius: bannerOpen ? 0 : 18, borderTopRightRadius: bannerOpen ? 0 : 18,
-            borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.26)',
-            overflow: 'hidden', maxHeight: bannerOpen ? '86vh' : '86px',
-            transition: 'max-height .38s cubic-bezier(.22,.61,.36,1), margin .38s cubic-bezier(.22,.61,.36,1)',
-            display: 'flex', flexDirection: 'column',
-          }}
-        >
-          {/* Prochaine manœuvre — entête (tirer vers le bas pour déployer) */}
-          <div
-            onTouchStart={e => { bStartY.current = e.touches[0].clientY }}
-            onTouchEnd={e => { const dy = e.changedTouches[0].clientY - bStartY.current; if (dy > 24) setBannerOpen(true) }}
-            onClick={() => { if (!bannerOpen) setBannerOpen(true) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 13, padding: bannerOpen ? '16px 18px 18px' : '12px 16px', flexShrink: 0, cursor: 'pointer' }}
-          >
-            <div style={{ width: bannerOpen ? 48 : 44, height: bannerOpen ? 48 : 44, borderRadius: 'var(--r-md)', flexShrink: 0, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'width .25s, height .25s' }}>
-              <ManeuverIcon type={nextStep?.type ?? 6} size={bannerOpen ? 28 : 24} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {nextStep
-                ? <>
-                    <p style={{ fontSize: bannerOpen ? 21 : 16, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: bannerOpen ? 'normal' : 'nowrap' }}>{nextStep.instruction}</p>
-                    <p style={{ fontSize: bannerOpen ? 15 : 13, color: 'var(--primary)', fontWeight: 700, margin: '3px 0 0' }}>{distToTurn != null ? (distToTurn >= 1000 ? t('record.routeNavInKm', { d: (distToTurn / 1000).toFixed(1) }) : t('record.routeNavInM', { d: Math.round(distToTurn / 10) * 10 })) : ''}</p>
-                  </>
-                : <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? t('record.routeNavFollowRoute') : (route?.waypoints ? t('record.routeNavGuidanceUnavailable') : t('record.routeNavNoGuidance'))}</p>}
-            </div>
+      {/* Bandeau de virage sombre + « puis … » ; ✕ à gauche en overlay plein écran */}
+      <div ref={bannerRef} style={{
+        position: 'absolute', top: embedded ? 8 : 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 30,
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', pointerEvents: 'auto' }}>
+          {!embedded && onClose && (
+            <RkFab label={t('record.routeNavClose')} onClick={onClose} size={48}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TurnBanner big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub} kind={banner.kind} pending={banner.pending}
+              onOpen={hasRoute ? () => setBannerOpen(o => !o) : undefined} open={bannerOpen} openLabel={t('record.routeNavFollowRoute')} />
           </div>
-
-          {/* Liste complète des manœuvres (déployée) — gros caractères façon Plan */}
-          {bannerOpen && steps.length > 0 && (
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', borderTop: '1px solid var(--border)' }}>
-              {steps.map((s, i) => {
-                const ahead = stepCum[i] > traveledM + 8
-                const dist = Math.max(0, stepCum[i] - traveledM)
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 18px', borderTop: i > 0 ? '1px solid var(--border)' : 'none', opacity: ahead ? 1 : 0.38 }}>
-                    <span style={{ color: i === nextStepIdx ? 'var(--primary)' : 'var(--text-mid)', flexShrink: 0 }}><ManeuverIcon type={s.type} size={26} /></span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmtDist(dist)}</p>
-                      <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '4px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.instruction}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Poignée du bas — coup VERS LE HAUT pour replier */}
-          {bannerOpen && (
-            <div
-              onTouchStart={e => { bGripY.current = e.touches[0].clientY }}
-              onTouchEnd={e => { const dy = e.changedTouches[0].clientY - bGripY.current; if (dy < -24) setBannerOpen(false) }}
-              onClick={() => setBannerOpen(false)}
-              style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px 0 16px', borderTop: '1px solid var(--border)', cursor: 'pointer' }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6"/></svg>
-            </div>
-          )}
         </div>
-        {/* Poignée repliée : indicateur « tirer vers le bas » */}
-        {!bannerOpen && (
-          <div onClick={() => setBannerOpen(true)} style={{ pointerEvents: 'auto', width: 44, height: 5, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '6px auto 0', cursor: 'pointer' }} />
+        {afterStep && afterGap != null && nextStep && (
+          <div style={{ marginLeft: !embedded && onClose ? 70 : 10, pointerEvents: 'auto' }}>
+            <ThenPill>
+              <span>{t('w2c.then')}</span>
+              <ManeuverIcon kind={maneuverKind(afterStep.type)} size={16} />
+              <span>{t('w2c.maneuverIn', { man: maneuverShortFR(afterStep.type).toLowerCase(), d: fmtDist(afterGap) })}</span>
+            </ThenPill>
+          </div>
         )}
       </div>
+
+      {/* Recentrer */}
+      {!bannerOpen && (
+        <div style={{ position: 'absolute', right: 12, top: bannerBottom + 12, zIndex: 30 }}>
+          <RkFab label={t('rec.locateMe')} onClick={() => setRecenterKey(k => k + 1)} size={48}><RkIco d={RK_ICON.locate} size={21} /></RkFab>
+        </div>
       )}
 
-      {/* Surimpression : vitesse / FC / watts (par-dessus la carte, sans bulle) */}
-      <div style={{ position: 'absolute', right: 14, bottom: embedded ? (hasRoute ? 150 : 28) : `calc(${hasRoute ? 150 : 28}px + env(safe-area-inset-bottom))`, zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: txtShadow }}>
-        <div><span style={{ fontSize: 26, fontWeight: 800, color: txt, fontVariantNumeric: 'tabular-nums' }}>{speedKmh.toFixed(1)}</span><span style={{ fontSize: 12, color: txt, opacity: 0.8, marginLeft: 3 }}>km/h</span></div>
-        {hr != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(hr)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>bpm</span></div>}
-        {showWatts && watts != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(watts)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>W</span></div>}
-      </div>
+      {/* Liste des virages (feuille glissable entre le bandeau et la feuille du bas) */}
+      {bannerOpen && hasRoute && (
+        <GuidePanel
+          steps={steps}
+          stepDistM={stepCum.map(c => Math.max(0, c - traveledM))}
+          nextIdx={nextStepIdx}
+          fmtDist={fmtDist}
+          routeName={route?.name ?? null}
+          distLabel={`${fmtKm(totalM)} km`}
+          gainLabel={totalGain > 0 ? `${Math.round(totalGain)} m D+` : null}
+          line={line}
+          cum={cum}
+          traveledM={traveledM}
+          onClose={() => setBannerOpen(false)}
+          topGap={bannerH + 16}
+          bottomOffset={sheetSettledH + 8}
+        />
+      )}
 
-      {/* Bas : restant (gros) + réalisé (petit) ; tirer vers le HAUT = profil (si parcours) */}
-      {hasRoute && (
-      <div
-        onTouchStart={e => { pStartY.current = e.touches[0].clientY }}
-        onTouchEnd={e => { const dy = e.changedTouches[0].clientY - pStartY.current; if (dy < -30) setProfileOpen(true); else if (dy > 30) setProfileOpen(false) }}
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1100, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.2)', paddingBottom: embedded ? 8 : 'calc(8px + env(safe-area-inset-bottom))' }}
-      >
-        <div onClick={() => setProfileOpen(o => !o)} style={{ width: 44, height: 5, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '8px auto 4px', cursor: 'pointer' }} />
-
-        {/* Profil altimétrique — coulisse à l'ouverture / fermeture */}
-        <div style={{ maxHeight: profileOpen ? 180 : 0, opacity: profileOpen ? 1 : 0, overflow: 'hidden', transition: 'max-height .4s cubic-bezier(.22,.61,.36,1), opacity .3s ease' }}>
-          {ep.length > 1 && (
-            <div style={{ padding: '6px 14px 10px' }}>
-              <div style={{ position: 'relative' }}>
-                <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', borderRadius: 'var(--r-sm)' }}>
-                  <defs>
-                    <linearGradient id="navElevAll" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" style={{ stopColor: 'var(--text-dim)', stopOpacity: 0.22 }} />
-                      <stop offset="100%" style={{ stopColor: 'var(--text-dim)', stopOpacity: 0.02 }} />
-                    </linearGradient>
-                    <linearGradient id="navElevDone" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" style={{ stopColor: 'var(--primary)', stopOpacity: 0.42 }} />
-                      <stop offset="100%" style={{ stopColor: 'var(--primary)', stopOpacity: 0.04 }} />
-                    </linearGradient>
-                  </defs>
-                  <polygon points={`0,${H} ${ptsAll} ${W},${H}`} fill="url(#navElevAll)" />
-                  {doneAreaPts && <polygon points={doneAreaPts} fill="url(#navElevDone)" />}
-                  <polyline points={ptsAll} fill="none" stroke="var(--text-dim)" strokeWidth="1.3" strokeOpacity="0.55" strokeLinejoin="round" />
-                  {ptsDone && <polyline points={ptsDone} fill="none" stroke="var(--primary)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />}
-                  <line x1={px(traveledM)} y1={0} x2={px(traveledM)} y2={H} stroke="var(--primary)" strokeWidth="1.3" strokeDasharray="2,3" strokeOpacity="0.65" />
-                </svg>
-                {/* Point de progression (hors SVG pour rester rond malgré l'étirement horizontal) */}
-                <div style={{ position: 'absolute', left: `${dotLeftPct}%`, top: `${dotTopPct}%`, width: 11, height: 11, borderRadius: '50%', background: 'var(--primary)', border: '2px solid var(--bg)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }} />
-                {/* Repères d'altitude min / max */}
-                <span style={{ position: 'absolute', top: 1, right: 4, fontSize: 9.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(aMax)} m</span>
-                <span style={{ position: 'absolute', bottom: 1, right: 4, fontSize: 9.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(aMin)} m</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{t('record.routeNavDone', { km: fmtKm(traveledM) })}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('record.routeNavTotal', { km: fmtKm(totalM), gain: Math.round(totalGain) })}</span>
-              </div>
+      {/* Feuille de données glissable : live · Restant / Arrivée / D+ restant · profil */}
+      {hasRoute ? (
+        <SnapSheet snaps={[statsH, 'full']} index={sheetSnap} onIndexChange={setSheetSnap} onSettle={setSheetSettledH}
+          zIndex={40} topGap={140} ariaLabel={t('record.routeNavRemaining')}
+          footer={<div style={{ height: 'calc(10px + env(safe-area-inset-bottom))' }} />}>
+          <NavStats ref={statsRef} live={stats.live} cols={stats.cols} />
+          <div style={{ paddingBottom: 12 }}>
+            <NavProfile ep={ep} totalM={totalM} traveledM={traveledM} height={72} />
+            <div className="rk-num" style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 16px 0', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: 0 }}>
+              <span>{t('record.routeNavDone', { km: fmtKm(traveledM) })}</span>
+              <span>{t('record.routeNavElapsed', { v: fmtTime(elapsedSec) })}</span>
             </div>
-          )}
+          </div>
+        </SnapSheet>
+      ) : (
+        <div className="rk-banner rk-glass rk-num" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: embedded ? 20 : 'calc(20px + env(safe-area-inset-bottom))', zIndex: 30, animation: 'none', fontSize: 16, minHeight: 44, letterSpacing: 0 }}>
+          {speedKmh.toFixed(1).replace('.', ',')} km/h
+          {hr != null && <> · <span className="rk-dot" style={{ background: 'var(--danger)' }} />{Math.round(hr)} bpm</>}
+          {showWatts && watts != null && <> · {Math.round(watts)} W</>}
         </div>
-
-        {/* Données restant / réalisé */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px 6px' }}>
-          <Metric label={t('record.routeNavGainRemaining')} big={`${Math.round(remainingGain)} m`} small={t('record.routeNavDoneM', { v: Math.round(gainDoneM) })} />
-          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
-          <Metric label={t('record.routeNavRemaining')} big={`${fmtKm(remainingM)} km`} small={t('record.routeNavDoneKm', { v: fmtKm(distanceDoneM) })} />
-          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
-          <Metric label={t('record.routeNavEstTime')} big={fmtTime(remainMin * 60)} small={t('record.routeNavElapsed', { v: fmtTime(elapsedSec) })} />
-        </div>
-      </div>
       )}
     </div>
   )

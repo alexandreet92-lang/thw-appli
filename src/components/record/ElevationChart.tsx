@@ -12,16 +12,21 @@ interface Props {
   isDark?: boolean
   snappedPoints?: { lat: number; lng: number }[]
   onPositionChange?: (point: { lat: number; lng: number } | null) => void
+  /** Rendu épuré (feuilles du flux record) : ni grille, ni graduations, ni repères. */
+  compact?: boolean
+  /** Revêtements : légende historique (traits) ou barre empilée + légende à points. */
+  surfaceStyle?: 'legend' | 'bar'
 }
 
 const SURFACE_COLORS: Record<string, string> = {
-  asphalt: '#3B82F6', unpaved: '#F59E0B', gravel: '#8B5CF6', path: '#10B981', unknown: '#8C8C8C',
+  asphalt: '#3B82F6', unpaved: '#F59E0B', gravel: '#8B5CF6', path: '#10B981', unknown: '#8C8C8C', // design-allow-color — palette fonctionnelle des revêtements
 }
 const SURFACE_LABEL_KEYS: Record<string, string> = {
   asphalt: 'record.surfaceAsphalt', unpaved: 'record.surfaceUnpaved', gravel: 'record.surfaceGravel', path: 'record.surfacePath', unknown: 'record.surfaceUnknown',
 }
 
-const PAD = { top: 16, bottom: 20, left: 38, right: 14 }
+const PAD_FULL = { top: 16, bottom: 20, left: 38, right: 14 }
+const PAD_COMPACT = { top: 10, bottom: 2, left: 2, right: 2 }
 // Beaucoup d'échantillons = relief détaillé et fidèle (façon Strava).
 const N_SAMPLES = 240
 
@@ -67,7 +72,8 @@ function indexForDistance(data: { distanceM: number }[], targetM: number): numbe
     ? lo - 1 : lo
 }
 
-export default function ElevationChart({ data, surfaces, height = 100, isDark = false, snappedPoints, onPositionChange }: Props) {
+export default function ElevationChart({ data, surfaces, height = 100, isDark = false, snappedPoints, onPositionChange, compact = false, surfaceStyle = 'legend' }: Props) {
+  const PAD = compact ? PAD_COMPACT : PAD_FULL
   const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -116,8 +122,8 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const loA = midAlt - dispRng / 2
   const hiA = midAlt + dispRng / 2
 
-  const getX = useCallback((distM: number) => PAD.left + (distM / totalM) * cW, [totalM, cW])
-  const getY = useCallback((alt: number) => PAD.top + (1 - (alt - loA) / dispRng) * cH, [loA, dispRng, cH])
+  const getX = useCallback((distM: number) => PAD.left + (distM / totalM) * cW, [totalM, cW, PAD.left])
+  const getY = useCallback((alt: number) => PAD.top + (1 - (alt - loA) / dispRng) * cH, [loA, dispRng, cH, PAD.top])
 
   const handleMove = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     if (!svgRef.current || pts.length < 2) return
@@ -143,7 +149,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
       const target = (distAtX / totalM) * snapTotal
       onPositionChange(pointAtDistance(snappedPoints, snapCum, target))
     }
-  }, [pts, cW, W, totalM, getX, getY, snappedPoints, snapCum, onPositionChange])
+  }, [pts, cW, W, totalM, getX, getY, snappedPoints, snapCum, onPositionChange, PAD.left])
 
   const handleEnd = useCallback(() => {
     setCursor(null)
@@ -167,7 +173,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const yTicks = [loA, midAlt, hiA]
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={wrapRef} data-sheet-nodrag="" style={{ position: 'relative', width: '100%' }}>
       <svg ref={svgRef} width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
         style={{ touchAction: 'none', display: 'block' }}
         onTouchMove={handleMove} onTouchStart={handleMove} onTouchEnd={handleEnd}
@@ -180,7 +186,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         </defs>
 
         {/* Lignes de grille horizontales discrètes */}
-        {yTicks.map((alt, i) => (
+        {!compact && yTicks.map((alt, i) => (
           <line key={i} x1={PAD.left} y1={getY(alt)} x2={PAD.left + cW} y2={getY(alt)} stroke={gridStroke} strokeWidth={1} vectorEffect="non-scaling-stroke" />
         ))}
 
@@ -188,18 +194,18 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         <path d={pathD} fill="none" stroke="var(--primary)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
 
         {/* Graduations altitude (Y) */}
-        {yTicks.map((alt, i) => (
+        {!compact && yTicks.map((alt, i) => (
           <text key={i} x={PAD.left - 6} y={getY(alt) + 3} textAnchor="end" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(alt)}m</text>
         ))}
         {/* Graduations distance (X) */}
-        {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+        {!compact && [0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
           const idx = Math.round(pct * (pts.length - 1))
           return <text key={i} x={getX(pts[idx].distanceM)} y={PAD.top + cH + 13} textAnchor="middle" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{(pts[idx].distanceM / 1000).toFixed(1)}km</text>
         })}
 
         {/* Départ (pastille verte) / arrivée (drapeau à damier) */}
-        <circle cx={startPt.x} cy={startPt.y} r={4.5} fill="#10B981" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
-        <FinishFlag x={endPt.x} y={endPt.y} size={0.62} />
+        {!compact && <circle cx={startPt.x} cy={startPt.y} r={4.5} fill="#10B981" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />}
+        {!compact && <FinishFlag x={endPt.x} y={endPt.y} size={0.62} />}
 
         {/* Curseur — trait + pastille alignés sur la courbe */}
         {cursor && (
@@ -215,7 +221,24 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{(cursor.point.distanceM / 1000).toFixed(2)}km</p>
         </div>
       )}
-      {surfaces && surfaces.filter(s => s.percent > 0).length > 0 && (
+      {surfaceStyle === 'bar' && surfaces && surfaces.filter(s => s.percent > 0).length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', height: 8, borderRadius: 'var(--r-pill)', overflow: 'hidden', gap: 2 }}>
+            {surfaces.filter(s => s.percent > 0).map(s => (
+              <i key={s.type} style={{ flex: s.percent, background: SURFACE_COLORS[s.type] ?? SURFACE_COLORS.unknown }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 8 }}>
+            {surfaces.filter(s => s.percent > 0).map(s => (
+              <span key={s.type} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: SURFACE_COLORS[s.type] ?? SURFACE_COLORS.unknown }} />
+                {SURFACE_LABEL_KEYS[s.type] ? t(SURFACE_LABEL_KEYS[s.type]) : s.type} <span className="rk-num" style={{ letterSpacing: 0 }}>{s.percent} %</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {surfaceStyle === 'legend' && surfaces && surfaces.filter(s => s.percent > 0).length > 0 && (
         <div style={{ display: 'flex', gap: 10, paddingTop: 4, flexWrap: 'wrap' }}>
           {surfaces.filter(s => s.percent > 0).map(s => (
             <div key={s.type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

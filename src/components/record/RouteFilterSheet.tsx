@@ -1,26 +1,19 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
 // Feuille de filtre (bas → haut) pour la bibliothèque de parcours : Distance,
-// Dénivelé (double curseur) ou Sport (liste). Réinitialiser / Utiliser.
-// Flow record → couleurs directes (hors design-system enforced).
+// Dénivelé (double curseur) ou Sport (liste groupée). Réinitialiser / Utiliser.
+// Feuille du kit record (glisser pour fermer), tokens uniquement.
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from 'react'
-import { rkScope } from './kit/RecordKit'
-import { createPortal } from 'react-dom'
-
-const ACCENT = '#06B6D4'
+import { RkSheet, RkGroup, RkRow, RkIco, RK_ICON, RkCta, useSheetClose } from './kit/RecordKit'
+import { haptic } from '@/lib/haptics'
+import { useI18n } from '@/lib/i18n'
+import { ROUTE_SPORTS } from './routeSports'
 
 type Kind = 'dist' | 'elev' | 'sport'
 export interface FilterState { dist: [number, number]; elev: [number, number]; sport: string }
 
 const DIST_MAX = 160, ELEV_MAX = 3000
-const SPORTS = [
-  { id: 'all', label: 'Tous les sports' },
-  { id: 'cycling', label: 'Vélo' },
-  { id: 'mtb', label: 'VTT' },
-  { id: 'trail', label: 'Trail' },
-  { id: 'hiking', label: 'Randonnée' },
-]
 
 export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark }: {
   kind: Kind
@@ -29,81 +22,54 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
   onClose: () => void
   isDark: boolean
 }) {
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
+  const { t } = useI18n()
+  const [open, close] = useSheetClose(onClose)
   const [dist, setDist] = useState<[number, number]>(value.dist)
   const [elev, setElev] = useState<[number, number]>(value.elev)
   const [sport, setSport] = useState(value.sport)
 
-  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 260) }
-
-  const bg = 'var(--surface-page)'
-  const text = 'var(--text)'
-  const dim = 'var(--text-mid)'
-  const track = 'var(--surface-chip)'
-  const surface = 'var(--surface-card)'
-
-  const title = kind === 'dist' ? 'Distance' : kind === 'elev' ? 'Dénivelé' : 'Sport'
-  const reset = () => { if (kind === 'dist') setDist([0, DIST_MAX]); else if (kind === 'elev') setElev([0, ELEV_MAX]); else setSport('all') }
+  const title = kind === 'dist' ? t('record.routeCreatorDistance') : kind === 'elev' ? t('record.routeFilterElev') : t('record.routeFilterSport')
+  const reset = () => { haptic('light'); if (kind === 'dist') setDist([0, DIST_MAX]); else if (kind === 'elev') setElev([0, ELEV_MAX]); else setSport('all') }
   const apply = () => {
+    haptic('medium')
     if (kind === 'dist') onApply({ dist }); else if (kind === 'elev') onApply({ elev }); else onApply({ sport })
-    requestClose()
+    close()
   }
 
-  return createPortal(
-    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10020, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease' }} />
-      <div role="dialog" aria-modal="true" style={{
-        position: 'relative', width: '100%', maxWidth: 560, background: bg,
-        borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: '10px 20px calc(20px + env(safe-area-inset-bottom, 0px))', fontFamily: 'var(--font-body)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 12 }}>
-          <span style={{ width: 40, height: 4, borderRadius: 2, background: track }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{title}</span>
-          <button onClick={requestClose} aria-label="Fermer" style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: surface, color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-          </button>
-        </div>
+  const sports = [{ id: 'all', label: t('record.routeLibraryAllSports'), Icon: null }, ...ROUTE_SPORTS.map(s => ({ id: s.id, label: t(s.labelKey), Icon: s.Icon }))]
 
-        {kind === 'dist' && (
-          <DualRange min={0} max={DIST_MAX} step={5} value={dist} onChange={setDist} fmt={v => v >= DIST_MAX ? `> ${DIST_MAX} km` : `${v} km`} text={text} dim={dim} track={track} />
-        )}
-        {kind === 'elev' && (
-          <DualRange min={0} max={ELEV_MAX} step={50} value={elev} onChange={setElev} fmt={v => v >= ELEV_MAX ? `> ${ELEV_MAX} m` : `${v} m`} text={text} dim={dim} track={track} />
-        )}
-        {kind === 'sport' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
-            {SPORTS.map(s => {
-              const on = sport === s.id
-              return (
-                <button key={s.id} onClick={() => setSport(s.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 6px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-                  <span style={{ fontSize: 15, fontWeight: on ? 700 : 500, color: on ? ACCENT : text }}>{s.label}</span>
-                  {on && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 12, marginTop: 26, justifyContent: 'flex-end' }}>
-          <button onClick={reset} style={{ height: 46, padding: '0 22px', borderRadius: 'var(--r-pill)', border: `1.5px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Réinitialiser</button>
-          <button onClick={apply} style={{ height: 46, padding: '0 30px', borderRadius: 'var(--r-pill)', border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>Utiliser</button>
+  return (
+    <RkSheet open={open} onClose={close} title={title} isDark={isDark} zIndex={10030}
+      footer={
+        <div style={{ display: 'flex', gap: 10 }}>
+          <RkCta variant="white" onClick={reset} style={{ flex: 1, boxShadow: 'none', background: 'var(--surface-chip)' }}>{t('record.routeFilterReset')}</RkCta>
+          <RkCta variant="primary" onClick={apply} style={{ flex: 1.4 }}>{t('record.routeLibraryUse')}</RkCta>
         </div>
-      </div>
-    </div>,
-    document.body,
+      }>
+      {kind === 'dist' && (
+        <DualRange min={0} max={DIST_MAX} step={5} value={dist} onChange={setDist} fmt={v => v >= DIST_MAX ? `> ${DIST_MAX} km` : `${v} km`} />
+      )}
+      {kind === 'elev' && (
+        <DualRange min={0} max={ELEV_MAX} step={50} value={elev} onChange={setElev} fmt={v => v >= ELEV_MAX ? `> ${ELEV_MAX} m` : `${v} m`} />
+      )}
+      {kind === 'sport' && (
+        <RkGroup>
+          {sports.map(s => (
+            <RkRow key={s.id} chevron={false} label={s.label}
+              icon={<span style={{ width: 28, display: 'flex', justifyContent: 'center', color: 'var(--text-mid)' }}>{s.Icon ? <s.Icon size={20} stroke={1.9} /> : <RkIco d={RK_ICON.globe} size={19} />}</span>}
+              onClick={() => setSport(s.id)}
+              right={sport === s.id ? <span style={{ color: 'var(--primary)', display: 'flex' }}><RkIco d={RK_ICON.check} size={20} sw={2.6} /></span> : undefined} />
+          ))}
+        </RkGroup>
+      )}
+    </RkSheet>
   )
 }
 
 // Double curseur (deux poignées) sur une piste — pointer events.
-function DualRange({ min, max, step, value, onChange, fmt, text, dim, track }: {
+function DualRange({ min, max, step, value, onChange, fmt }: {
   min: number; max: number; step: number; value: [number, number]; onChange: (v: [number, number]) => void
-  fmt: (v: number) => string; text: string; dim: string; track: string
+  fmt: (v: number) => string
 }) {
   const barRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<0 | 1 | null>(null)
@@ -128,26 +94,26 @@ function DualRange({ min, max, step, value, onChange, fmt, text, dim, track }: {
     return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
   })
 
-  const thumb = (which: 0 | 1, v: number): React.CSSProperties => ({
+  const thumb = (v: number): React.CSSProperties => ({
     position: 'absolute', top: '50%', left: `${pct(v)}%`, transform: 'translate(-50%,-50%)',
-    width: 26, height: 26, borderRadius: '50%', background: '#111', border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'grab', touchAction: 'none',
+    width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)', cursor: 'grab', touchAction: 'none',
   })
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: text }}>{fmt(lo)}</span>
-        <span style={{ fontSize: 16, fontWeight: 700, color: text }}>{fmt(hi)}</span>
+    <div style={{ padding: '4px 8px 8px' }}>
+      <div className="rk-num" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 22, letterSpacing: 0 }}>
+        <span style={{ fontSize: 22, fontWeight: 800 }}>{fmt(lo)}</span>
+        <span style={{ fontSize: 22, fontWeight: 800 }}>{fmt(hi)}</span>
       </div>
-      <div ref={barRef} style={{ position: 'relative', height: 26 }}>
-        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 4, borderRadius: 2, background: track, transform: 'translateY(-50%)' }} />
-        <div style={{ position: 'absolute', top: '50%', left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%`, height: 4, borderRadius: 2, background: ACCENT, transform: 'translateY(-50%)' }} />
-        <div role="slider" aria-valuenow={lo} onPointerDown={e => { dragging.current = 0; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX) }} style={thumb(0, lo)} />
-        <div role="slider" aria-valuenow={hi} onPointerDown={e => { dragging.current = 1; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX) }} style={thumb(1, hi)} />
+      <div ref={barRef} style={{ position: 'relative', height: 30 }}>
+        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', transform: 'translateY(-50%)' }} />
+        <div style={{ position: 'absolute', top: '50%', left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%`, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--primary)', transform: 'translateY(-50%)' }} />
+        <div role="slider" aria-valuenow={lo} aria-valuemin={min} aria-valuemax={max} onPointerDown={e => { dragging.current = 0; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX) }} style={thumb(lo)} />
+        <div role="slider" aria-valuenow={hi} aria-valuemin={min} aria-valuemax={max} onPointerDown={e => { dragging.current = 1; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX) }} style={thumb(hi)} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-        <span style={{ fontSize: 12, color: dim }}>{fmt(min)}</span>
-        <span style={{ fontSize: 12, color: dim }}>{fmt(max)}</span>
+      <div className="rk-num" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, letterSpacing: 0 }}>
+        <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{fmt(min)}</span>
+        <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{fmt(max)}</span>
       </div>
     </div>
   )

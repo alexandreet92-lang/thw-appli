@@ -78,6 +78,19 @@ export const RK_ICON = {
   bolt:    <path d="M13 2 3 14h9l-1 8 10-12h-9z" />,
   layers:  <><path d="m12 2 10 5-10 5L2 7l10-5Z" /><path d="m2 17 10 5 10-5M2 12l10 5 10-5" /></>,
   play:    <path d="M7 4v16l13-8z" />,
+  locate:  <><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="6" /></>,
+  share:   <><path d="M12 3v13M7 8l5-5 5 5" /><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></>,
+  dots:    <><circle cx="5" cy="12" r="1.6" fill="currentColor" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /><circle cx="19" cy="12" r="1.6" fill="currentColor" /></>,
+  undo:    <><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></>,
+  redo:    <><path d="m15 14 5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h3" /></>,
+  search:  <><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></>,
+  down:    <path d="m6 9 6 6 6-6" />,
+  copy:    <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>,
+  download:<path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />,
+  upload:  <path d="M12 15V3M8 7l4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />,
+  reverse: <><path d="M17 2l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><path d="M7 22l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></>,
+  device:  <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.5" /></>,
+  pin:     <><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
 }
 
 // ── Bouton rond flottant ─────────────────────────────────────────────
@@ -101,9 +114,10 @@ export function RkFabSpacer({ size = 44 }: { size?: number }) {
 }
 
 // ── Pilule d'état (en-tête) ──────────────────────────────────────────
-export function RkStatusPill({ dot, live, children, onClick }: {
-  dot?: string; live?: boolean; children: ReactNode; onClick?: () => void
+export function RkStatusPill({ dot, live, children, onClick, glass }: {
+  dot?: string; live?: boolean; children: ReactNode; onClick?: () => void; glass?: boolean
 }) {
+  const cls = glass ? 'rk-pill rk-glass' : 'rk-pill'
   const inner = (
     <>
       {dot && <span className="rk-dot" data-live={live ? '1' : undefined} style={{ background: dot }} />}
@@ -111,10 +125,10 @@ export function RkStatusPill({ dot, live, children, onClick }: {
     </>
   )
   if (onClick) {
-    return <button type="button" onClick={onClick} className="rk-pill rk-press" style={{ border: 'none', color: 'var(--text)', cursor: 'pointer' }}>{inner}</button>
+    return <button type="button" onClick={onClick} className={`${cls} rk-press`} style={{ border: 'none', color: 'var(--text)', cursor: 'pointer' }}>{inner}</button>
   }
   return (
-    <motion.span layout className="rk-pill" transition={{ layout: { duration: 0.3, ease: RK_EASE } }}>{inner}</motion.span>
+    <motion.span layout className={cls} transition={{ layout: { duration: 0.3, ease: RK_EASE } }}>{inner}</motion.span>
   )
 }
 
@@ -622,6 +636,38 @@ export function RkPickSheet({ open, onClose, title, items, selectedId, onPick, e
       )}
     </RkSheet>
   )
+}
+
+export interface RkAction {
+  key: string; label: ReactNode; icon?: ReactNode; onClick: () => void
+  danger?: boolean; disabled?: boolean; sub?: ReactNode; checked?: boolean
+}
+/** Feuille d'actions iOS (menu ⋯, fond de carte…) : liste groupée d'actions.
+ *  L'action se déclenche après la fermeture (pas de double animation). */
+export function RkActionSheet({ open, onClose, title, actions, isDark, zIndex = 10090 }: {
+  open: boolean; onClose: () => void; title?: string; actions: RkAction[]; isDark?: boolean; zIndex?: number
+}) {
+  return (
+    <RkSheet open={open} onClose={onClose} title={title} isDark={isDark} zIndex={zIndex} label={title}>
+      <RkGroup>
+        {actions.map(a => (
+          <RkRow key={a.key} chevron={false} danger={a.danger} disabled={a.disabled} sub={a.sub}
+            icon={a.icon ? <span style={{ width: 28, display: 'flex', justifyContent: 'center', color: a.danger ? 'var(--danger)' : 'var(--text)' }}>{a.icon}</span> : undefined}
+            label={a.label}
+            right={a.checked ? <span style={{ color: 'var(--primary)', display: 'flex' }}><RkIco d={RK_ICON.check} size={20} sw={2.6} /></span> : undefined}
+            onClick={() => { onClose(); window.setTimeout(a.onClick, 60) }} />
+        ))}
+      </RkGroup>
+    </RkSheet>
+  )
+}
+
+/** Fonds de carte du flux record. Plan = outdoors ; Satellite = imagerie seule
+ *  (satellite-v9) ; Hybride = imagerie + routes et noms (satellite-streets). */
+export type RkMapLayer = 'std' | 'sat' | 'hyb'
+export function rkTileUrl(layer: RkMapLayer | 'dark', token: string): string {
+  const style = layer === 'sat' ? 'satellite-v9' : layer === 'hyb' ? 'satellite-streets-v12' : layer === 'dark' ? 'dark-v11' : 'outdoors-v12'
+  return `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/{z}/{x}/{y}@2x?access_token=${token}`
 }
 
 /** Feuilles montées « à la demande » (le parent les démonte à la fermeture) :

@@ -25,13 +25,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { useReducedMotion } from 'motion/react'
 import type { NavRouteInput } from '../RouteNavScreen'
 import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
 import RouteSheet, { type VoiceVolume } from './RouteSheet'
 import { elevationGainLoss } from '@/lib/elevation'
-import { formatHMS, frNum } from './liveMachine'
+import { frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, formatDistShortU, type LiveUnits } from '../units'
-import GuidePanel, { ManeuverIcon, maneuverKind, detectRoadBadge, RoadBadge } from './GuidePanel'
+import GuidePanel, { ManeuverIcon, maneuverKind, detectRoadBadge } from './GuidePanel'
+import { TurnBanner, ThenPill } from './NavUI'
+import { RkFab, RkIco, RK_ICON, RkActionSheet, rkTileUrl } from '../kit/RecordKit'
+import { useMeasure, useSafeTop } from '../kit/SnapSheet'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© Mapbox © OpenStreetMap'
@@ -40,22 +44,18 @@ const ATTR = '© Mapbox © OpenStreetMap'
 // n'acceptent pas var(--token). Valeurs = tokens --live-accent / accent-track.
 const ACCENT = '#06B6D4' // design-allow-color
 const ACCENT_TRACK = '#155E6E' // design-allow-color
+const RIDDEN = '#94A3B8' // design-allow-color — portion du parcours déjà roulée (gris, = --rk-ridden)
+const CASING = '#FFFFFF' // design-allow-color — halo blanc du tracé
 
 /** Couches proposées par les réglages (defaultMapType). */
 type BaseLayerId = 'std' | 'sat' | 'hyb'
 /** Couches du menu de la page carte : + option « Sombre » (dark-v11). */
 type LayerId = BaseLayerId | 'dark'
 
+// Standard = carte EN COULEUR (outdoors-v12) quel que soit le thème ;
+// Satellite = imagerie seule (satellite-v9) ; Hybride = imagerie + routes.
 function tileUrl(layer: LayerId): string {
-  const style = layer === 'sat'
-    ? 'satellite-streets-v12'
-    : layer === 'hyb'
-      ? 'satellite-v9'
-      : layer === 'dark'
-        ? 'dark-v11'
-        // Standard = carte EN COULEUR (outdoors-v12) quel que soit le thème.
-        : 'outdoors-v12'
-  return `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`
+  return rkTileUrl(layer, TOKEN)
 }
 
 interface LatLng { lat: number; lng: number }
@@ -124,8 +124,12 @@ function routeGainM(ep: { distanceM: number; altitudeM: number }[], fromM = 0): 
 
 // Recentrage auto sur la position, suspendu 15 s après un pan/zoom manuel.
 const RECENTER_DELAY_MS = 15000
-function Follow({ pos }: { pos: LatLng | null }) {
+// La position est centrée dans la zone VISIBLE (entre le bandeau et la
+// feuille du bas) : décalage vertical = (bas − haut) / 2. « Recentrer »
+// (recenterKey) relance le suivi immédiatement.
+function Follow({ pos, padTop, padBottom, recenterKey }: { pos: LatLng | null; padTop: number; padBottom: number; recenterKey: number }) {
   const map = useMap()
+  const reduce = useReducedMotion()
   const lastInteract = useRef(0)
   const selfMoving = useRef(false)
   useEffect(() => {
@@ -134,13 +138,22 @@ function Follow({ pos }: { pos: LatLng | null }) {
     map.on('zoomstart', onUser)
     return () => { map.off('dragstart', onUser); map.off('zoomstart', onUser) }
   }, [map])
-  useEffect(() => {
+  const center = (force: boolean) => {
     if (!pos) return
-    if (Date.now() - lastInteract.current < RECENTER_DELAY_MS) return
+    if (!force && Date.now() - lastInteract.current < RECENTER_DELAY_MS) return
+    const z = map.getZoom() < 14 ? 15 : map.getZoom()
+    const off = (padBottom - padTop) / 2
+    const target = map.unproject(map.project([pos.lat, pos.lng], z).add([0, off]), z)
     selfMoving.current = true
-    map.setView([pos.lat, pos.lng], map.getZoom() < 14 ? 15 : map.getZoom(), { animate: true })
+    map.setView(target, z, { animate: !reduce })
     map.once('moveend', () => { selfMoving.current = false })
-  }, [map, pos])
+  }
+  useEffect(() => { center(false) }, [map, pos, padTop, padBottom]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!recenterKey) return
+    lastInteract.current = 0
+    center(true)
+  }, [recenterKey]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
@@ -192,13 +205,31 @@ interface Props {
   onLap: () => void
   /** Drapeau de course (gauche, à l'arrêt) → ouvre le résumé. */
   onFlag: () => void
+  /** Avant départ : Démarrer (désactivé tant que le GPS n'est pas prêt). */
+  onStart: () => void
+  canStart: boolean
+  /** Verrouiller l'écran (pendant l'enregistrement). */
+  onLock: () => void
+  /** Permutation Pause/Lap (réglage). */
+  swap?: boolean
+  /** ✕ (avant départ / en pause) — absent = masqué. */
+  onClose?: () => void
+  /** Hauteur occupée en bas par la feuille de données (px) → pagination du shell. */
+  onBottomInset?: (h: number) => void
 }
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
   points, currentPos, route, defaultLayer, units, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
+  onStart, canStart, onLock, swap, onClose, onBottomInset,
 }: Props) {
   const { t } = useI18n()
+  const safeTop = useSafeTop()
+  const [bannerRef, bannerH] = useMeasure<HTMLDivElement>()
+  const [sheetSettledH, setSheetSettledH] = useState(260)
+  const [recenterKey, setRecenterKey] = useState(0)
+  const [collapseKey, setCollapseKey] = useState(0)
+  useEffect(() => { onBottomInset?.(sheetSettledH) }, [sheetSettledH, onBottomInset])
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
   const [layersOpen, setLayersOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
@@ -345,7 +376,7 @@ export default function MapPage({
     try {
       const synth = window.speechSynthesis
       if (!synth) return
-      const u = new SpeechSynthesisUtterance(`Dans ${Math.round(distToNextM)} mètres, ${nextStep.instruction ?? maneuverShortFR(nextStep)}`)
+      const u = new SpeechSynthesisUtterance(`Dans ${Math.round(distToNextM)} mètres, ${nextStep.instruction ?? maneuverShortFR(nextStep.type)}`)
       u.lang = 'fr-FR'
       u.volume = volume === 'loud' ? 1 : volume === 'soft' ? 0.45 : 0.8
       synth.cancel(); synth.speak(u)
@@ -353,8 +384,19 @@ export default function MapPage({
   }, [voiceOn, started, nextStepIdx, distToNextM, nextStep, volume])
   useEffect(() => { if (!started) spokenRef.current = -1 }, [started])
 
-  // Parcours restant (le parcouru s'efface, plus dessiné).
-  const routeRemaining = hasRoute ? (started ? line.slice(nearestIdx) : line) : []
+  // Parcours restant (cyan) + portion déjà roulée (gris), coupés au point
+  // projeté sur le segment courant.
+  const cutPoint: LatLng | null = useMemo(() => {
+    if (!started || !hasRoute || !proj) return null
+    const i = proj.segIdx
+    const a = line[i], b = line[i + 1]
+    if (!a || !b) return null
+    const seg = (cum[i + 1] ?? 0) - (cum[i] ?? 0)
+    const tt = seg > 0 ? Math.max(0, Math.min(1, (proj.progressM - (cum[i] ?? 0)) / seg)) : 0
+    return { lat: a.lat + (b.lat - a.lat) * tt, lng: a.lng + (b.lng - a.lng) * tt }
+  }, [started, hasRoute, proj, line, cum])
+  const routeRemaining = hasRoute ? (started && cutPoint ? [cutPoint, ...line.slice(nearestIdx + 1)] : line) : []
+  const routeRidden = hasRoute && started && cutPoint && traveledOnRouteM > 5 ? [...line.slice(0, nearestIdx + 1), cutPoint] : []
   // Liaison « rejoindre l'itinéraire » : visible tant qu'on est loin du départ
   // et qu'on n'a pas encore entamé le parcours.
   const showJoinLink = hasRoute && currentPos != null && distToStartM != null && distToStartM > 25 && traveledOnRouteM < 30
@@ -363,22 +405,56 @@ export default function MapPage({
     ? [currentPos.lat, currentPos.lng]
     : line[0] ? [line[0].lat, line[0].lng] : [48.8566, 2.3522]
 
-  const chevron = (
-    <svg width="12" height="8" viewBox="0 0 12 8">
-      <path d="M1 1 L6 6.5 L11 1" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
+  // ── Bandeau de guidage (maquette L6) ──
+  // Sans fix GPS : « Recherche de votre position… » ; avant le parcours :
+  // distance jusqu'au départ + « Rejoignez l'itinéraire » ; en roulant avec
+  // manœuvres ORS : distance + instruction + voie ; sinon « Suivez l'itinéraire ».
+  const onRouteNow = distToStartM != null && distToStartM <= 25
+  const banner: { big: string | null; instruction: string; road?: string | null; sub?: string | null; kind: ReturnType<typeof maneuverKind> | 'join' | 'straight'; pending?: boolean } =
+    !hasRoute
+      ? { big: null, instruction: t('w2c.noRouteLoaded'), sub: null, kind: 'straight' }
+      : turnMode && nextStep && distToNextM != null
+        ? { big: fmtDist(distToNextM), instruction: maneuverShortFR(nextStep.type), road: nextStep.name || (nextBadge ? nextBadge.ref : null), kind: maneuverKind(nextStep.type) }
+        : currentPos == null
+          ? { big: null, instruction: t('w2c.locating'), sub: null, kind: 'straight', pending: true }
+          : (!started || showJoinLink) && !onRouteNow && distToStartM != null
+            ? { big: fmtDist(distToStartM), instruction: t('w2c.joinRoute'), kind: 'join' }
+            : !started
+              ? { big: null, instruction: t('rec.atStart'), sub: `${t('w2c.routeLabel')} · ${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units) ?? 'km'}`, kind: 'straight' }
+              : { big: null, instruction: t('w2c.followRoute'), sub: t('w2c.remaining', { d: fmtDist(remainingM) }), kind: 'straight' }
+  const thenPill = turnMode && afterStep && afterGapM != null
+    ? (
+      <ThenPill>
+        <span>{t('w2c.then')}</span>
+        <ManeuverIcon kind={maneuverKind(afterStep.type)} size={16} />
+        <span>{t('w2c.maneuverIn', { man: afterBadge ? afterBadge.ref : maneuverShortFR(afterStep.type).toLowerCase(), d: fmtDist(afterGapM) })}</span>
+      </ThenPill>
+    )
+    : null
 
-  // États simples du bandeau (parcours absent / avant départ / sans steps ORS).
-  const guideTitle = !hasRoute
-    ? t('w2c.guidanceUnavailable')
-    : started ? t('w2c.followRoute') : t('w2c.joinRoute')
-  const guideSub = !hasRoute
-    ? t('w2c.noRouteLoaded')
-    : started
-      ? t('w2c.remaining', { d: fmtDist(remainingM) })
-      : t('w2c.startAt', { d: distToStartM != null ? fmtDist(distToStartM) : '—' })
-  const bannerIconKind = hasRoute ? (started ? 'straight' : 'join') : 'straight'
+  // Insets réels : bas du bandeau (safe-area + 8 + hauteur mesurée) et
+  // hauteur de la feuille de données.
+  const bannerBottom = safeTop + 8 + bannerH
+  const bottomInset = hasRoute && !locked ? sheetSettledH : 0
+  const kmUnit = getUnitLabel('km', units) ?? 'km'
+  const mUnit = getUnitLabel('m', units) ?? 'm'
+
+  // ── Données de la feuille (Restant · Arrivée · D+ restant) ──
+  const etaMin = Math.max(0, Math.round(estMin))
+  const etaLabel = etaMin >= 60 ? `${Math.floor(etaMin / 60)} h ${String(etaMin % 60).padStart(2, '0')}` : `${etaMin} min`
+  const shownGain = started ? remainingGainM : totalGainM
+  const stats = {
+    live: [
+      { value: powerW != null ? String(Math.round(powerW)) : '—', unit: 'W' },
+      { value: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—', unit: 'bpm', dot: heartRateBpm != null ? 'var(--danger)' : undefined },
+      { value: frNum(speedKmh * df, 1), unit: getUnitLabel('km/h', units) ?? 'km/h' },
+    ],
+    cols: [
+      { label: t('w2c.remainingLabel'), value: frNum(((started ? remainingM : totalM) / 1000) * df, 1), unit: kmUnit, sub: started ? t('w2c.doneShort', { v: frNum((distanceDoneM / 1000) * df, 1) }) : null },
+      { label: t('w2c.arrivalLabel'), value: arrivalClock, sub: t('w2c.inTime', { d: etaLabel }) },
+      ...(shownGain != null ? [{ label: t('w2c.elevRemaining'), value: String(Math.round(shownGain * af)), unit: mUnit, sub: started ? t('w2c.doneShort', { v: Math.round(gainDoneM * af) }) : null }] : []),
+    ],
+  }
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: 'var(--live-map-bg)', isolation: 'isolate' }}>
@@ -396,12 +472,12 @@ export default function MapPage({
         wheelPxPerZoomLevel={90}
         style={{ position: 'absolute', inset: 0 }}
       >
-        <TileLayer url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} keepBuffer={6} updateWhenZooming={false} updateWhenIdle attribution={ATTR} />
-        {/* Trace réellement parcourue — fine et discrète (breadcrumb gris). */}
+        <TileLayer key={layer} url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} keepBuffer={6} updateWhenZooming={false} updateWhenIdle attribution={ATTR} />
+        {/* Trace réellement parcourue — fine et discrète (breadcrumb). */}
         {points.length > 1 && (
           <Polyline
             positions={points.map(p => [p.lat, p.lng] as [number, number])}
-            pathOptions={{ color: ACCENT_TRACK, weight: 4, opacity: 0.55, lineCap: 'round', lineJoin: 'round' }}
+            pathOptions={{ color: ACCENT_TRACK, weight: 4, opacity: 0.45, lineCap: 'round', lineJoin: 'round' }}
           />
         )}
         {/* Trait de liaison pour REJOINDRE l'itinéraire (pointillés) quand on n'est
@@ -412,13 +488,12 @@ export default function MapPage({
             pathOptions={{ color: ACCENT, weight: 5, opacity: 0.85, dashArray: '2 12', lineCap: 'round' }}
           />
         )}
-        {/* Parcours RESTANT — gros trait bleu à halo blanc (façon Apple Plans).
-            La portion DÉJÀ PARCOURUE n'est plus dessinée (elle s'efface). */}
+        {/* Parcours RESTANT — gros trait cyan à halo blanc (façon Apple Plans). */}
         {routeRemaining.length > 1 && (
           <>
             <Polyline
               positions={routeRemaining.map(p => [p.lat, p.lng] as [number, number])}
-              pathOptions={{ color: '#ffffff', weight: 13, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
+              pathOptions={{ color: CASING, weight: 13, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
             />
             <Polyline
               positions={routeRemaining.map(p => [p.lat, p.lng] as [number, number])}
@@ -426,85 +501,50 @@ export default function MapPage({
             />
           </>
         )}
+        {/* Portion DÉJÀ ROULÉE — même tracé, en gris. */}
+        {routeRidden.length > 1 && (
+          <>
+            <Polyline
+              positions={routeRidden.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: CASING, weight: 12, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }}
+            />
+            <Polyline
+              positions={routeRidden.map(p => [p.lat, p.lng] as [number, number])}
+              pathOptions={{ color: RIDDEN, weight: 7, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}
+            />
+          </>
+        )}
         {currentPos && <Marker position={[currentPos.lat, currentPos.lng]} icon={gpsIcon} />}
-        <Follow pos={currentPos} />
+        <Follow pos={currentPos} padTop={bannerBottom} padBottom={bottomInset} recenterKey={recenterKey} />
       </MapContainer>
       </div>
 
-      {/* Scrims */}
+      {/* Scrims (thème sombre uniquement) */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, background: 'var(--live-scrim-top)', pointerEvents: 'none', zIndex: 10 }} />
-      {!started && (
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 210, background: 'var(--live-scrim-bot)', pointerEvents: 'none', zIndex: 10 }} />
-      )}
 
-      {/* Bandeau guidage (turn-by-turn) — carte flottante premium en haut.
-          Manœuvre réelle : tuile sombre + distance en gros chiffres. */}
-      <div
-        onClick={hasRoute && !locked ? () => setGuideOpen(true) : undefined}
-        role={hasRoute ? 'button' : undefined}
-        className="rk-fade-up"
-        style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', left: 14, right: 14,
-          minHeight: 64, borderRadius: 'calc(var(--r-lg) + 4px)', zIndex: 30,
-          background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)',
-          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px 10px 10px',
-          cursor: hasRoute ? 'pointer' : 'default',
-        }}
-      >
-        <div style={{
-          width: 48, height: 48, borderRadius: 'var(--r-md)', flexShrink: 0,
-          background: turnMode ? 'var(--text)' : hasRoute ? 'var(--primary-dim)' : 'var(--surface-chip)',
-          color: turnMode ? 'var(--bg)' : hasRoute ? 'var(--primary)' : 'var(--text-mid)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'background-color 300ms ease, color 300ms ease',
-        }}>
-          <ManeuverIcon kind={turnMode && nextStep ? maneuverKind(nextStep.type) : bannerIconKind} size={26} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {turnMode && nextStep && distToNextM != null ? (
-            <>
-              {/* Prochaine manœuvre réelle : distance (gros chiffres) · instruction + badge route */}
-              <div style={{
-                fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                display: 'flex', alignItems: 'baseline', gap: 8,
-              }}>
-                <span className="rk-num" style={{ flexShrink: 0, fontSize: 22 }}>{fmtDist(distToNextM)}</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{maneuverShortFR(nextStep.type)}</span>
-                {nextBadge && <RoadBadge info={nextBadge} />}
-              </div>
-              {/* Sous-ligne « puis <manœuvre suivante> dans X m » */}
-              <div className="rk-num" style={{
-                fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                {afterStep && afterGapM != null ? (
-                  <>
-                    <span>{t('w2c.then')}</span>
-                    {afterBadge && <RoadBadge info={afterBadge} />}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {t('w2c.maneuverIn', { man: maneuverShortFR(afterStep.type).toLowerCase(), d: fmtDist(afterGapM) })}
-                    </span>
-                  </>
-                ) : (
-                  <span>{t('w2c.remaining', { d: fmtDist(remainingM) })}</span>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 16, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{guideTitle}</div>
-              <div className="rk-num" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {guideSub}
-              </div>
-            </>
+      {/* Bandeau de guidage sombre + « puis … » (+ ✕ avant départ / en pause) */}
+      <div ref={bannerRef} style={{
+        position: 'absolute', top: 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 30,
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
+      }}>
+        <div className="rk-fade-up" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', pointerEvents: 'auto' }}>
+          {onClose && !locked && (
+            <RkFab label={t('w2c.close')} onClick={onClose} size={48}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
           )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TurnBanner
+              big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub}
+              kind={banner.kind} pending={banner.pending}
+              onOpen={hasRoute && !locked ? () => { setGuideOpen(o => !o); setCollapseKey(k => k + 1) } : undefined}
+              open={guideOpen}
+              openLabel={t('w3a.follow_route')}
+            />
+          </div>
         </div>
-        {hasRoute && <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{chevron}</span>}
+        {thenPill && <div style={{ marginLeft: onClose && !locked ? 70 : 10, pointerEvents: 'auto' }}>{thenPill}</div>}
       </div>
 
-      {/* Panneau de guidage déplié (remplace l'ancien RouteNavScreen).
-          Sans manœuvres ORS : détail du parcours (nom, totaux, profil). */}
+      {/* Panneau de guidage déplié : entre le bandeau et la feuille du bas. */}
       {guideOpen && hasRoute && (
         <GuidePanel
           steps={steps ?? []}
@@ -512,53 +552,49 @@ export default function MapPage({
           nextIdx={steps ? nextStepIdx : -1}
           fmtDist={fmtDist}
           routeName={route?.name ?? null}
-          distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
-          gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
+          distLabel={`${frNum((totalM / 1000) * df, 1)} ${kmUnit}`}
+          gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${mUnit} D+` : null}
           line={line}
           cum={cum}
           traveledM={traveledOnRouteM}
           onClose={() => setGuideOpen(false)}
+          topGap={bannerH + 16}
+          bottomOffset={bottomInset + 8}
         />
       )}
 
-      {/* Boutons ronds (bulles) à droite pendant l'enregistrement — façon Apple Plans :
-          Parcours (changer d'itinéraire) · Son (commandes vocales). */}
-      {started && !locked && (
-        <div style={{ position: 'absolute', right: 14, top: 'calc(env(safe-area-inset-top) + 90px)', zIndex: 30, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[
-            { key: 'route', label: t('w2c.changeRoute'), on: () => setSheetView('route'), icon: (
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
-            ) },
-            { key: 'voice', label: t('w2c.voiceGuidance'), on: () => setSheetView('voice'), icon: (
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/>{voiceOn ? <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /> : <path d="M22 9l-6 6M16 9l6 6" />}</svg>
-            ) },
-          ].map(b => (
-            <button key={b.key} type="button" onClick={b.on} aria-label={b.label} className="rk-fab rk-press"
-              style={{ width: 48, height: 48 }}>
-              {b.icon}
-            </button>
-          ))}
+      {/* Boutons ronds à droite : recentrer · guidage vocal (· fond de carte avant départ) */}
+      {!locked && !guideOpen && (
+        <div style={{ position: 'absolute', right: 12, top: bannerBottom + 12, zIndex: 30, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <RkFab label={t('rec.locateMe')} onClick={() => setRecenterKey(k => k + 1)} size={48}><RkIco d={RK_ICON.locate} size={21} /></RkFab>
+          {hasRoute && (
+            <RkFab label={t('w2c.voiceGuidance')} onClick={() => setSheetView(v => (v === 'voice' ? 'main' : 'voice'))} size={48}>
+              {voiceOn ? <RkIco d={RK_ICON.mic} size={20} /> : <RkIco d={<><path d="M2 2l20 20" /><path d="M9 9v2a3 3 0 0 0 5 2.2M15 9.3V6a3 3 0 0 0-5.7-1.3" /><path d="M5 11a7 7 0 0 0 11.3 5.5M19 11a7 7 0 0 1-.4 2.3M12 18v3" /></>} size={20} />}
+            </RkFab>
+          )}
+          {!started && (
+            <RkFab label={t('w2c.mapLayer')} onClick={() => setLayersOpen(true)} size={48}><RkIco d={RK_ICON.layers} size={20} /></RkFab>
+          )}
         </div>
       )}
 
-      {/* Feuille de contrôle (façon Apple Plans) — visible pendant l'enregistrement.
-          Repliée : données (W/FC + distance/temps/D+ restants). Dépliée : profil,
-          changer d'itinéraire, commandes vocales, Pause/Lap/Terminer. */}
+      {/* Feuille de données glissable (façon Apple Plans) */}
       {hasRoute && !locked && (
         <RouteSheet
-          routeName={route?.name ?? null}
-          distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
-          gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
           ep={ep}
           totalM={totalM}
           traveledM={started ? traveledOnRouteM : 0}
-          started={started}
-          paused={paused}
+          stats={stats}
+          phase={!started ? 'idle' : showFlag ? 'paused' : 'rec'}
           showPlayIcon={showPlayIcon}
+          canLap={!paused}
+          swap={swap}
+          canStart={canStart}
+          onStart={onStart}
           onPauseToggle={onCenter}
           onFinish={onFlag}
           onLap={onLap}
-          canLap={!paused}
+          onLock={onLock}
           voiceOn={voiceOn}
           setVoiceOn={changeVoiceOn}
           volume={volume}
@@ -569,80 +605,19 @@ export default function MapPage({
             setSheetView('main')
             try { window.dispatchEvent(new CustomEvent('thw:live-change-route', { detail: { mode } })) } catch { /* ignore */ }
           }}
-          watts={powerW != null ? String(Math.round(powerW)) : '—'}
-          hr={heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—'}
-          remainDistLabel={frNum(((started ? remainingM : totalM) / 1000) * df, 1)}
-          remainDistUnit={getUnitLabel('km', units)}
-          remainTimeLabel={estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin))}
-          remainTimeUnit={estMin < 60 ? 'min' : undefined}
-          arrivalLabel={started && hasRoute ? t('w2c.arrivalAt', { h: arrivalClock }) : null}
-          remainGainLabel={(started ? remainingGainM : totalGainM) != null ? String(Math.round(((started ? remainingGainM : totalGainM) as number) * af)) : null}
-          remainGainUnit={getUnitLabel('m', units)}
+          onOpenLayers={() => setLayersOpen(true)}
+          onSettle={setSheetSettledH}
+          collapseKey={guideOpen ? collapseKey : 0}
         />
       )}
 
-      {/* Bouton couches UNIQUE + menu (avant démarrage uniquement, cf. maquette) */}
-      {!started && (
-        <>
-          <button
-            onClick={() => setLayersOpen(o => !o)}
-            aria-label={t('w2c.mapLayer')}
-            className="rk-fab rk-press"
-            style={{
-              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 90px)', right: 14,
-              width: 44, height: 44, zIndex: 30,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path d="M2 6.5 L9 2.5 L16 6.5 L9 10.5 Z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />
-              <path d="M2 11 L9 15 L16 11" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" opacity=".55" />
-            </svg>
-          </button>
-          {layersOpen && (
-            <div className="rk-fade-up" style={{
-              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 142px)', right: 14, zIndex: 31,
-              background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)',
-              borderRadius: 'var(--r-lg)', overflow: 'hidden', minWidth: 180,
-            }}>
-              {([['std', 'w2c.layerStandard'], ['sat', 'w2c.layerSatellite'], ['hyb', 'w2c.layerHybrid'], ['dark', 'w2c.layerDark']] as [LayerId, string][]).map(([id, lbl], i) => (
-                <button
-                  key={id}
-                  onClick={() => { setLayer(id); setLayersOpen(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', minHeight: 48, padding: '0 16px', border: 'none', cursor: 'pointer',
-                    background: 'transparent', textAlign: 'left',
-                    borderTop: i > 0 ? '1px solid var(--border)' : 'none',
-                    fontSize: 15, fontWeight: 600,
-                    color: layer === id ? 'var(--primary)' : 'var(--text)',
-                  }}
-                >
-                  {t(lbl)}
-                  {layer === id && (
-                    <svg width="14" height="14" viewBox="0 0 24 24">
-                      <path d="M4 12.5 L9.5 18 L20 6.5" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* (Flèches de page retirées — on change de page par balayage horizontal.) */}
-
-      {/* Chip itinéraire — avant démarrage, au-dessus du bandeau des totaux */}
-      {!started && hasRoute && (
-        <div className="rk-banner rk-num" style={{
-          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 176px)', left: '50%', transform: 'translateX(-50%)',
-          zIndex: 20, letterSpacing: 0, animation: 'none',
-        }}>
-          {t('w2c.routeLabel')} · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)}
-          {totalGainM != null && ` · ${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+`}
-        </div>
-      )}
-
+      {/* Fond de carte : Standard / Satellite / Hybride / Sombre */}
+      <RkActionSheet open={layersOpen} onClose={() => setLayersOpen(false)} title={t('w2c.mapLayer')} zIndex={10090}
+        actions={([['std', 'w2c.layerStandard'], ['sat', 'w2c.layerSatellite'], ['hyb', 'w2c.layerHybrid'], ['dark', 'w2c.layerDark']] as [LayerId, string][]).map(([id, lbl]) => ({
+          key: id, label: t(lbl), checked: layer === id,
+          icon: <RkIco d={id === 'std' ? RK_ICON.route : id === 'sat' ? RK_ICON.globe : RK_ICON.layers} size={19} />,
+          onClick: () => setLayer(id),
+        }))} />
     </div>
   )
 }

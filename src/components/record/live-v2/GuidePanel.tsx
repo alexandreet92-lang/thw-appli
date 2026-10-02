@@ -1,8 +1,8 @@
 'use client'
 // ════════════════════════════════════════════════════════════════════
-// GuidePanel — panneau de guidage déplié (spec §4, maquette #gpanel/#gplist).
-// Overlay de la page carte (top 56 / bottom 150, r 24, fond guide-panel
-// blur 22) : en-tête icône 44 + « Suivez l'itinéraire » 20/800, liste des
+// GuidePanel — panneau de guidage déplié (spec §4, maquette L6) : feuille
+// glissable flottante ENTRE le bandeau de virage et la feuille de données,
+// bouton ✕ ; en-tête icône 44 + « Suivez l'itinéraire », liste des
 // manœuvres À VENIR (icône 40, distance 27/800, libellé 15/600, badge route,
 // chip de sortie ORS), opacité dégressive 1/1/1/.72/.5/.34, chevron de repli.
 // SANS manœuvres ORS : jamais vide — DÉTAIL DU PARCOURS (nom, distance,
@@ -12,9 +12,11 @@
 // maneuverKind, detectRoadBadge, RoadBadge, exitChipLabel.
 // Aucune donnée inventée : badge / chip absents si ORS ne les fournit pas.
 // ════════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { NavStep } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
+import SnapSheet from '../kit/SnapSheet'
+import { RkFab, RkIco, RK_ICON } from '../kit/RecordKit'
 
 interface LL { lat: number; lng: number }
 
@@ -152,7 +154,12 @@ export function exitChipLabel(n: number): string {
   return n === 1 ? '1re sortie' : `${n}e sortie`
 }
 
-// ── Panneau de guidage : FEUILLE COULISSANTE (drag haut/bas, fluide) ────
+// ── Panneau de guidage : FEUILLE GLISSABLE (SnapSheet du kit) ──────────
+// Flotte ENTRE le bandeau de virage (en haut) et la feuille de données (en
+// bas) : ses marges viennent des hauteurs RÉELLES mesurées par MapPage
+// (bandeau + safe-area, feuille du bas) → aucun chevauchement. Deux crans
+// (en-tête seul / liste complète), tirer vers le bas sous le cran réduit
+// ou le bouton ✕ ferment.
 interface Props {
   /** Toutes les manœuvres ORS du parcours (vide si guidage détaillé indisponible). */
   steps: NavStep[]
@@ -175,212 +182,123 @@ interface Props {
   /** Progression le long du parcours (m). */
   traveledM: number
   onClose: () => void
+  /** Espace réservé en haut (bandeau de virage), px sous la safe-area. */
+  topGap?: number
+  /** Bas de la feuille au-dessus du bas de l'écran (feuille de données), px. */
+  bottomOffset?: number
 }
 
 const ROW_OPACITY = [1, 1, 1, 0.72, 0.5, 0.34]
-// Feuille : ressort iOS, deux crans (déployé / réduit) + fermeture au tiré-bas.
-const SHEET_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const PEEK_H = 118 // hauteur visible en position réduite (poignée + en-tête)
 
 export default function GuidePanel({
   steps, stepDistM, nextIdx, fmtDist,
   routeName, distLabel, gainLabel, line, cum, traveledM, onClose,
+  topGap = 120, bottomOffset = 160,
 }: Props) {
   const { t } = useI18n()
   const hasSteps = steps.length > 0
   const upcoming = nextIdx >= 0 ? steps.slice(nextIdx) : []
   const upcomingDist = nextIdx >= 0 ? stepDistM.slice(nextIdx) : []
+  const [snap, setSnap] = useState(1)
 
   // ── Virages géométriques (repli sans ORS) : liste des tournants à venir ──
   const geoTurns = useMemo(() => (hasSteps ? [] : deriveTurns(line, cum)), [hasSteps, line, cum])
   const geoUpcoming = geoTurns.filter(g => g.cumM > traveledM + 8)
-
-  // ── Drag de la feuille (px de translation, 0 = déployé) ──────────────
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const [mounted, setMounted] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const [dy, setDy] = useState(0)
-  const [dragging, setDragging] = useState(false)
-  const collapsedYRef = useRef(320)
-  const drag = useRef<{ startY: number; startDy: number } | null>(null)
-
-  useEffect(() => {
-    // Cran réduit = hauteur totale de la feuille moins le « peek » visible.
-    const h = wrapRef.current?.offsetHeight ?? 0
-    collapsedYRef.current = Math.max(180, h - PEEK_H)
-    const id = requestAnimationFrame(() => setMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
-
-  const requestClose = () => { setClosing(true); setTimeout(onClose, 300) }
-
-  const onGrabDown = (e: React.PointerEvent) => {
-    drag.current = { startY: e.clientY, startDy: dy }
-    setDragging(true)
-    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
-  }
-  const onGrabMove = (e: React.PointerEvent) => {
-    if (!drag.current) return
-    // Panneau ancré EN HAUT : on ne peut le tirer que vers le HAUT (dy ≤ 0) pour
-    // le replier/fermer (slide vers le haut).
-    const next = Math.min(0, drag.current.startDy + (e.clientY - drag.current.startY))
-    setDy(next)
-  }
-  const onGrabUp = () => {
-    if (!drag.current) return
-    drag.current = null
-    setDragging(false)
-    // Tiré franchement vers le haut → fermeture (slide vers le haut).
-    if (dy < -90) { requestClose(); return }
-    setDy(0)
-  }
-
-  // Ouverture : glisse DU HAUT vers le bas ; fermeture : remonte vers le haut.
-  const transform = closing ? 'translateY(-108%)' : mounted ? `translateY(${dy}px)` : 'translateY(-108%)'
-
-  const grabHandlers = {
-    onPointerDown: onGrabDown, onPointerMove: onGrabMove,
-    onPointerUp: onGrabUp, onPointerCancel: onGrabUp,
-  }
-
   const geoLabel = (kind: 'left' | 'right') => kind === 'left' ? t('w3a.turn_left') : t('w3a.turn_right')
 
-  return (
-    <div
-      ref={wrapRef}
-      style={{
-        position: 'absolute',
-        top: 'calc(env(safe-area-inset-top) + 56px)', left: 16, right: 16, bottom: 150,
-        borderRadius: 'var(--r-lg)', zIndex: 40,
-        background: 'var(--float-bg)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        transform,
-        transition: dragging ? 'none' : `transform 0.34s ${SHEET_EASE}`,
-        touchAction: 'none',
-      }}
-    >
-      {/* Poignée + en-tête : zone de drag (le reste scrolle librement) */}
-      <div {...grabHandlers} style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9, paddingBottom: 3 }}>
-          <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '2px 14px 14px 18px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0,
+        background: 'var(--primary-dim)', color: 'var(--primary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <ManeuverIcon kind="straight" size={24} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {hasSteps ? t('w3a.follow_route') : (routeName || t('w3a.route_detail'))}
         </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14, padding: '9px 22px 15px',
-          borderBottom: '1px solid var(--live-hairline)',
-        }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0,
-            background: 'var(--live-accent-soft)', color: 'var(--live-accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 22 22">
-              <path d="M11 19 L11 7 M5 12 L11 5.5 L17 12" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{
-              fontSize: 20, fontWeight: 800, lineHeight: 1.2,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {hasSteps ? t('w3a.follow_route') : (routeName || t('w3a.route_detail'))}
-            </div>
-            <div className="lv2-num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 3 }}>
-              {distLabel}
-              {gainLabel != null && ` · ${gainLabel}`}
-            </div>
-          </div>
+        <div className="rk-num" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0 }}>
+          {distLabel}
+          {gainLabel != null && ` · ${gainLabel}`}
         </div>
       </div>
+      <RkFab label={t('w2c.close')} onClick={onClose} size={40} variant="ghost"><RkIco d={RK_ICON.close} size={17} sw={2.4} /></RkFab>
+    </div>
+  )
 
-      {/* Contenu : manœuvres ORS (noms de rue) si dispo, sinon virages géométriques */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 22px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+  const row = (key: string, i: number, last: boolean, kind: ManeuverKind, dist: string, label: ReactNode, chip?: string | null) => (
+    <div key={key} style={{
+      display: 'flex', alignItems: 'flex-start', gap: 16, padding: '16px 0',
+      borderBottom: last ? 'none' : '1px solid var(--border)',
+      opacity: ROW_OPACITY[Math.min(i, ROW_OPACITY.length - 1)],
+    }}>
+      <div style={{ width: 36, flexShrink: 0, color: i === 0 ? 'var(--primary)' : 'var(--text-mid)', paddingTop: 3 }}>
+        <ManeuverIcon kind={kind} size={28} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="rk-num" style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05 }}>{dist}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-mid)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {label}
+        </div>
+      </div>
+      {chip && (
+        <span style={{ marginTop: 5, flexShrink: 0, display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>
+          {chip}
+        </span>
+      )}
+    </div>
+  )
+
+  return (
+    <SnapSheet
+      snaps={[0, 'full']}
+      index={snap}
+      onIndexChange={setSnap}
+      onDismiss={onClose}
+      header={header}
+      floating
+      inset={12}
+      bottomOffset={bottomOffset}
+      topGap={topGap}
+      surface="var(--float-bg)"
+      zIndex={42}
+      ariaLabel={t('w3a.follow_route')}
+    >
+      <div style={{ padding: '0 18px 10px' }}>
         {hasSteps ? (
           upcoming.length === 0 ? (
             <EmptyNote text={t('w3a.no_upcoming_maneuver')} />
           ) : (
             upcoming.map((s, i) => {
               const badge = detectRoadBadge(s.name, s.instruction)
-              return (
-                <div
-                  key={`${nextIdx + i}`}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 16, padding: '19px 0',
-                    borderBottom: i < upcoming.length - 1 ? '1px solid var(--live-hairline)' : 'none',
-                    opacity: ROW_OPACITY[Math.min(i, ROW_OPACITY.length - 1)],
-                  }}
-                >
-                  <div style={{ width: 40, flexShrink: 0, color: 'var(--live-text-2)', paddingTop: 3 }}>
-                    <ManeuverIcon kind={maneuverKind(s.type)} size={30} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="lv2-num" style={{ fontSize: 33, fontWeight: 800, lineHeight: 1.02 }}>
-                      {fmtDist(Math.max(0, upcomingDist[i] ?? 0))}
-                    </div>
-                    <div style={{
-                      fontSize: 15, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 5,
-                      display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-                    }}>
-                      {badge && <RoadBadge info={badge} />}
-                      {s.instruction}
-                    </div>
-                  </div>
-                  {s.exitNumber != null && (
-                    <div style={{ marginLeft: 'auto', paddingTop: 5, flexShrink: 0 }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 9px',
-                        borderRadius: 'var(--r-sm)', background: 'var(--live-chip-bg)',
-                        fontSize: 12, fontWeight: 600, color: 'var(--live-text-2)',
-                      }}>
-                        {exitChipLabel(s.exitNumber)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )
+              return row(`${nextIdx + i}`, i, i === upcoming.length - 1, maneuverKind(s.type), fmtDist(Math.max(0, upcomingDist[i] ?? 0)),
+                <>{badge && <RoadBadge info={badge} />}{s.instruction}</>,
+                s.exitNumber != null ? exitChipLabel(s.exitNumber) : null)
             })
           )
         ) : geoUpcoming.length === 0 ? (
           <EmptyNote text={t('w3a.no_turn_guidance')} />
         ) : (
           <>
-            {geoUpcoming.map((g, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 16, padding: '19px 0',
-                  borderBottom: i < geoUpcoming.length - 1 ? '1px solid var(--live-hairline)' : 'none',
-                  opacity: ROW_OPACITY[Math.min(i, ROW_OPACITY.length - 1)],
-                }}
-              >
-                <div style={{ width: 40, flexShrink: 0, color: 'var(--live-text-2)', paddingTop: 3 }}>
-                  <ManeuverIcon kind={g.kind} size={30} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="lv2-num" style={{ fontSize: 33, fontWeight: 800, lineHeight: 1.02 }}>
-                    {fmtDist(Math.max(0, g.cumM - traveledM))}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 5 }}>
-                    {geoLabel(g.kind)}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--live-label)', padding: '14px 0 4px' }}>
+            {geoUpcoming.map((g, i) => row(String(i), i, i === geoUpcoming.length - 1, g.kind, fmtDist(Math.max(0, g.cumM - traveledM)), geoLabel(g.kind)))}
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', padding: '12px 0 4px' }}>
               {t('w3a.geo_turns_note')}
             </div>
           </>
         )}
       </div>
-    </div>
+    </SnapSheet>
   )
 }
 
 function EmptyNote({ text }: { text: string }) {
   return (
     <div style={{
-      height: '100%', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center',
       textAlign: 'center', padding: '0 20px',
-      fontSize: 13.5, fontWeight: 500, color: 'var(--live-text-2)',
+      fontSize: 14, fontWeight: 500, color: 'var(--text-mid)',
     }}>
       {text}
     </div>

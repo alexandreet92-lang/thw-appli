@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { haptic } from '@/lib/haptics'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel, getSportColor } from '@/components/record/SportSelector'
 import { stopLiveShare } from '@/lib/community/liveShare'
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react'
+import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'motion/react'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
 import { subscribeSensors, getSensorState, type SensorState } from '@/lib/sensors/bluetooth'
 import { createClient } from '@/lib/supabase/client'
@@ -12,8 +13,9 @@ import { getCurrentUser } from '@/lib/auth/currentUser'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
 import {
   rkScope, RkFab, RkIco, RK_ICON, RkStatusPill, RK_DOT, RkGroup, RkRow, RkTile, RkToggle, RkChip,
-  RkStartButton, RkSectionLabel, RkSheet, RK_SPRING,
+  RkStartButton, RkSectionLabel, RkSheet, RkActionSheet, type RkMapLayer,
 } from '@/components/record/kit/RecordKit'
+import SnapSheet, { useMeasure, useSafeTop, useViewportHeight } from '@/components/record/kit/SnapSheet'
 import Toast from '@/components/record/Toast'
 import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
@@ -79,6 +81,20 @@ function rowingBlocksToPrefill(title: string, blocks: unknown[]): import('@/comp
   return { title, pieces: pieces.length ? pieces : undefined, distanceM: distanceM || undefined, durationSec: durationSec || undefined }
 }
 
+const EST_KMH: Record<string, number> = { cycling: 25, gravel: 22, mtb: 15, trail: 9, running: 10, hiking: 4.5, walking: 4.5, ski: 8 }
+/** Durée estimée « 2 h 10 » / « 45 min » selon la vitesse moyenne du sport. */
+function estDurationLabel(distanceM: number, sport: string): string {
+  const sec = (distanceM / 1000) / (EST_KMH[sport] ?? 18) * 3600
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60)
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`
+}
+function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000, r = Math.PI / 180
+  const dLat = (bLat - aLat) * r, dLng = (bLng - aLng) * r
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * r) * Math.cos(bLat * r) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)))
+}
+
 export default function RecordPage() {
   const { t } = useI18n()
   const router = useRouter()
@@ -131,14 +147,36 @@ export default function RecordPage() {
   // défilent) sans toucher au vrai enregistrement. Piloté par « start:live-demo ».
   const [guideLive, setGuideLive] = useState(false)
 
-  // Feuille du bas (façon Strava) : repliée = sport · parcours · séance du jour
-  // + Démarrer ; dépliée = réglages de la séance (listes groupées iOS).
-  const [sheetExpanded, setSheetExpanded] = useState(false)
-  const reduceMotion = useReducedMotion()
-  const sheetDrag = useDragControls()
-  // Un relâcher après glissé déclenche un clic « fantôme » sur la poignée :
-  // on l'ignore pendant ~300 ms.
-  const sheetDraggedAt = useRef(0)
+  // Feuille du bas (façon Apple Plans), 3 crans glissés librement :
+  // 0 = réduite (nom du parcours + Démarrer, carte entière visible),
+  // 1 = moyenne (sport · parcours · séance du jour, profil, puces),
+  // 2 = dépliée (+ réglages de séance).
+  const [snap, setSnap] = useState(1)
+  const sheetH = useMotionValue(0)
+  const [sheetSettledH, setSheetSettledH] = useState(420)
+  const safeTop = useSafeTop()
+  const viewportH = useViewportHeight()
+  const [mainRef, mainH] = useMeasure<HTMLDivElement>()
+  const [summaryRef, summaryH] = useMeasure<HTMLDivElement>()
+  const [footRef, footH] = useMeasure<HTMLDivElement>()
+  const peekContentH = summaryH
+  const defaultContentH = Math.max(summaryH + 1, mainH)
+  // Hauteur visible au cran réduit (poignée 21 px + résumé + pied).
+  const peekVis = 21 + summaryH + footH
+  const peekVisRef = useRef(peekVis)
+  peekVisRef.current = peekVis
+  const summaryOpacity = useTransform(sheetH, h => Math.max(0, Math.min(1, 1 - (h - peekVisRef.current - 8) / 62)))
+  const [summaryActive, setSummaryActive] = useState(false)
+  useMotionValueEvent(sheetH, 'change', h => { const a = h < peekVisRef.current + 40; setSummaryActive(prev => (prev === a ? prev : a)) })
+  const pillY = useTransform(sheetH, h => -(h + 12))
+  // Fond de carte (Plan / Satellite / Hybride), « me localiser », position connue.
+  const [mapLayer, setMapLayer] = useState<RkMapLayer>('std')
+  const [layerSheetOpen, setLayerSheetOpen] = useState(false)
+  const [recenterKey, setRecenterKey] = useState(0)
+  const [mapPos, setMapPos] = useState<[number, number] | null>(null)
+  useEffect(() => {
+    try { const l = localStorage.getItem('thw-rec-layer'); if (l === 'std' || l === 'sat' || l === 'hyb') setMapLayer(l) } catch { /* ignore */ }
+  }, [])
   // Réglages de session — togglés en local, mémorisés (logique détaillée plus tard).
   const [liveShare, setLiveShare]   = useState(false)
   const [audioAlerts, setAudioAlerts] = useState(false)
@@ -452,19 +490,30 @@ export default function RecordPage() {
   const route = activeRoute
   const routeKm = route?.distance_m != null ? (route.distance_m / 1000).toFixed(route.distance_m >= 100000 ? 0 : 1).replace('.', ',') : null
   const routeGain = route?.elevation_gain_m != null ? Math.round(route.elevation_gain_m) : null
-  const routeSub = route
-    ? [t('record.pageRoutes'), routeKm ? `${routeKm} km` : null, routeGain != null ? `${routeGain} m D+` : null].filter(Boolean).join(' · ')
-    : t('rec.routeChoose')
+  const routeEst = route?.distance_m ? estDurationLabel(route.distance_m, route.sport ?? sport) : null
+  const routeStats = [routeKm ? `${routeKm} km` : null, routeGain != null ? `${routeGain} m D+` : null, routeEst ? `~${routeEst}` : null].filter(Boolean).join(' · ')
+  const routeSub = route ? (routeStats || t('record.pageRoutes')) : t('rec.routeChoose')
   const todayDur = todaySession?.durationMin
     ? (todaySession.durationMin >= 60 ? `${Math.floor(todaySession.durationMin / 60)} h ${String(todaySession.durationMin % 60).padStart(2, '0')}` : `${todaySession.durationMin} min`)
     : null
   const showToday = !!plannedSport
-  const sheetSpring = reduceMotion ? { duration: 0.15 } : RK_SPRING
-  const onSheetDragEnd = (_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
-    if (info.offset.y < -40 || info.velocity.y < -400) setSheetExpanded(true)
-    else if (info.offset.y > 40 || info.velocity.y > 400) setSheetExpanded(false)
-  }
-  const openSettings = () => setSheetExpanded(true)
+  const profAlts = route && route.elevation_profile.length > 1 ? route.elevation_profile.map(p => p.altitudeM) : null
+  const profMin = profAlts ? Math.round(Math.min(...profAlts)) : 0
+  const profMax = profAlts ? Math.round(Math.max(...profAlts)) : 0
+  const profKm = route && route.elevation_profile.length > 1 ? Math.round(route.elevation_profile[route.elevation_profile.length - 1].distanceM / 1000) : 0
+
+  // Distance jusqu'au départ du parcours (pilule « Vous êtes à … du départ »).
+  const userPos: [number, number] | null = startGps.currentLat != null && startGps.currentLng != null
+    ? [startGps.currentLat, startGps.currentLng] : mapPos
+  const distToStart = route && route.snapped_points.length > 1 && userPos
+    ? haversineM(userPos[0], userPos[1], route.snapped_points[0].lat, route.snapped_points[0].lng) : null
+  const distToStartLabel = distToStart == null ? null
+    : distToStart < 1000 ? `${Math.max(10, Math.round(distToStart / 10) * 10)} m` : `${(distToStart / 1000).toFixed(1).replace('.', ',')} km`
+
+  const openSettings = () => setSnap(2)
+  // Zone visible de la carte : sous l'en-tête, au-dessus de la feuille.
+  const fitTop = safeTop + 76
+  const fitBottom = Math.min(sheetSettledH + 24, Math.max(160, viewportH - fitTop - 140))
 
   const settingRows = ([
     { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare, color: 'var(--primary)', icon: RK_ICON.live,
@@ -475,35 +524,43 @@ export default function RecordPage() {
       set: (v: boolean) => { setAutoPause(v); persist('thw-rec-autopause', v) } },
   ])
 
+  const LAYER_LABEL: Record<RkMapLayer, string> = { std: t('record.routeCreatorLayerPlan'), sat: t('record.routeCreatorLayerSatellite'), hyb: t('record.routeCreatorLayerHybrid') }
+
   return (
     <div className={rkScope(isDark)} style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: 'var(--surface-page)' }}>
-      {/* Carte plein écran */}
+      {/* Carte plein écran — cadrée sur la zone visible au-dessus de la feuille */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <MapBackground activeRoute={activeRoute} cursorPoint={routeCursor} controlsTop />
+        <MapBackground
+          activeRoute={activeRoute}
+          cursorPoint={routeCursor}
+          currentPosition={userPos}
+          layer={mapLayer}
+          fitPadding={{ top: fitTop, bottom: fitBottom }}
+          recenterKey={recenterKey}
+          onPosition={p => { if (p && !mapPos) setMapPos(p) }}
+        />
       </div>
 
-      {/* En-tête flottant : × (retour) · pilule GPS · + (saisie manuelle).
-          Mobile : le × recouvre exactement le retour du shell (même action).
-          Desktop : le × est masqué (le rail de navigation gère la sortie) et le
-          « + » reste à droite, le bouton « Démarrer » du shell étant plus à gauche. */}
+      {/* En-tête flottant : retour · pilule GPS (verre) · couches + me localiser.
+          Mobile : le retour recouvre exactement celui du shell (même action).
+          Desktop : le retour est masqué (le rail de navigation gère la sortie). */}
       <style>{`
-        .rk-rec-top { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 7px); padding: 0 12px; z-index: 121; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+        .rk-rec-top { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 7px); padding: 0 12px; z-index: 121; display: flex; align-items: flex-start; gap: 8px; pointer-events: none; }
         .rk-rec-top > * { pointer-events: auto; }
-        .rk-rec-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 120; }
         @media (min-width: 768px) {
           .rk-rec-top { top: 12px; padding-left: 20px; }
           .rk-rec-close { visibility: hidden; }
-          .rk-rec-sheet { margin: 0 auto; width: min(520px, calc(100% - 40px)); }
+          .rk-rec-sheet { left: 50% !important; right: auto !important; width: min(520px, calc(100% - 40px)); transform: translateX(-50%); }
         }
       `}</style>
       <div className="rk-rec-top">
         <span className="rk-rec-close">
           <RkFab label={t('w2c.close')} onClick={() => { if (window.history.length > 1) router.back(); else router.push('/') }}>
-            <RkIco d={RK_ICON.close} size={20} sw={2.2} />
+            <RkIco d={RK_ICON.back} size={22} sw={2.2} />
           </RkFab>
         </span>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
-          <RkStatusPill dot={gpsPill.dot} live={gpsPill.live} onClick={isGpsSport && !isDesktopRec ? () => {
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', paddingTop: 0 }}>
+          <RkStatusPill glass dot={gpsPill.dot} live={gpsPill.live} onClick={isGpsSport && !isDesktopRec ? () => {
             // GPS jamais autorisé : la pilule lance l'autorisation (même effet que
             // l'écran d'explication) ; sinon elle ouvre les réglages GPS & écran.
             if (!gpsAllowed) { try { localStorage.setItem('gps_permission_explained', 'true') } catch { /* ignore */ } setGpsAllowed(true) }
@@ -512,153 +569,182 @@ export default function RecordPage() {
             {gpsPill.text}
           </RkStatusPill>
         </div>
-        <RkFab label={t('record.createManualActivity')} onClick={() => setManualOpen(true)}>
-          <RkIco d={RK_ICON.plus} size={22} sw={2.2} />
-        </RkFab>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <RkFab label={t('w2c.mapLayer')} onClick={() => setLayerSheetOpen(true)}>
+            <RkIco d={RK_ICON.layers} size={19} />
+          </RkFab>
+          <RkFab label={t('rec.locateMe')} onClick={() => setRecenterKey(k => k + 1)}>
+            <RkIco d={RK_ICON.locate} size={20} />
+          </RkFab>
+        </div>
       </div>
 
-      {/* Feuille du bas : carte blanche, poignée, lignes groupées, puces, Démarrer.
-          Glisser vers le haut (ou « Réglages ») → réglages de séance. */}
-      <motion.div
-        className="rk-rec-sheet"
-        layout
-        transition={{ layout: sheetSpring }}
-        drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={0.18} dragListener={false}
-        dragControls={sheetDrag}
-        onDragStart={() => { sheetDraggedAt.current = Date.now() }}
-        onDragEnd={onSheetDragEnd}
-        style={{
-          background: 'var(--surface-card)', borderTopLeftRadius: 'calc(var(--r-lg) + 8px)', borderTopRightRadius: 'calc(var(--r-lg) + 8px)',
-          boxShadow: 'var(--shadow-float)', display: 'flex', flexDirection: 'column',
-          maxHeight: sheetExpanded ? 'calc(100dvh - env(safe-area-inset-top) - 64px)' : 'calc(100dvh - env(safe-area-inset-top) - 120px)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        {/* Poignée : glisser haut/bas, tap = bascule */}
-        <div onPointerDown={e => sheetDrag.start(e)} onClick={() => { if (Date.now() - sheetDraggedAt.current > 350) setSheetExpanded(v => !v) }}
-          role="button" aria-label={t('record.pageSessionSettings')} aria-expanded={sheetExpanded}
-          style={{ flexShrink: 0, padding: '10px 0 8px', display: 'flex', justifyContent: 'center', cursor: 'grab', touchAction: 'none' }}>
-          <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
-        </div>
+      {/* Pilule « Vous êtes à … du départ » : accompagne la feuille. */}
+      {distToStartLabel && snap < 2 && (
+        <motion.div style={{ y: pillY, position: 'absolute', left: 12, right: 12, bottom: 0, zIndex: 119, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <span className="rk-banner rk-glass rk-num" style={{ letterSpacing: 0, fontSize: 14, minHeight: 40, padding: '0 16px' }}>
+            <RkIco d={RK_ICON.route} size={16} />
+            {distToStart != null && distToStart < 30 ? t('rec.atStart') : t('rec.distToStart', { d: distToStartLabel })}
+          </span>
+        </motion.div>
+      )}
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 16px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-          {/* Sport · Parcours · Séance du jour */}
-          <RkGroup tone="chip">
-            <RkRow
-              icon={<RkTile color={getSportColor(sport)}>{getSportIcon(sport)}</RkTile>}
-              label={getSportLabel(sport)} sub={t('rec.sportRowSub')}
-              onClick={() => setSportSheetOpen(true)} />
-            <RkRow
-              icon={<RkTile color={RK_DOT.ok}><RkIco d={RK_ICON.route} size={20} /></RkTile>}
-              label={route?.name || t('rec.routeNone')} sub={routeSub}
-              onClick={() => setRouteCreatorOpen(true)} />
-            {showToday && (
+      {/* Feuille du bas (façon Apple Plans) : 3 crans libres.
+          Réduite = nom du parcours + Démarrer ; moyenne = sport · parcours ·
+          séance du jour, profil, puces ; dépliée = réglages de séance. */}
+      <SnapSheet
+        className="rk-rec-sheet"
+        snaps={[peekContentH, defaultContentH, 'full']}
+        index={snap}
+        onIndexChange={setSnap}
+        onSettle={setSheetSettledH}
+        heightMV={sheetH}
+        topGap={64}
+        ariaLabel={t('record.pageSessionSettings')}
+        handleLabel={t('record.pageSessionSettings')}
+        footer={
+          <div ref={footRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 28px calc(14px + env(safe-area-inset-bottom))' }}>
+            <SideAction label={t('record.pageRoutes')} onClick={() => setRouteCreatorOpen(true)}>
+              <RkIco d={RK_ICON.route} size={22} />
+            </SideAction>
+            <RkStartButton guide="rec-start" label={t('w2c.start')} onClick={handleStart} size={96} />
+            <SideAction label={t('w2c.settings')} active={snap === 2} onClick={() => setSnap(s => (s === 2 ? 1 : 2))}>
+              <RkIco d={RK_ICON.sliders} size={22} />
+            </SideAction>
+          </div>
+        }
+      >
+        <div style={{ position: 'relative', padding: '0 16px' }}>
+          <div ref={mainRef} style={{ paddingBottom: 12 }}>
+            {/* Sport · Parcours · Séance du jour */}
+            <RkGroup tone="chip">
               <RkRow
-                icon={<RkTile color="var(--primary)"><RkIco d={RK_ICON.calendar} size={20} /></RkTile>}
-                label={t('rec.todaySession')}
-                sub={todaySession ? [todaySession.title, todayDur].filter(Boolean).join(' · ') : t('rec.todayNone')}
-                onClick={todaySession && todayDrivesPlayer ? undefined : () => {
-                  if (sport === 'hometrainer') setHtLauncherOpen(true)
-                  else if (sport === 'rowing') setRowingLauncherOpen(true)
-                  else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
-                  else router.push('/planning')
-                }}
-                right={todaySession && todayDrivesPlayer
-                  ? <RkToggle on={todayOn} onChange={setTodayOn} label={t('rec.todaySession')} />
-                  : undefined} />
+                icon={<RkTile color={getSportColor(sport)}>{getSportIcon(sport)}</RkTile>}
+                label={getSportLabel(sport)} sub={t('rec.sportRowSub')}
+                onClick={() => setSportSheetOpen(true)} />
+              <RkRow
+                icon={<RkTile color={RK_DOT.ok}><RkIco d={RK_ICON.route} size={20} /></RkTile>}
+                label={route?.name || t('rec.routeNone')} sub={routeSub}
+                onClick={() => setRouteCreatorOpen(true)} />
+              {showToday && (
+                <RkRow
+                  icon={<RkTile color="var(--primary)"><RkIco d={RK_ICON.calendar} size={20} /></RkTile>}
+                  label={t('rec.todaySession')}
+                  sub={todaySession ? [todaySession.title, todayDur].filter(Boolean).join(' · ') : t('rec.todayNone')}
+                  onClick={todaySession && todayDrivesPlayer ? undefined : () => {
+                    if (sport === 'hometrainer') setHtLauncherOpen(true)
+                    else if (sport === 'rowing') setRowingLauncherOpen(true)
+                    else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
+                    else router.push('/planning')
+                  }}
+                  right={todaySession && todayDrivesPlayer
+                    ? <RkToggle on={todayOn} onChange={setTodayOn} label={t('rec.todaySession')} />
+                    : undefined} />
+              )}
+            </RkGroup>
+
+            {/* Profil altimétrique du parcours chargé (synchronisé avec la carte) */}
+            {route && route.elevation_profile.length > 1 && (
+              <div style={{ marginTop: 12, borderRadius: 'var(--r-lg)', background: 'var(--surface-soft)', padding: '12px 14px 10px', overflow: 'hidden' }}>
+                <div className="rk-num" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', letterSpacing: 0 }}>
+                  <span>{t('rec.profileRange', { min: profMin, max: profMax })}</span>
+                  <span>{profKm} km</span>
+                </div>
+                <ElevationChart
+                  data={route.elevation_profile}
+                  height={76}
+                  compact
+                  isDark={isDark}
+                  snappedPoints={route.snapped_points}
+                  onPositionChange={setRouteCursor}
+                />
+              </div>
+            )}
+
+            {/* Puces d'état : cardio, capteur, auto-pause (+ direct) */}
+            <div className="rk-chips" style={{ margin: '12px -16px 0', padding: '2px 16px' }}>
+              <RkChip dot={sensors.hrDevice ? RK_DOT.ok : RK_DOT.idle} off={!sensors.hrDevice} onClick={() => setSensorSheetOpen(true)}>
+                {t('rec.chipCardio')}{sensors.hr != null ? <span className="rk-num" style={{ letterSpacing: 0 }}>{sensors.hr}</span> : null}
+              </RkChip>
+              <RkChip dot={sensors.powerDevice ? RK_DOT.ok : RK_DOT.idle} off={!sensors.powerDevice} onClick={() => setSensorSheetOpen(true)}>
+                {t('rec.chipPower')}{sensors.power != null ? <span className="rk-num" style={{ letterSpacing: 0 }}>{sensors.power} W</span> : null}
+              </RkChip>
+              <RkChip dot={autoPause ? 'var(--primary)' : RK_DOT.idle} off={!autoPause} onClick={() => { const v = !autoPause; setAutoPause(v); persist('thw-rec-autopause', v) }}>
+                {t('rec.chipAutoPause')}
+              </RkChip>
+              {liveShare && <RkChip dot={RK_DOT.rec} onClick={openSettings}>{t('rec.chipLive')}</RkChip>}
+            </div>
+          </div>
+
+          {/* Réglages de séance (cran déplié) — listes groupées iOS */}
+          <RkSectionLabel>{t('record.pageSessionSettings')}</RkSectionLabel>
+          <RkGroup tone="chip">
+            {settingRows.map(row => (
+              <RkRow key={row.key}
+                icon={<RkTile color={row.color}><RkIco d={row.icon} size={19} /></RkTile>}
+                label={row.label} sub={row.sub}
+                right={<RkToggle on={row.on} onChange={row.set} label={row.label} />} />
+            ))}
+            {/* Seuil de pause auto : l'enregistrement se met en pause sous cette vitesse. */}
+            {autoPause && (
+              <div className="rk-row" style={{ minHeight: 52 }}>
+                <span className="rk-row-t"><b style={{ fontSize: 15 }}>{t('record.pageAutoPauseThreshold')}</b></span>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  {[1, 3, 5, 8].map(v => {
+                    const on = autoPauseSpeed === v
+                    return (
+                      <button key={v} type="button" className="rk-press"
+                        onClick={() => { setAutoPauseSpeed(v); try { localStorage.setItem('thw-rec-autopause-speed', String(v)) } catch { /* ignore */ } }}
+                        style={{ minWidth: 44, height: 36, padding: '0 10px', borderRadius: 'var(--r-pill)', border: 'none', background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+                        <span className="rk-num" style={{ letterSpacing: 0 }}>{v}</span>
+                      </button>
+                    )
+                  })}
+                  <span style={{ fontSize: 13, color: 'var(--text-mid)', marginLeft: 2 }}>km/h</span>
+                </div>
+              </div>
             )}
           </RkGroup>
 
-          {/* Profil altimétrique du parcours chargé (synchronisé avec la carte) */}
-          {route && route.elevation_profile.length > 1 && (
-            <div style={{ marginTop: 12, borderRadius: 'var(--r-lg)', background: 'var(--surface-soft)', padding: '8px 6px 4px', overflow: 'hidden' }}>
-              <ElevationChart
-                data={route.elevation_profile}
-                height={120}
-                isDark={isDark}
-                snappedPoints={route.snapped_points}
-                onPositionChange={setRouteCursor}
-              />
+          <RkGroup tone="chip" style={{ marginTop: 12 }}>
+            <RkRow icon={<RkTile color="var(--danger)"><RkIco d={RK_ICON.pulse} size={19} /></RkTile>}
+              label={t('record.pageAddSensorLabel')} sub={t('record.pageAddSensorSub')} onClick={() => setSensorSheetOpen(true)} />
+            <RkRow icon={<RkTile color="var(--sport-bike)"><RkIco d={RK_ICON.gps} size={19} /></RkTile>}
+              label={t('record.pageGpsLabel')} sub={t('record.pageGpsSub')} onClick={() => setGpsSheetOpen(true)} />
+            {/* Saisie manuelle (ancien « + » de l'en-tête, qui ressemblait à un zoom). */}
+            <RkRow icon={<RkTile color="var(--text-mid)"><RkIco d={RK_ICON.plus} size={20} /></RkTile>}
+              label={t('record.createManualActivity')} sub={t('rec.manualEntrySub')} onClick={() => setManualOpen(true)} />
+          </RkGroup>
+          <div style={{ height: 12 }} />
+
+          {/* Cran réduit : résumé du parcours (se fond dès qu'on remonte la feuille). */}
+          <motion.div ref={summaryRef} style={{
+            opacity: summaryOpacity, position: 'absolute', top: 0, left: 0, right: 0, padding: '2px 16px 14px',
+            background: 'var(--surface-card)', display: 'flex', alignItems: 'center', gap: 12,
+            pointerEvents: summaryActive ? 'auto' : 'none',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {route?.name || (route ? t('w2c.routeLabel') : t('rec.routeNone'))}
+              </div>
+              <div className="rk-num" style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {route ? [getSportLabel(sport), routeStats].filter(Boolean).join(' · ') : t('rec.routeChoose')}
+              </div>
             </div>
-          )}
-
-          {/* Puces d'état : cardio, capteur, auto-pause, réglages */}
-          <div className="rk-chips" style={{ margin: '12px -16px 0', padding: '2px 16px' }}>
-            <RkChip dot={sensors.hrDevice ? RK_DOT.ok : RK_DOT.idle} off={!sensors.hrDevice} onClick={() => setSensorSheetOpen(true)}>
-              {t('rec.chipCardio')}{sensors.hr != null ? <span className="rk-num" style={{ letterSpacing: 0 }}>{sensors.hr}</span> : null}
-            </RkChip>
-            <RkChip dot={sensors.powerDevice ? RK_DOT.ok : RK_DOT.idle} off={!sensors.powerDevice} onClick={() => setSensorSheetOpen(true)}>
-              {t('rec.chipPower')}{sensors.power != null ? <span className="rk-num" style={{ letterSpacing: 0 }}>{sensors.power} W</span> : null}
-            </RkChip>
-            <RkChip dot={autoPause ? 'var(--primary)' : RK_DOT.idle} off={!autoPause} onClick={() => { const v = !autoPause; setAutoPause(v); persist('thw-rec-autopause', v) }}>
-              {t('rec.chipAutoPause')}
-            </RkChip>
-            {liveShare && <RkChip dot={RK_DOT.rec} onClick={openSettings}>{t('rec.chipLive')}</RkChip>}
-            <RkChip onClick={openSettings}>
-              <RkIco d={RK_ICON.sliders} size={16} />
-              {t('w2c.settings')}
-            </RkChip>
-          </div>
-
-          {/* Réglages de séance (feuille dépliée) — listes groupées iOS */}
-          <AnimatePresence initial={false}>
-            {sheetExpanded && (
-              <motion.div key="settings"
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                transition={reduceMotion ? { duration: 0.12 } : { height: RK_SPRING, opacity: { duration: 0.2 } }}
-                style={{ overflow: 'hidden' }}>
-                <RkSectionLabel>{t('record.pageSessionSettings')}</RkSectionLabel>
-                <RkGroup tone="chip">
-                  {settingRows.map(row => (
-                    <RkRow key={row.key}
-                      icon={<RkTile color={row.color}><RkIco d={row.icon} size={19} /></RkTile>}
-                      label={row.label} sub={row.sub}
-                      right={<RkToggle on={row.on} onChange={row.set} label={row.label} />} />
-                  ))}
-                  {/* Seuil de pause auto : l'enregistrement se met en pause sous cette vitesse. */}
-                  {autoPause && (
-                    <div className="rk-row" style={{ minHeight: 52 }}>
-                      <span className="rk-row-t"><b style={{ fontSize: 15 }}>{t('record.pageAutoPauseThreshold')}</b></span>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                        {[1, 3, 5, 8].map(v => {
-                          const on = autoPauseSpeed === v
-                          return (
-                            <button key={v} type="button" className="rk-press"
-                              onClick={() => { setAutoPauseSpeed(v); try { localStorage.setItem('thw-rec-autopause-speed', String(v)) } catch { /* ignore */ } }}
-                              style={{ minWidth: 44, height: 36, padding: '0 10px', borderRadius: 'var(--r-pill)', border: 'none', background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text)', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
-                              <span className="rk-num" style={{ letterSpacing: 0 }}>{v}</span>
-                            </button>
-                          )
-                        })}
-                        <span style={{ fontSize: 13, color: 'var(--text-mid)', marginLeft: 2 }}>km/h</span>
-                      </div>
-                    </div>
-                  )}
-                </RkGroup>
-
-                <RkGroup tone="chip" style={{ marginTop: 12 }}>
-                  <RkRow icon={<RkTile color="var(--danger)"><RkIco d={RK_ICON.pulse} size={19} /></RkTile>}
-                    label={t('record.pageAddSensorLabel')} sub={t('record.pageAddSensorSub')} onClick={() => setSensorSheetOpen(true)} />
-                  <RkRow icon={<RkTile color="var(--sport-bike)"><RkIco d={RK_ICON.gps} size={19} /></RkTile>}
-                    label={t('record.pageGpsLabel')} sub={t('record.pageGpsSub')} onClick={() => setGpsSheetOpen(true)} />
-                </RkGroup>
-                <div style={{ height: 8 }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <button type="button" className="rk-press" onClick={() => setRouteCreatorOpen(true)}
+              style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontSize: 15, fontWeight: 800, padding: '10px 2px', minHeight: 44, cursor: 'pointer', flexShrink: 0 }}>
+              {route ? t('rec.change') : t('rec.choose')}
+            </button>
+          </motion.div>
         </div>
+      </SnapSheet>
 
-        {/* Parcours · Démarrer · Réglages */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px 16px' }}>
-          <SideAction label={t('record.pageRoutes')} onClick={() => setRouteCreatorOpen(true)}>
-            <RkIco d={RK_ICON.route} size={22} />
-          </SideAction>
-          <RkStartButton guide="rec-start" label={t('w2c.start')} onClick={handleStart} size={100} />
-          <SideAction label={t('w2c.settings')} active={sheetExpanded} onClick={() => setSheetExpanded(v => !v)}>
-            <RkIco d={RK_ICON.sliders} size={22} />
-          </SideAction>
-        </div>
-      </motion.div>
+      <RkActionSheet open={layerSheetOpen} onClose={() => setLayerSheetOpen(false)} title={t('w2c.mapLayer')} isDark={isDark}
+        actions={(['std', 'sat', 'hyb'] as RkMapLayer[]).map(l => ({
+          key: l, label: LAYER_LABEL[l], checked: mapLayer === l,
+          icon: <RkIco d={l === 'std' ? RK_ICON.route : l === 'sat' ? RK_ICON.globe : RK_ICON.layers} size={20} />,
+          onClick: () => { setMapLayer(l); try { localStorage.setItem('thw-rec-layer', l) } catch { /* ignore */ } },
+        }))} />
 
       <SportSelector
         open={sportSheetOpen}
@@ -797,7 +883,7 @@ export default function RecordPage() {
 /** Action latérale de la feuille de départ : rond gris + libellé dessous. */
 function SideAction({ label, onClick, children, active }: { label: string; onClick: () => void; children: React.ReactNode; active?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} className="rk-press"
+    <button type="button" onClick={() => { haptic('light'); onClick() }} aria-label={label} className="rk-press"
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, minWidth: 72 }}>
       <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? 'var(--text)' : 'var(--surface-chip)', color: active ? 'var(--bg)' : 'var(--text)', transition: 'background-color 220ms ease, color 220ms ease' }}>
         {children}

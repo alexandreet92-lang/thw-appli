@@ -1,18 +1,29 @@
 'use client'
+// ══════════════════════════════════════════════════════════════════════════
+// Bibliothèque d'itinéraires (maquette L3) : ✕ · « Itinéraires » · + cyan,
+// recherche, Mes parcours / Publics (segmenté), pilules de filtre (sport,
+// distance, dénivelé), grandes cartes blanches (vignette carte pleine
+// largeur + étiquette sport en verre, nom, « 54,0 km · 523 m D+ · 2 h 10 »,
+// ville de départ, menu ⋯ : Modifier / Dupliquer / Exporter GPX / Supprimer).
+// Mobile : une colonne ; desktop : grille. Logique (chargement, filtres,
+// duplication, export, envoi appareil) inchangée.
+// ══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef } from 'react'
-import { rkScope } from './kit/RecordKit'
 import dynamic from 'next/dynamic'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { rkScope, RkFab, RkIco, RK_ICON, RkActionSheet, RkSheet, RkCta, RkBanner, RK_EASE, type RkAction } from './kit/RecordKit'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import type { SnappedPoint } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
-import { currentLocale } from '@/lib/i18n'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
 import { elevationGainLoss } from '@/lib/elevation'
 import { reverseGeocode, cachedPlace } from '@/lib/reverseGeocode'
+import { haptic } from '@/lib/haptics'
 import { FinishFlag } from './finishFlag'
 import RouteFilterSheet, { type FilterState } from './RouteFilterSheet'
+import { routeSport, routeEstLabel, routeKmLabel, fmtInt } from './routeSports'
 
 const RouteDetailView = dynamic(() => import('./RouteDetailView'), { ssr: false })
 
@@ -46,24 +57,19 @@ interface Props {
   isDark: boolean
 }
 
-const ACCENT = '#06B6D4'
-const SPEED_KMH: Record<string, number> = { cycling: 25, gravel: 22, mtb: 15, trail: 9, running: 10, hiking: 4.5, walking: 4.5 }
-function estTimeLabel(distanceM: number | null, sport: string): string {
-  if (!distanceM) return '—'
-  const v = SPEED_KMH[sport] ?? 18
-  const sec = (distanceM / 1000) / v * 3600
-  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60)
-  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
-}
+// Leaflet/SVG : couleurs littérales (attributs SVG).
+const TRACE_CYAN = '#06B6D4' // design-allow-color — tracé (= --primary)
+const TRACE_CASING = '#FFFFFF' // design-allow-color — halo du tracé
+const START_GREEN = '#10B981' // design-allow-color — pastille départ
 
 // Tracé normalisé en SVG (repli si pas de carte réelle).
-function SvgTrace({ route, accent, mapBg, fallbackStroke }: { route: Route; accent: string; mapBg: string; fallbackStroke: string }) {
-  const W = 240, H = 150, PAD = 18
+function SvgTrace({ route }: { route: Route }) {
+  const W = 400, H = 170, PAD = 18
   const pts = route.snapped_points ?? route.waypoints ?? []
   if (pts.length < 2) {
     return (
-      <div style={{ width: '100%', aspectRatio: `${W} / ${H}`, background: mapBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 20l5-12 5 8 3-4 5 8H3z" stroke={fallbackStroke} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+      <div style={{ width: '100%', height: '100%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+        <RkIco d={RK_ICON.route} size={30} sw={1.6} />
       </div>
     )
   }
@@ -81,46 +87,46 @@ function SvgTrace({ route, accent, mapBg, fallbackStroke }: { route: Route; acce
   const path = pts.map(p => { const c = xy(p); return `${c.x.toFixed(1)},${c.y.toFixed(1)}` }).join(' ')
   const s = xy(pts[0]), e = xy(pts[pts.length - 1])
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" style={{ display: 'block', width: '100%', aspectRatio: `${W} / ${H}`, background: mapBg }}>
-      <polyline points={path} fill="none" stroke="#ffffff" strokeWidth={5} strokeOpacity={0.7} strokeLinejoin="round" strokeLinecap="round" />
-      <polyline points={path} fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={s.x} cy={s.y} r={4} fill="#10B981" stroke="#fff" strokeWidth={1.5} />
+    <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" style={{ display: 'block', background: 'var(--surface-soft)' }}>
+      <polyline points={path} fill="none" stroke={TRACE_CASING} strokeWidth={6} strokeOpacity={0.7} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={path} fill="none" stroke={TRACE_CYAN} strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={s.x} cy={s.y} r={4.5} fill={START_GREEN} stroke={TRACE_CASING} strokeWidth={1.5} />
       <FinishFlag x={e.x} y={e.y} size={0.7} />
     </svg>
   )
 }
 
 // Vignette : vraie carte Mapbox avec le tracé ; repli SVG.
-function RouteThumbnail(props: { route: Route; accent: string; mapBg: string; fallbackStroke: string }) {
+function RouteThumbnail({ route }: { route: Route }) {
   const [failed, setFailed] = useState(false)
-  const pts = props.route.snapped_points ?? props.route.waypoints ?? []
-  const url = pts.length >= 2 ? staticRouteMapUrl(pts, { width: 380, height: 238, pins: true }) : null
+  const pts = route.snapped_points ?? route.waypoints ?? []
+  const url = pts.length >= 2 ? staticRouteMapUrl(pts, { width: 640, height: 272, pins: true }) : null
   if (url && !failed) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" onError={() => setFailed(true)} style={{ display: 'block', width: '100%', aspectRatio: '380 / 238', objectFit: 'cover', background: props.mapBg }} />
+    return <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', background: 'var(--surface-soft)' }} />
   }
-  return <SvgTrace {...props} />
-}
-
-function menuItem(color: string): React.CSSProperties {
-  return { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color, fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }
+  return <SvgTrace route={route} />
 }
 
 export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRoute, isDark }: Props) {
   const { t } = useI18n()
+  const reduce = useReducedMotion()
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-  const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking'), running: t('record.routeLibrarySportRunning'), ski: t('record.routeLibrarySportSki') }
-  const sportLabel = (s: string) => SPORT_LABELS[s] ?? s
+  const sportLabel = (s: string) => t(routeSport(s).labelKey)
   const [routes, setRoutes] = useState<Route[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [showPublic, setShowPublic] = useState(false)
   const [search, setSearch] = useState('')
-  const [menuId, setMenuId] = useState<string | null>(null)   // ouvert au survol (ou tap mobile)
-  const menuTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const openMenu = (id: string) => { if (menuTimer.current) clearTimeout(menuTimer.current); setMenuId(id) }
-  const scheduleCloseMenu = () => { if (menuTimer.current) clearTimeout(menuTimer.current); menuTimer.current = setTimeout(() => setMenuId(null), 160) }
+  const [menuRoute, setMenuRoute] = useState<Route | null>(null)
+  const [confirmDel, setConfirmDel] = useState<Route | null>(null)
+  // Dernières valeurs affichées : la feuille garde son contenu pendant sa sortie.
+  const lastMenu = useRef<Route | null>(null)
+  if (menuRoute) lastMenu.current = menuRoute
+  const lastDel = useRef<Route | null>(null)
+  if (confirmDel) lastDel.current = confirmDel
   const [detail, setDetail] = useState<Route | null>(null)
   const [isNarrow, setIsNarrow] = useState(false)
   useEffect(() => {
@@ -130,12 +136,17 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   }, [])
   const [filter, setFilter] = useState<FilterState>({ dist: [0, 160], elev: [0, 3000], sport: 'all' })
   const [activeFilter, setActiveFilter] = useState<'dist' | 'elev' | 'sport' | null>(null)
-  const [myAvatar, setMyAvatar] = useState<string | null>(null)
-  useEffect(() => { void (async () => { const u = await getCurrentUser(); if (!u) return; const { data } = await createClient().from('profiles').select('avatar_url').eq('id', u.id).maybeSingle(); setMyAvatar((data?.avatar_url as string) ?? null) })() }, [])
   // Envoi vers l'appareil (Garmin/Wahoo) — visible seulement si connecté.
   const [pushTargets, setPushTargets] = useState<string[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const DEVICE_NAME: Record<string, string> = { garmin: 'Garmin', wahoo: 'Wahoo' }
+  const showNotice = (msg: string, ms = 4000) => {
+    setNotice(msg)
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), ms)
+  }
+  useEffect(() => () => { if (noticeTimer.current) clearTimeout(noticeTimer.current) }, [])
 
   useEffect(() => {
     void (async () => {
@@ -148,44 +159,35 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   }, [])
 
   const pushToDevice = async (route: Route, provider: string) => {
-    setMenuId(null); setNotice(`Envoi vers ${DEVICE_NAME[provider] ?? provider}…`)
+    const name = DEVICE_NAME[provider] ?? provider
+    showNotice(t('record.routeSending', { device: name }), 60000)
     try {
       const r = await fetch('/api/routes/push-to-device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: route.id, provider }) })
       const j = await r.json() as { ok?: boolean; error?: string }
-      setNotice(j.ok ? `Envoyé vers ${DEVICE_NAME[provider] ?? provider}.` : (j.error ?? 'Échec de l’envoi'))
-    } catch { setNotice('Échec de l’envoi') }
-    setTimeout(() => setNotice(null), 4000)
+      showNotice(j.ok ? t('record.routeSent', { device: name }) : (j.error ?? t('record.routeSendFailed')))
+    } catch { showNotice(t('record.routeSendFailed')) }
   }
-
-  const bg = 'var(--surface-page)'
-  const text = 'var(--text)'
-  const dim = 'var(--text-mid)'
-  const separator = 'var(--border)'
-  const surface = 'var(--surface-card)'
-  const border = 'var(--border)'
-  const mapBg = 'var(--surface-soft)'
-  const popover = 'var(--surface-card)'
 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
       const user = await getCurrentUser()
-      if (!user) return
+      if (!user) { setLoaded(true); return }
       const q = supabase.from('routes').select('*').order('created_at', { ascending: false })
       const { data } = await (showPublic ? q.eq('is_public', true) : q.eq('user_id', user.id))
       setRoutes((data ?? []) as Route[])
+      setLoaded(true)
     }
-    load()
+    setLoaded(false)
+    void load()
   }, [showPublic])
 
   const handleDelete = async (id: string) => {
-    setMenuId(null)
     await createClient().from('routes').delete().eq('id', id)
     setRoutes(r => r.filter(x => x.id !== id))
   }
 
   const handleDuplicate = async (route: Route) => {
-    setMenuId(null)
     const sb = createClient()
     const user = await getCurrentUser()
     if (!user) return
@@ -199,7 +201,6 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   }
 
   const handleExport = (route: Route) => {
-    setMenuId(null)
     const pts = (route.snapped_points ?? route.waypoints ?? []).map(p => ({ lat: p.lat, lng: p.lng, altitude: (p as { altitude?: number }).altitude }))
     if (pts.length < 2) return
     downloadGpx(route.name, routeToGpx(route.name, pts, route.elevation_profile ?? undefined))
@@ -228,13 +229,163 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     return true
   })
 
-  const tabBtn = (label: string, active: boolean, onClick: () => void) => (
-    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontSize: 14, fontWeight: active ? 800 : 600, color: active ? text : dim, borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`, fontFamily: 'var(--font-body)' }}>{label}</button>
-  )
+  const distOn = filter.dist[0] > 0 || filter.dist[1] < 160
+  const elevOn = filter.elev[0] > 0 || filter.elev[1] < 3000
+  const rangeLabel = (r: [number, number], max: number, unit: string) =>
+    `${r[0]}–${r[1] >= max ? `${max}+` : r[1]} ${unit}`
 
-  // Overlays partagés (détail + filtre + notice) pour les deux dispositions.
-  const overlays = (
-    <>
+  // Menu ⋯ (mobile ET desktop) : feuille d'actions iOS.
+  const menuActions = (route: Route): RkAction[] => [
+    ...(onEditRoute ? [{ key: 'edit', label: t('record.routeLibraryEdit'), icon: <RkIco d={RK_ICON.edit} size={19} />, onClick: () => onEditRoute(route) }] : []),
+    { key: 'dup', label: t('record.routeLibraryDuplicate'), icon: <RkIco d={RK_ICON.copy} size={19} />, onClick: () => void handleDuplicate(route) },
+    { key: 'gpx', label: t('record.routeLibraryExport'), icon: <RkIco d={RK_ICON.download} size={19} />, onClick: () => handleExport(route) },
+    ...pushTargets.map(p => ({ key: `push-${p}`, label: t('record.routeSendTo', { device: DEVICE_NAME[p] ?? p }), icon: <RkIco d={RK_ICON.device} size={19} />, onClick: () => void pushToDevice(route, p) })),
+    { key: 'del', label: t('record.routeLibraryDelete'), icon: <RkIco d={RK_ICON.trash} size={19} />, danger: true, onClick: () => setConfirmDel(route) },
+  ]
+
+  const emptyText = showPublic
+    ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic'))
+    : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))
+
+  return (
+    <div className={rkScope(isDark)} style={{
+      position: 'fixed', inset: 0, zIndex: 10005, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column',
+      paddingTop: 'env(safe-area-inset-top)',
+      transform: shown && !closing ? 'translateX(0)' : (reduce ? 'none' : 'translateX(100%)'),
+      opacity: reduce && !(shown && !closing) ? 0 : 1,
+      transition: 'transform 320ms cubic-bezier(0.32,0.72,0,1), opacity 200ms ease',
+    }}>
+      {/* En-tête : ✕ · Itinéraires · + cyan */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px 10px', maxWidth: 1160, width: '100%', margin: '0 auto' }}>
+        <RkFab label={t('w2c.close')} onClick={requestClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em' }}>{t('record.routeLibraryTitle')}</span>
+        <RkFab label={t('record.routeLibraryCreate')} variant="primary" onClick={onCreate}><RkIco d={RK_ICON.plus} size={22} sw={2.4} /></RkFab>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '2px 16px calc(28px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Recherche */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-card)', borderRadius: 'var(--r-pill)', padding: '0 16px', minHeight: 48, boxShadow: 'var(--shadow-capsule)', color: 'var(--text-mid)' }}>
+            <RkIco d={RK_ICON.search} size={18} />
+            <input className="rk-input" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')}
+              aria-label={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, minWidth: 0, fontSize: 16 }} />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} aria-label={t('record.routeCreatorCancel')} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', padding: 6, cursor: 'pointer', display: 'flex' }}>
+                <RkIco d={RK_ICON.close} size={16} sw={2.4} />
+              </button>
+            )}
+          </label>
+
+          {/* Mes parcours / Publics */}
+          <div className="rk-seg" role="tablist">
+            <button type="button" role="tab" aria-pressed={!showPublic} aria-selected={!showPublic} onClick={() => { haptic('light'); setShowPublic(false) }}>{t('record.routeLibraryMine')}</button>
+            <button type="button" role="tab" aria-pressed={showPublic} aria-selected={showPublic} onClick={() => { haptic('light'); setShowPublic(true) }}>{t('record.routeLibraryPublic')}</button>
+          </div>
+
+          {/* Pilules de filtre (défilables) */}
+          <div className="rk-chips" style={{ margin: '0 -16px', padding: '2px 16px 6px' }}>
+            <button type="button" className="rk-fpill rk-press" data-on={filter.sport !== 'all' ? '1' : undefined} onClick={() => setActiveFilter('sport')}>
+              {filter.sport === 'all' ? t('record.routeLibraryAllSports') : sportLabel(filter.sport)}
+              <RkIco d={RK_ICON.down} size={15} sw={2.4} />
+            </button>
+            <button type="button" className="rk-fpill rk-press rk-num" data-on={distOn ? '1' : undefined} onClick={() => setActiveFilter('dist')} style={{ letterSpacing: 0 }}>
+              {distOn ? rangeLabel(filter.dist, 160, 'km') : t('record.routeCreatorDistance')}
+              <RkIco d={RK_ICON.down} size={15} sw={2.4} />
+            </button>
+            <button type="button" className="rk-fpill rk-press rk-num" data-on={elevOn ? '1' : undefined} onClick={() => setActiveFilter('elev')} style={{ letterSpacing: 0 }}>
+              {elevOn ? rangeLabel(filter.elev, 3000, 'm') : t('record.routeFilterElev')}
+              <RkIco d={RK_ICON.down} size={15} sw={2.4} />
+            </button>
+          </div>
+
+          {/* Cartes */}
+          {!loaded ? (
+            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} className="rk-card" style={{ boxShadow: 'var(--shadow-capsule)' }}>
+                  <div style={{ aspectRatio: '640 / 272', background: 'var(--surface-soft)' }} />
+                  <div style={{ padding: '14px 16px 16px' }}>
+                    <div style={{ width: '45%', height: 18, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)' }} />
+                    <div style={{ width: '70%', height: 13, borderRadius: 'var(--r-sm)', background: 'var(--surface-soft)', marginTop: 10 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '56px 20px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <span style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surface-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-mid)' }}>
+                <RkIco d={RK_ICON.route} size={28} />
+              </span>
+              <p style={{ fontSize: 15, margin: 0 }}>{emptyText}</p>
+              {!showPublic && !search && (
+                <RkCta variant="primary" onClick={onCreate} style={{ width: 'auto', padding: '0 24px', minHeight: 48, fontSize: 16 }}>
+                  <RkIco d={RK_ICON.plus} size={18} sw={2.4} />{t('record.routeLibraryCreate')}
+                </RkCta>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+              <AnimatePresence initial={false}>
+                {filtered.map((route, i) => {
+                  const sp = routeSport(route.sport)
+                  return (
+                    <motion.div key={route.id} layout={!reduce}
+                      initial={{ opacity: 0, y: reduce ? 0 : 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: reduce ? 1 : 0.97 }}
+                      transition={{ duration: reduce ? 0.12 : 0.32, ease: RK_EASE, delay: reduce ? 0 : Math.min(i, 6) * 0.03 }}
+                      className="rk-card" style={{ boxShadow: 'var(--shadow-capsule)', position: 'relative' }}>
+                      <div role="button" tabIndex={0} aria-label={route.name}
+                        onClick={() => { haptic('light'); setDetail(route) }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetail(route) } }}
+                        style={{ cursor: 'pointer', color: 'var(--text)' }}>
+                        <div style={{ position: 'relative', aspectRatio: '640 / 272', overflow: 'hidden', background: 'var(--surface-soft)' }}>
+                          <RouteThumbnail route={route} />
+                          <span className="rk-banner rk-glass" style={{ position: 'absolute', top: 10, left: 10, animation: 'none', minHeight: 32, padding: '0 12px', fontSize: 14 }}>
+                            <sp.Icon size={16} stroke={2} />{sportLabel(route.sport)}
+                          </span>
+                          {route.route_type === 'race' && (
+                            <span className="rk-banner rk-glass" style={{ position: 'absolute', top: 10, right: 10, animation: 'none', minHeight: 32, padding: '0 12px', fontSize: 13 }}>
+                              <span className="rk-dot" style={{ background: 'var(--danger)' }} />{t('record.routeSaveUsageRace')}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ position: 'relative', padding: '12px 56px 14px 16px' }}>
+                          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</div>
+                          <div className="rk-num" style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 3, letterSpacing: 0 }}>
+                            {routeKmLabel(route.distance_m)} · {fmtInt(dPlusOf(route))} m D+ · {routeEstLabel(route.distance_m, route.sport)}
+                          </div>
+                          <PlaceLine route={route} />
+                          <button type="button" aria-label={t('record.routeCreatorMore')} className="rk-press"
+                            onClick={e => { e.stopPropagation(); haptic('light'); setMenuRoute(route) }}
+                            onKeyDown={e => e.stopPropagation()}
+                            style={{ position: 'absolute', right: 6, top: 4, width: 44, height: 44, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <RkIco d={RK_ICON.dots} size={22} />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Menu ⋯ */}
+      <RkActionSheet open={menuRoute != null} onClose={() => setMenuRoute(null)} title={lastMenu.current?.name} isDark={isDark}
+        actions={lastMenu.current ? menuActions(lastMenu.current) : []} />
+
+      {/* Confirmation de suppression */}
+      <RkSheet open={confirmDel != null} onClose={() => setConfirmDel(null)} title={t('record.routeDeleteTitle')} isDark={isDark} zIndex={10095}
+        footer={<>
+          <RkCta variant="danger" onClick={() => { const r = confirmDel; setConfirmDel(null); if (r) void handleDelete(r.id) }}>{t('record.routeLibraryDelete')}</RkCta>
+          <RkCta variant="text" onClick={() => setConfirmDel(null)}>{t('record.routeCreatorCancel')}</RkCta>
+        </>}>
+        <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '4px 4px 8px', lineHeight: 1.5, textAlign: 'center' }}>
+          {t('record.routeDeleteSub', { name: lastDel.current?.name ?? '' })}
+        </p>
+      </RkSheet>
+
       {detail && (
         <RouteDetailView
           route={detail} isDark={isDark} sportLabel={sportLabel(detail.sport)}
@@ -253,189 +404,16 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
           onApply={p => setFilter(f => ({ ...f, ...p }))} onClose={() => setActiveFilter(null)} />
       )}
       {notice && (
-        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 40, background: 'var(--bg-card, #12151C)', color: text, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', padding: '10px 16px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', maxWidth: '90vw', textAlign: 'center' }}>{notice}</div>
+        <div style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(24px + env(safe-area-inset-bottom))', zIndex: 10100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <RkBanner key={notice}>{notice}</RkBanner>
+        </div>
       )}
-    </>
-  )
-
-  const circleBtn: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', border: 'none', background: surface, color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
-  const chip = (label: string, active: boolean, onClick: () => void, icon?: React.ReactNode) => (
-    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', background: active ? 'color-mix(in srgb, ' + ACCENT + ' 14%, transparent)' : 'transparent', border: `1px solid ${active ? ACCENT : border}`, color: active ? ACCENT : text }}>
-      {icon}{label}
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-    </button>
-  )
-
-  // ── Disposition MOBILE (façon Strava/plein écran) ──────────────────────────
-  if (isNarrow) return (
-    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
-      {/* En-tête : cercle croix · titre · cercle crayon+ */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 8px' }}>
-        <button onClick={requestClose} aria-label={t('record.routeLibraryCancel')} style={circleBtn}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
-        </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 18, fontWeight: 800, color: text, fontFamily: 'var(--font-display)' }}>{t('record.routeLibraryTitle')}</span>
-        <button onClick={onCreate} aria-label={t('record.routeLibraryCreate')} style={circleBtn}>
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /><path d="M18 2l4 4" opacity="0" /></svg>
-        </button>
-      </div>
-
-      {/* Recherche */}
-      <div style={{ padding: '4px 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: surface, borderRadius: 'var(--r-pill)', padding: '12px 16px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 16, fontFamily: 'var(--font-body)' }} />
-        </div>
-      </div>
-
-      {/* Chips filtres (défilables) */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 12px', WebkitOverflowScrolling: 'touch' }}>
-        {chip(filter.sport === 'all' ? t('record.routeLibraryAllSports') : sportLabel(filter.sport), filter.sport !== 'all', () => setActiveFilter('sport'),
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18" /></svg>)}
-        {chip('Distance', filter.dist[0] > 0 || filter.dist[1] < 160, () => setActiveFilter('dist'))}
-        {chip('Dénivelé', filter.elev[0] > 0 || filter.elev[1] < 3000, () => setActiveFilter('elev'))}
-        <button onClick={() => setShowPublic(p => !p)} style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', background: showPublic ? 'color-mix(in srgb, ' + ACCENT + ' 14%, transparent)' : 'transparent', border: `1px solid ${showPublic ? ACCENT : border}`, color: showPublic ? ACCENT : text }}>{showPublic ? t('record.routeLibraryPublic') : t('record.routeLibraryMine')}</button>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2px 16px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '70px 20px', color: dim }}>
-            <p style={{ fontSize: 14 }}>{showPublic ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic')) : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))}</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filtered.map(route => (
-              <button key={route.id} onClick={() => setDetail(route)}
-                style={{ display: 'flex', gap: 14, width: '100%', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, alignItems: 'stretch' }}>
-                <span style={{ width: 132, flexShrink: 0, borderRadius: 'var(--r-md)', overflow: 'hidden', background: mapBg }}>
-                  <RouteThumbnail route={route} accent={ACCENT} mapBg={mapBg} fallbackStroke={dim} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: text, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</span>
-                  <span style={{ fontSize: 13.5, color: text, fontVariantNumeric: 'tabular-nums' }}>{(route.distance_m ?? 0) / 1000 >= 100 ? ((route.distance_m ?? 0) / 1000).toFixed(0) : ((route.distance_m ?? 0) / 1000).toFixed(2)} km · {dPlusOf(route)} m · {estTimeLabel(route.distance_m, route.sport)}</span>
-                  <PlaceLine route={route} dim={dim} />
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {myAvatar ? <img src={myAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
-                    </span>
-                    <span style={{ fontSize: 12.5, color: dim }}>{t('record.routeCardCreatedOn', { date: new Date(route.created_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) })}</span>
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      {overlays}
-    </div>
-  )
-
-  return (
-    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
-      {/* En-tête épuré : retour + titre */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${separator}`, flexShrink: 0 }}>
-        <button onClick={requestClose} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0, zIndex: 1 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          {t('record.routeLibraryCancel')}
-        </button>
-        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>{t('record.routeLibraryTitle')}</p>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '20px 16px 40px' }}>
-          {/* Barre d'actions : Créer + onglets + recherche */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <button onClick={onCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 18px', borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-              {t('record.routeLibraryCreate')}
-            </button>
-            <div style={{ display: 'flex', gap: 16, marginLeft: 4 }}>
-              {tabBtn(t('record.routeLibraryMine'), !showPublic, () => setShowPublic(false))}
-              {tabBtn(t('record.routeLibraryPublic'), showPublic, () => setShowPublic(true))}
-            </div>
-            <div style={{ flex: '1 1 220px', minWidth: 180, display: 'flex', alignItems: 'center', gap: 8, background: surface, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', padding: '10px 12px', marginLeft: 'auto' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'var(--font-body)' }} />
-            </div>
-          </div>
-
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '70px 20px', color: dim }}>
-              <p style={{ fontSize: 14 }}>{
-                showPublic
-                  ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic'))
-                  : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))
-              }</p>
-            </div>
-          )}
-
-          {/* Grille : mobile 1 colonne, desktop max 4 (→3→2→1 selon la largeur) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 18, marginTop: 14 }}>
-            {filtered.map(route => (
-              <div key={route.id} onClick={() => setDetail(route)}
-                style={{ background: surface, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
-                <div style={{ position: 'relative' }}>
-                  <RouteThumbnail route={route} accent={ACCENT} mapBg={mapBg} fallbackStroke={dim} />
-                  {route.route_type === 'race' && (
-                    <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#fff', background: 'rgba(239,68,68,0.92)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>{t('record.routeSaveUsageRace')}</span>
-                  )}
-                  {/* ⋯ sans bulle noire — s'ouvre au survol (et au tap sur mobile) */}
-                  <div onMouseEnter={() => openMenu(route.id)} onMouseLeave={scheduleCloseMenu}
-                    style={{ position: 'absolute', top: 4, right: 4, padding: 4 }}>
-                    <button onClick={e => { e.stopPropagation(); setMenuId(m => m === route.id ? null : route.id) }} aria-label="Options"
-                      style={{ width: 30, height: 30, borderRadius: '50%', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))' }}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                    </button>
-                    {menuId === route.id && (
-                      <div onMouseEnter={() => openMenu(route.id)} onMouseLeave={scheduleCloseMenu} onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 32, right: 0, zIndex: 5, background: popover, border: `1px solid ${border}`, borderRadius: 'var(--r-md)', boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 158, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {onEditRoute && (
-                          <button onClick={() => { setMenuId(null); onEditRoute(route) }} style={menuItem(text)}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                            {t('record.routeLibraryEdit')}
-                          </button>
-                        )}
-                        <button onClick={() => void handleDuplicate(route)} style={menuItem(text)}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
-                          {t('record.routeLibraryDuplicate')}
-                        </button>
-                        <button onClick={() => handleExport(route)} style={menuItem(text)}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-                          {t('record.routeLibraryExport')}
-                        </button>
-                        <button onClick={() => void handleDelete(route.id)} style={menuItem('#EF4444')}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-                          {t('record.routeLibraryDelete')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div style={{ padding: '11px 13px 13px' }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: text, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
-                  <p style={{ fontSize: 11.5, color: dim, margin: '0 0 9px' }}>{sportLabel(route.sport)} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
-                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                    {route.distance_m != null && <Stat label="km" value={(route.distance_m / 1000).toFixed(1)} text={text} dim={dim} />}
-                    <Stat label="D+" value={route.elevation_profile?.length ? `${elevationGainLoss(route.elevation_profile).gain} m` : (route.elevation_gain_m != null ? `${Math.round(route.elevation_gain_m)} m` : '—')} text={text} dim={dim} />
-                    <Stat label="≈ temps" value={estTimeLabel(route.distance_m, route.sport)} text={text} dim={dim} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Ferme le menu ⋯ (tap) au clic ailleurs */}
-      {menuId && <div onClick={() => setMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
-
-      {overlays}
     </div>
   )
 }
 
-// Lieu (ville, région) du point de départ — géocodage inverse mis en cache.
-function PlaceLine({ route, dim }: { route: Route; dim: string }) {
+// Lieu (ville) du point de départ — géocodage inverse mis en cache.
+function PlaceLine({ route }: { route: Route }) {
   const pts = route.snapped_points ?? route.waypoints ?? []
   const start = pts[0]
   const [place, setPlace] = useState<string>(() => (start ? (cachedPlace(start.lat, start.lng) ?? '') : ''))
@@ -447,14 +425,11 @@ function PlaceLine({ route, dim }: { route: Route; dim: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start?.lat, start?.lng])
   if (!place) return null
-  return <span style={{ fontSize: 13, color: dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place}</span>
-}
-
-function Stat({ label, value, text, dim }: { label: string; value: string; text: string; dim: string }) {
+  const town = place.split(',')[0]
   return (
-    <span style={{ display: 'inline-flex', flexDirection: 'column' }}>
-      <span style={{ fontSize: 14, fontWeight: 800, color: text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 10.5, fontWeight: 600, color: dim, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</span>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-dim)', marginTop: 4, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+      <RkIco d={RK_ICON.flag} size={15} sw={1.8} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{town}</span>
     </span>
   )
 }

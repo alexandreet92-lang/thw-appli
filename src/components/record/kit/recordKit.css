@@ -13,6 +13,12 @@
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
+/* Constantes du flux carte (identiques dans les deux thèmes, cf. maquettes L6). */
+.rk-scope {
+  --rk-nav-bg: #0F172A; /* design-allow-color — bandeau de guidage sombre (maquette L6, deux thèmes) */
+  --rk-nav-ink: #FFFFFF; /* design-allow-color — texte sur bandeau de guidage */
+  --rk-ridden: #94A3B8; /* design-allow-color — portion déjà parcourue (gris) */
+}
 .rk-scope *, .rk-scope *::before, .rk-scope *::after { box-sizing: border-box; }
 .rk-scope button { font-family: inherit; }
 
@@ -50,6 +56,31 @@
 .rk-fab[data-variant="dark"] { background: var(--text); color: var(--bg); }
 .rk-fab[data-variant="primary"] { background: var(--primary); color: var(--on-primary); }
 .rk-fab[data-variant="ghost"] { background: var(--surface-chip); box-shadow: none; }
+
+/* ── Verre dépoli (pilules et champs flottants sur la carte) ───────── */
+.rk-glass, .rk-pill.rk-glass, .rk-banner.rk-glass {
+  background: color-mix(in srgb, var(--float-bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: var(--shadow-capsule);
+}
+
+/* ── Contrôle segmenté (Mes parcours / Publics, Entraînement / Compétition) */
+.rk-seg { display: flex; gap: 4px; padding: 4px; border-radius: var(--r-pill); background: var(--surface-chip); }
+.rk-seg button {
+  flex: 1; min-height: 40px; border: none; border-radius: var(--r-pill); background: transparent;
+  color: var(--text-mid); font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: background-color 220ms ease, color 220ms ease, box-shadow 220ms ease;
+}
+.rk-seg button[aria-pressed="true"] { background: var(--surface-card); color: var(--text); box-shadow: var(--shadow-capsule); }
+
+/* ── Pilule de filtre (sport / distance / dénivelé) ─────────────────── */
+.rk-fpill {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 40px; padding: 0 14px;
+  border: none; border-radius: var(--r-pill); background: var(--surface-card); color: var(--text);
+  font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: var(--shadow-capsule);
+}
+.rk-fpill[data-on="1"] { background: var(--text); color: var(--bg); }
 
 /* ── Pilule d'état (en-tête) ─────────────────────────────────────────── */
 .rk-pill {
@@ -386,6 +417,9 @@ button.rk-row:active { background: var(--surface-chip); }
   will-change: transform;
 }
 .rk-sheet[data-surface="card"] { background: var(--surface-card); }
+@media (min-width: 768px) {
+  .rk-sheet { width: min(560px, calc(100% - 40px)); margin: 0 auto; }
+}
 .rk-grab { width: 38px; height: 5px; border-radius: var(--r-pill); background: var(--surface-bar); margin: 8px auto 4px; }
 
 /* ── Panneau de phase (lecteur muscu / Hyrox / boxe) ─────────────────── */
@@ -414,5 +448,5 @@ button.rk-row:active { background: var(--surface-chip); }
 @media (prefers-reduced-motion: reduce) {
   .rk-press, .rk-press:active, .rk-start, .rk-start:active { transition: none; transform: none; }
   .rk-start::before, .rk-ripple, .rk-dot[data-live="1"], .rk-tick, .rk-banner, .rk-fade-up, .rk-lock-pulse { animation: none; }
-  .rk-dots i, .rk-toggle, .rk-toggle::after, .rk-phase, .rk-phase-bar i, .rk-cta-fill { transition: none; }
+  .rk-seg button, .rk-dots i, .rk-toggle, .rk-toggle::after, .rk-phase, .rk-phase-bar i, .rk-cta-fill { transition: none; }
 }

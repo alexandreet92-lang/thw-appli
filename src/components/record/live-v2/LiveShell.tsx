@@ -449,10 +449,13 @@ export default function LiveShell({
   // Garde-fou : au moins une page (repli sur les défauts si config vide).
   const livePages = pages.length > 0 ? pages : DEFAULT_PAGES
   const onMapPage = livePages[pageIndex]?.type === 'map'
-  const controlsHidden = started && onMapPage
-  // Sur la carte en cours d'enregistrement, les commandes vivent dans la console
-  // MapPage (bas de carte) : les points de pagination remontent au-dessus.
-  const dotsBottom = controlsHidden ? 306 : (machine.phase === 'idle' ? 222 : machine.phase === 'paused' ? 172 : 150)
+  const hasRoute = (route?.snapped_points?.length ?? 0) > 1
+  // Sur la carte avec un parcours, la feuille de données de MapPage porte les
+  // commandes (Démarrer / verrou · pause · Lap / Reprendre · Terminer). Sans
+  // parcours, ou écran verrouillé, le dock du shell reste visible.
+  const mapOwnsControls = onMapPage && hasRoute && !locked
+  const [mapSheetH, setMapSheetH] = useState(260)
+  const dotsBottom = mapOwnsControls ? null : (machine.phase === 'idle' ? 222 : machine.phase === 'paused' ? 172 : 150)
   const currentPos = gps.currentLat != null && gps.currentLng != null
     ? { lat: gps.currentLat, lng: gps.currentLng }
     : null
@@ -530,6 +533,12 @@ export default function LiveShell({
                 onCenter={handlePauseToggle}
                 onLap={doLap}
                 onFlag={handleFlagFinish}
+                onStart={handleStart}
+                canStart={canStart}
+                onLock={() => send({ type: 'LOCK' })}
+                swap={swap}
+                onClose={!locked && (machine.phase === 'idle' || machine.phase === 'paused') ? handleClose : undefined}
+                onBottomInset={setMapSheetH}
               />
             ) : (
               <ConfigDataPage
@@ -583,7 +592,7 @@ export default function LiveShell({
       )}
 
       {/* ── Bandeaux : auto-pause + toasts (pilules sous l'en-tête) ── */}
-      <RkBannerSlot top={onMapPage ? 12 : 60}>
+      <RkBannerSlot top={onMapPage ? 150 : 60}>
         {autoPausedNow && !onMapPage && <RkBanner dot={RK_DOT.warn}>{t('w2c.autoPaused')}</RkBanner>}
         {toast && <RkBanner key={toast}>{toast}</RkBanner>}
       </RkBannerSlot>
@@ -637,12 +646,13 @@ export default function LiveShell({
         onSelect={i => { const el = pagesRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }) }}
         style={{
           position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 54,
-          bottom: `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`, transition: 'bottom 0.3s cubic-bezier(0.22,1,0.36,1)',
+          bottom: dotsBottom == null ? `${mapSheetH + 6}px` : `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`,
+          transition: 'bottom 0.3s cubic-bezier(0.22,1,0.36,1)',
         }}
       />
 
       {/* ── Zone contrôles (transitions ressort entre états) ── */}
-      {!controlsHidden && !(machine.phase === 'idle' && onMapPage) && (
+      {!mapOwnsControls && (
         <RkControlDock stateKey={dockKey}>
           {dockKey === 'idle' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>

@@ -18,6 +18,7 @@ const MOVES = [
   ['src/app/auth/callback', 'auth-callback'], // handler OAuth serveur (reste sur Vercel)
   ['src/app/admin', 'admin'],                 // page admin serveur, inutile dans l'app mobile
   ['src/middleware.ts', 'middleware.ts'],
+  ['src/app/defi', 'defi'],                   // page publique QR (rendu serveur), servie par Vercel
 ]
 
 // Patch texte : layout global en force-static le temps de l'export (restauré après).

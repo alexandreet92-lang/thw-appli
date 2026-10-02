@@ -101,7 +101,8 @@ function computeFit(pts: Pt[], W: number, H: number, dark: boolean): Fit | null 
     last = p
   }
 
-  const style = dark ? 'dark-v11' : 'outdoors-v12'
+  // Carte toujours en couleurs (comme Strava), même en thème sombre.
+  const style = 'outdoors-v12'
   const url = MAPBOX_TOKEN
     ? `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${lng},${lat},${z},0/${W}x${H}@2x?access_token=${MAPBOX_TOKEN}`
     : null
@@ -192,7 +193,7 @@ export function FeedRouteMap({ encodedPolyline, color, label, ratio = 2 / 3 }: P
             </pattern>
           </defs>
           {/* Liseré (contraste sur le fond de carte) puis trait couleur du sport */}
-          <path d={fit.path} fill="none" stroke={dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.95)'} strokeWidth={7.5} strokeLinecap="round" strokeLinejoin="round" /> {/* design-allow-color */}
+          <path d={fit.path} fill="none" stroke={'rgba(255,255,255,0.95)'} strokeWidth={7.5} strokeLinecap="round" strokeLinejoin="round" /> {/* design-allow-color */}
           <path d={fit.path} fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
           {/* Arrivée (damier) sous le départ (vert) quand la boucle se referme */}
           <circle cx={fit.end[0]} cy={fit.end[1]} r={6.5} fill={`url(#chk-${uid})`} stroke="#ffffff" strokeWidth={2} /> {/* design-allow-color */}

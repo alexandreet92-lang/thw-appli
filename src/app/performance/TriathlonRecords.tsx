@@ -11,6 +11,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { TriathlonRadar, type TriFormat } from './RadarChart'
 import { toSec, hmsFull } from './triActivities'
 import { MCard, MSeg, MBars, MHint, MEmpty, MPrimary, M_ICONS, monthYear } from './mobile/kit'
+import { useIsMobile, PSheet, SDot, SSection, SCard, SGroup, SRow, SStats, SCalc, SPrimary, SDanger } from './mobile/EditSheet'
 
 const SWIM = '#06b6d4', BIKE = '#3b82f6', RUN = '#f97316' // design-allow-color — teintes sport
 const TRI = '#8B5CF6' // design-allow-color — teinte sport triathlon sanctionnée
@@ -60,6 +61,7 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
+  const isMobile = useIsMobile()
   useEffect(() => {
     const id = setTimeout(() => setMounted(true), 20)
     const r = requestAnimationFrame(() => setShown(true))
@@ -77,6 +79,49 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
     { label: t('performance.sportRun'), color: RUN, sec: segSecs[4].sec },
     { label: 'T1+T2', color: TRANS, sec: transSec },
   ]
+
+  if (isMobile) return (
+    <PSheet onClose={requestClose} closing={closing} zIndex={3300} title={`${rec.distance_label} · ${rec.performance}`}
+      subtitle={<><SDot color={TRI} />{new Date(rec.achieved_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}</>}
+      footer={<>
+        <SPrimary onClick={onEdit}>{t('perf2.edit')}</SPrimary>
+        <SDanger onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete() }}>{t('perf2.delete')}</SDanger>
+      </>}>
+      <SSection label={t('performance.breakdown')}>
+        <SCard>
+          {/* Barre empilée de la course entière */}
+          <div style={{ display: 'flex', height: 14, borderRadius: 'var(--r-pill)', overflow: 'hidden', background: 'var(--surface-chip)' }}>
+            {segSecs.map(s => (
+              <span key={s.key} title={`${segLabel(s.key)} ${hmsFull(s.sec)}`}
+                style={{ display: 'block', height: '100%', width: mounted ? `${pct(s.sec)}%` : '0%', background: s.color, opacity: s.color === TRANS ? 0.45 : 1, transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
+            ))}
+          </div>
+          <SStats cols={2} items={[
+            { label: t('performance.total'), value: hmsFull(total) },
+            ...sportBars.map(b => ({ label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><SDot color={b.color} size={7} />{b.label}</span>, value: b.sec > 0 ? hmsFull(b.sec) : '—', sub: b.sec > 0 && total > 0 ? `${Math.round(pct(b.sec))} %` : undefined })),
+          ]} />
+        </SCard>
+      </SSection>
+      {segSecs.some(s => s.sec > 0) && (
+        <SGroup>
+          {segSecs.filter(s => s.sec > 0).map((s, i) => (
+            <SRow key={s.key} first={i === 0} lead={<SDot color={s.color} />} label={segLabel(s.key)} value={hmsFull(s.sec)} />
+          ))}
+        </SGroup>
+      )}
+      {act && (
+        <SSection label={t('perf2.linkedActivity')}>
+          <SCard>
+            <SCalc items={[
+              act.elevation_gain_m != null && `D+ ${Math.round(act.elevation_gain_m)} m`,
+              act.avg_hr != null && `FC ${act.avg_hr}${act.max_hr ? ` / ${act.max_hr}` : ''} bpm`,
+              act.avg_temp_c != null && `${Math.round(act.avg_temp_c)}°C`,
+            ]} />
+          </SCard>
+        </SSection>
+      )}
+    </PSheet>
+  )
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 3300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>

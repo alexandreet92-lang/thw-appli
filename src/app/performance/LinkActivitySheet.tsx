@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { fetchActivities, fmtDate, summaryLine, type ActivityLite, type Segment } from './triActivities'
+import { useIsMobile, PSheet, SGroup, SRow, SEmpty, SSkeleton, sInput } from './mobile/EditSheet'
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage (scrim)
 
 export function LinkActivitySheet({ segment, onClose, onLink }: {
@@ -18,6 +19,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
   const [acts, setActs] = useState<ActivityLite[] | null>(null)
   const [q, setQ] = useState('')
   const [closing, setClosing] = useState(false)
+  const mobile = useIsMobile()
 
   useEffect(() => { void fetchActivities(segment).then(setActs) }, [segment])
 
@@ -29,6 +31,25 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
   }, [acts, q])
 
   const close = () => { setClosing(true); setTimeout(onClose, 240) }
+
+  if (mobile) return (
+    <PSheet onClose={close} closing={closing} zIndex={3200} full
+      title={t('performance.linkActivityTitle', { segment: SEG_LABEL[segment] })}>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('performance.searchNameDate')} aria-label={t('performance.searchNameDate')}
+        type="search" style={{ ...sInput, fontWeight: 500, background: 'var(--surface-card)' }} />
+      {acts === null ? <SSkeleton rows={4} />
+        : filtered.length === 0 ? <SGroup><SEmpty>{t('performance.noActivityFound', { segment: SEG_LABEL[segment].toLowerCase() })}</SEmpty></SGroup>
+        : (
+          <SGroup>
+            {filtered.map((a, i) => (
+              <SRow key={a.id} first={i === 0} chevron onClick={() => { onLink(a); close() }}
+                label={a.title ?? t('performance.untitled')}
+                sub={[fmtDate(a.started_at), summaryLine(segment, a)].filter(Boolean).join(' · ')} />
+            ))}
+          </SGroup>
+        )}
+    </PSheet>
+  )
 
   return createPortal(
     <div onClick={close}

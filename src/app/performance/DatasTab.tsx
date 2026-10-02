@@ -24,6 +24,10 @@ import {
   PerfMobileContext, usePerfMobile, M_CARD, M_ICONS, MCard, MRow, MLink, MChips, MSeg, MBars, MHint, MEmpty,
   MButtons, MSecondary, MLegendChip, MetaSelect, MetaButton, MLevelChip, MYearBars, NUM, FB, CARD_BG, CHIP_BG, LINE, shortDay, monthYear,
 } from './mobile/kit'
+import {
+  useIsMobile, useSheetClose, PSheet, SDot, SSection, SCard, SGroup, SRow, SGrid, SField, SLabel, SSeg, SChips, SCalc, SStats,
+  SPrimary, SLinkBtn, SEmpty, S_NUM,
+} from './mobile/EditSheet'
 
 // ── Types ────────────────────────────────────────────────────────
 export type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
@@ -985,6 +989,8 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
   onClose: () => void
 }) {
   const { t } = useI18n()
+  const isMobileSheet = useIsMobile()
+  const [sheetClosing, closeSheet] = useSheetClose(onClose)
   const sorted = [...records].sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
   const paceOf = (r: SpRecord): string | null => {
     const km = distKm?.[r.distance_label] ?? 0
@@ -993,6 +999,44 @@ function RecordsAllOverlay({ title, records, actMap, distKm, onEdit, onDelete, o
     const p = sec / km
     return `${Math.floor(p / 60)}:${String(Math.round(p % 60)).padStart(2, '0')}/km`
   }
+
+  // Mobile : feuille grise, liste groupée (tap = modifier, corbeille rouge = supprimer).
+  if (isMobileSheet) return (
+    <PSheet onClose={closeSheet} closing={sheetClosing} zIndex={3300} full title={title}
+      subtitle={`${sorted.length} ${sorted.length > 1 ? t('perf2.activities') : t('perf2.activity')}`}>
+      {sorted.length === 0 ? <SGroup><SEmpty>{t('perf2.noRaceRecorded')}</SEmpty></SGroup> : (
+        <SGroup>
+          {sorted.map((r, i) => {
+            const act = r.activity_id ? actMap?.[r.activity_id] : undefined
+            const pace = paceOf(r)
+            const sub = [
+              new Date(r.achieved_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' }),
+              pace,
+              act?.elevation_gain_m != null ? `D+ ${Math.round(act.elevation_gain_m)} m` : null,
+              act?.avg_hr != null ? `FC ${act.avg_hr}` : null,
+              act?.avg_temp_c != null ? `${Math.round(act.avg_temp_c)}°C` : null,
+            ].filter(Boolean).join(' · ')
+            return (
+              <div key={r.id} style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
+                {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <SRow first onClick={() => onEdit(r)}
+                    label={<>{r.distance_label} · <span style={S_NUM}>{r.performance}</span>{r.activity_id && <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{t('perf2.linked')}</span>}</>}
+                    sub={sub} />
+                </div>
+                <button type="button" aria-label={t('perf2.delete')} title={t('perf2.delete')}
+                  onClick={() => { if (window.confirm(t('perf2.confirmDelete'))) onDelete(r.id) }}
+                  style={{ width: 52, flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                </button>
+              </div>
+            )
+          })}
+        </SGroup>
+      )}
+    </PSheet>
+  )
+
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'fixed', inset: 0, zIndex: 3300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -1085,6 +1129,8 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     : sport === 'rowing' ? { ergo, damper: ergo ? damper : '' }
     : {}
 
+  const isMobileSheet = useIsMobile()
+  const [sheetClosing, closeSheet] = useSheetClose(onClose)
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
 
@@ -1353,6 +1399,101 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   const canSave = !!draft.trim()
   const validItems = sumItems.filter(i => i.value)
+
+  // ── Mobile : feuille « cartes » (coquille EditSheet) ──────────
+  if (isMobileSheet) {
+    const mPerf: React.ReactNode =
+      sport === 'run' ? <>
+        <SField label={t('perf2.timeHhmmss')} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 0:45:30" autoFocus />
+        {timeSec > 0 && runKm > 0 && <SCalc items={[runPaceStr, runSpeedStr, runVmaStr]} />}
+        {profile.vma <= 0 && <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{t('perf2.enterVmaHint')}</span>}
+      </>
+      : sport === 'swim' ? <>
+        <SField label={t('perf2.timeMmss')} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 5:20" autoFocus />
+        {swimSplitStr && <SCalc items={[`${t('perf2.pace')} : ${swimSplitStr}`]} />}
+      </>
+      : sport === 'rowing' ? <>
+        <SField label={t('perf2.timeMmssOrHhmmss')} value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 6:52" autoFocus />
+        <SCalc items={[rowSplStr && `Split : ${rowSplStr}`, rowPower ? `~${rowPower} W (Concept2)` : null]} />
+      </>
+      : sport === 'bike' ? <>
+        <SGrid>
+          <SField label={t('perf2.avgWattsRequired')} unit="W" type="number" inputMode="numeric" value={draft} onChange={e => setDraft(e.target.value)} placeholder="250" autoFocus
+            hint={bikeWkg ? `→ ${bikeWkg} W/kg` : (draft && profile.weight === 0 ? t('perf2.enterWeightHint') : undefined)} />
+          <SField label={t('perf2.npOptional')} unit="W" type="number" inputMode="numeric" value={np} onChange={e => setNp(e.target.value)} placeholder="265"
+            hint={npWkg ? `→ NP : ${npWkg} W/kg` : undefined} />
+        </SGrid>
+        <SField label={t('perf2.durationOptional')} value={dur} onChange={e => setDur(e.target.value)} placeholder="ex : 1:02:30" />
+      </>
+      : <SField label={t('perf2.performance')} value={draft} onChange={e => setDraft(e.target.value)} autoFocus />
+
+    const mCond: React.ReactNode =
+      sport === 'run' ? <>
+        <div>
+          <SLabel>{t('perf2.surface')}</SLabel>
+          <SSeg ariaLabel={t('perf2.surface')} value={surface} onChange={setSurface}
+            options={(['route', 'piste', 'trail'] as const).map(s => ({ id: s, label: t(`perf2.surface_${s}`) }))} />
+        </div>
+        {surface === 'trail' && <SField label={t('perf2.elevationGainM')} unit="m" type="number" inputMode="numeric" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="450" />}
+      </>
+      : sport === 'swim' ? <>
+        <div>
+          <SLabel>{t('perf2.pool')}</SLabel>
+          <SSeg ariaLabel={t('perf2.pool')} value={pool} onChange={setPool}
+            options={(['25m', '50m', 'open'] as const).map(s => ({ id: s, label: s === 'open' ? t('perf2.openWater') : s }))} />
+        </div>
+        <div>
+          <SLabel>{t('perf2.wetsuit')}</SLabel>
+          <SSeg ariaLabel={t('perf2.wetsuit')} value={combi ? 'with' : 'without'} onChange={v => setCombi(v === 'with')}
+            options={[{ id: 'without', label: t('perf2.withoutWetsuit') }, { id: 'with', label: t('perf2.withWetsuit') }]} />
+        </div>
+      </>
+      : sport === 'rowing' ? <>
+        <div>
+          <SLabel>{t('perf2.support')}</SLabel>
+          <SSeg ariaLabel={t('perf2.support')} value={ergo ? 'ergo' : 'water'} onChange={v => setErgo(v === 'ergo')}
+            options={[{ id: 'ergo', label: t('perf2.ergometer') }, { id: 'water', label: t('perf2.onWater') }]} />
+        </div>
+        {ergo && <SField label={t('perf2.damperResistance')} type="number" inputMode="numeric" value={damper} onChange={e => setDamper(e.target.value)} placeholder="4–5" min={1} max={10} />}
+      </>
+      : sport === 'bike' ? <>
+        <div>
+          <SLabel>{t('perf2.environment')}</SLabel>
+          <SSeg ariaLabel={t('perf2.environment')} value={ergo ? 'home' : 'ext'} onChange={v => setErgo(v === 'home')}
+            options={[{ id: 'home', label: t('perf2.homeTrainer') }, { id: 'ext', label: t('perf2.outdoor') }]} />
+        </div>
+        {!ergo && <SField label={t('perf2.elevationGainPlus')} unit="m" type="number" inputMode="numeric" value={dplus} onChange={e => setDplus(e.target.value)} placeholder="800" />}
+      </>
+      : null
+
+    return (
+      <PSheet onClose={closeSheet} closing={sheetClosing} title={t('perf2.editRecord')}
+        subtitle={<><SDot color={color} />{sportLabel} · {distLabel}</>}
+        footer={<SPrimary onClick={() => void onConfirm(collectExtras())} disabled={!canSave || saving}>{saving ? t('perf2.saving') : t('perf2.saveThisRecord')}</SPrimary>}>
+        <SSection label={t('perf2.performance')}>
+          <SCard>
+            {mPerf}
+            <SField label={t('perf2.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </SCard>
+        </SSection>
+        {mCond && <SSection label={t('perf2.conditions')}><SCard>{mCond}</SCard></SSection>}
+        {(sport === 'run' || sport === 'swim' || sport === 'bike') && onOpenLink && (
+          <SGroup>
+            <SRow first label={t('perf2.linkedActivity')} sub={activityId ? t('perf2.activityLinked') : t('perf2.noActivityLinked')}
+              right={<span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                {activityId && onUnlink && <SLinkBtn color="var(--text-mid)" onClick={onUnlink}>{t('perf2.unlink')}</SLinkBtn>}
+                <SLinkBtn onClick={onOpenLink}>{activityId ? t('perf2.change') : t('perf2.link')}</SLinkBtn>
+              </span>} />
+          </SGroup>
+        )}
+        {validItems.length > 0 && (
+          <SSection label={t('perf2.summary')}>
+            <SCard><SStats items={validItems.map(i => ({ label: i.label, value: i.value }))} /></SCard>
+          </SSection>
+        )}
+      </PSheet>
+    )
+  }
 
   return createPortal(
     <div
@@ -4892,6 +5033,39 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
               {mobile && <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}>{M_ICONS.chart}</span>}
               {t('perf2.volumeBySport')}
             </h3>
+            {mobile ? (
+              /* Mobile : segmenté Mois / Semaine, sélecteurs en méta, pastilles Comparer · Courses · Blessures */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+                <MSeg ariaLabel={t('perf2.month')} value={chart1Period} onChange={setChart1Period}
+                  options={[{ id: 'mois', label: t('perf2.month') }, { id: 'semaine', label: t('perf2.weekShort') }]} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minHeight: 32 }}>
+                  {!c1CompareMode ? (
+                    <>
+                      <MetaSelect ariaLabel={t('pe1.year')} value={chart1Year} onChange={setChart1Year}
+                        options={c1YearOpts.map(yr => ({ id: yr, label: yr }))} />
+                      <MetaSelect ariaLabel={t('perf2.metric')} value={chart1Metric} onChange={setChart1Metric}
+                        options={[{ id: 'heures', label: t('perf2.hours') }, { id: 'km', label: t('perf2.distanceKm') }, { id: 'nb_sorties', label: t('perf2.sessionsShort') }]} />
+                    </>
+                  ) : (
+                    <MetaButton onClick={() => setC1CompareSheet(true)} ariaLabel={t('perf2.compareMode')}>
+                      {(c1CompareYears.length ? c1CompareYears.join(' · ') : t('perf2.yearsToCompareMax3'))} ▾
+                    </MetaButton>
+                  )}
+                </div>
+                <SChips ariaLabel={t('perf2.display')}
+                  options={[
+                    { id: 'cmp', label: t('perf2.compare') },
+                    { id: 'races', label: <><SDot color="var(--danger)" size={7} />{t('perf2.races')}</> },
+                    { id: 'inj', label: <><span aria-hidden style={{ fontSize: 13 }}>⚡</span>{t('perf2.injuries')}</> },
+                  ]}
+                  isOn={id => id === 'cmp' ? c1CompareMode : id === 'races' ? c1ShowRaces : c1ShowBlessures}
+                  onPick={id => {
+                    if (id === 'cmp') { const next = !c1CompareMode; setC1CompareMode(next); if (next) setC1CompareSheet(true) }
+                    else if (id === 'races') setC1ShowRaces(v => !v)
+                    else setC1ShowBlessures(v => !v)
+                  }} />
+              </div>
+            ) : (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Toggle Mois / Semaine */}
               <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
@@ -4984,6 +5158,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* ── Panneau Comparer — desktop inline ── */}
@@ -5327,8 +5502,28 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
           <EmptyState icon="chart" title={t('perf2.noData')} description={t('perf2.noActivityForYear', { year: chart1Year })} />
         )}
 
+        {/* ── Feuille mobile (page détail Évolution) — Mode Comparer ── */}
+        {c1CompareMode && mobile && c1CompareSheet && (
+          <PSheet onClose={() => setC1CompareSheet(false)} title={t('perf2.compareMode')} zIndex={3000}
+            footer={<SPrimary onClick={() => setC1CompareSheet(false)}>{t('perf2.apply')}</SPrimary>}>
+            <SSection label={t('perf2.sport')}>
+              <SChips ariaLabel={t('perf2.sport')} options={YD_SPORTS.map(sp => ({ id: sp.id as string, label: t(YD_SPORT_KEY[sp.id] ?? '') || sp.label }))}
+                isOn={id => id === c1CompareSport} onPick={setC1CompareSport} />
+            </SSection>
+            <SSection label={t('perf2.metric')}>
+              <SSeg ariaLabel={t('perf2.metric')} value={chart1Metric} onChange={setChart1Metric}
+                options={[{ id: 'heures', label: t('perf2.hours') }, { id: 'km', label: t('perf2.distanceKm') }, { id: 'nb_sorties', label: t('perf2.sessionsShort') }]} />
+            </SSection>
+            <SSection label={t('perf2.yearsToCompareMax3')}>
+              <SChips ariaLabel={t('perf2.yearsToCompareMax3')}
+                options={c1YearOpts.map(yr => ({ id: yr, label: <><SDot color={C1_CMP_COLORS[yr] ?? 'var(--text-dim)'} size={8} />{yr}</> }))}
+                isOn={yr => c1CompareYears.includes(yr)}
+                onPick={yr => setC1CompareYears(prev => prev.includes(yr) ? prev.filter(y => y !== yr) : prev.length < 3 ? [...prev, yr] : prev)} />
+            </SSection>
+          </PSheet>
+        )}
         {/* ── Bottom sheet mobile — Mode Comparer ── */}
-        {c1CompareMode && isMobile && c1CompareSheet && (
+        {c1CompareMode && isMobile && !mobile && c1CompareSheet && (
           <div
             style={{
               position: 'fixed', inset: 0, zIndex: 200,
@@ -5564,8 +5759,45 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
         </Card>
       )}
 
+      {/* ── Mobile : saisie manuelle — liste groupée + feuille d'édition ── */}
+      {mobile && mode === 'manual' && (
+        <MCard title={`${t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label} — ${t('perf2.manualEntry')}`}>
+          {manualListYrs.map((yr, i) => {
+            const entry = manualEntry(yr)
+            const sum = entry
+              ? sportMetrics.slice(0, 3).map(mk => { const m = YD_METRICS[mk]!; const v = m.fromManual(entry); return v != null && v > 0 ? `${t(YD_METRIC_KEY[m.key] ?? '') || m.label} ${m.fmt(v)}` : null }).filter(Boolean).join(' · ')
+              : ''
+            return (
+              <MRow key={yr} first={i === 0} onClick={() => startEdit(yr)}
+                label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><SDot color={YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR} />{yr}</span>}
+                sub={sum || t('perf2.noData')}
+                value={<span style={{ color: 'var(--primary)' }}>{entry ? t('perf2.edit') : t('perf2.enterYearBtn')}</span>} />
+            )
+          })}
+        </MCard>
+      )}
+      {mobile && mode === 'manual' && editYear && (
+        <PSheet onClose={() => { setEditYear(null); setEditDraft({}) }} cancelLabel={t('perf2.cancel')}
+          title={editYear} subtitle={<><SDot color={SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR} />{t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label} · {t('perf2.manualEntry')}</>}
+          footer={<SPrimary onClick={() => { void saveManual(editYear) }} disabled={saving}>{saving ? '…' : t('perf2.confirm')}</SPrimary>}>
+          <SCard>
+            <SGrid>
+              {sportMetrics.map(mk => {
+                const m = YD_METRICS[mk]; if (!m) return null
+                const rawVal = editDraft[m.manualKey]
+                return (
+                  <SField key={mk} label={t(YD_METRIC_KEY[m.key] ?? '') || m.label} type="number" inputMode="decimal" step={m.step} min="0"
+                    value={typeof rawVal === 'number' ? String(rawVal) : ''}
+                    onChange={e => setEditDraft(p => ({ ...p, [m.manualKey]: e.target.value === '' ? null : parseFloat(e.target.value) }))} />
+                )
+              })}
+            </SGrid>
+          </SCard>
+        </PSheet>
+      )}
+
       {/* ── Manual entry list ── */}
-      {mode === 'manual' && (
+      {!mobile && mode === 'manual' && (
         <Card>
           <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, margin: '0 0 10px' }}>
             {t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label} — {t('perf2.manualEntry')}

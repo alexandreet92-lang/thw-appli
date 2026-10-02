@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Metric } from '@/components/dashboard/primitives'
 import { MCard, MLegendChip, MLink, MRow, MEmpty, MPrimary, M_ICONS } from './mobile/kit'
 import { createPortal } from 'react-dom'
+import {
+  useIsMobile, PSheet, SDot, SSection, SCard, SGroup, SRow, SGrid, SField, SLabel, SChips, SSeg, SScale, SSwitch,
+  SCalc, SStats, SPrimary, SDanger, SError, SEmpty, SAccordion, S_NUM,
+} from './mobile/EditSheet'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
@@ -401,6 +405,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
   const [deleting,  setDeleting] = useState(false)
   const [error,     setError]    = useState<string | null>(null)
   const [raceName,  setRaceName] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     setMounted(true)
@@ -503,6 +508,91 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
       setDeleting(false)
     }
   }
+
+  if (isMobile) return (
+    <PSheet onClose={handleClose} closing={closing} zIndex={3100}
+      title={isEdit ? t('perf2.editThisClimb') : t('perf2.newClimb')}
+      subtitle={<><SDot color={BIKE_COLOR} />{t('perf2.cycling')}</>}
+      footer={<>
+        {error && <SError>{error}</SError>}
+        <SPrimary onClick={() => void handleSave()} disabled={!canSave || saving}>
+          {saving ? t('perf2.saving') : isEdit ? t('perf2.saveChanges') : t('perf2.saveThisClimb')}
+        </SPrimary>
+        {isEdit && <SDanger onClick={() => void handleDelete()} disabled={deleting}>{deleting ? t('perf2.deleting') : t('perf2.deleteThisClimb')}</SDanger>}
+      </>}>
+      <SSection label={t('perf2.identification')}>
+        <SCard>
+          <SField label={t('perf2.climbName')} value={name} onChange={e => setName(e.target.value)} placeholder={t('perf2.climbNamePlaceholder')} autoFocus={!isEdit} />
+          <SField label={t('perf2.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+          {existing?.race_id && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-mid)' }}>
+              {t('perf2.linkedRace')} : <b style={{ color: 'var(--text)', fontWeight: 700 }}>{raceName ?? '…'}</b>
+            </span>
+          )}
+        </SCard>
+      </SSection>
+
+      <SSection label={t('perf2.performance')}>
+        <SCard>
+          <SGrid>
+            <SField label={t('perf2.avgWattsRequired')} unit="W" type="number" inputMode="numeric" value={watts} onChange={e => setWatts(e.target.value)} placeholder="280" />
+            <SField label={t('perf2.climbTimeRequired')} value={duration} onChange={e => setDuration(e.target.value)} placeholder="mm:ss" />
+          </SGrid>
+          <SCalc items={[wkg > 0 && `${wkg.toFixed(2)} W/kg`, durMin && `${durMin} min`]} />
+        </SCard>
+      </SSection>
+
+      <SSection label={t('perf2.climbProfile')}>
+        <SCard>
+          <SGrid cols={3}>
+            <SField label={t('perf2.lengthKm')} type="number" inputMode="decimal" value={lengthKm} onChange={e => setLengthKm(e.target.value)} placeholder="13.8" />
+            <SField label={t('perf2.avgGradient')} type="number" inputMode="decimal" value={gradient} onChange={e => setGradient(e.target.value)} placeholder="8.1" />
+            <SField label={t('perf2.summitAltitude')} type="number" inputMode="numeric" value={altitude} onChange={e => setAltitude(e.target.value)} placeholder="1850" />
+          </SGrid>
+          <SCalc items={[dPlus > 0 && `D+ ${dPlus} m`]} />
+        </SCard>
+      </SSection>
+
+      <SSection label={t('perf2.conditions')}>
+        <SCard>
+          <SField label={t('perf2.weightThatDay')} unit="kg" type="number" inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} placeholder="70.5" />
+          <div>
+            <SLabel>{t('perf2.preFatigue')}</SLabel>
+            <SChips options={(['fresh', 'light', 'moderate', 'high'] as const).map(f => ({ id: f, label: t(`perf2.preFatigue_${f}`) }))}
+              isOn={f => preFatigue === f} onPick={setPreFatigue} />
+          </div>
+          <SGrid>
+            <SField label={t('perf2.tempBottom')} unit="°C" type="number" inputMode="decimal" value={tempBottom} onChange={e => setTempBottom(e.target.value)} placeholder="18" />
+            <SField label={t('perf2.tempSummit')} unit="°C" type="number" inputMode="decimal" value={tempSummit} onChange={e => setTempSummit(e.target.value)} placeholder="8" />
+          </SGrid>
+          <div>
+            <SLabel>{t('perf2.subjectiveIntensity')}</SLabel>
+            <SScale value={intensity} onChange={v => setIntensity(intensity === v ? null : v)}
+              options={([5, 4, 3, 2, 1] as const).map(v => ({ v, label: t(`perf2.intensity_${v}`) }))} />
+          </div>
+        </SCard>
+        <div style={{ marginTop: 12 }}>
+          <SGroup>
+            <SRow first label={withNutrition ? t('perf2.withNutrition') : t('perf2.withoutNutrition')}
+              right={<SSwitch on={withNutrition} onChange={setWithNutrition} label={t('perf2.withNutrition')} />} />
+          </SGroup>
+        </div>
+      </SSection>
+
+      {canSave && previewScore != null && (
+        <SSection label={t('perf2.summary')}>
+          <SCard>
+            <SStats cols={3} items={[
+              { label: 'W/kg', value: wkg.toFixed(2) },
+              { label: t('perf2.duration'), value: `${durMin} min` },
+              { label: t('perf2.score'), value: `${previewScore.toFixed(0)}/100`,
+                sub: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><SDot color={scoreColor(previewScore)} size={7} />{levelOf(previewScore).label}</span> },
+            ]} />
+          </SCard>
+        </SSection>
+      )}
+    </PSheet>
+  )
 
   return createPortal(
     <div style={{
@@ -718,8 +808,9 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
 }
 
 // ─── Accordion ────────────────────────────────────────────────────────────────
-function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+function Accordion({ title, children, mobile }: { title: string; children: React.ReactNode; mobile?: boolean }) {
   const [open, setOpen] = useState(false)
+  if (mobile) return <SAccordion title={title}>{children}</SAccordion>
   return (
     <div style={{ border:'1px solid var(--border)', borderRadius: 'var(--r-md)', overflow:'hidden', marginTop:12 }}>
       <button onClick={()=>setOpen(o=>!o)} style={{
@@ -774,12 +865,49 @@ const BAREM_TABLE_KEY: Record<FatigueTable, string> = {
   standard: 'perf2.baremStandard', moderate: 'perf2.baremModerate', heavy: 'perf2.baremHeavy',
 }
 
-function BaremeAccordion() {
+function BaremeAccordion({ mobile }: { mobile?: boolean } = {}) {
   const { t } = useI18n()
   const [tab, setTab] = useState<FatigueTable>('standard')
 
   // 6 niveaux affichés (Alien → Amateur), correspondant aux 6 lignes de REF_TABLES_ALL
   const shownLevels = LEVELS.slice(0, 6)
+
+  if (mobile) {
+    const th: React.CSSProperties = { padding: '8px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }
+    return (
+      <SAccordion title={t('perf2.levelsScale')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SSeg ariaLabel={t('perf2.levelsScale')} value={tab} onChange={setTab}
+            options={(['standard', 'moderate', 'heavy'] as FatigueTable[]).map(tbl => ({ id: tbl, label: t(BAREM_TABLE_KEY[tbl]) }))} />
+          <div className="pe1-noscroll" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--surface-card)' }}>{t('perf2.duration')}</th>
+                  {shownLevels.map(l => (
+                    <th key={l.label} style={th}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><SDot color={l.color} size={7} />{l.label}</span></th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {BAREM_DURS.map((dur, ri) => (
+                  <tr key={dur}>
+                    <td style={{ ...S_NUM, padding: '10px 6px', fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', borderBottom: ri < BAREM_DURS.length - 1 ? '1px solid var(--border)' : 'none', position: 'sticky', left: 0, background: 'var(--surface-card)' }}>{dur} min</td>
+                    {shownLevels.map((l, li) => (
+                      <td key={l.label} style={{ ...S_NUM, padding: '10px 6px', fontSize: 14, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: ri < BAREM_DURS.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        ≥ {REF_TABLES_ALL[tab][li][BAREM_BP_IDX[ri]].toFixed(1)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('perf2.baremFootnote')}</p>
+        </div>
+      </SAccordion>
+    )
+  }
 
   return (
     <Accordion title={t('perf2.levelsScale')}>
@@ -835,6 +963,119 @@ function BaremeAccordion() {
   )
 }
 
+// Contenu « Méthode de calcul » (partagé desktop / mobile).
+function ClimbMethodBody() {
+  const { t } = useI18n()
+  return (
+    <>
+      <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t('lo2.scoreHowTitle')}</p>
+      <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
+        {t('lo2.scoreP1a')}<strong style={{ color:'var(--text)' }}>Alien</strong>{t('lo2.scoreP1b')}<em>{t('lo2.scoreP1et')}</em>{t('lo2.scoreP1c')}
+      </p>
+      <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 12px' }}>
+        {t('lo2.scoreP2a')}<strong style={{ color:'var(--text)' }}>6.4 W/kg</strong>{t('lo2.scoreP2b')}<strong style={{ color:'var(--text)' }}>7.8 W/kg</strong>{t('lo2.scoreP2c')}<strong style={{ color:'var(--text)' }}>5.6 W/kg</strong>{t('lo2.scoreP2d')}
+      </p>
+
+      {/* Formule */}
+      <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 6px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
+        {t('lo2.scoreFormula1')}
+      </div>
+      <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 14px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
+        {t('lo2.scoreFormula2')}
+      </div>
+      <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
+        {t('lo2.scoreP3a')}<strong style={{ color:'var(--text)' }}>{t('lo2.scoreP3strong')}</strong>{t('lo2.scoreP3b')}
+      </p>
+
+      {/* Exemples */}
+      {[
+        {
+          title: 'lo2.scoreEx1Title',
+          lines: ['lo2.scoreEx1L0','lo2.scoreEx1L1','lo2.scoreEx1L2','lo2.scoreEx1L3'],
+          result: 'lo2.scoreEx1Result',
+        },
+        {
+          title: 'lo2.scoreEx2Title',
+          lines: ['lo2.scoreEx2L0','lo2.scoreEx2L1','lo2.scoreEx2L2','lo2.scoreEx2L3'],
+          result: 'lo2.scoreEx2Result',
+          note: 'lo2.scoreEx2Note',
+        },
+        {
+          title: 'lo2.scoreEx3Title',
+          lines: ['lo2.scoreEx3L0','lo2.scoreEx3L1','lo2.scoreEx3L2','lo2.scoreEx3L3'],
+          result: 'lo2.scoreEx3Result',
+          note: 'lo2.scoreEx3Note',
+        },
+        {
+          title: 'lo2.scoreEx4Title',
+          lines: ['lo2.scoreEx4L0','lo2.scoreEx4L1','lo2.scoreEx4L2'],
+          note: 'lo2.scoreEx4Note',
+        },
+      ].map(ex => (
+        <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)' }}>
+          <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t(ex.title)}</p>
+          {ex.lines.map(l => (
+            <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily: 'var(--font-body)' }}>{t(l)}</p>
+          ))}
+          {ex.result && (
+            <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily: 'var(--font-body)' }}>{t(ex.result)}</p>
+          )}
+          {ex.note && (
+            <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {t(ex.note)}</p>
+          )}
+        </div>
+      ))}
+
+      {/* Tableau des 3 facteurs */}
+      <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.score3Factors')}</p>
+      <div style={{ overflowX:'auto' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+          <thead>
+            <tr>
+              {['lo2.scoreFactorHead','lo2.scoreImpactHead','lo2.scoreMeasuresHead'].map(h => (
+                <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{t(h)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['lo2.scoreFactorPerceived', '+6%', 'lo2.scoreFactorPerceivedDesc'],
+              ['lo2.scoreFactorAltitude',  '+5%', 'lo2.scoreFactorAltitudeDesc'],
+              ['lo2.scoreFactorTemp',      '+4%', 'lo2.scoreFactorTempDesc'],
+            ].map(([f, imp, desc], i) => (
+              <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{t(f)}</td>
+                <td style={{ padding:'5px 8px', fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
+                <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{t(desc)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Valeurs détaillées */}
+      <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.scoreCoeffValues')}</p>
+      {[
+        { label:'lo2.scoreCoeffTemp', rows:[['lo2.scoreTemp0','×1.00'],['lo2.scoreTemp1','×1.01'],['lo2.scoreTemp2','×1.02'],['lo2.scoreTemp3','×1.03'],['lo2.scoreTemp4','×1.04'],['lo2.scoreTemp5','×1.04']] },
+        { label:'lo2.scoreCoeffAltitude', rows:[['lo2.scoreAlt0','×1.00'],['lo2.scoreAlt1','×1.01'],['lo2.scoreAlt2','×1.02'],['lo2.scoreAlt3','×1.03'],['lo2.scoreAlt4','×1.04'],['lo2.scoreAlt5','×1.05']] },
+        { label:'lo2.scoreCoeffPerceived', rows:[['lo2.scorePerc0','×1.00'],['lo2.scorePerc1','×1.02'],['lo2.scorePerc2','×1.04'],['lo2.scorePerc3','×1.06']] },
+      ].map(({ label, rows }) => (
+        <div key={label} style={{ marginBottom:10 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'var(--text-mid)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{t(label)}</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            {rows.map(([cat, coeff]) => (
+              <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
+                <span style={{ color:'var(--text-dim)' }}>{t(cat)}</span>
+                <span style={{ fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{coeff}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 // ─── RankingDrawer ────────────────────────────────────────────────────────────
 function RankingDrawer({ climbs, onClose, onFilterChange }: {
   climbs: ClimbRecord[]
@@ -848,6 +1089,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [yearFilter, setYearFilter]   = useState<string | null>(null)
   const [durFilter,  setDurFilter]    = useState<DurFilterId | null>(null)
+  const isMobile = useIsMobile()
 
   // Années présentes dans les données
   const allYearsRanking = [...new Set(climbs.map(c => yearOf(c.date)))].sort()
@@ -892,6 +1134,75 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
     )
     .map(c => ({ c, sd: computeScoreDetails(c) }))
     .sort((a, b) => b.sd.total - a.sd.total)
+
+  if (isMobile) return (
+    <PSheet onClose={handleClose} closing={closing} zIndex={3100} full title={t('perf2.climbsRanking')} subtitle={t('perf2.normalizedScore')}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <SChips wrap={false} ariaLabel={t('pe1.year')}
+          options={[{ id: '__all', label: t('perf2.all') }, ...allYearsRanking.map(yr => ({ id: yr, label: yr }))]}
+          isOn={id => id === '__all' ? yearFilter === null : yearFilter === id}
+          onPick={id => setYearFilter(id === '__all' || id === yearFilter ? null : id)} />
+        <SChips wrap={false} ariaLabel={t('perf2.duration')}
+          options={DUR_FILTERS.map(({ label, id }) => ({ id: id ?? '__all', label: id === null ? t('perf2.all') : label }))}
+          isOn={id => id === '__all' ? durFilter === null : durFilter === id}
+          onPick={id => setDurFilter(id === '__all' || id === durFilter ? null : id as DurFilterId)} />
+        {(yearFilter || durFilter) && (
+          <span style={{ fontSize: 13, color: 'var(--text-mid)', padding: '0 4px' }}>
+            {ranked.length} {ranked.length !== 1 ? t('perf2.climbsFilteredPlural') : t('perf2.climbFilteredSingular')}
+            {ranked.length === 0 && ` — ${t('perf2.noResult')}`}
+          </span>
+        )}
+      </div>
+
+      {ranked.length === 0 ? <SGroup><SEmpty>{t('perf2.noClimbForFilter')}</SEmpty></SGroup> : (
+        <SGroup>
+          {ranked.map(({ c, sd }, idx) => {
+            const rank = idx + 1
+            const isOpen = expanded === c.id
+            const lvl = levelOf(sd.total)
+            return (
+              <div key={c.id}>
+                <SRow first={idx === 0} onClick={() => setExpanded(isOpen ? null : c.id)}
+                  lead={<span style={{ ...S_NUM, width: 26, flexShrink: 0, fontSize: 16, fontWeight: 800, color: rank === 1 ? 'var(--charge-mid)' : 'var(--text-mid)' }}>{rank}</span>}
+                  label={c.name}
+                  sub={`${new Date(c.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })} · ${c.wpkg.toFixed(2)} W/kg`}
+                  right={<span style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <b style={{ ...S_NUM, display: 'block', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{sd.total.toFixed(0)}</b>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}><SDot color={lvl.color} size={7} />{lvl.label}</span>
+                  </span>} />
+                {isOpen && (
+                  <div style={{ padding: '0 16px 14px 54px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {([
+                      { label: 'W/kg', val: c.wpkg.toFixed(2) },
+                      { label: t('perf2.divAlienRef'), val: `${sd.alienRef.toFixed(2)} W/kg` },
+                      { label: t('perf2.rawScore'), val: `${sd.scoreBrut.toFixed(1)} / 100` },
+                      { label: t('perf2.mulTemperature'), val: `×${sd.coeffs.temp.toFixed(2)}` },
+                      { label: t('perf2.mulAltitude'), val: `×${sd.coeffs.altitude.toFixed(2)}` },
+                      { label: t('perf2.mulPerceived'), val: `×${sd.coeffs.intensity.toFixed(2)}` },
+                    ]).map(({ label, val }) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 14 }}>
+                        <span style={{ color: 'var(--text-mid)' }}>{label}</span>
+                        <span style={{ ...S_NUM, color: 'var(--text)', fontWeight: 600 }}>{val}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 15, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text)' }}>{t('perf2.finalScore')}</span>
+                      <span style={{ ...S_NUM, fontWeight: 800, color: 'var(--text)' }}>{sd.total.toFixed(1)} / 100</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </SGroup>
+      )}
+
+      <BaremeAccordion mobile />
+      <Accordion mobile title={t('perf2.calcMethod')}>
+        <ClimbMethodBody />
+      </Accordion>
+    </PSheet>
+  )
 
   return createPortal(
     <div style={{
@@ -1038,110 +1349,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
 
           {/* ── Accordion : Méthode ── */}
           <Accordion title={t('perf2.calcMethod')}>
-            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t('lo2.scoreHowTitle')}</p>
-            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
-              {t('lo2.scoreP1a')}<strong style={{ color:'var(--text)' }}>Alien</strong>{t('lo2.scoreP1b')}<em>{t('lo2.scoreP1et')}</em>{t('lo2.scoreP1c')}
-            </p>
-            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 12px' }}>
-              {t('lo2.scoreP2a')}<strong style={{ color:'var(--text)' }}>6.4 W/kg</strong>{t('lo2.scoreP2b')}<strong style={{ color:'var(--text)' }}>7.8 W/kg</strong>{t('lo2.scoreP2c')}<strong style={{ color:'var(--text)' }}>5.6 W/kg</strong>{t('lo2.scoreP2d')}
-            </p>
-
-            {/* Formule */}
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 6px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
-              {t('lo2.scoreFormula1')}
-            </div>
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius: 'var(--r-sm)', padding:'10px 14px', margin:'0 0 14px', fontFamily: 'var(--font-body)', fontSize:12, color:BIKE_COLOR }}>
-              {t('lo2.scoreFormula2')}
-            </div>
-            <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
-              {t('lo2.scoreP3a')}<strong style={{ color:'var(--text)' }}>{t('lo2.scoreP3strong')}</strong>{t('lo2.scoreP3b')}
-            </p>
-
-            {/* Exemples */}
-            {[
-              {
-                title: 'lo2.scoreEx1Title',
-                lines: ['lo2.scoreEx1L0','lo2.scoreEx1L1','lo2.scoreEx1L2','lo2.scoreEx1L3'],
-                result: 'lo2.scoreEx1Result',
-              },
-              {
-                title: 'lo2.scoreEx2Title',
-                lines: ['lo2.scoreEx2L0','lo2.scoreEx2L1','lo2.scoreEx2L2','lo2.scoreEx2L3'],
-                result: 'lo2.scoreEx2Result',
-                note: 'lo2.scoreEx2Note',
-              },
-              {
-                title: 'lo2.scoreEx3Title',
-                lines: ['lo2.scoreEx3L0','lo2.scoreEx3L1','lo2.scoreEx3L2','lo2.scoreEx3L3'],
-                result: 'lo2.scoreEx3Result',
-                note: 'lo2.scoreEx3Note',
-              },
-              {
-                title: 'lo2.scoreEx4Title',
-                lines: ['lo2.scoreEx4L0','lo2.scoreEx4L1','lo2.scoreEx4L2'],
-                note: 'lo2.scoreEx4Note',
-              },
-            ].map(ex => (
-              <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius: 'var(--r-sm)', border:'1px solid var(--border)' }}>
-                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily: 'var(--font-body)' }}>{t(ex.title)}</p>
-                {ex.lines.map(l => (
-                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily: 'var(--font-body)' }}>{t(l)}</p>
-                ))}
-                {ex.result && (
-                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily: 'var(--font-body)' }}>{t(ex.result)}</p>
-                )}
-                {ex.note && (
-                  <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {t(ex.note)}</p>
-                )}
-              </div>
-            ))}
-
-            {/* Tableau des 3 facteurs */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.score3Factors')}</p>
-            <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
-                <thead>
-                  <tr>
-                    {['lo2.scoreFactorHead','lo2.scoreImpactHead','lo2.scoreMeasuresHead'].map(h => (
-                      <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{t(h)}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['lo2.scoreFactorPerceived', '+6%', 'lo2.scoreFactorPerceivedDesc'],
-                    ['lo2.scoreFactorAltitude',  '+5%', 'lo2.scoreFactorAltitudeDesc'],
-                    ['lo2.scoreFactorTemp',      '+4%', 'lo2.scoreFactorTempDesc'],
-                  ].map(([f, imp, desc], i) => (
-                    <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{t(f)}</td>
-                      <td style={{ padding:'5px 8px', fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
-                      <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{t(desc)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Valeurs détaillées */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily: 'var(--font-body)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.scoreCoeffValues')}</p>
-            {[
-              { label:'lo2.scoreCoeffTemp', rows:[['lo2.scoreTemp0','×1.00'],['lo2.scoreTemp1','×1.01'],['lo2.scoreTemp2','×1.02'],['lo2.scoreTemp3','×1.03'],['lo2.scoreTemp4','×1.04'],['lo2.scoreTemp5','×1.04']] },
-              { label:'lo2.scoreCoeffAltitude', rows:[['lo2.scoreAlt0','×1.00'],['lo2.scoreAlt1','×1.01'],['lo2.scoreAlt2','×1.02'],['lo2.scoreAlt3','×1.03'],['lo2.scoreAlt4','×1.04'],['lo2.scoreAlt5','×1.05']] },
-              { label:'lo2.scoreCoeffPerceived', rows:[['lo2.scorePerc0','×1.00'],['lo2.scorePerc1','×1.02'],['lo2.scorePerc2','×1.04'],['lo2.scorePerc3','×1.06']] },
-            ].map(({ label, rows }) => (
-              <div key={label} style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-mid)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{t(label)}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                  {rows.map(([cat, coeff]) => (
-                    <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
-                      <span style={{ color:'var(--text-dim)' }}>{t(cat)}</span>
-                      <span style={{ fontFamily: 'var(--font-body)', color:BIKE_COLOR, fontWeight:700 }}>{coeff}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <ClimbMethodBody />
           </Accordion>
         </div>
       </div>

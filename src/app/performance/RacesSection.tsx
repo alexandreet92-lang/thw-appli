@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Metric } from '@/components/dashboard/primitives'
 import { MCard, MLink, MEmpty, MButtons, MSecondary, M_ICONS } from './mobile/kit'
 import { createPortal } from 'react-dom'
+import {
+  useIsMobile, PSheet, SDot, SSection, SCard, SGroup, SRow, SGrid, SField, STextArea, SLabel, SChips, SSeg, SScale,
+  SCalc, SStats, SPrimary, SDanger, SError, SEmpty, SSkeleton, SLinkBtn, SAccordion, S_NUM,
+} from './mobile/EditSheet'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
@@ -242,8 +246,9 @@ const tog = (active: boolean, _color?: string): React.CSSProperties => ({
 })
 
 // ─── Accordion ────────────────────────────────────────────────────────────────
-function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+function Accordion({ title, children, mobile }: { title: string; children: React.ReactNode; mobile?: boolean }) {
   const [open, setOpen] = useState(false)
+  if (mobile) return <SAccordion title={title}>{children}</SAccordion>
   return (
     <div style={{ border:'1px solid var(--border)', borderRadius: 'var(--r-md)', overflow:'hidden', marginTop:12 }}>
       <button onClick={() => setOpen(o => !o)} style={{
@@ -270,10 +275,45 @@ const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
 const BAREM_TABLE_KEY: Record<FatigueTable, string> = {
   standard: 'perf2.baremStandard', moderate: 'perf2.baremModerate', heavy: 'perf2.baremHeavy',
 }
-function BaremeAccordion() {
+function BaremeAccordion({ mobile }: { mobile?: boolean } = {}) {
   const { t } = useI18n()
   const [tab, setTab] = useState<FatigueTable>('standard')
   const shownLevels = LEVELS.slice(0, 6)
+  if (mobile) {
+    const th: React.CSSProperties = { padding: '8px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }
+    return (
+      <SAccordion title={t('perf2.levelsScale')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SSeg ariaLabel={t('perf2.levelsScale')} value={tab} onChange={setTab}
+            options={(['standard', 'moderate', 'heavy'] as FatigueTable[]).map(tbl => ({ id: tbl, label: t(BAREM_TABLE_KEY[tbl]) }))} />
+          <div className="pe1-noscroll" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--surface-card)' }}>{t('perf2.duration')}</th>
+                  {shownLevels.map(l => (
+                    <th key={l.label} style={th}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><SDot color={l.color} size={7} />{l.label}</span></th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {BAREM_DURS.map((dur, ri) => (
+                  <tr key={dur}>
+                    <td style={{ ...S_NUM, padding: '10px 6px', fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', borderBottom: ri < BAREM_DURS.length - 1 ? '1px solid var(--border)' : 'none', position: 'sticky', left: 0, background: 'var(--surface-card)' }}>{dur} min</td>
+                    {shownLevels.map((l, li) => (
+                      <td key={l.label} style={{ ...S_NUM, padding: '10px 6px', fontSize: 14, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: ri < BAREM_DURS.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        ≥ {REF_TABLES_ALL[tab][li][BAREM_BP_IDX[ri]].toFixed(1)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </SAccordion>
+    )
+  }
   return (
     <Accordion title={t('perf2.levelsScale')}>
       <div style={{ display:'flex', gap:5, marginBottom:12, flexWrap:'wrap' }}>
@@ -567,6 +607,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
   const [importing,  setImporting]  = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [racesOnly,  setRacesOnly]  = useState(true)
+  const isMobile = useIsMobile()
 
   const RACE_KW = /course|compétition|competition|race|gran\s?fondo|cyclosportive/i
 
@@ -654,6 +695,35 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
   }
   if (!mounted) return null
   const shown = visible && !closing
+
+  if (isMobile) return (
+    <PSheet onClose={handleClose} closing={closing} zIndex={3200} full title={t('perf2.importFromStrava')}
+      subtitle={`${activities.length} ${activities.length !== 1 ? t('perf2.activities') : t('perf2.activity')}`}>
+      <SSeg ariaLabel={t('perf2.importFromStrava')} value={racesOnly ? 'races' : 'all'} onChange={v => setRacesOnly(v === 'races')}
+        options={[{ id: 'races', label: t('perf2.racesOnly') }, { id: 'all', label: t('perf2.allBikeRides') }]} />
+      {error && <SError>{error}</SError>}
+      {loading ? <SSkeleton rows={4} />
+        : activities.length === 0 ? (
+          <SGroup>
+            <SEmpty>{racesOnly ? t('perf2.noStravaRaceDetected') : t('perf2.allStravaBikeImported')}</SEmpty>
+            {racesOnly && <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 8 }}><SLinkBtn onClick={() => setRacesOnly(false)}>{t('perf2.seeAllBikeRides')}</SLinkBtn></div>}
+          </SGroup>
+        ) : (
+          <SGroup>
+            {activities.map((a, i) => {
+              const durSec = a.elapsed_time_s ?? a.moving_time_s ?? 0
+              const distKm = a.distance_m ? (a.distance_m / 1000).toFixed(1) : '—'
+              const dateStr = a.started_at ? new Date(a.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+              return (
+                <SRow key={a.id} first={i === 0} label={a.title}
+                  sub={[dateStr, `${distKm} km`, a.elevation_gain_m ? `D+ ${Math.round(a.elevation_gain_m)} m` : null, secToHMS(durSec)].filter(Boolean).join(' · ')}
+                  right={<SLinkBtn onClick={() => void handleImport(a)} disabled={importing === a.id}>{importing === a.id ? '…' : t('perf2.import')}</SLinkBtn>} />
+              )
+            })}
+          </SGroup>
+        )}
+    </PSheet>
+  )
 
   return createPortal(
     <div style={{
@@ -791,6 +861,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   const [preFatigue,  setPreFatigue]  = useState('fresh')
   const [effortRating,setEffortRating]= useState(3)
   const [notes,       setNotes]       = useState('')
+  const isMobile = useIsMobile()
 
   useEffect(() => { setMounted(true); setTimeout(() => setVisible(true), 10) }, [])
 
@@ -898,6 +969,110 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   }) : null
 
   const INTENSITY_LABELS: Record<number, string> = { 5:t('perf2.intensity_5'), 4:t('perf2.intensity_4'), 3:t('perf2.intensity_3'), 2:t('perf2.intensity_2'), 1:t('perf2.intensity_1') }
+
+  if (isMobile) {
+    const extracted = activity ? Object.entries(activity).filter(([k, v]) => v != null && v !== false && k !== 'source' && k !== 'has_power').length : 0
+    const showPerf = !!(activity?.distance_km || activity?.elevation_gain_m || wattsNpStr || wattsAvgStr || hrAvgStr)
+    return (
+      <PSheet onClose={handleClose} closing={closing} zIndex={3200}
+        title={activity ? t('perf2.extractedDataConfirm') : t('perf2.uploadGpxFit')}
+        subtitle={activity ? `${activity.source.toUpperCase()} · ${Object.values(activity).filter(v => v != null && v !== false).length} ${t('perf2.fieldsDetected')}` : t('perf2.autoExtractAll')}
+        footer={<>
+          {error && <SError>{error}</SError>}
+          <SPrimary onClick={() => void handleSave()} disabled={!name || saving}>{saving ? t('perf2.saving') : t('perf2.confirmAndSave')}</SPrimary>
+        </>}>
+        {/* Sélecteur de fichier */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '12px 16px', borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', cursor: 'pointer' }}>
+          <span aria-hidden style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-chip)', color: activity ? 'var(--primary)' : 'var(--text-mid)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: fileName ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {parsing ? t('perf2.analyzingFile') : fileName ? `${fileName}${activity ? ' ✓' : ''}` : t('perf2.chooseGpxFit')}
+            </span>
+            {activity && !parsing && <span style={{ ...S_NUM, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>{extracted} {t('perf2.fieldsExtracted')}</span>}
+          </span>
+          <input type="file" accept=".gpx,.fit" onChange={handleFile} style={{ display: 'none' }} />
+        </label>
+
+        {activity && !activity.has_power && (
+          <SCard style={{ gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}><SDot color="var(--charge-mid)" />{t('perf2.noPowerSensorDetected')}</span>
+            <span style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.4 }}>{t('perf2.noPowerHint')}</span>
+          </SCard>
+        )}
+
+        <SSection label={t('perf2.identification')}>
+          <SCard>
+            <SField label={t('perf2.raceNameRequired')} value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Tour du Ventoux" />
+            <SGrid>
+              <SField label={t('perf2.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <SField label={t('perf2.duration')} value={durationStr} onChange={e => setDurationStr(e.target.value)} placeholder="3:45:00" />
+            </SGrid>
+            <div>
+              <SLabel>{t('perf2.raceType')}</SLabel>
+              <SChips options={RACE_TYPES.map(rt => ({ id: rt.value, label: t(RACE_TYPE_KEY[rt.value] ?? '') || rt.label }))} isOn={v => raceType === v} onPick={setRaceType} />
+            </div>
+          </SCard>
+        </SSection>
+
+        {showPerf && (
+          <SSection label={t('perf2.performance')}>
+            <SCard>
+              <SCalc items={[
+                activity?.distance_km ? `${activity.distance_km.toFixed(1)} km` : null,
+                activity?.elevation_gain_m ? `D+ ${activity.elevation_gain_m} m` : null,
+                activity?.altitude_max_m ? `${t('perf2.altMax')} ${activity.altitude_max_m} m` : null,
+                activity?.speed_avg_kmh ? `${activity.speed_avg_kmh} km/h moy` : null,
+                activity?.calories ? `${activity.calories} kcal` : null,
+              ]} />
+              <SGrid>
+                <SField label={t('perf2.npWatts')} unit="W" type="number" inputMode="numeric" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)} placeholder="220"
+                  hint={wpkgNpPreview ? `→ ${wpkgNpPreview} W/kg` : undefined} />
+                <SField label={t('perf2.avgWatts')} unit="W" type="number" inputMode="numeric" value={wattsAvgStr} onChange={e => setWattsAvgStr(e.target.value)} placeholder="200" />
+                {!!(hrAvgStr || activity?.hr_avg) && <SField label={t('perf2.avgHrBpm')} type="number" inputMode="numeric" value={hrAvgStr} onChange={e => setHrAvgStr(e.target.value)} placeholder="158" />}
+                {!!(hrMaxStr || activity?.hr_max) && <SField label={t('perf2.maxHrBpm')} type="number" inputMode="numeric" value={hrMaxStr} onChange={e => setHrMaxStr(e.target.value)} placeholder="178" />}
+                {!!(tssStr || activity?.tss) && <SField label="TSS" type="number" inputMode="numeric" value={tssStr} onChange={e => setTssStr(e.target.value)} placeholder="280" />}
+                {!!(tempStr || activity?.temp_celsius != null) && <SField label={t('perf2.temperatureC')} type="number" inputMode="decimal" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="22" />}
+              </SGrid>
+              {!!activity?.cadence_avg && (
+                <span style={{ ...S_NUM, fontSize: 13, color: 'var(--text-mid)' }}>
+                  {t('perf2.avgCadence')} : {activity.cadence_avg} rpm{activity.if_score ? ` · IF : ${activity.if_score.toFixed(3)}` : ''}
+                </span>
+              )}
+            </SCard>
+          </SSection>
+        )}
+
+        <SSection label={t('perf2.conditions')}>
+          <SCard>
+            <div>
+              <SLabel>{t('perf2.preFatigueStart')}</SLabel>
+              <SChips options={(['fresh', 'light', 'moderate', 'high'] as const).map(k => ({ id: k, label: t(PRE_FATIGUE_KEY[k] ?? '') || PRE_LABELS[k] }))}
+                isOn={k => preFatigue === k} onPick={setPreFatigue} />
+            </div>
+            <div>
+              <SLabel>{t('perf2.overallEffort')}</SLabel>
+              <SScale value={effortRating} onChange={setEffortRating} options={[1, 2, 3, 4, 5].map(v => ({ v, label: INTENSITY_LABELS[v] }))} />
+            </div>
+            {!tempStr && !activity?.temp_celsius && (
+              <SField label={t('perf2.temperatureCOptional')} unit="°C" type="number" inputMode="decimal" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="22" />
+            )}
+            <STextArea label={t('perf2.notesOptional')} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('perf2.observationsPlaceholder')} rows={2} />
+          </SCard>
+        </SSection>
+
+        {sd && (
+          <SSection label={t('perf2.score')}>
+            <SCard>
+              <SStats cols={1} items={[{ label: t('perf2.score'), value: `${sd.total.toFixed(0)} / 100`,
+                sub: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><SDot color={levelOf(sd.total).color} size={7} />{levelOf(sd.total).label}</span> }]} />
+            </SCard>
+          </SSection>
+        )}
+      </PSheet>
+    )
+  }
 
   return createPortal(
     <div style={{
@@ -1201,6 +1376,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
   const [wattsNpStr, setWattsNpStr] = useState(race.watts_np != null ? String(race.watts_np) : '')
   const [wattsAvgStr, setWattsAvgStr] = useState(race.watts_avg != null ? String(race.watts_avg) : '')
   const [tssStr, setTssStr] = useState(race.tss != null ? String(race.tss) : '')
+  const isMobile = useIsMobile()
 
   useEffect(() => { setMounted(true); setTimeout(() => setVisible(true), 10) }, [])
 
@@ -1266,6 +1442,98 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
   const shown = visible && !closing
   const lvl = levelOf(sd.total)
   const INTENSITY_LABELS: Record<number, string> = { 5:t('perf2.intensity_5'), 4:t('perf2.intensity_4'), 3:t('perf2.intensity_3'), 2:t('perf2.intensity_2'), 1:t('perf2.intensity_1') }
+
+  if (isMobile) {
+    const typeLabel = t(RACE_TYPE_KEY[raceType] ?? '') || RACE_TYPES.find(rt => rt.value === raceType)?.label || raceType
+    return (
+      <PSheet onClose={handleClose} closing={closing} zIndex={3100} title={race.name}
+        subtitle={<><SDot color={RACE_COLOR} />{typeLabel} · {new Date(race.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}</>}
+        footer={<>
+          {error && <SError>{error}</SError>}
+          <SPrimary onClick={() => void handleSave()} disabled={saving}>{saving ? t('perf2.saving') : t('perf2.save')}</SPrimary>
+          <SDanger onClick={() => void handleDelete()} disabled={deleting}>{deleting ? t('perf2.deleting') : t('perf2.deleteThisRace')}</SDanger>
+        </>}>
+        <SCard>
+          <span style={{ fontSize: 15, color: 'var(--text-mid)' }}>
+            {new Date(race.date).toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+          <SCalc items={[distKm ? `${distKm.toFixed(1)} km` : null, elevGain ? `D+ ${elevGain} m` : null, durSec ? secToHMS(durSec) : null]} />
+          {race.strava_activity_id && (
+            <a href={`https://www.strava.com/activities/${race.strava_activity_id}`} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, alignSelf: 'flex-start', color: 'var(--primary)', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
+              {t('perf2.viewOnStrava')} ›
+            </a>
+          )}
+        </SCard>
+
+        <SSection label={t('perf2.performance')}>
+          <SCard>
+            <SStats cols={3} items={[
+              { label: t('perf2.npWatts'), value: wattsNp ? `${wattsNp} W` : '—' },
+              { label: 'NP W/kg', value: wpkgNp ? wpkgNp.toFixed(2) : '—' },
+              { label: t('perf2.avgWattsShort'), value: wattsAvgStr || race.watts_avg ? `${wattsAvgStr || race.watts_avg} W` : '—' },
+              { label: 'SM', value: tssStr || race.tss ? `${tssStr || race.tss?.toFixed(0)}` : '—' },
+              { label: 'IF', value: race.if_score ? race.if_score.toFixed(2) : '—' },
+              { label: t('perf2.duration'), value: durSec ? secToHMS(durSec) : '—' },
+            ]} />
+            <SGrid cols={3}>
+              <SField label={t('perf2.npWatts')} type="number" inputMode="numeric" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)} placeholder={race.watts_np ? String(race.watts_np) : '210'} />
+              <SField label={t('perf2.avgWatts')} type="number" inputMode="numeric" value={wattsAvgStr} onChange={e => setWattsAvgStr(e.target.value)} placeholder={race.watts_avg ? String(race.watts_avg) : '195'} />
+              <SField label="TSS" type="number" inputMode="numeric" value={tssStr} onChange={e => setTssStr(e.target.value)} placeholder={race.tss ? race.tss.toFixed(0) : '280'} />
+            </SGrid>
+          </SCard>
+        </SSection>
+
+        {race.power_curve && Object.keys(race.power_curve).length > 0 && (
+          <SSection label="Power Curve">
+            <SGroup>
+              {Object.entries(race.power_curve).map(([dur, v], i) => (
+                <SRow key={dur} first={i === 0} label={`${dur}'`} sub={`${v.wkg.toFixed(2)} W/kg`} value={`${v.w} W`} />
+              ))}
+            </SGroup>
+          </SSection>
+        )}
+
+        <SSection label={t('perf2.raceProfile')}>
+          <SCard>
+            <SStats cols={3} items={[
+              { label: t('perf2.distance'), value: distKm ? `${distKm.toFixed(1)} km` : '—' },
+              { label: 'D+', value: elevGain ? `${elevGain} m` : '—' },
+              { label: 'D+/100km', value: distKm && elevGain ? `${((elevGain / distKm) * 100).toFixed(0)} m` : '—' },
+            ]} />
+          </SCard>
+        </SSection>
+
+        <SSection label={t('perf2.conditions')}>
+          <SCard>
+            <div>
+              <SLabel>{t('perf2.raceType')}</SLabel>
+              <SChips options={RACE_TYPES.map(rt => ({ id: rt.value, label: t(RACE_TYPE_KEY[rt.value] ?? '') || rt.label }))} isOn={v => raceType === v} onPick={setRaceType} />
+            </div>
+            <div>
+              <SLabel>{t('perf2.preFatigueStart')}</SLabel>
+              <SChips options={(['fresh', 'light', 'moderate', 'high'] as const).map(k => ({ id: k, label: t(PRE_FATIGUE_KEY[k] ?? '') || PRE_LABELS[k] }))}
+                isOn={k => preFatigue === k} onPick={setPreFatigue} />
+            </div>
+            <div>
+              <SLabel>{t('perf2.overallEffort')}</SLabel>
+              <SScale value={effortRating} onChange={setEffortRating} options={[1, 2, 3, 4, 5].map(v => ({ v, label: INTENSITY_LABELS[v] }))} />
+            </div>
+            <SField label={t('perf2.temperatureC')} unit="°C" type="number" inputMode="decimal" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="22" />
+            <STextArea label={t('perf2.notes')} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('perf2.observationsPlaceholder')} rows={3} />
+          </SCard>
+        </SSection>
+
+        <SSection label={t('perf2.score')}>
+          <SCard>
+            <SStats cols={1} items={[{ label: t('perf2.score'), value: `${sd.total.toFixed(0)} / 100`,
+              sub: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><SDot color={lvl.color} size={7} />{lvl.label}</span> }]} />
+            <SCalc items={[`${t('perf2.rawShort')} ${sd.scoreBrut.toFixed(1)}`, `cTemp ×${sd.cTemp.toFixed(2)}`, `cD+ ×${sd.cElevation.toFixed(2)}`, `cRessenti ×${sd.cRessenti.toFixed(2)}`]} />
+          </SCard>
+        </SSection>
+      </PSheet>
+    )
+  }
 
   return createPortal(
     <div style={{
@@ -1549,6 +1817,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [yearFilter, setYearFilter] = useState<string | null>(null)
   const [durFilter,  setDurFilter]  = useState<DurFilterId | null>(null)
+  const isMobile = useIsMobile()
 
   const allYears = [...new Set(races.map(r => yearOf(r.date)))].sort()
 
@@ -1579,6 +1848,91 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
     )
     .map(r => ({ r, sd: computeRaceScore(r) }))
     .sort((a, b) => b.sd.total - a.sd.total)
+
+  if (isMobile) {
+    const bandDefs = [
+      { label: "< 30'",   min: 0,    max: 1800  },
+      { label: '30-90\'', min: 1800,  max: 5400  },
+      { label: '1h30+',   min: 5400,  max: Infinity },
+    ]
+    const bestBands = bandDefs.map(({ label, min, max }) => {
+      const best = [...races]
+        .filter(r => r.duration_seconds && r.duration_seconds >= min && r.duration_seconds < max && r.wpkg_np)
+        .sort((a, b) => (b.wpkg_np ?? 0) - (a.wpkg_np ?? 0))[0] ?? null
+      return { label, best }
+    }).filter((b): b is { label: string; best: RaceRecord } => b.best !== null)
+    return (
+      <PSheet onClose={handleClose} closing={closing} zIndex={3100} full title={t('perf2.racesRanking')} subtitle={t('perf2.normalizedScore')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <SChips wrap={false} ariaLabel={t('pe1.year')}
+            options={[{ id: '__all', label: t('perf2.all') }, ...allYears.map(yr => ({ id: yr, label: yr }))]}
+            isOn={id => id === '__all' ? yearFilter === null : yearFilter === id}
+            onPick={id => setYearFilter(id === '__all' || id === yearFilter ? null : id)} />
+          <SChips wrap={false} ariaLabel={t('perf2.duration')}
+            options={DUR_FILTERS.map(({ label, id }) => ({ id: id ?? '__all', label: id === null ? t('perf2.all') : label }))}
+            isOn={id => id === '__all' ? durFilter === null : durFilter === id}
+            onPick={id => setDurFilter(id === '__all' || id === durFilter ? null : id as DurFilterId)} />
+          {(yearFilter || durFilter) && (
+            <span style={{ fontSize: 13, color: 'var(--text-mid)', padding: '0 4px' }}>
+              {ranked.length} {ranked.length !== 1 ? t('perf2.racesFilteredPlural') : t('perf2.raceFilteredSingular')}
+            </span>
+          )}
+        </div>
+
+        {bestBands.length > 0 && (
+          <SSection label={t('perf2.bestNpWkgByDuration')}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${bestBands.length}, minmax(0, 1fr))`, gap: 8 }}>
+              {bestBands.map(({ label, best }) => (
+                <button key={label} type="button" onClick={() => onRaceClick(best)} data-no-fx
+                  style={{ minHeight: 88, padding: '12px 10px', borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--surface-card)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{label}</span>
+                  <span style={{ ...S_NUM, display: 'block', fontSize: 22, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>{best.wpkg_np!.toFixed(2)}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>W/kg NP · {best.name}</span>
+                </button>
+              ))}
+            </div>
+          </SSection>
+        )}
+
+        {ranked.length === 0 ? <SGroup><SEmpty>{t('perf2.noRaceForFilter')}</SEmpty></SGroup> : (
+          <SGroup>
+            {ranked.map(({ r, sd }, idx) => {
+              const rank = idx + 1
+              const isOpen = expanded === r.id
+              const lvl = levelOf(sd.total)
+              return (
+                <div key={r.id}>
+                  <SRow first={idx === 0} onClick={() => setExpanded(isOpen ? null : r.id)}
+                    lead={<span style={{ ...S_NUM, width: 26, flexShrink: 0, fontSize: 16, fontWeight: 800, color: rank === 1 ? 'var(--charge-mid)' : 'var(--text-mid)' }}>{rank}</span>}
+                    label={r.name}
+                    sub={[new Date(r.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' }), r.wpkg_np ? `${r.wpkg_np.toFixed(2)} W/kg NP` : null, r.duration_seconds ? secToHMS(r.duration_seconds) : null].filter(Boolean).join(' · ')}
+                    right={<span style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <b style={{ ...S_NUM, display: 'block', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{sd.total.toFixed(0)}</b>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}><SDot color={lvl.color} size={7} />{lvl.label}</span>
+                    </span>} />
+                  {isOpen && (
+                    <div style={{ padding: '0 16px 10px 54px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <SCalc items={[`${t('perf2.rawShort')} ${sd.scoreBrut.toFixed(1)}`, `cTemp ×${sd.cTemp.toFixed(2)}`, `cD+ ×${sd.cElevation.toFixed(2)}`, `cRessenti ×${sd.cRessenti.toFixed(2)}`]} />
+                      <SLinkBtn onClick={() => onRaceClick(r)}>{t('perf2.openCard')} ›</SLinkBtn>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </SGroup>
+        )}
+
+        <BaremeAccordion mobile />
+        <Accordion mobile title={t('perf2.calcMethod')}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ ...S_NUM, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>score_brut = (NP W/kg ÷ Réf. Alien) × 100</div>
+            <div style={{ ...S_NUM, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>score = min(100, score_brut × cTemp × cD+ × cRessenti)</div>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('perf2.racesMethodNote')}</p>
+          </div>
+        </Accordion>
+      </PSheet>
+    )
+  }
 
   return createPortal(
     <div style={{

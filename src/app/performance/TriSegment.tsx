@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { LinkActivitySheet } from './LinkActivitySheet'
 import type { ActivityLite, Segment } from './triActivities'
+import { SCard, SDot, SField, SLinkBtn, S_NUM } from './mobile/EditSheet'
 
 const lbl: React.CSSProperties = {
   fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
@@ -17,7 +18,7 @@ export const triInp: React.CSSProperties = {
   outline: 'none', boxSizing: 'border-box',
 }
 
-export function TriSegment({ title, distLabel, dot, segment, time, setTime, timeLabel, auto, children, onLink, chips, linked }: {
+export function TriSegment({ title, distLabel, dot, segment, time, setTime, timeLabel, auto, children, onLink, chips, linked, mobile }: {
   title: string
   distLabel?: string
   dot?: string
@@ -30,10 +31,47 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
   onLink?: (a: ActivityLite) => void
   chips?: { label: string; value: string }[]
   linked?: boolean
+  /** Mobile : carte blanche de la feuille (coquille EditSheet). */
+  mobile?: boolean
 }) {
   const { t } = useI18n()
   const [showLink, setShowLink] = useState(false)
   const timeLabelText = timeLabel ?? t('performance.timeHms')
+  const linkSheet = showLink && segment && onLink && (
+    <LinkActivitySheet segment={segment} onClose={() => setShowLink(false)} onLink={onLink} />
+  )
+
+  // Mobile : carte blanche (point sport · titre · distance · « Lier » à droite), champ plein doux.
+  if (mobile) return (
+    <SCard>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 24, marginBottom: -4 }}>
+        {dot && <SDot color={dot} />}
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
+        {distLabel && <span style={{ ...S_NUM, fontSize: 14, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{distLabel}</span>}
+        <span style={{ flex: 1 }} />
+        {segment && onLink && (
+          <SLinkBtn onClick={() => setShowLink(true)} color={linked ? 'var(--text-mid)' : 'var(--primary)'}>
+            {linked ? t('performance.activityLinked') : t('performance.linkActivity')}
+          </SLinkBtn>
+        )}
+      </div>
+      <SField label={timeLabelText} value={time} onChange={e => setTime(e.target.value)} placeholder={t('performance.egTime')}
+        hint={auto ? `→ ${auto}` : undefined} />
+      {children}
+      {chips && chips.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {chips.map(c => (
+            <span key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 30, padding: '0 12px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 13 }}>
+              <span style={{ color: 'var(--text-mid)' }}>{c.label}</span>
+              <span style={{ ...S_NUM, color: 'var(--text)', fontWeight: 700 }}>{c.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {linkSheet}
+    </SCard>
+  )
+
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -65,9 +103,7 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
         </div>
       )}
 
-      {showLink && segment && onLink && (
-        <LinkActivitySheet segment={segment} onClose={() => setShowLink(false)} onLink={onLink} />
-      )}
+      {linkSheet}
     </div>
   )
 }

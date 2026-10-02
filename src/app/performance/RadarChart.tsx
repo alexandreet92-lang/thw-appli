@@ -682,10 +682,43 @@ function RadarSVG({ axes, onHover }: RadarSVGProps) {
 }
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
-function RadarTooltip({ tooltip }: { tooltip: TooltipState }) {
+function RadarTooltip({ tooltip, mobile }: { tooltip: TooltipState; mobile?: boolean }) {
   const { t } = useI18n()
   const { axis, x, y } = tooltip
   const lv = levelOf(axis.score)
+  // Mobile : bulle blanche flottante (radius 20, ombre douce, sans bordure),
+  // gardée dans l'écran (le doigt est sous le point touché).
+  if (mobile) {
+    const W = 232
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 375
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 700
+    const left = Math.max(12, Math.min(x - W / 2, vw - W - 12))
+    const below = y + 140 < vh
+    return createPortal(
+      <div role="tooltip" style={{
+        position: 'fixed', left, top: below ? y + 18 : undefined, bottom: below ? undefined : vh - y + 18, width: W, zIndex: 9999,
+        background: 'var(--float-bg)', borderRadius: 'var(--r-lg)', padding: '12px 14px', boxShadow: 'var(--shadow-float)',
+        pointerEvents: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{axis.label}</span>
+          {axis.score > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: lv.color }} />{lv.label}
+            </span>
+          )}
+        </div>
+        {axis.score > 0 && (
+          <div style={{ ...NUM, fontSize: 15, color: 'var(--text-mid)', marginBottom: 4 }}>
+            {t('w1c.valeur')} <strong style={{ color: 'var(--text)', fontWeight: 800 }}>{formatRaw(axis.rawValue, axis.unit)}</strong>
+          </div>
+        )}
+        <div style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.4 }}>{axis.description}</div>
+        {axis.score === 0 && <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 4 }}>{t('w1c.non_renseigne')}</div>}
+      </div>,
+      document.body
+    )
+  }
   return createPortal(
     <div style={{
       position: 'fixed',
@@ -1330,7 +1363,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
             </table>
           </div>
         </MCard>
-        {tooltip && <RadarTooltip tooltip={tooltip} />}
+        {tooltip && <RadarTooltip tooltip={tooltip} mobile />}
       </>
     )
   }

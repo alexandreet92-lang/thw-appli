@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { HYROX_STATIONS, HYROX_FORMAT_LABELS, toSec, mmss, hmsTotal, insertRace, updateRace, type HyroxFormat, type HyroxRace } from './hyroxShared'
+import { useIsMobile, PSheet, SDot, SSection, SCard, SGroup, SRow, SGrid, SField, SLabel, SSeg, SStats, SPrimary, sInput, S_NUM } from './mobile/EditSheet'
 
 const HYROX_DOT = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
@@ -32,6 +33,7 @@ export function HyroxRaceSheet({ onClose, onSaved, initial }: { onClose: () => v
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
   const close = () => { setClosing(true); setTimeout(onClose, 240) }
+  const mobile = useIsMobile()
 
   const runSec = runs.reduce((a, r) => a + toSec(r), 0)
   const stationSec = HYROX_STATIONS.reduce((a, s) => a + toSec(stations[s] ?? ''), 0)
@@ -49,6 +51,60 @@ export function HyroxRaceSheet({ onClose, onSaved, initial }: { onClose: () => v
     const r = initial ? await updateRace(initial.id, payload) : await insertRace(payload)
     setSaving(false)
     if (r) { onSaved(r); close() }
+  }
+
+  if (mobile) {
+    const duo = format === 'duo_open' || format === 'duo_pro'
+    return (
+      <PSheet onClose={close} closing={closing} title={initial ? t('performance.editRace') : t('performance.addRace')}
+        subtitle={<><SDot color="var(--sport-hyrox)" />Hyrox</>}
+        footer={<SPrimary onClick={() => void save()} disabled={!canSave || saving}>{saving ? t('performance.saving') : t('performance.saveRace')}</SPrimary>}>
+        <SCard>
+          <SField label={t('performance.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <div>
+            <SLabel>Format</SLabel>
+            <SSeg ariaLabel="Format" value={format} onChange={setFormat}
+              options={(Object.keys(HYROX_FORMAT_LABELS) as HyroxFormat[]).map(f => ({ id: f, label: HYROX_FORMAT_LABELS[f] }))} />
+          </div>
+          {duo && <SField label={t('performance.partner')} value={partenaire} onChange={e => setPartenaire(e.target.value)} placeholder={t('performance.firstLastName')} />}
+        </SCard>
+
+        <SSection label={t('performance.stationsTime')}>
+          <SGroup>
+            {HYROX_STATIONS.map((s, i) => (
+              <SRow key={s} first={i === 0}
+                lead={<span style={{ ...S_NUM, width: 18, flexShrink: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-dim)' }}>{i + 1}</span>}
+                label={s}
+                right={<input aria-label={s} value={stations[s]} onChange={e => setStations(p => ({ ...p, [s]: e.target.value }))} placeholder="mm:ss"
+                  style={{ ...sInput, width: 96, minHeight: 44, textAlign: 'right', flexShrink: 0 }} />} />
+            ))}
+          </SGroup>
+        </SSection>
+
+        <SSection label={t('performance.runs8km')}>
+          <SCard>
+            <SGrid cols={4}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SField key={i} label={`Run ${i + 1}`} value={runs[i]} placeholder="mm:ss"
+                  onChange={e => setRuns(p => { const n = [...p]; n[i] = e.target.value; return n })}
+                  style={{ padding: '0 6px', textAlign: 'center', fontSize: 16 }} />
+              ))}
+            </SGrid>
+            <SStats items={[{ label: t('performance.runCompromisedAuto'), value: runSec > 0 ? mmss(runSec) : '—' }]} cols={1} />
+          </SCard>
+        </SSection>
+
+        <SCard>
+          <SField label="Roxzone" value={roxzone} onChange={e => setRoxzone(e.target.value)} placeholder="mm:ss" />
+        </SCard>
+
+        <SSection label={t('performance.totalTimeAuto')} helper="stations + runs + roxzone">
+          <SCard>
+            <span style={{ ...S_NUM, fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', color: totalSec > 0 ? 'var(--text)' : 'var(--text-dim)' }}>{totalStr || '—'}</span>
+          </SCard>
+        </SSection>
+      </PSheet>
+    )
   }
 
   return createPortal(

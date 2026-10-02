@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { unitKind, typeLabel, upsertGym, deleteGym, type GymRec } from './gymShared'
+import { useIsMobile, PSheet, SDot, SSection, SSeg, SCard, SField, SPrimary, SDanger } from './mobile/EditSheet'
 
 const GYM_DOT = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
@@ -27,6 +28,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
   const close = () => { setClosing(true); setTimeout(onClose, 240) }
+  const mobile = useIsMobile()
 
   // À chaque changement de type, recharger la valeur courante du type sélectionné.
   function pickType(t: string) {
@@ -55,6 +57,23 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
     setSaving(false)
     if (ok) { onDeleted?.(cur.id); close() }
   }
+
+  if (mobile) return (
+    <PSheet onClose={close} closing={closing} title={t('performance.editRecord')}
+      subtitle={<><SDot color="var(--sport-gym)" />{t('performance.sportGym')} · {exercise}</>}
+      footer={<>
+        <SPrimary onClick={() => void save()} disabled={!canSave || saving}>{saving ? t('performance.saving') : t('performance.saveThisRecord')}</SPrimary>
+        {cur && onDeleted && <SDanger onClick={() => void remove()} disabled={saving}>{t('performance.deleteThisRecord')}</SDanger>}
+      </>}>
+      <SSection label={t('performance.recordType')}>
+        <SSeg ariaLabel={t('performance.recordType')} value={type} onChange={pickType} options={types.map(x => ({ id: x, label: typeLabel(x) }))} />
+      </SSection>
+      <SCard>
+        <SField label={fieldLabel} unit={unitTxt} type="number" inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} autoFocus placeholder="0" />
+        <SField label={t('performance.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </SCard>
+    </PSheet>
+  )
 
   return createPortal(
     <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>

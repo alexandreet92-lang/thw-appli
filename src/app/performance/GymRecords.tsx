@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { GymEditSheet } from './GymEditSheet'
 import { AddExerciseSheet } from './AddExerciseSheet'
-import { MCard, MHBar, MSecondary, MetaButton, NUM, FB } from './mobile/kit'
+import { MCard, MHBar, MPrimary, MetaButton, NUM, FB } from './mobile/kit'
 import { allExercises, isCustom, removeCustom, deleteGym, fetchGym, fmtValue, typeLabel, type GymExercise, type GymRec } from './gymShared'
 
 const GYM = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
@@ -93,7 +93,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum, mobile }: {
             </div>
           </MCard>
         ))}
-        <MSecondary full onClick={() => setAdding(true)}>+ {tr('perfm.addExercise')}</MSecondary>
+        <MPrimary onClick={() => setAdding(true)}>+ {tr('perfm.addExercise')}</MPrimary>
         {sheets}
       </>
     )

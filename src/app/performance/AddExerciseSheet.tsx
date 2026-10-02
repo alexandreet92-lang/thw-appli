@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { ALL_RECORD_TYPES, typeLabel, addCustom, type GymExercise } from './gymShared'
+import { useIsMobile, PSheet, SDot, SSection, SCard, SField, SChips, SPrimary } from './mobile/EditSheet'
 
 const GYM_DOT = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
@@ -15,6 +16,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
   const [types, setTypes] = useState<string[]>(['1RM'])
   const [closing, setClosing] = useState(false)
   const close = () => { setClosing(true); setTimeout(onClose, 240) }
+  const mobile = useIsMobile()
 
   const canSave = !!name.trim() && types.length > 0
   function toggle(t: string) { setTypes(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }
@@ -26,6 +28,19 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
     onAdded(ex)
     close()
   }
+
+  if (mobile) return (
+    <PSheet onClose={close} closing={closing} title={t('performance.newExercise')}
+      subtitle={<><SDot color="var(--sport-gym)" />{t('performance.sportGym')}</>}
+      footer={<SPrimary onClick={save} disabled={!canSave}>{t('performance.addExercise')}</SPrimary>}>
+      <SCard>
+        <SField label={t('performance.exerciseName')} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder={t('performance.egHipThrust')} style={{ fontWeight: 600 }} />
+      </SCard>
+      <SSection label={t('performance.recordTypesToTrack')} helper={t('performance.defaultUnitHint')}>
+        <SChips ariaLabel={t('performance.recordTypesToTrack')} options={ALL_RECORD_TYPES.map(x => ({ id: x, label: types.includes(x) ? `✓ ${typeLabel(x)}` : typeLabel(x) }))} isOn={x => types.includes(x)} onPick={toggle} />
+      </SSection>
+    </PSheet>
+  )
 
   return createPortal(
     <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>

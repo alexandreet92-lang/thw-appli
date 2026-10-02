@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n'
 import { HYROX_STATIONS, toSec, hmsTotal, mmss, type HyroxRace } from './hyroxShared'
 import { currentLocale } from '@/lib/i18n'
 import { MCard, MMiniChips, MBars, MHint, M_ICONS, monthYear } from './mobile/kit'
+import { useIsMobile, PSheet, SDot, SSection, SGroup, SCard, SCalc, SPrimary, SDanger, S_NUM } from './mobile/EditSheet'
 
 const HYROX = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage (scrim)
@@ -40,6 +41,7 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose, onEdit, onDelete }: 
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
+  const isMobile = useIsMobile()
   useEffect(() => {
     const id = setTimeout(() => setMounted(true), 20)
     const r = requestAnimationFrame(() => setShown(true))
@@ -50,6 +52,49 @@ function HyroxRaceOverlay({ race, races, onSelect, onClose, onEdit, onDelete }: 
     ...HYROX_STATIONS.map(s => ({ label: s, color: HYROX, sec: toSec(race.stations[s] ?? ''), max: Math.max(...races.map(r => toSec(r.stations[s] ?? '')), 1), avg: mean(races.map(r => toSec(r.stations[s] ?? ''))) })),
     { label: 'Run compromised', color: 'var(--primary)', sec: toSec(race.temps_run_total ?? ''), max: Math.max(...races.map(r => toSec(r.temps_run_total ?? '')), 1), avg: mean(races.map(r => toSec(r.temps_run_total ?? ''))) },
   ]
+
+  if (isMobile) return (
+    <PSheet onClose={requestClose} closing={closing} zIndex={3300} title={race.temps_final}
+      subtitle={<><SDot color="var(--sport-hyrox)" />{fmtDateFull(race.date)}{race.partenaire ? ` · ${race.partenaire}` : ''}</>}
+      footer={(onEdit || onDelete) ? <>
+        {onEdit && <SPrimary onClick={() => { onEdit(race); requestClose() }}>{t('performance.edit')}</SPrimary>}
+        {onDelete && <SDanger onClick={() => { if (window.confirm(t('performance.deleteRaceConfirm'))) { onDelete(race); requestClose() } }}>{t('perf.delete')}</SDanger>}
+      </> : undefined}>
+      <SSection label={t('perf2.stationDetail')} right={<span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{t('performance.markerAverage')}</span>}>
+        <SGroup>
+          {bars.map((b, i) => {
+            const valStr = b.sec > 0 ? (b.label === 'Run compromised' ? hmsTotal(b.sec) : mmss(b.sec)) : '—'
+            const can = b.sec > 0 && !!onSelect
+            const body = (
+              <>
+                {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, width: '100%' }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</span>
+                  <span style={{ ...S_NUM, fontSize: 15, fontWeight: 700, color: b.sec > 0 ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' }}>{valStr}</span>
+                </span>
+                <span style={{ position: 'relative', display: 'block', width: '100%', height: 8, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
+                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: mounted ? `${(b.sec / b.max) * 100}%` : '0%', background: b.color, borderRadius: 'var(--r-pill)', transition: 'width 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
+                  {b.avg > 0 && <span aria-hidden style={{ position: 'absolute', top: -3, bottom: -3, left: `${(b.avg / b.max) * 100}%`, width: 2, background: 'var(--text-mid)', borderRadius: 2 }} />}
+                </span>
+              </>
+            )
+            const st: React.CSSProperties = { position: 'relative', display: 'flex', flexDirection: 'column', gap: 8, width: '100%', minHeight: 56, padding: '12px 16px', boxSizing: 'border-box', textAlign: 'left', fontFamily: 'var(--font-body)' }
+            return can
+              ? <button key={b.label} type="button" data-no-fx onClick={() => onSelect?.(`Hyrox ${b.label}`, valStr)} style={{ ...st, border: 'none', background: 'transparent', cursor: 'pointer' }}>{body}</button>
+              : <div key={b.label} style={st}>{body}</div>
+          })}
+        </SGroup>
+      </SSection>
+      {race.runs?.some(x => x) && (
+        <SSection label="Runs">
+          <SCard>
+            <SCalc items={race.runs.map((r, i) => r ? `#${i + 1}  ${r}` : null)} />
+          </SCard>
+        </SSection>
+      )}
+    </PSheet>
+  )
+
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 3300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: SCRIM, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />

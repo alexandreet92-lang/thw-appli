@@ -76,8 +76,9 @@ export function DistanceRecords(props: DistanceRecordsProps) {
       <span style={{ display: 'inline-flex', padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--dash-chip, var(--bg-card2))' }}>
         {(['M', 'F'] as const).map(g => (
           <button key={g} type="button" onClick={() => setGender(g)} aria-pressed={gender === g} aria-label={t('performance.genderLabel')}
-            style={{ minWidth: 34, minHeight: 32, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 700,
-              background: gender === g ? 'var(--dash-card, var(--bg-card))' : 'transparent', color: gender === g ? 'var(--text)' : 'var(--text-mid)' }}>{g === 'M' ? 'H' : 'F'}</button>
+            style={{ minWidth: 44, minHeight: 36, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 700,
+              background: gender === g ? 'var(--float-bg)' : 'transparent', color: gender === g ? 'var(--text)' : 'var(--text-mid)',
+              boxShadow: gender === g ? 'var(--shadow-card, none)' : 'none', transition: 'background 0.18s ease, color 0.18s ease' }}>{g === 'M' ? 'H' : 'F'}</button>
         ))}
       </span>
     ) : undefined

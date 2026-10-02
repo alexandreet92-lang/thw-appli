@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { TriSegment, triInp } from './TriSegment'
 import { toSec, hmsFull, prefillFromActivity, extraChips, type ActivityLite, type Segment } from './triActivities'
+import { useIsMobile, PSheet, SDot, SSection, SCard, SGrid, SField, SLinkBtn, SPrimary, sInput } from './mobile/EditSheet'
 
 const TRI_DOT = '#8b5cf6' // design-allow-color — teinte sport triathlon sanctionnée
 const SWIM_DOT = '#06b6d4' // design-allow-color
@@ -47,6 +48,7 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
   const [runHr, setRunHr] = useState('')
   const [chips, setChips] = useState<Partial<Record<Segment, Chips>>>({})
   const [closing, setClosing] = useState(false)
+  const mobile = useIsMobile()
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
 
@@ -77,6 +79,40 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
     <input className="rec-drawer" type={t} value={v} onChange={e => set(e.target.value)} placeholder={ph} style={triInp} />
   )
   const fieldLbl: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '12px 0 5px' }
+
+  if (mobile) return (
+    <PSheet onClose={close} closing={closing} title={t('performance.enterRace')}
+      subtitle={<><SDot color={TRI_DOT} />Triathlon · {fmtLabel}</>}
+      footer={<SPrimary onClick={() => void onConfirm(!draft && autoTotalStr ? autoTotalStr : undefined)} disabled={!canSave || saving}>
+        {saving ? t('performance.saving') : t('performance.saveRace')}
+      </SPrimary>}>
+      <SCard>
+        <SField label={t('perf2.date')} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </SCard>
+      <TriSegment mobile title={t('performance.sportSwimming')} distLabel={fmtSwim} dot={SWIM_DOT} segment="swim" time={swim} setTime={setSwim} auto={swimAuto} onLink={a => link('swim', a)} chips={chips.swim} linked={!!chips.swim} />
+      <TriSegment mobile title={t('performance.t1Transition')} time={t1} setTime={setT1} timeLabel={t('performance.durationMs')} />
+      <TriSegment mobile title={t('performance.sportBike')} distLabel={fmtBike} dot={BIKE_DOT} segment="bike" time={bikeTime} setTime={setBikeTime} timeLabel={t('performance.timeHms')} auto={bikeAuto} onLink={a => link('bike', a)} chips={chips.bike} linked={!!chips.bike}>
+        <SGrid>
+          <SField label={t('performance.avgWatts')} unit="W" type="number" inputMode="numeric" value={bikeWatts} onChange={e => setBikeWatts(e.target.value)} placeholder={t('performance.egWatts')} hint={wkg ? `→ ${wkg}` : undefined} />
+          <SField label={t('performance.npWatts')} unit="W" type="number" inputMode="numeric" value={bikeNP} onChange={e => setBikeNP(e.target.value)} placeholder={t('performance.egNp')} />
+        </SGrid>
+        <SField label={t('performance.avgHr')} unit="bpm" type="number" inputMode="numeric" value={bikeHr} onChange={e => setBikeHr(e.target.value)} placeholder={t('performance.egHrBike')} />
+      </TriSegment>
+      <TriSegment mobile title={t('performance.t2Transition')} time={t2} setTime={setT2} timeLabel={t('performance.durationMs')} />
+      <TriSegment mobile title="Running" distLabel={fmtRun} dot={RUN_DOT} segment="run" time={run} setTime={setRun} auto={runAuto} onLink={a => link('run', a)} chips={chips.run} linked={!!chips.run}>
+        <SField label={t('performance.avgHr')} unit="bpm" type="number" inputMode="numeric" value={runHr} onChange={e => setRunHr(e.target.value)} placeholder={t('performance.egHrRun')} />
+      </TriSegment>
+      <SSection label={t('performance.totalTime')}>
+        <SCard>
+          <input aria-label={t('performance.totalTime')} value={displayTotal} onChange={e => setDraft(e.target.value)} placeholder={t('performance.autoOrManual')}
+            style={{ ...sInput, minHeight: 56, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }} />
+          {autoTotalStr && autoTotalStr !== displayTotal && (
+            <SLinkBtn onClick={() => setDraft(autoTotalStr)}>{t('performance.recalculate', { value: autoTotalStr })}</SLinkBtn>
+          )}
+        </SCard>
+      </SSection>
+    </PSheet>
+  )
 
   return createPortal(
     <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>

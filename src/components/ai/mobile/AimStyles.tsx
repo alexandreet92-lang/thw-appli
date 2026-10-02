@@ -67,7 +67,12 @@ const CSS = `
   html .aip-root .aip-input-footer {
     padding: 4px 12px var(--aim-pb, calc(10px + env(safe-area-inset-bottom, 0px))) !important;
     background: transparent !important; border-top: none !important;
+    transition: padding-bottom 250ms cubic-bezier(0.17, 0.59, 0.4, 0.77);
   }
+  /* Clavier ouvert (classe posée par AIPanel, cf. src/lib/native/keyboard.ts) :
+     le panneau s'arrête au ras du clavier → la carte repose dessus (6 px),
+     sans la marge safe-area du home indicator (caché sous le clavier). */
+  html .aip-root.aip-kb-open .aip-input-footer { --aim-pb: 6px; }
   html .aip-input-wrap.aim-composer, html.dark .aip-input-wrap.aim-composer {
     border-radius: calc(var(--r-lg) + 6px) !important;
     background: var(--float-bg) !important;

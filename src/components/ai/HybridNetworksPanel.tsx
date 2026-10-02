@@ -844,7 +844,9 @@ export default function HybridNetworksPanel({
       </div>{/* /scroll area */}
 
       {/* ── INPUT BAR ─────────────────────────────────────────── */}
-      <div className="aip-input-footer">
+      {/* data-kb-glue : collé au clavier (src/lib/native/keyboard.ts) — le
+          panneau IA parent se redimensionne, AimStyles retire la marge safe-area. */}
+      <div className="aip-input-footer" data-kb-glue="">
         <div
           className="aip-input-wrap"
           style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 8px 8px 14px', transition: 'border-color 0.15s' }}

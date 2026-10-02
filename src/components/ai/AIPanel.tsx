@@ -21,7 +21,7 @@ import { openUpgrade } from '@/components/subscription/UpgradeModal'
 import { parseAdvancedSpec, AdvancedChartCard } from '@/components/ai/AdvancedChart'
 import PressPop from '@/components/ui/PressPop'
 import { listContinuationKeyDown } from '@/lib/ui/listContinuation'
-import { useKeyboardInset } from '@/hooks/useKeyboardInset'
+import { useKeyboardGlue, keyboardTransition, KB_DURATION_MS } from '@/lib/native/keyboard'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -21165,7 +21165,10 @@ export default function AIPanel({
   // Interface dédiée « Studio » (orchestration multi-agents, façon Make).
   const [studioOpen,      setStudioOpen]      = useState(false)
   // Fermeture ANIMÉE (slide inverse) puis démontage → mouvement dans les 2 sens.
-  const kbInset = useKeyboardInset()
+  // Clavier : composeur COLLÉ au clavier (src/lib/native/keyboard.ts). Le
+  // panneau (fixe, plein écran) prend exactement la hauteur au-dessus du
+  // clavier → le composeur (dernier enfant) se pose PILE dessus, sans bande.
+  const kb = useKeyboardGlue(open)
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
   // peuvent tourner en même temps). `generatingConvs` = ids en cours de
@@ -21335,6 +21338,22 @@ export default function AIPanel({
     autoScrollRef.current = true
     setShowScrollDown(false)
   }, [])
+  // Clavier qui s'ouvre / se ferme : si le fil était en bas, il le RESTE pendant
+  // toute l'animation (le dernier message reste visible juste au-dessus du
+  // composeur, comme Claude / iMessage).
+  const kbLift = kb.open ? kb.height : 0
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el || !autoScrollRef.current) return
+    let raf = 0
+    const t0 = performance.now()
+    const tick = () => {
+      el.scrollTop = el.scrollHeight
+      if (performance.now() - t0 < KB_DURATION_MS + 120) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [kbLift])
   const initMsgRef         = useRef<string | undefined>(undefined)
   // Swipe / drag tracking (mobile) — sidebar coulissante
   const chatColRef = useRef<HTMLDivElement>(null)
@@ -23848,7 +23867,21 @@ export default function AIPanel({
       <AimStyles />
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
-      <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
+      <div
+        className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}${kb.open ? ' aip-kb-open' : ''}`}
+        // Clavier ouvert : le CONTENU du panneau s'arrête pile au haut du
+        // clavier (padding bas = hauteur clavier, animé avec la courbe iOS en
+        // natif ; viewport visible en web) → le composeur (dernier enfant) se
+        // pose dessus. Le fond du panneau continue SOUS le clavier (coins
+        // arrondis iOS) : jamais de noir. Une seule compensation.
+        style={{
+          top: kb.frame ? kb.frame.top : undefined,
+          bottom: kb.frame ? 'auto' : undefined,
+          height: kb.frame ? kb.frame.height : undefined,
+          paddingBottom: kb.frame ? kb.frame.padBottom : 0,
+          transition: `transform 0.3s cubic-bezier(0.32,1.06,0.64,1), ${keyboardTransition(['padding-bottom'], kb)}`,
+        }}
+      >
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════
              Le header desktop a été déplacé À L'INTÉRIEUR de la colonne chat
@@ -24909,11 +24942,12 @@ export default function AIPanel({
 
           {/* ══ INPUT ═════════════════════════════════════════ */}
           {activeAgent !== 'networks' && <>
-          <div className="aip-input-footer" style={{
+          <div className="aip-input-footer" data-kb-glue="" style={{
             padding: '10px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
-            // Mobile : remonte JUSTE au-dessus du clavier (visualViewport).
-            paddingBottom: kbInset ? kbInset + 12 : undefined,
-            transition: 'padding-bottom 0.18s ease',
+            // Clavier ouvert : le panneau s'arrête déjà au ras du clavier → plus
+            // de marge safe-area (home indicator caché sous le clavier).
+            paddingBottom: kb.open ? 12 : undefined,
+            transition: keyboardTransition(['padding-bottom'], kb),
             borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
@@ -24921,8 +24955,8 @@ export default function AIPanel({
             // header (qui reste collé en haut) — marges auto haut/bas (desktop ;
             // en mobile le composeur flottant reste ancré en bas).
             marginBottom: showEmpty && !activeFlow && isDesktop ? 'auto' : undefined,
-            // Mobile : marge basse pilotée par AimStyles (safe-area) ; clavier ouvert → juste au-dessus.
-            ...(!isDesktop && kbInset ? ({ '--aim-pb': `${kbInset + 8}px` } as React.CSSProperties) : {}),
+            // Mobile : marge basse pilotée par AimStyles (safe-area) ; clavier
+            // ouvert → classe .aip-kb-open sur le panneau → 6 px (AimStyles).
           }}>
             {/* Bouton « descendre en bas » — flotte juste au-dessus du champ (façon Claude). */}
             {showScrollDown && active && active.msgs.length > 0 && !activeFlow && (

@@ -28,6 +28,7 @@ import { useCoachAccess } from '@/hooks/useCoachAccess'
 import { useI18n } from '@/lib/i18n'
 import { setNavDirection } from '@/lib/nav/direction'
 import { useCardEntrance } from '@/components/ui/motion'
+import { initKeyboard } from '@/lib/native/keyboard'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 // Pages refaites en « cartes » façon Strava : page grise + cartes blanches (mobile).
@@ -48,6 +49,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // Vue immersive (salon textuel communauté, mobile) : masque TOUT le chrome du
   // haut (hamburger, coach, recherche, notif, IA). Signalé par CommunityView.
   const [immersive, setImmersive] = useState(false)
+  // Clavier natif (barre d'accessoire, collage aux champs) : initialisé dès le shell.
+  useEffect(() => { initKeyboard() }, [])
   useEffect(() => {
     const h = (e: Event) => setImmersive(!!(e as CustomEvent).detail)
     window.addEventListener('thw:immersive', h as EventListener)

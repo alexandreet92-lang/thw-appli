@@ -1,4 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli'
+// Type seul (aucun code du plugin n'est exécuté par la CLI Capacitor).
+import type { KeyboardResize } from '@capacitor/keyboard'
 
 // ══════════════════════════════════════════════════════════════════════════
 // Config Capacitor — app iOS packagée EN LOCAL (voir docs/PHASE5_CAPACITOR.md).
@@ -12,8 +14,11 @@ const config: CapacitorConfig = {
   appName: 'Hybrid',
   webDir: 'out',
   ios: {
-    // Fond de la webview cohérent avec le thème sombre (évite un flash blanc).
-    backgroundColor: '#0b0b0f',
+    // PAS de backgroundColor figé : l'ancien '#0b0b0f' (noir) apparaissait en
+    // BANDE NOIRE sous/autour du clavier en thème clair. Sans valeur, Capacitor
+    // utilise UIColor.systemBackground (blanc en clair / noir en sombre) et le
+    // plugin Keyboard recolore le fond de la fenêtre avec le fond réel de la page
+    // à chaque ouverture du clavier (autoBackdropColor: 'dom', ci-dessous).
     // 'never' = webview EDGE-TO-EDGE. Les marges (encoche / home indicator) sont
     // gérées par le CSS via env(safe-area-inset-*) — que l'app utilise déjà
     // partout (barre d'onglets, contenu, écrans record). Avec 'always', iOS
@@ -22,6 +27,20 @@ const config: CapacitorConfig = {
     contentInset: 'never',
   },
   plugins: {
+    // Clavier iOS (voir src/lib/native/keyboard.ts) :
+    //  • 'native' par défaut → pour les champs « ordinaires », le webview est
+    //    raccourci au-dessus du clavier (formulaires, feuilles…).
+    //  • Les composeurs collés (`data-kb-glue`, ex. chat IA) basculent à la volée
+    //    en 'none' et se placent eux-mêmes PILE sur le clavier, animés avec la
+    //    même courbe qu'iOS (keyboardWillShow/keyboardWillHide) → zéro bande.
+    //  • Le plugin retire aussi la gestion clavier propre au WKWebView
+    //    (auto-scroll de la page qui faisait sortir l'en-tête de l'écran).
+    //  • autoBackdropColor 'dom' : le fond derrière le clavier (coins arrondis,
+    //    animation) = fond de <body> (suit le thème clair/sombre), jamais noir.
+    Keyboard: {
+      resize: 'native' as KeyboardResize,
+      autoBackdropColor: 'dom',
+    },
     // Écran de démarrage : court, sans spinner (le bundle local démarre vite).
     SplashScreen: {
       launchShowDuration: 600,

@@ -4,6 +4,9 @@ import Link from 'next/link'
 import type { AgendaCalendar, CalEvent } from '@/lib/agenda/types'
 import { DEFAULT_REMINDER_MIN, sportColor } from '@/lib/agenda/types'
 import { createEvent, updateEvent, deleteEvent, createSessionLight, updateSessionLight } from '@/lib/agenda/data'
+import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, Ico, Chevron, HAIRLINE, CARD_BG, PAGE_BG } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, MSection, MField, MDot, MDangerRow, MConfirmDelete, MSeg, M_SCROLL, M_INP, M_TEXTAREA, M_GRID2, M_LBL } from '@/app/calendar/components/mobileForm'
 
 // Sports proposés (cohérent avec l'app).
 const SPORTS = ['running', 'cycling', 'swim', 'hyrox', 'gym', 'boxe', 'trail', 'rowing']
@@ -61,6 +64,8 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useI18n()
+  const isMobile = useIsMobile()
   const editing = !!event
   const readOnly = !!event && !event.editable && event.source !== 'session'
   const isSession = event?.source === 'session' || (!event && false)
@@ -178,6 +183,257 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
     } finally { setBusy(false) }
   }
 
+  // ══ MOBILE (≤ 767 px) : feuilles « cartes » (MSheet) — Annuler · titre ·
+  // Créer/Enregistrer, corps gris, réglages en liste groupée, champs pleins
+  // doux. Mêmes états, mêmes handlers que le rendu desktop.
+  if (isMobile) {
+    const Z = 18500
+    const rowBase: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 52, padding: '0 16px', boxSizing: 'border-box', border: 'none', background: 'transparent', fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text)', textAlign: 'left' }
+    const rowLbl: React.CSSProperties = { flex: 1, minWidth: 0, fontWeight: 500 }
+    const rowVal: React.CSSProperties = { maxWidth: '58%', fontSize: 16, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+    // Sélecteur natif invisible couvrant toute la ligne : un tap n'importe où ouvre la roue iOS.
+    const rowSelect: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', fontSize: 16, border: 'none', appearance: 'none', WebkitAppearance: 'none' }
+    const sw = (on: boolean, onToggle: () => void, label: string) => (
+      <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle}
+        style={{ width: 51, height: 31, borderRadius: 'var(--r-pill)', border: 'none', padding: 2, cursor: 'pointer', flexShrink: 0, background: on ? 'var(--primary)' : 'var(--surface-bar)', transition: 'background .2s ease', display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start' }}>
+        <span style={{ width: 27, height: 27, borderRadius: '50%', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)' }} />
+      </button>
+    )
+    const checkIco = <span style={{ color: 'var(--primary)', display: 'flex' }}><Ico d={<path d="M20 6 9 17l-5-5" />} size={20} sw={2.6} /></span>
+
+    if (readOnly) return (
+      <MSheet open onClose={onClose} full={false} label={event!.title} zIndex={Z}>
+        <SheetHeader leftLabel="Fermer" onLeft={onClose} title={event!.title} />
+        <div style={{ ...M_SCROLL, flex: 'none', maxHeight: '70dvh' }}>
+          <div style={{ padding: '0 4px' }}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', overflowWrap: 'anywhere' }}>{event!.title}</h2>
+            <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '4px 0 0', textTransform: 'capitalize' }}>
+              {new Date(event!.start).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {event!.sport ? ` · ${event!.sport}` : ''}{event!.meta?.type ? ` · ${event!.meta.type}` : ''}
+            </p>
+          </div>
+          {event!.description && <MSection><p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{event!.description}</p></MSection>}
+        </div>
+      </MSheet>
+    )
+
+    const sheetTitle = editing ? t('pe4.agenda.editTitle') : t('pe4.agenda.newTitle')
+    return (
+      <>
+        <MSheet open onClose={onClose} label={sheetTitle} zIndex={Z}>
+          <SheetHeader leftLabel="Annuler" onLeft={onClose} title={sheetTitle}
+            rightLabel={busy ? '…' : editing ? 'Enregistrer' : 'Créer'} onRight={() => void save()} rightDisabled={busy} />
+          <div style={M_SCROLL}>
+            {/* Type (création uniquement) : segmenté gris + pouce blanc */}
+            {!editing && (
+              <MSeg<'event' | 'session'> value={kind} onChange={setKind}
+                options={[{ v: 'event', l: 'Événement' }, { v: 'session', l: 'Séance' }]} />
+            )}
+
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label="Titre">
+                  <input style={{ ...M_INP, fontWeight: 700 }} value={title} onChange={e => setTitle(e.target.value)} placeholder={kind === 'session' ? 'Ex. Sortie longue' : 'Ex. Rendez-vous kiné'} autoFocus />
+                </MField>
+                {kind === 'session' && (
+                  <MField label="Sport">
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}><MDot color={sportColor(sport)} /></span>
+                      <select style={{ ...M_INP, paddingLeft: 32 }} value={sport} onChange={e => setSport(e.target.value)}>
+                        {SPORTS.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+                      </select>
+                    </div>
+                  </MField>
+                )}
+              </div>
+            </MSection>
+
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label="Date"><input type="date" style={M_INP} value={dateStr} onChange={e => setDateStr(e.target.value)} /></MField>
+                {!allDay && (
+                  <div style={M_GRID2}>
+                    <MField label="Début"><input type="time" style={M_INP} value={startT} onChange={e => setStartT(e.target.value)} /></MField>
+                    <MField label="Fin"><input type="time" style={M_INP} value={endT} onChange={e => setEndT(e.target.value)} /></MField>
+                  </div>
+                )}
+                {kind === 'event' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44 }}>
+                    <span style={{ flex: 1, fontSize: 16, color: 'var(--text)' }}>Toute la journée</span>
+                    {sw(allDay, () => setAllDay(v => !v), 'Toute la journée')}
+                  </div>
+                )}
+                {kind === 'session' && (
+                  <MField label="RPE (ressenti /10)">
+                    <input type="number" inputMode="decimal" min={1} max={10} step={0.5} style={M_INP} value={rpe} onChange={e => setRpe(e.target.value)} placeholder="—" />
+                  </MField>
+                )}
+              </div>
+            </MSection>
+
+            {/* Réglages : liste groupée (filets) — valeur grise à droite */}
+            <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+              {kind === 'event' && calendars.length > 0 && (
+                <div style={{ ...rowBase, position: 'relative' }}>
+                  <span style={rowLbl}>Agenda</span>
+                  <span style={rowVal}>{calendars.find(c => c.id === calendarId)?.name ?? '—'}</span>
+                  <Chevron />
+                  <select aria-label="Agenda" style={rowSelect} value={calendarId} onChange={e => setCalendarId(e.target.value)}>
+                    {calendars.filter(c => c.kind === 'personal' || c.kind === 'google').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <div style={{ ...rowBase, position: 'relative', borderTop: kind === 'event' && calendars.length > 0 ? HAIRLINE : 'none' }}>
+                <span style={rowLbl}>Rappel</span>
+                <span style={rowVal}>{REMINDERS.find(r => r.v === reminder)?.label ?? '—'}</span>
+                <Chevron />
+                <select aria-label="Rappel" style={rowSelect} value={reminder} onChange={e => setReminder(Number(e.target.value))}>
+                  {REMINDERS.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
+                </select>
+              </div>
+              {kind === 'event' && (
+                <button type="button" onClick={() => setRecOpen(true)} style={{ ...rowBase, borderTop: HAIRLINE, cursor: 'pointer' }}>
+                  <span style={rowLbl}>Répétition</span>
+                  <span style={rowVal}>{currentRecLabel}</span>
+                  <Chevron />
+                </button>
+              )}
+              <button type="button" onClick={() => setPaletteOpen(o => !o)} aria-expanded={paletteOpen} style={{ ...rowBase, borderTop: HAIRLINE, cursor: 'pointer' }}>
+                <span style={rowLbl}>Couleur</span>
+                <span aria-hidden style={{ width: 24, height: 24, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                <span style={{ display: 'flex', transform: paletteOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}><Chevron /></span>
+              </button>
+              {paletteOpen && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 10, padding: '4px 16px 16px' }}>
+                  {COLOR_PALETTE.map(c => {
+                    const on = color.toLowerCase() === c.toLowerCase()
+                    return (
+                      <button key={c} type="button" aria-label={`Couleur ${c}`} aria-pressed={on} onClick={() => { setColor(c); setPaletteOpen(false) }}
+                        style={{ width: '100%', aspectRatio: '1', minHeight: 40, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', padding: 0, boxShadow: on ? '0 0 0 3px var(--surface-card), 0 0 0 5px var(--text)' : 'none' }} />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <MSection label="Description">
+              <textarea style={M_TEXTAREA} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Notes…" />
+            </MSection>
+
+            {/* Détail séance : blocs (lecture) + lien éditeur complet */}
+            {isSession && (
+              <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+                {Array.isArray(event?.blocks) && (event!.blocks as unknown[]).length > 0 && (
+                  <div style={{ padding: '14px 16px' }}>
+                    <span style={M_LBL}>Blocs d'intensité</span>
+                    <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0 }}>{(event!.blocks as unknown[]).length} bloc(s) — édition détaillée sur Planning sports.</p>
+                  </div>
+                )}
+                <Link href="/planning" style={{ ...rowBase, borderTop: Array.isArray(event?.blocks) && (event!.blocks as unknown[]).length > 0 ? HAIRLINE : 'none', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+                  <span style={rowLbl}>Détailler la séance (blocs) sur Planning sports</span>
+                  <Chevron />
+                </Link>
+              </div>
+            )}
+
+            {editing && (event!.source === 'event' || event!.source === 'google') && (
+              <MDangerRow label="Supprimer" onClick={() => setConfirmDel(true)} disabled={busy} />
+            )}
+          </div>
+        </MSheet>
+
+        {/* Répétition : feuille de choix (coche cyan) */}
+        <MSheet open={recOpen} onClose={() => setRecOpen(false)} full={false} label="Répétition" zIndex={Z + 100}>
+          <SheetHeader leftLabel="Annuler" onLeft={() => setRecOpen(false)} title="Répétition" />
+          <div style={{ background: PAGE_BG, padding: '8px 16px calc(24px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+              {recurrencePresets.map((r, i) => {
+                const on = !isCustomActive && rrule === r.v
+                return (
+                  <button key={r.v || 'once'} type="button" onClick={() => { setRrule(r.v); setRecOpen(false) }}
+                    style={{ ...rowBase, borderTop: i === 0 ? 'none' : HAIRLINE, cursor: 'pointer', fontWeight: on ? 700 : 500 }}>
+                    <span style={rowLbl}>{r.label}</span>{on && checkIco}
+                  </button>
+                )
+              })}
+              {isCustomActive && (
+                <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }} style={{ ...rowBase, borderTop: HAIRLINE, cursor: 'pointer', fontWeight: 700 }}>
+                  <span style={rowLbl}>{summarizeRRule(rrule)}</span>{checkIco}
+                </button>
+              )}
+            </div>
+            <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+              <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }} style={{ ...rowBase, cursor: 'pointer', fontWeight: 600 }}>
+                <span style={rowLbl}>Personnaliser…</span><Chevron />
+              </button>
+            </div>
+          </div>
+        </MSheet>
+
+        {/* Récurrence personnalisée (style Google Agenda) */}
+        <MSheet open={customOpen} onClose={() => setCustomOpen(false)} full={false} label="Récurrence personnalisée" zIndex={Z + 200}>
+          <SheetHeader leftLabel="Annuler" onLeft={() => setCustomOpen(false)} title="Récurrence personnalisée" rightLabel="Terminé" onRight={applyCustom} />
+          <div style={{ ...M_SCROLL, flex: 'none', maxHeight: '72dvh' }}>
+            <MSection>
+              <span style={M_LBL}>Répéter tou(te)s les</span>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input type="number" inputMode="numeric" min={1} value={cInterval} onChange={e => setCInterval(Math.max(1, Number(e.target.value) || 1))}
+                  style={{ ...M_INP, width: 72, flex: 'none', textAlign: 'center', padding: '0 8px' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MSeg<CustomUnit> value={cUnit} onChange={setCUnit} options={[{ v: 'jour', l: 'jour(s)' }, { v: 'semaine', l: 'semaine(s)' }, { v: 'mois', l: 'mois' }]} />
+                </div>
+              </div>
+            </MSection>
+            {cUnit === 'semaine' && (
+              <MSection label="Répéter le">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+                  {WEEKDAY_INITIAL.map((w, i) => {
+                    const on = cDays.includes(i)
+                    return (
+                      <button key={i} type="button" aria-pressed={on} aria-label={WEEKDAY_LONG[i]} onClick={() => setCDays(d => on ? d.filter(x => x !== i) : [...d, i])}
+                        style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-body)', padding: 0,
+                          background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--surface-card)' : 'var(--text-mid)' }}>{w}</button>
+                    )
+                  })}
+                </div>
+              </MSection>
+            )}
+            <MSection label="Se termine" bare>
+              <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+                <button type="button" onClick={() => setCEnd('never')} style={{ ...rowBase, cursor: 'pointer' }}>
+                  <span style={rowLbl}>Jamais</span>{cEnd === 'never' && checkIco}
+                </button>
+                <div role="button" tabIndex={0} onClick={() => setCEnd('on')} onKeyDown={e => { if (e.key === 'Enter') setCEnd('on') }} style={{ ...rowBase, borderTop: HAIRLINE, cursor: 'pointer' }}>
+                  <span style={{ ...rowLbl, flex: 'none', width: 48 }}>Le</span>
+                  <input type="date" value={cUntil} onClick={() => setCEnd('on')} onChange={e => { setCUntil(e.target.value); setCEnd('on') }}
+                    style={{ ...M_INP, flex: 1, minHeight: 40, opacity: cEnd === 'on' ? 1 : 0.5 }} />
+                  <span style={{ width: 20, display: 'flex' }}>{cEnd === 'on' && checkIco}</span>
+                </div>
+                <div role="button" tabIndex={0} onClick={() => setCEnd('after')} onKeyDown={e => { if (e.key === 'Enter') setCEnd('after') }} style={{ ...rowBase, borderTop: HAIRLINE, cursor: 'pointer' }}>
+                  <span style={{ ...rowLbl, flex: 'none', width: 48 }}>Après</span>
+                  <input type="number" inputMode="numeric" min={1} value={cCount} onClick={() => setCEnd('after')} onChange={e => { setCCount(Math.max(1, Number(e.target.value) || 1)); setCEnd('after') }}
+                    style={{ ...M_INP, width: 72, flex: 'none', minHeight: 40, textAlign: 'center', padding: '0 8px', opacity: cEnd === 'after' ? 1 : 0.5 }} />
+                  <span style={{ flex: 1, fontSize: 16, color: 'var(--text-mid)' }}>occurrences</span>
+                  <span style={{ width: 20, display: 'flex' }}>{cEnd === 'after' && checkIco}</span>
+                </div>
+              </div>
+            </MSection>
+          </div>
+        </MSheet>
+
+        {/* Confirmation de suppression (toujours demandée) */}
+        <MSheet open={confirmDel} onClose={() => setConfirmDel(false)} full={false} label="Supprimer cet événement ?" zIndex={Z + 300}>
+          <div style={{ background: PAGE_BG, padding: '12px 16px calc(24px + env(safe-area-inset-bottom))' }}>
+            <MConfirmDelete
+              question={<><strong style={{ display: 'block', color: 'var(--text)', fontSize: 16, marginBottom: 4 }}>Supprimer cet événement ?</strong>Cette action est définitive et ne peut pas être annulée.</>}
+              confirmLabel="Supprimer" cancelLabel="Annuler" busy={busy}
+              onConfirm={() => { setConfirmDel(false); void remove() }} onCancel={() => setConfirmDel(false)} />
+          </div>
+        </MSheet>
+      </>
+    )
+  }
+
   const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }
   const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', margin: '0 0 5px' }
 
@@ -189,7 +445,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
         .agw-sheet { width: min(460px,96vw); max-height: 90vh; border-radius: 18px; animation: agwPop .16s ease; }
         .agw-grab { display: none; }
         @keyframes agwPop { from { opacity:0; transform: scale(.97) } to { opacity:1; transform: scale(1) } }
-        @media (max-width: 640px) {
+        @media (max-width: 767px) {
           .agw-sheet-overlay { align-items: flex-end; padding: 0; }
           .agw-sheet { width: 100%; max-width: 100%; border-radius: 22px 22px 0 0; animation: agwUp .3s cubic-bezier(0.32,0.72,0,1); }
           .agw-grab { display: block; width: 40px; height: 4px; border-radius: 999px; background: var(--border-mid); margin: 8px auto 4px; }

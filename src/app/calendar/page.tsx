@@ -52,6 +52,8 @@ import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { MSheet, SheetHeader, Group, GroupRow, IconTile, TILE, PAGE_BG } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, FormMProvider, MSection, MField, MDot, MDangerRow, MSeg, M_SCROLL, M_INP, M_TEXTAREA } from './components/mobileForm'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty' | 'event'
@@ -1088,16 +1090,35 @@ function RaceTab({ races, raceStages, tests, addEvent, updateEvent, deleteEvent,
 // ════════════════════════════════════════════════
 // OBJECTIVE CHOOSER — feuille basse : Course ou Stage
 // ════════════════════════════════════════════════
+const EVENT_PINK = '#ec4899' // design-allow-color — tuile « Événement / Défi » (même rose que le desktop)
 function ObjectiveChooser({ date, onClose, onCourse, onStage, onTest, onEvent }: {
   date: string; onClose: () => void; onCourse: () => void; onStage: () => void; onTest: () => void; onEvent: () => void
 }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const pretty = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
   // Animation réelle : entrée coulissante bas → haut + fondu, portal au-dessus
   // du shell (la barre de bulles du haut ne transparaît plus).
   const [shown, setShown] = useState(false)
   useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id) }, [])
   const close = () => { setShown(false); setTimeout(onClose, 280) }
+
+  // ── MOBILE (≤ 767 px) : feuille Annuler · titre, date en sous-titre,
+  // liste groupée blanche (tuiles d'icône teintées + chevron).
+  if (isMobile) return (
+    <MSheet open={shown} onClose={close} full={false} label={t('calendar.addGoalTitle')} zIndex={5000}>
+      <SheetHeader leftLabel={t('calendar.cancel')} onLeft={close} title={t('calendar.addGoalTitle')} />
+      <div style={{ background: PAGE_BG, padding: '8px 16px calc(24px + env(safe-area-inset-bottom))' }}>
+        <p style={{ margin: '0 4px 10px', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)', textTransform: 'capitalize' }}>{pretty}</p>
+        <Group>
+          <GroupRow first onClick={onCourse} icon={<IconTile color={TILE.cyan}><Trophy size={20} /></IconTile>} label={t('calendar.race')} sub={t('calendar.raceChooserSub')} />
+          <GroupRow onClick={onStage} icon={<IconTile color={TILE.indigo}><CalendarDays size={20} /></IconTile>} label={t('calendar.stage')} sub={t('calendar.stageChooserSub')} />
+          <GroupRow onClick={onTest} icon={<IconTile color={TILE.violet}><Target size={20} /></IconTile>} label="Test" sub={t('calendar.testFormPerf')} />
+          <GroupRow onClick={onEvent} icon={<IconTile color={EVENT_PINK}><PartyPopper size={20} /></IconTile>} label={t('calendar.eventGoal')} sub={t('calendar.eventGoalSub')} />
+        </Group>
+      </div>
+    </MSheet>
+  )
   const card: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
     borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
@@ -1160,7 +1181,7 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
   onDelete?: () => void
 }) {
   const { t: tr } = useI18n()
-  const narrow = useNarrow()
+  const narrow = useIsMobile()
   const [title, setTitle]     = useState(initial?.title ?? '')
   const [date, setDate]       = useState(initial?.date ?? initialDate)
   const [desc, setDesc]       = useState(initial?.description ?? '')
@@ -1233,22 +1254,43 @@ function CategoryEventModal({ category, initialDate, initial, onClose, onSave, o
     </>
   )
 
+  // ── Mobile (≤ 767 px) : feuille Annuler · titre · Ajouter, corps gris,
+  // champs pleins doux en carte blanche, importance en segmenté, suppression
+  // en ligne rouge.
+  if (narrow) {
+    const sheetTitle = initial ? tr('calendar.editBtn') : tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })
+    return (
+      <MSheet open={shown} onClose={close} full={false} label={sheetTitle} zIndex={5000}>
+        <SheetHeader leftLabel={tr('calendar.cancel')} onLeft={close} title={sheetTitle}
+          rightLabel={initial ? tr('calendar.save') : tr('calendar.addBtn')} onRight={save} rightDisabled={!title.trim() || !date} />
+        <FormMProvider>
+          <div style={{ ...M_SCROLL, flex: 'none', maxHeight: '78dvh' }}>
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label={tr('calendar.titleLabel')}>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('calendar.eventTitlePlaceholder')} autoFocus style={{ ...M_INP, fontWeight: 700 }} />
+                </MField>
+                <MField label={tr('calendar.date')}>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} style={M_INP} />
+                </MField>
+              </div>
+            </MSection>
+            <MSection label={tr('calendar.description')}>
+              <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')} style={M_TEXTAREA} />
+            </MSection>
+            <MSection label={tr('calendar.importance')} bare>
+              <MSeg<Importance> value={importance} onChange={setImportance}
+                options={(['normal', 'important', 'primordial'] as Importance[]).map(lvl => ({ v: lvl, l: <><MDot color={eventShade(category, lvl)} />{tr(IMPORTANCE_LABEL_KEY[lvl])}</> }))} />
+            </MSection>
+            {onDelete && <MDangerRow label={tr('calendar.delete')} onClick={() => { onDelete(); close() }} />}
+          </div>
+        </FormMProvider>
+      </MSheet>
+    )
+  }
+
   return createPortal(
-    narrow ? (
-      // ── Mobile : sur-page basse (bottom sheet) ──────────────────────
-      <div style={{ position:'fixed',inset:0,zIndex:5000 }}>
-        <div onClick={close} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',opacity:shown?1:0,transition:'opacity 0.28s' }} />
-        <div onClick={e => e.stopPropagation()} style={{
-          position:'absolute',left:0,right:0,bottom:0,maxHeight:'calc(100dvh - 60px)',overflowY:'auto',
-          background:'var(--bg-card)',borderRadius:'26px 26px 0 0',border:'1px solid var(--border-mid)',borderBottom:'none',
-          padding:'18px 20px calc(20px + env(safe-area-inset-bottom))',boxShadow:'0 -10px 50px rgba(0,0,0,0.22)',
-          transform:shown?'translateY(0)':'translateY(100%)',transition:'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
-        }}>
-          <div style={{ width:40,height:4,borderRadius:4,background:'var(--border-mid)',margin:'0 auto 14px' }} />
-          {body}
-        </div>
-      </div>
-    ) : (
+    (
       // ── Bureau : sur-page CENTRÉE (milieu de l'écran) ───────────────
       <div onClick={close} style={{
         position:'fixed',inset:0,zIndex:5000,display:'flex',alignItems:'center',justifyContent:'center',padding:20,
@@ -1973,7 +2015,7 @@ export default function CalendarPage() {
   const { t } = useI18n()
   const cal = useCalendar()
   const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEvent, updateEvent, deleteEvent } = cal
-  const isMobile = useNarrow(640)
+  const isMobile = useNarrow(767)
   const { show, dismiss } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const aiContext = {

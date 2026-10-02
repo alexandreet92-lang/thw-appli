@@ -7,6 +7,7 @@ import { SPORT_COLOR } from './types'
 import { paceKm, pace100, speedKmh, numOr0 } from '@/lib/race/computePace'
 import { SegmentCard, TransitionCard, SegInput, CalcField, ROW2 } from './RaceSegmentCard'
 import { useI18n } from '@/lib/i18n'
+import { useFormM, M_CARD, M_LBL, M_CHIPS, mChip } from './mobileForm'
 
 const TRI_FORMATS: { label: string; swim: number; bike: number; run: number }[] = [
   { label: 'S', swim: 750, bike: 20, run: 5 },
@@ -21,6 +22,7 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
   bikeParcours?: ReactNode; runParcours?: ReactNode
 }) {
   const { t } = useI18n()
+  const m = useFormM()
   const g = (k: string) => (pd[k] as string) ?? ''
   const s = (k: string, v: string) => setPd({ ...pd, [k]: v })
   const bikeKm = numOr0(pd.triBikeDist)
@@ -31,16 +33,27 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: m ? 16 : 12 }}>
       {/* Format / distance */}
-      <div>
-        <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('calendar.distance')}</p>
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-          {TRI_FORMATS.map(f => { const on = pd.triFormat === f.label; return (
-            <button key={f.label} onClick={() => pickFormat(f)} style={{ padding: '8px 16px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? TRI : 'var(--border)'}`, background: on ? 'var(--bg-card)' : 'transparent', color: on ? TRI : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{f.label}</button>
-          ) })}
+      {m ? (
+        <div style={M_CARD}>
+          <span style={M_LBL}>{t('calendar.distance')}</span>
+          <div style={M_CHIPS}>
+            {TRI_FORMATS.map(f => (
+              <button key={f.label} type="button" onClick={() => pickFormat(f)} style={mChip(pd.triFormat === f.label)}>{f.label}</button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('calendar.distance')}</p>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {TRI_FORMATS.map(f => { const on = pd.triFormat === f.label; return (
+              <button key={f.label} onClick={() => pickFormat(f)} style={{ padding: '8px 16px', borderRadius: 'var(--r-pill)', border: `1px solid ${on ? TRI : 'var(--border)'}`, background: on ? 'var(--bg-card)' : 'transparent', color: on ? TRI : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{f.label}</button>
+            ) })}
+          </div>
+        </div>
+      )}
 
       <SegmentCard color={SPORT_COLOR.swim} label={t('calendar.swimming')} volume={numOr0(pd.triSwimDist) ? `${numOr0(pd.triSwimDist)} m` : undefined}>
         <div style={ROW2}>

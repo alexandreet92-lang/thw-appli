@@ -14,6 +14,8 @@ import { useI18n } from '@/lib/i18n'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { testsForSport, protocolForSlug, type CatalogSport } from '@/lib/tests/catalog'
 import TestProtocolView from '@/components/tests/TestProtocolView'
+import { MSheet, SheetHeader } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, FormMProvider, MSection, MField, MDot, MDangerRow, MConfirmDelete, M_SCROLL, M_INP, M_TEXTAREA, M_CHIPS, mChip } from './mobileForm'
 
 export interface PlannedTestInput {
   sport: CatalogSport
@@ -45,6 +47,7 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
   onSave: (t: PlannedTestInput) => Promise<void> | void
 }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const isEdit = mode === 'edit'
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
@@ -84,6 +87,56 @@ export default function TestEditorSheet({ mode = 'create', initial, initialDate,
 
   const accent = sportColor(sport)
   if (!mounted) return null
+
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — Annuler · titre · Planifier.
+  if (isMobile) {
+    const sheetTitle = isEdit ? t('w2e.editTest') : t('w2e.planTest')
+    const proto = ref ? protocolForSlug(ref) : null
+    return (
+      <MSheet open={shown && !closing} onClose={requestClose} label={sheetTitle} zIndex={9998}>
+        <style>{RACE_EDITOR_CSS}</style>
+        <SheetHeader leftLabel={t('w2e.cancel')} onLeft={requestClose} title={sheetTitle}
+          rightLabel={saving ? '…' : isEdit ? t('w2e.save') : t('w2e.schedule')} onRight={() => void handleSave()} rightDisabled={saving || !title.trim() || !date} />
+        <FormMProvider>
+          <div className="race-ed" style={M_SCROLL}>
+            <MSection label={t('w2e.sportLabel')}>
+              <div style={M_CHIPS}>
+                {SPORTS.map(s => (
+                  <button key={s.id} type="button" onClick={() => { setSport(s.id); setRef(null) }} style={mChip(sport === s.id)} aria-pressed={sport === s.id}>
+                    <MDot color={s.color} />{t(`w2e.sport.${s.id}`)}
+                  </button>
+                ))}
+              </div>
+            </MSection>
+            <MSection label={t('w2e.linkedTest')}>
+              <select value={ref ?? ''} onChange={e => pickTest(e.target.value)} style={M_INP}>
+                <option value="">{t('w2e.customTestOption')}</option>
+                {tests.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
+              </select>
+              {ref && <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}><MDot color={accent} size={7} />{t('w2e.linkedTo', { name: tests.find(tt => tt.id === ref)?.name ?? '' })}</p>}
+            </MSection>
+            {proto && (
+              <MSection label={t('w2e.testProcedure')} bare>
+                <TestProtocolView proto={proto} accent={accent} />
+              </MSection>
+            )}
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label={t('w2e.title')}><input style={{ ...M_INP, fontWeight: 700 }} value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2e.titlePlaceholder')} /></MField>
+                <MField label={t('w2e.date')}><input type="date" style={M_INP} value={date} onChange={e => setDate(e.target.value)} /></MField>
+              </div>
+            </MSection>
+            <MSection label={t('w2e.testFlow')}>
+              <textarea rows={6} style={{ ...M_TEXTAREA, minHeight: 140 }} value={protocol} onChange={e => setProto(e.target.value)} placeholder={t('w2e.testFlowPlaceholder')} />
+            </MSection>
+            {isEdit && onDelete && (confirmDelete
+              ? <MConfirmDelete question={t('w2e.deleteTestConfirm')} confirmLabel={t('w2e.delete')} cancelLabel={t('w2e.cancel')} onConfirm={onDelete} onCancel={() => setConfirmDelete(false)} />
+              : <MDangerRow label={t('w2e.delete')} onClick={() => setConfirmDelete(true)} />)}
+          </div>
+        </FormMProvider>
+      </MSheet>
+    )
+  }
 
   return createPortal(
     <>

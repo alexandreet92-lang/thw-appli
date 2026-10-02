@@ -17,6 +17,8 @@ import { parseRouteFile } from '@/lib/parcours/parseRouteFile'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { MSheet, SheetHeader, HAIRLINE } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, FormMProvider, MSection, MField, MDot, MDangerRow, MConfirmDelete, MTextAction, M_SCROLL, M_INP, M_TEXTAREA, M_CHIPS, M_GRID2, M_LBL, M_CARD, mChip } from './mobileForm'
 
 interface Props {
   mode?: 'create' | 'edit'
@@ -56,6 +58,7 @@ type DayProg = Record<string, { matin: StageSession[]; aprem: StageSession[] }>
 
 export default function EventModal({ mode = 'create', initialData, initialDate, onClose, onDelete, onSave }: Props) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const supabase = createClient()
   const isEdit = mode === 'edit'
   // Portail sur <body> : échappe au contexte d'empilement du swipe/onglets
@@ -188,6 +191,125 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
   const accent = sports.length ? sportColor(sports[0]) : '#5b6fff'
 
   if (!mounted) return null
+
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — Annuler · titre · Enregistrer,
+  // programme jour par jour en cartes blanches, champs pleins doux.
+  if (isMobile) {
+    const sheetTitle = isEdit ? t('calendar.editStage') : t('calendar.addStage')
+    const canSave = !!name.trim() && !!startDate && !!endDate
+    return (
+      <MSheet open={shown && !closing} onClose={requestClose} label={sheetTitle} zIndex={9998}>
+        <style>{RACE_EDITOR_CSS}</style>
+        <SheetHeader leftLabel={t('calendar.cancel')} onLeft={requestClose} title={sheetTitle}
+          rightLabel={saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')} onRight={() => void handleSave()} rightDisabled={saving || !canSave} />
+        <FormMProvider>
+          <div className="race-ed" style={M_SCROLL}>
+            {/* Sports (multi) */}
+            <MSection label={t('calendar.sports')}>
+              <div style={M_CHIPS}>
+                {STAGE_SPORTS.map(sp => {
+                  const on = sports.includes(sp.id)
+                  return (
+                    <button key={sp.id} type="button" onClick={() => toggleSport(sp.id)} style={mChip(on)} aria-pressed={on}>
+                      <MDot color={sp.color} />{sp.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </MSection>
+            {/* Nom + dates */}
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label={t('calendar.stageName')}>
+                  <input style={{ ...M_INP, fontWeight: 700 }} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.stageNamePlaceholder')} />
+                </MField>
+                <div style={M_GRID2}>
+                  <MField label={t('calendar.start')}><input type="date" style={M_INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></MField>
+                  <MField label={t('calendar.end')}><input type="date" style={M_INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></MField>
+                </div>
+                {days.length > 0 && (
+                  <p style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, color: 'var(--text-mid)', margin: 0 }}>
+                    <span>{t('calendar.duration')}</span>
+                    <strong className="ed-tnum" style={{ color: 'var(--text)' }}>{days.length > 1 ? t('calendar.daysCountPlural', { n: days.length }) : t('calendar.daysCount', { n: days.length })}</strong>
+                  </p>
+                )}
+              </div>
+            </MSection>
+            {/* Description */}
+            <MSection label={t('calendar.description')}>
+              <textarea rows={2} style={M_TEXTAREA} value={desc} onChange={e => setDesc(e.target.value)} placeholder={t('calendar.stageDescPlaceholder')} />
+            </MSection>
+            {/* Programme par jour : Matin / Après-midi */}
+            {days.length > 0 && (
+              <MSection label={t('calendar.programMorningAfternoon')} bare>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {days.map(d => {
+                    const dp = program[d] ?? { matin: [], aprem: [] }
+                    return (
+                      <div key={d} style={{ ...M_CARD, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{labelDay(d)}</p>
+                        {(['matin', 'aprem'] as const).map(slot => (
+                          <div key={slot}>
+                            <span style={M_LBL}>{slot === 'matin' ? t('calendar.morning') : t('calendar.afternoon')}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              {dp[slot].map((ses, i) => (
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0', borderTop: i === 0 ? 'none' : HAIRLINE }}>
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <MDot color={sportColor(ses.sport)} />
+                                    <select value={ses.sport} onChange={e => updSession(d, slot, i, { sport: e.target.value as StageSport })} style={{ ...M_INP, flex: 1, minWidth: 0 }}>
+                                      {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
+                                    </select>
+                                    <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...M_INP, width: 104, flex: 'none', padding: '0 10px' }} />
+                                    <button type="button" onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')}
+                                      style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, padding: 0 }}><IconX size={18} /></button>
+                                  </div>
+                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={M_INP} />
+                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder={t('calendar.detailPlaceholder')} style={M_INP} />
+                                </div>
+                              ))}
+                              <MTextAction onClick={() => addSession(d, slot)}>
+                                {slot === 'matin' ? t('calendar.addMorningSession') : t('calendar.addAfternoonSession')}
+                              </MTextAction>
+                            </div>
+                          </div>
+                        ))}
+                        {/* Parcours du jour */}
+                        <div>
+                          <span style={M_LBL}>{t('calendar.dayRoute')}</span>
+                          {(dayParcoursFile[d] || dayParcoursUrl[d]) ? (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
+                                <span style={{ fontSize: 15, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
+                                </span>
+                                <button type="button" onClick={() => clearDayParcours(d)} aria-label={t('calendar.removeRoute')}
+                                  style={{ width: 44, height: 44, border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, padding: 0, marginRight: -10 }}><IconX size={18} /></button>
+                              </div>
+                              {dayParcoursFile[d]
+                                ? <ParcoursViewer file={dayParcoursFile[d] as File} />
+                                : dayParcoursUrl[d] ? <ParcoursViewer fileUrl={dayParcoursUrl[d].url} /> : null}
+                            </>
+                          ) : (
+                            <label style={{ minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-chip)', borderRadius: 'var(--r-md)', padding: '0 14px', cursor: 'pointer' }}>
+                              {t('calendar.importRoute')}
+                              <input type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) void pickDayParcours(d, f); e.target.value = '' }} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </MSection>
+            )}
+            {isEdit && onDelete && (confirmDelete
+              ? <MConfirmDelete question={t('calendar.deleteStageConfirm')} confirmLabel={t('calendar.delete')} cancelLabel={t('calendar.cancel')} onConfirm={onDelete} onCancel={() => setConfirmDelete(false)} />
+              : <MDangerRow label={t('calendar.delete')} onClick={() => setConfirmDelete(true)} />)}
+          </div>
+        </FormMProvider>
+      </MSheet>
+    )
+  }
 
   return createPortal(
     <>

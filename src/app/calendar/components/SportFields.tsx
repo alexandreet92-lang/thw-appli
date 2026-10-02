@@ -1,6 +1,7 @@
 'use client'
 import { RaceSport, parseTimeSec, fmtMinSec } from './types'
 import { useI18n } from '@/lib/i18n'
+import { useFormM, M_INP, M_LBL, M_READONLY, mChip } from './mobileForm'
 
 const HYROX_STATIONS = ['SkiErg','Sled Push','Sled Pull','Burpee Broad Jump','Rowing','Farmers Carry','Sandbag Lunges','Wall Balls']
 const SWIM_STROKES  = ['Nage libre','Dos','Brasse','Papillon','Quatre nages']
@@ -13,17 +14,25 @@ const RUN_DISTS   = ['5 km','10 km','Semi-marathon','Marathon','Autre']
 const RUN_KM: Record<string, number> = { '5 km':5,'10 km':10,'Semi-marathon':21.1,'Marathon':42.195 }
 const ROW_DISTS   = ['500 m','1000 m','2000 m','5000 m','Autre']
 
-const INP = { width:'100%',boxSizing:'border-box' as const,padding:'10px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13.5,outline:'none' }
-const LBL = { fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',marginBottom:7 }
-const MONO = { ...INP, fontFamily: 'var(--font-body)', letterSpacing:'0.02em' }
-const READONLY = { ...MONO, background:'var(--bg-card2)',color:'var(--text-dim)',cursor:'default',borderStyle:'dashed' as const,borderColor:'var(--border-mid)' }
+const D_INP = { width:'100%',boxSizing:'border-box' as const,padding:'10px 12px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:13.5,outline:'none' }
+const D_LBL = { fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',marginBottom:7 }
+const D_MONO = { ...D_INP, fontFamily: 'var(--font-body)', letterSpacing:'0.02em' }
+const D_READONLY = { ...D_MONO, background:'var(--bg-card2)',color:'var(--text-dim)',cursor:'default',borderStyle:'dashed' as const,borderColor:'var(--border-mid)' }
 
 interface SF { pd: Record<string,unknown>; setPd: (v: Record<string,unknown>) => void }
 const set = (pd: Record<string,unknown>, key: string, val: unknown) => ({ ...pd, [key]: val })
 
 // Pastille douce (sélection = teinte + texte coloré, sans bordure dure) — même
 // langage visuel que les pastilles sport/objectif de la coquille éditeur.
-function chip(on: boolean, color: string): React.CSSProperties {
+// Mobile (contexte FormM) : champs pleins doux, libellés gris 13 px, chips
+// pilule à sélection sombre — le rendu desktop reste inchangé.
+function useSF() {
+  const m = useFormM()
+  return m
+    ? { INP: M_INP as React.CSSProperties, LBL: M_LBL, MONO: { ...M_INP, fontVariantNumeric: 'tabular-nums' } as React.CSSProperties, READONLY: M_READONLY, chip: (on: boolean, _c: string) => mChip(on), wrapGap: 8, m: true }
+    : { INP: D_INP as React.CSSProperties, LBL: D_LBL as React.CSSProperties, MONO: D_MONO as React.CSSProperties, READONLY: D_READONLY as React.CSSProperties, chip: dChip, wrapGap: 7, m: false }
+}
+function dChip(on: boolean, color: string): React.CSSProperties {
   return { padding:'8px 13px',borderRadius: 'var(--r-pill)',border:`1px solid ${on?'transparent':'var(--border)'}`,cursor:'pointer',fontSize:12,fontWeight:on?700:600,
     background:on?`color-mix(in srgb, ${color} 15%, transparent)`:'transparent',color:on?color:'var(--text-mid)',transition:'background .15s, color .15s' }
 }
@@ -31,10 +40,11 @@ function chip(on: boolean, color: string): React.CSSProperties {
 function Chips({ label, options, value, onChange, color }: {
   label: string; options: string[]; value: string; onChange: (v: string) => void; color: string
 }) {
+  const { LBL, chip, wrapGap } = useSF()
   return (
     <div>
       <p style={LBL}>{label}</p>
-      <div style={{ display:'flex',gap:7,flexWrap:'wrap' }}>
+      <div style={{ display:'flex',gap:wrapGap,flexWrap:'wrap' }}>
         {options.map(o => { const on = value === o; return (
           <button key={o} onClick={() => onChange(o)} style={chip(on, color)}>{o}</button>
         )})}
@@ -45,6 +55,7 @@ function Chips({ label, options, value, onChange, color }: {
 
 export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSport }) {
   const { t } = useI18n()
+  const { INP, LBL, MONO, READONLY, chip, wrapGap, m } = useSF()
   if (sport === 'run') {
     const sec = parseTimeSec((pd.goalTime as string) ?? '')
     const km  = RUN_KM[(pd.runDist as string) ?? ''] ?? 0
@@ -53,7 +64,7 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
       <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
         <div>
           <p style={LBL}>{t('calendar.distance')}</p>
-          <div style={{ display:'flex',gap:7,flexWrap:'wrap' }}>
+          <div style={{ display:'flex',gap:wrapGap,flexWrap:'wrap' }}>
             {RUN_DISTS.map(d => (
               <button key={d} onClick={() => setPd(set(pd,'runDist',d))} style={chip(pd.runDist===d, '#22c55e')}>
                 {d}
@@ -112,14 +123,14 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
       <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
         {step > 0 && (
           <button onClick={() => setPd(set(pd,'swimStep',step-1))}
-            style={{ alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:12 }}>
+            style={m ? { alignSelf:'flex-start',background:'none',border:'none',color:'var(--primary)',cursor:'pointer',fontSize:15,fontWeight:600,minHeight:44,padding:'0 4px' } : { alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:12 }}>
             {t('calendar.back')}
           </button>
         )}
         {step === 0 && (
           <div>
             <p style={LBL}>{t('calendar.stroke')}</p>
-            <div style={{ display:'flex',gap:7,flexWrap:'wrap' }}>
+            <div style={{ display:'flex',gap:wrapGap,flexWrap:'wrap' }}>
               {SWIM_STROKES.map(s => (
                 <button key={s} onClick={() => setPd({ ...pd, swimStroke:s, swimStep:1 })} style={chip(stroke===s, '#38bdf8')}>
                   {s}
@@ -131,7 +142,7 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
         {step === 1 && stroke && (
           <div>
             <p style={LBL}>{t('calendar.distance')}</p>
-            <div style={{ display:'flex',gap:7,flexWrap:'wrap' }}>
+            <div style={{ display:'flex',gap:wrapGap,flexWrap:'wrap' }}>
               {(SWIM_DISTS[stroke]??[]).map(d => (
                 <button key={d} onClick={() => setPd({ ...pd, swimDist:d, swimStep:2 })} style={chip(dist===d, '#38bdf8')}>
                   {d}
@@ -196,10 +207,10 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
           <input style={MONO} value={(pd.goalTime as string)??''} placeholder="01:10:00"
             onChange={e => setPd(set(pd,'goalTime',e.target.value))}/></div>
         <p style={{ ...LBL, marginBottom:2 }}>{t('calendar.stations')}</p>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:m ? 10 : 6 }}>
           {HYROX_STATIONS.map(st => (
             <div key={st}>
-              <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:2 }}>{st}</p>
+              <p style={m ? { ...LBL, fontWeight:500, marginBottom:6 } : { fontSize:10,color:'var(--text-dim)',marginBottom:2 }}>{st}</p>
               <input style={MONO} value={stations[st]??''} placeholder="02:30"
                 onChange={e => setPd(set(pd,'stations',{ ...stations,[st]:e.target.value }))}/>
             </div>
@@ -274,7 +285,7 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
         <Chips label={t('calendar.type')} options={['Ergomètre','Bateau']} value={(pd.rowType as string)??''} onChange={v => setPd(set(pd,'rowType',v))} color="#14b8a6" />
         <div>
           <p style={LBL}>{t('calendar.distance')}</p>
-          <div style={{ display:'flex',gap:7,flexWrap:'wrap' }}>
+          <div style={{ display:'flex',gap:wrapGap,flexWrap:'wrap' }}>
             {ROW_DISTS.map(d => (
               <button key={d} onClick={() => setPd(set(pd,'rowDist',d))} style={chip(pd.rowDist===d, '#14b8a6')}>
                 {d}

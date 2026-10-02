@@ -6,7 +6,8 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, currentLocale } from '@/lib/i18n'
+import { useFormM, M_CARD, MDot } from './mobileForm'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 function mapboxStaticUrl(poly: string, color: string, w: number, h: number): string | null {
@@ -48,6 +49,7 @@ const SPORT_COL: Record<string, string> = { run: '#22c55e', trail: '#84cc16', bi
 
 export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goalTime?: string | null }) {
   const { t } = useI18n()
+  const m = useFormM()
   const [acts, setActs] = useState<Act[] | null>(null)
 
   useEffect(() => {
@@ -65,6 +67,58 @@ export function RaceLinkedActivities({ raceId, goalTime }: { raceId: string; goa
 
   if (!acts || acts.length === 0) return null
   const goalS = parseGoalTime(goalTime)
+
+  // Mobile : cartes blanches sans bordure, libellés en casse normale, tuiles grises.
+  if (m) return (
+    <section>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: '0 4px 8px' }}>{t('calendar.realizedSection')}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {acts.map(a => {
+          const col = SPORT_COL[(a.sport_type ?? 'run').toLowerCase()] ?? SPORT_COL.bike
+          const map = a.summary_polyline ? mapboxStaticUrl(a.summary_polyline, col, 720, 260) : null
+          const realizedS = a.moving_time_s ?? a.elapsed_time_s ?? null
+          const delta = goalS != null && realizedS != null ? realizedS - goalS : null
+          return (
+            <a key={a.id} href={`/activities?id=${a.id}`} style={{ ...M_CARD, padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              {map && <img src={map} alt="" style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} loading="lazy" />}
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MDot color={col} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || t('calendar.realizedActivity')}</span>
+                  <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
+                </div>
+                {a.linked_race_date && <p style={{ margin: '2px 0 0 16px', fontSize: 13, color: 'var(--text-mid)', textTransform: 'capitalize' }}>{new Date(a.linked_race_date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })}</p>}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
+                  {[
+                    { l: t('calendar.mDistance'), v: fmtKm(a.distance_m) },
+                    { l: t('calendar.mTime'), v: fmtDur(realizedS) },
+                    a.avg_watts ? { l: t('calendar.mPower'), v: `${Math.round(a.avg_watts)} W` } : { l: t('calendar.mPace'), v: fmtPace(a.avg_pace_s_km) },
+                    { l: t('calendar.mHr'), v: a.avg_hr ? `${Math.round(a.avg_hr)} bpm` : '—' },
+                  ].map((mm, i) => (
+                    <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>{mm.l}</p>
+                      <p className="tnum" style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mm.v}</p>
+                    </div>
+                  ))}
+                </div>
+                {goalS != null && realizedS != null && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 14, color: 'var(--text-mid)' }}>
+                    <span>{t('calendar.planned')} <strong className="tnum" style={{ color: 'var(--text)' }}>{fmtDur(goalS)}</strong></span>
+                    <span aria-hidden>→</span>
+                    <span>{t('calendar.realized')} <strong className="tnum" style={{ color: 'var(--text)' }}>{fmtDur(realizedS)}</strong></span>
+                    <span className="tnum" style={{ marginLeft: 'auto', fontWeight: 800, color: delta != null && delta <= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      {delta != null ? (delta <= 0 ? '−' : '+') + fmtDur(Math.abs(delta)) : ''}
+                    </span>
+                  </div>
+                )}
+                <p style={{ margin: '12px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>{t('calendar.openAnalysis')}</p>
+              </div>
+            </a>
+          )
+        })}
+      </div>
+    </section>
+  )
 
   return (
     <div>

@@ -4,10 +4,23 @@
 import type { ReactNode } from 'react'
 import { IconArrowRight } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
+import { useFormM, M_CARD, M_INP, M_LBL, M_READONLY, MDot } from './mobileForm'
 
 export function SegmentCard({ color, label, volume, children }: {
   color: string; label: string; volume?: string; children: ReactNode
 }) {
+  // Mobile : carte blanche radius 20 sans bordure, en-tête 17 px gras + filet.
+  const m = useFormM()
+  if (m) return (
+    <div style={{ ...M_CARD, padding: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+        <MDot color={color} />
+        <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{label}</span>
+        {volume && <span className="ed-tnum" style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)' }}>{volume}</span>}
+      </div>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>{children}</div>
+    </div>
+  )
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -23,6 +36,21 @@ export function SegmentCard({ color, label, volume, children }: {
 export function TransitionCard({ label, from, to, value, onChange }: {
   label: string; from: string; to: string; value: string; onChange: (v: string) => void
 }) {
+  // Mobile : carte blanche (pas de bordure pointillée), champ plein doux.
+  const m = useFormM()
+  if (m) return (
+    <div style={{ ...M_CARD, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px' }}>
+      <MDot color="var(--text-dim)" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{label}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {from} <IconArrowRight size={12} /> {to}
+        </p>
+      </div>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder="02:00" inputMode="numeric"
+        className="ed-tnum" style={{ ...M_INP, width: 92, textAlign: 'center', padding: '0 8px' }} />
+    </div>
+  )
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border)', borderRadius: 'var(--r-md)', padding: '10px 14px' }}>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0 }} />
@@ -41,6 +69,14 @@ export function TransitionCard({ label, from, to, value, onChange }: {
 export function SegInput({ label, value, onChange, placeholder, type }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
 }) {
+  const m = useFormM()
+  if (m) return (
+    <div style={{ minWidth: 0 }}>
+      <span style={M_LBL}>{label}</span>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type}
+        className="ed-tnum" style={M_INP} />
+    </div>
+  )
   return (
     <div>
       <p style={fLbl}>{label}</p>
@@ -52,6 +88,13 @@ export function SegInput({ label, value, onChange, placeholder, type }: {
 
 export function CalcField({ label, value }: { label: string; value: string }) {
   const { t } = useI18n()
+  const m = useFormM()
+  if (m) return (
+    <div style={{ minWidth: 0 }}>
+      <span style={M_LBL}>{label} <span style={{ fontWeight: 500, color: 'var(--text-dim)' }}>· {t('calendar.calcBadge')}</span></span>
+      <div className="ed-tnum" style={{ ...M_READONLY, display: 'flex', alignItems: 'center', fontWeight: 600, color: value === '—' ? 'var(--text-dim)' : 'var(--text)' }}>{value}</div>
+    </div>
+  )
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>

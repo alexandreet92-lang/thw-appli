@@ -30,7 +30,7 @@ export default function PlanningWeekPage() {
   // Mobile, vue Mois : jour sélectionné (sa liste s'affiche sous la grille).
   const [selDay, setSelDay] = useState<Date | null>(null)
   const narrow = useNarrow(720)
-  const isMobile = useNarrow(640)
+  const isMobile = useNarrow(767)
   const px = narrow ? 16 : 32   // padding horizontal de contenu (DESIGN_SYSTEM §3)
 
   // Sur mobile, la vue par défaut est « Mois » (façon Google Agenda). Appliqué

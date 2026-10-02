@@ -18,6 +18,8 @@ import { RaceLinkedActivities } from './RaceLinkedActivities'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { MSheet, SheetHeader } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, FormMProvider, MSection, MField, MDot, MDangerRow, MConfirmDelete, M_SCROLL, M_INP, M_TEXTAREA, M_CHIPS, M_GRID2, mChip } from './mobileForm'
 
 interface Props {
   race?: Race; initialDate?: string; initialLevel?: RaceLevel; onClose: () => void
@@ -39,6 +41,7 @@ const findGpx = (list: File[]) => list.find(f => /\.(gpx|tcx|kml)$/i.test(f.name
 
 export default function RaceEditorSheet({ race, initialDate, initialLevel, onClose, onSave, onDelete }: Props) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const isEdit = !!race
   // Portail sur <body> : la sheet doit passer AU-DESSUS de la barre d'onglets.
   const [mounted, setMounted] = useState(false)
@@ -106,6 +109,95 @@ export default function RaceEditorSheet({ race, initialDate, initialLevel, onClo
   }
 
   if (!mounted) return null
+
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — Annuler · titre · Enregistrer,
+  // corps gris, sections en cartes blanches, suppression en ligne rouge.
+  if (isMobile) {
+    const title = isEdit ? t('calendar.editRace') : t('calendar.addRace')
+    const routeBlock = (list: File[], exist: { url: string } | null) => (
+      findGpx(list)
+        ? <div style={{ marginTop: 12 }}><ParcoursViewer file={findGpx(list)} /></div>
+        : exist && <div style={{ marginTop: 12 }}><ParcoursViewer fileUrl={exist.url} /></div>
+    )
+    return (
+      <MSheet open={shown && !closing} onClose={requestClose} label={title} zIndex={9998}>
+        <style>{RACE_EDITOR_CSS}</style>
+        <SheetHeader leftLabel={t('calendar.cancel')} onLeft={requestClose} title={title}
+          rightLabel={saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')} onRight={() => void handleSave()} rightDisabled={saving || !name.trim()} />
+        <FormMProvider>
+          <div className="race-ed" style={M_SCROLL}>
+            {/* Sport — chips pilule, point couleur du sport */}
+            <MSection label={t('calendar.sport')}>
+              <div style={M_CHIPS}>
+                {SPORTS.map(s => (
+                  <button key={s} type="button" onClick={() => { setSport(s); setPd({}) }} style={mChip(sport === s)} aria-pressed={sport === s}>
+                    <MDot color={SPORT_COLOR[s]} />{SPORT_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </MSection>
+            {/* Objectif (niveau) — masqué pour un Événement/Défi */}
+            {!isEvent && (
+              <MSection label={t('calendar.goal')}>
+                <div style={M_CHIPS}>
+                  {LEVELS.map(l => { const c = RACE_CFG[l]; return (
+                    <button key={l} type="button" onClick={() => setLevel(l)} style={mChip(level === l)} aria-pressed={level === l}>
+                      <MDot color={l === 'gty' ? 'var(--text-mid)' : c.color} />{c.label}
+                    </button>
+                  ) })}
+                </div>
+              </MSection>
+            )}
+            {/* Nom + date(s) */}
+            <MSection>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <MField label={t('calendar.name')}>
+                  <input style={{ ...M_INP, fontWeight: 700 }} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.raceNamePlaceholder')} />
+                </MField>
+                <div style={isEvent ? M_GRID2 : undefined}>
+                  <MField label={isEvent ? t('calendar.start') : t('calendar.date')}>
+                    <input type="date" style={M_INP} value={date} onChange={e => setDate(e.target.value)} />
+                  </MField>
+                  {isEvent && (
+                    <MField label={t('calendar.end')}>
+                      <input type="date" style={M_INP} value={endDate} min={date} onChange={e => setEndDate(e.target.value)} />
+                    </MField>
+                  )}
+                </div>
+                {isEvent && endDate && endDate > date && (
+                  <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0, lineHeight: 1.4 }}>{t('calendar.multiDayHint')}</p>
+                )}
+              </div>
+            </MSection>
+            {/* Segments adaptatifs (cartes) */}
+            {sport === 'triathlon'
+              ? <TriSegments pd={pd} setPd={setPd}
+                  bikeParcours={<div><RaceDropZone label={t('calendar.bikeRoute')} list={filesBike} setter={setFilesBike} />{routeBlock(filesBike, existBike)}</div>}
+                  runParcours={<div><RaceDropZone label={t('calendar.runRoute')} list={filesRun} setter={setFilesRun} />{routeBlock(filesRun, existRun)}</div>}
+                />
+              : <SegmentCard color={SPORT_COLOR[sport]} label={SPORT_LABEL[sport]}><SportFields sport={sport} pd={pd} setPd={setPd} /></SegmentCard>}
+            {/* Parcours (hors triathlon) */}
+            {sport !== 'triathlon' && (
+              <MSection label={t('calendar.route')}>
+                <RaceDropZone list={files} setter={setFiles} />
+                {routeBlock(files, existRoute)}
+              </MSection>
+            )}
+            {/* Notes */}
+            <MSection label={t('calendar.notes')}>
+              <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('calendar.raceNotesPlaceholder')} style={M_TEXTAREA} />
+            </MSection>
+            {/* Réalisé — activités liées */}
+            {isEdit && race?.id && <RaceLinkedActivities raceId={race.id} goalTime={race.goalTime} />}
+            {/* Suppression (ligne rouge + confirmation) */}
+            {isEdit && onDelete && (confirmDelete
+              ? <MConfirmDelete question={t('calendar.deleteRaceConfirm')} confirmLabel={t('calendar.delete')} cancelLabel={t('calendar.cancel')} onConfirm={onDelete} onCancel={() => setConfirmDelete(false)} />
+              : <MDangerRow label={t('calendar.delete')} onClick={() => setConfirmDelete(true)} />)}
+          </div>
+        </FormMProvider>
+      </MSheet>
+    )
+  }
 
   return createPortal(
     <>

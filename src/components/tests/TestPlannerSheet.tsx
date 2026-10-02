@@ -11,6 +11,8 @@ import { IconX, IconChevronRight, IconArrowLeft } from '@tabler/icons-react'
 import { TESTS, PROTOCOLS, DIFFICULTY_COLOR, TEST_SPORT_TO_PLANNING, type TestDef } from '@/lib/tests/protocols'
 import type { TestSport } from '@/app/performance/testTypes'
 import TestProtocolView from './TestProtocolView'
+import { MSheet, SheetHeader, Group, PillButton, Chevron, HAIRLINE } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, FormMProvider, MDot, M_SCROLL, M_FOOTER, M_CARD, mChip } from '@/app/calendar/components/mobileForm'
 
 const SPORT_TABS: { id: TestSport; label: string; color: string }[] = [
   { id: 'running',  label: 'Running',  color: '#22c55e' },
@@ -35,6 +37,7 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
   onConfirm: (p: TestPlanPayload) => Promise<void> | void
 }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const [sport, setSport] = useState<TestSport>('running')
   const [open, setOpen] = useState<TestDef | null>(null)
   const [saving, setSaving] = useState(false)
@@ -62,6 +65,64 @@ export default function TestPlannerSheet({ dateLabel, onClose, onConfirm }: {
   }
 
   if (!mounted) return null
+
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — liste groupée des tests puis
+  // procédé en cartes blanches ; action principale = pilule cyan pleine largeur.
+  if (isMobile) {
+    const addLabel = saving ? '…' : `${t('w3g.test_add_to_plan')}${dateLabel ? ` · ${dateLabel}` : ''}`
+    return (
+      <MSheet open={shown && !closing} onClose={requestClose} label={open ? open.name : t('w3g.test_plan_title')} zIndex={9998}>
+        <SheetHeader
+          leftLabel={open ? `‹ ${t('w3g.test_back')}` : t('w3g.test_close')}
+          onLeft={open ? () => setOpen(null) : requestClose}
+          title={open ? open.name : t('w3g.test_plan_title')} />
+        <FormMProvider>
+          <div style={M_SCROLL}>
+            {!open ? (<>
+              {/* Sports : chips pilule défilables, point couleur du sport */}
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -16px', padding: '0 16px', flexShrink: 0 }}>
+                {SPORT_TABS.map(s => (
+                  <button key={s.id} type="button" onClick={() => setSport(s.id)} aria-pressed={sport === s.id} style={{ ...mChip(sport === s.id), flexShrink: 0 }}>
+                    <MDot color={s.color} />{t(`w3g.test_sport_${s.id}`)}
+                  </button>
+                ))}
+              </div>
+              {/* Tests : liste groupée (filets), difficulté = point de couleur */}
+              <Group>
+                {TESTS[sport].map((test, i) => (
+                  <button key={test.id} type="button" onClick={() => setOpen(test)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 64, padding: '12px 16px', border: 'none', borderTop: i === 0 ? 'none' : HAIRLINE, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25 }}>{test.name}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: 13, color: 'var(--text-mid)' }}>
+                        <MDot color={DIFFICULTY_COLOR[test.difficulty]} size={7} />{test.difficulty} · {test.duration}
+                      </span>
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 4, fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.4 } as React.CSSProperties}>{test.desc}</span>
+                    </span>
+                    <Chevron />
+                  </button>
+                ))}
+              </Group>
+            </>) : (<>
+              <div style={{ ...M_CARD, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <MDot color={DIFFICULTY_COLOR[open.difficulty]} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{open.difficulty}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 15, color: 'var(--text-mid)' }}>{t('w3g.test_duration', { d: open.duration })}</span>
+              </div>
+              {proto
+                ? <TestProtocolView proto={proto} accent={accent} />
+                : <div style={M_CARD}><p style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--text-mid)', margin: 0 }}>{open.desc}</p></div>}
+            </>)}
+          </div>
+        </FormMProvider>
+        {open && (
+          <div style={M_FOOTER}>
+            <PillButton onClick={() => void confirm()} disabled={saving}>{addLabel}</PillButton>
+          </div>
+        )}
+      </MSheet>
+    )
+  }
 
   return createPortal(
     <>

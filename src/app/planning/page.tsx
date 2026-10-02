@@ -31,7 +31,7 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
-import { Dumbbell, CalendarDays, LayoutDashboard, Flag } from 'lucide-react'
+import { Dumbbell, CalendarDays, LayoutDashboard, Flag, Target } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
@@ -43,6 +43,8 @@ import TestPlannerSheet, { type TestPlanPayload } from '@/components/tests/TestP
 import type { ComposedMove, ComposedCircuit } from '@/components/planning/composedSports'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { MSheet, SheetHeader, Group, GroupRow, IconTile, TILE, Chevron, PAGE_BG, CARD_BG, HAIRLINE } from '@/components/ai/mobile/MobileKit'
+import { useIsMobile, MSection, MDot, M_CARD, M_SCROLL } from '@/app/calendar/components/mobileForm'
 
 // ── Types ─────────────────────────────────────────
 export type PlanVariant   = 'A' | 'B'
@@ -975,6 +977,7 @@ export function InfoModal({ title, content, onClose }:{ title:string; content:Re
 // muscu, boxe et hybrid. Le bouton « Voir les détails » (Training) est inchangé.
 export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity|null; onClose:()=>void }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
   const [last, setLast] = useState<TrainingActivity|null>(activity)
   useEffect(()=>{ if(activity) setLast(activity) },[activity])
@@ -1081,6 +1084,64 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
     </a>
   )
 
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — Fermer · titre, corps gris,
+  // métriques en tuiles, sections en cartes blanches, pilule cyan « détails ».
+  if (isMobile) {
+    const mCells: { label: string; value: string }[] = [
+      { label:t('plnp.field.time'), value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}` },
+      { label:t('plnp.field.duration'), value:formatDur(durationMin) },
+      ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km` }] : []),
+      ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr }] : []),
+      ...(full?.avgHr ? [{ label:'FC moy', value:`${full.avgHr} bpm` }] : []),
+      ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m` }] : []),
+      ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10) }] : []),
+      ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}` }] : []),
+    ]
+    const sheetTitle = a.name || planned?.title || t('pe4.activityDone')
+    return (
+      <MSheet open={!!activity} onClose={onClose} label={sheetTitle} zIndex={9998}>
+        <SheetHeader leftLabel={t('plnp.close')} onLeft={onClose} title={t('pe4.activityDone')} />
+        <div style={M_SCROLL}>
+          <div style={{ padding:'0 4px' }}>
+            <p style={{ display:'flex', alignItems:'center', gap:8, margin:0, fontSize:15, fontWeight:600, color:'var(--text-mid)' }}><MDot color={col} />{SPORT_LABEL[sp]}</p>
+            <h2 style={{ margin:'4px 0 2px', fontSize:24, fontWeight:800, letterSpacing:'-0.02em', lineHeight:1.15, color:'var(--text)', overflowWrap:'anywhere' }}>{sheetTitle}</h2>
+            <p style={{ margin:0, fontSize:15, color:'var(--text-mid)', textTransform:'capitalize' }}>{dateStr}</p>
+          </div>
+          <div style={{ ...M_CARD, display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:8, padding:12 }}>
+            {mCells.map(c => (
+              <div key={c.label} style={{ background:'var(--surface-chip)', borderRadius:'var(--r-md)', padding:'10px 12px', minWidth:0 }}>
+                <p style={{ margin:0, fontSize:12, fontWeight:600, color:'var(--text-mid)' }}>{c.label}</p>
+                <p className="tnum" style={{ margin:'2px 0 0', fontSize:19, fontWeight:800, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.value}</p>
+              </div>
+            ))}
+          </div>
+          {planned && (
+            <MSection label={t('plnp.activity.planVsDone')}>
+              <CompareGrid planned={planned} full={full} activity={a} />
+            </MSection>
+          )}
+          {strengthMode && full?.strength && <div style={M_CARD}><StrengthDone strength={full.strength} /></div>}
+          {hasMap && (
+            <MSection label={t('plnp.activity.gpsTrace')} style={{ padding:16 }}>
+              <ActivityMap latlng={full!.latlng!} width={Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={170} color={mapColor} cursorLL={cursorLL} />
+            </MSection>
+          )}
+          {hasProfiles && (
+            (full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null))
+            || (planned && (planned.blocks ?? []).length > 0)
+            || (full?.samples && full.samples.some(x => x.ele != null))
+          ) && (
+            <div style={{ ...M_CARD, display:'flex', flexDirection:'column', gap:16 }}>{profiles}</div>
+          )}
+          <a href={_detailHref} className="thw-press"
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:52, borderRadius:'var(--r-pill)', background:'var(--primary)', color:'var(--on-primary)', fontSize:16, fontWeight:700, textDecoration:'none', width:'100%', boxSizing:'border-box' }}>
+            {t('pe4.viewDetails')}
+          </a>
+        </div>
+      </MSheet>
+    )
+  }
+
   return (
     <BottomSheet isOpen={!!activity} onClose={onClose}>
       <div style={{ maxWidth: wide ? 860 : undefined, margin: wide ? '0 auto' : undefined }}>
@@ -1146,6 +1207,7 @@ function fmtPaceSec(s:number):string {
 // date, temps visé, distance) + aperçu carte des parcours GPS enregistrés + lien.
 function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClose: ()=>void; onEdit: (r: FullRace)=>void }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const [last, setLast] = useState<FullRace|null>(race)
   const [routes, setRoutes] = useState<RaceRoutes>({})
   useEffect(()=>{ if(race) setLast(race) },[race])
@@ -1173,6 +1235,44 @@ function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClo
     ...(r.goalTime ? [{ label: t('plnp.race.goalTime'), value: r.goalTime, mono: true }] : []),
     ...(distance ? [{ label: t('plnp.field.distance'), value: distance }] : []),
   ]
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — en-tête Fermer · nom, liste
+  // groupée des infos, parcours en cartes, pilule cyan « Modifier ».
+  if (isMobile) {
+    const lvlCol = r.level==='gty' ? 'var(--text-mid)' : cfg.color
+    return (
+      <MSheet open={!!race} onClose={onClose} label={r.name} zIndex={9998}>
+        <SheetHeader leftLabel={t('plnp.close')} onLeft={onClose} title={t('plnp.add.race')} />
+        <div style={M_SCROLL}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'0 4px' }}>
+            <IconTile color={lvlCol} size={48}><Flag size={22} strokeWidth={2.4} /></IconTile>
+            <div style={{ flex:1, minWidth:0 }}>
+              <h2 style={{ margin:0, fontSize:22, fontWeight:800, letterSpacing:'-0.02em', lineHeight:1.2, color:'var(--text)', overflowWrap:'anywhere' }}>{r.name}</h2>
+              <p style={{ margin:'2px 0 0', fontSize:15, color:'var(--text-mid)', textTransform:'capitalize' }}>{dateStr}</p>
+            </div>
+          </div>
+          <Group>
+            {cells.filter(c => !c.small).map((c, i) => (
+              <GroupRow key={c.label} first={i===0} label={c.label} value={<span className={c.mono ? 'tnum' : undefined}>{c.value}</span>} />
+            ))}
+          </Group>
+          {r.notes && <div style={M_CARD}><p style={{ fontSize:15, color:'var(--text-mid)', margin:0, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{r.notes}</p></div>}
+          {routeList.map(rt => (
+            <MSection key={rt.label} label={rt.label}>
+              <ParcoursViewer fileUrl={rt.url} />
+              <a href={rt.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', minHeight:44, marginTop:4, fontSize:15, fontWeight:600, color:'var(--primary)', textDecoration:'none' }}>{t('plnp.race.openRoute')} →</a>
+            </MSection>
+          ))}
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <button type="button" onClick={()=>onEdit(r)} className="thw-press"
+              style={{ width:'100%', minHeight:52, borderRadius:'var(--r-pill)', border:'none', background:'var(--primary)', color:'var(--on-primary)', fontSize:16, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-body)' }}>{t('plnp.race.edit')}</button>
+            <a href={`/calendar?race=${r.id}`} className="thw-press"
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:52, borderRadius:'var(--r-pill)', background:CARD_BG, color:'var(--text)', fontSize:16, fontWeight:700, textDecoration:'none' }}>{t('plnp.race.viewCalendar')}</a>
+          </div>
+        </div>
+      </MSheet>
+    )
+  }
+
   return (
     <BottomSheet isOpen={!!race} onClose={onClose}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
@@ -2647,6 +2747,28 @@ function CycleSummary({ onOpen }: { onOpen: () => void }) {
 // Mini-menu déroulant (createPortal, animé) pour choisir le type de jour.
 function IntensityMenuPortal({ anchor, value, onPick }: { anchor: DOMRect; value: DayIntensity; onPick: (i: DayIntensity) => void }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
+  // ── MOBILE (≤ 767 px) : menu flottant blanc (ombre capsule, sans bordure),
+  // lignes ≥ 44 px, point de couleur du type de jour + coche cyan.
+  if (isMobile) {
+    const W = 200
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 375
+    const left = Math.min(vw - 12 - W, Math.max(12, anchor.left + anchor.width / 2 - W / 2))
+    return createPortal(
+      <div data-day-picker role="menu" style={{ position:'fixed', top:anchor.bottom+6, left, width:W, zIndex:3000, background:'var(--float-bg)', borderRadius:'var(--r-md)', padding:6, display:'flex', flexDirection:'column', boxShadow:'var(--shadow-capsule)', fontFamily:'var(--font-body)', animation:'dpInM .16s ease-out', transformOrigin:'top center' }}>
+        <style>{`@keyframes dpInM{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}@media (prefers-reduced-motion: reduce){[data-day-picker]{animation:none!important}}`}</style>
+        {INTENSITY_ORDER.map(it => { const c = INTENSITY_CONFIG[it]; const active = value === it; return (
+          <button key={it} type="button" role="menuitemradio" aria-checked={active} onClick={() => onPick(it)}
+            style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, padding:'0 12px', borderRadius:'var(--r-sm)', border:'none', background:'transparent', color:'var(--text)', fontSize:15, fontWeight:active?700:500, cursor:'pointer', textAlign:'left', whiteSpace:'nowrap', fontFamily:'inherit' }}>
+            <MDot color={c.color} />
+            <span style={{ flex:1 }}>{t('plnp.intensityCfg.' + it)}</span>
+            {active && <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+          </button>
+        )})}
+      </div>,
+      document.body,
+    )
+  }
   return createPortal(
     <div data-day-picker style={{ position:'fixed', top:anchor.bottom+4, left:anchor.left+anchor.width/2, transform:'translateX(-50%)', zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:4, display:'flex', flexDirection:'column', gap:2, boxShadow:'0 10px 28px rgba(0,0,0,0.28)', minWidth:108, animation:'dpIn .14s ease-out', transformOrigin:'top center' }}>
       <style>{`@keyframes dpIn{from{opacity:0;transform:translateX(-50%) scale(.92)}to{opacity:1;transform:translateX(-50%) scale(1)}}`}</style>
@@ -2863,6 +2985,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [raceEditor, setRaceEditor] = useState<{ race?: FullRace; date?: string }|null>(null)
   // Choix "Entraînement / Course" au tap sur le n° du jour.
   const [addChooser, setAddChooser] = useState<{dayIndex:number;plan:PlanVariant;weekStart:string}|null>(null)
+  // Mobile (≤ 767 px) : le choix « Ajouter » passe en feuille groupée (MSheet).
+  const isMobileSheets = useIsMobile()
   const [testPlanner, setTestPlanner] = useState<{dayIndex:number;plan:PlanVariant;weekStart:string}|null>(null)
   function chooserDateISO(c: {dayIndex:number;weekStart:string}): string {
     const d = new Date(c.weekStart+'T00:00:00'); d.setDate(d.getDate()+c.dayIndex); return localDateStr(d)
@@ -4029,6 +4153,35 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       )}
 
       {/* Choix Entraînement / Course au tap sur le jour */}
+      {isMobileSheets ? (
+        // ── MOBILE (≤ 767 px) : feuille Annuler · Ajouter, liste groupée
+        // blanche (tuiles d'icône teintées + chevron). Ancres du guide conservées.
+        <MSheet open={addChooser!==null} onClose={()=>setAddChooser(null)} full={false} label={t('plnp.add.chooserTitle')} zIndex={9998}>
+          <SheetHeader leftLabel={t('plnp.cancel')} onLeft={()=>setAddChooser(null)} title={t('plnp.add.chooserTitle')} />
+          <div style={{ background:PAGE_BG, padding:'8px 16px calc(24px + env(safe-area-inset-bottom))' }}>
+            <Group>
+              {([
+                { guide:'chooser-training', color:TILE.cyan, icon:<Dumbbell size={20} />, label:t('plnp.add.training'), sub:t('plnp.add.trainingHint'),
+                  go:()=>{ const c=addChooser; if(!c) return; setAddChooser(null); setAddModal({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) } },
+                { guide:'chooser-race', color:TILE.red, icon:<Flag size={20} />, label:t('plnp.add.race'), sub:t('plnp.add.raceHint'),
+                  go:()=>{ const c=addChooser; if(!c) return; setAddChooser(null); setRaceEditor({ date: chooserDateISO(c) }) } },
+                { guide:'chooser-test', color:TILE.violet, icon:<Target size={20} />, label:t('pe4.add.test'), sub:t('pe4.add.testHint'),
+                  go:()=>{ const c=addChooser; if(!c) return; setAddChooser(null); setTestPlanner({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) } },
+              ]).map((row, i) => (
+                <button key={row.guide} type="button" data-guide={row.guide} onClick={row.go}
+                  style={{ display:'flex', alignItems:'center', gap:12, width:'100%', minHeight:64, padding:'10px 16px', border:'none', borderTop: i===0 ? 'none' : HAIRLINE, background:'transparent', cursor:'pointer', textAlign:'left', fontFamily:'var(--font-body)' }}>
+                  <IconTile color={row.color}>{row.icon}</IconTile>
+                  <span style={{ flex:1, minWidth:0 }}>
+                    <span style={{ display:'block', fontSize:16, fontWeight:600, color:'var(--text)', lineHeight:1.25 }}>{row.label}</span>
+                    <span style={{ display:'block', fontSize:13, color:'var(--text-mid)', marginTop:2, lineHeight:1.35 }}>{row.sub}</span>
+                  </span>
+                  <Chevron />
+                </button>
+              ))}
+            </Group>
+          </div>
+        </MSheet>
+      ) : (
       <BottomSheet isOpen={addChooser!==null} onClose={()=>setAddChooser(null)} title={t('plnp.add.chooserTitle')}>
         {addChooser && (
           <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:8 }}>
@@ -4059,6 +4212,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           </div>
         )}
       </BottomSheet>
+      )}
 
       {raceEditor && (
         <RaceEditorSheet

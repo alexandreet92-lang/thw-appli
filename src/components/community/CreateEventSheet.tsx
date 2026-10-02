@@ -1,21 +1,31 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Création d'un événement — assistant en 3 étapes (Emplacement · Infos ·
-// Vérification). Mobile : sur-page plein écran coulissante. Desktop : modale
-// centrée. Tokens uniquement, bordure seulement sur les inputs (Design System).
-//   1) Salon vocal ou textuel + choix/création du salon concerné
-//   2) Sujet, début (date+heure), fin (date+heure), fréquence, description, thème
-//   3) Résumé + bouton créer
+// Création d'un événement — assistant en 3 étapes propres (Emplacement · Infos
+// · Vérification) dans une feuille du bas pleine hauteur : barre de progression
+// animée, étapes qui glissent latéralement, pied fixe Retour / Suivant.
+//   1) Salon vocal (web uniquement) ou textuel + choix/création du salon
+//   2) Sujet, début, fin, fréquence (puces), description, thème
+//   3) Résumé + créer
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useMemo, useState } from 'react'
+import { Hash, Volume2, MessageCircle, Plus } from 'lucide-react'
 import { createEvent } from '@/lib/community/events'
 import { createChannel } from '@/lib/community/channels'
-import type { CommunityChannel, EventFrequency, ChannelKind } from '@/types/community'
+import { isNativeApp } from '@/lib/native/platform'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { CmSheet, CmPill, CmCard, CmField, CmChip, CmCheck, FB, TNUM, stagger } from './kit'
+import type { CommunityChannel, EventFrequency, ChannelKind } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const FREQS: EventFrequency[] = ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'yearly', 'weekdays', 'weekend']
+
+function fmtDT(v: string): string {
+  if (!v) return '—'
+  try {
+    const d = new Date(v)
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  } catch { return v }
+}
 
 export function CreateEventSheet({ spaceId, channels = [], canManageChannels = false, onClose, onCreated, onChannelsChanged }: {
   spaceId: string
@@ -26,11 +36,9 @@ export function CreateEventSheet({ spaceId, channels = [], canManageChannels = f
   onChannelsChanged?: () => void
 }) {
   const { t } = useI18n()
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const [isNarrow, setIsNarrow] = useState(false)
+  const native = isNativeApp()
   const [step, setStep] = useState(0)
+  const [dir, setDir] = useState<'next' | 'prev'>('next')
 
   // Étape 1
   const [kind, setKind] = useState<ChannelKind>('text')
@@ -50,14 +58,6 @@ export function CreateEventSheet({ spaceId, channels = [], canManageChannels = f
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)')
-    const f = () => setIsNarrow(mq.matches); f(); mq.addEventListener('change', f)
-    return () => mq.removeEventListener('change', f)
-  }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-
   const chansOfKind = useMemo(() => localChannels.filter(c => c.kind === kind), [localChannels, kind])
   const selChannel = useMemo(() => localChannels.find(c => c.id === channelId) ?? null, [localChannels, channelId])
 
@@ -66,6 +66,7 @@ export function CreateEventSheet({ spaceId, channels = [], canManageChannels = f
     if (!n) return
     const created = await createChannel(spaceId, n, kind)
     if (created) {
+      haptic('success')
       setLocalChannels(prev => [...prev, created])
       setChannelId(created.id)
       setNewChanName(''); setCreatingChan(false)
@@ -75,6 +76,7 @@ export function CreateEventSheet({ spaceId, channels = [], canManageChannels = f
 
   const canNext1 = !!channelId
   const canNext2 = !!title.trim() && !!start
+  const go = (to: number) => { haptic('light'); setDir(to > step ? 'next' : 'prev'); setStep(to); setError(null) }
 
   async function submit() {
     if (busy) return
@@ -89,212 +91,166 @@ export function CreateEventSheet({ spaceId, channels = [], canManageChannels = f
       endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt.toISOString() : null,
       frequency, theme: theme.trim() || null, channelId,
     })
-    if (ok) onCreated()
+    if (ok) { haptic('success'); onCreated() }
     else { setError(t('w3e.create_failed')); setBusy(false) }
   }
-
-  if (!mounted || typeof document === 'undefined') return null
 
   const steps = [t('w3e.step_location'), t('w3e.step_infos'), t('w3e.step_review')]
   const themeSuggest = [t('w1g.ch.themeNutrition'), t('w1g.ch.themeTraining'), t('w1g.ch.themeRecovery')]
 
-  const stepBar = (
-    <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-      {steps.map((s, i) => (
-        <div key={s} style={{ flex: 1 }}>
-          <div style={{ height: 3, borderRadius: 2, background: i <= step ? 'var(--primary)' : 'var(--surface-neutral)', marginBottom: 6 }} />
-          <span style={{ fontFamily: FB, fontSize: 11, fontWeight: i === step ? 700 : 500, color: i === step ? 'var(--primary)' : 'var(--text-dim)' }}>{s}</span>
-        </div>
-      ))}
-    </div>
-  )
-
-  const body = (
+  const footer = (close: () => void) => (
     <>
-      {isNarrow && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-          <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('w3e.step_of', { n: step + 1, total: 3 })}</span>
-          <button onClick={requestClose} aria-label={t('w3e.cancel')} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-          </button>
-        </div>
-      )}
-      {stepBar}
-
-      {/* ÉTAPE 1 — Emplacement */}
-      {step === 0 && (
-        <div>
-          <h2 style={h2Style}>{t('w3e.q_where')}</h2>
-          <p style={pStyle}>{t('w3e.q_where_sub')}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-            <KindCard active={kind === 'voice'} onClick={() => { setKind('voice'); setChannelId(null) }}
-              icon={<svg {...ic}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>}
-              title={t('w3e.loc_voice')} sub={t('w3e.loc_voice_sub')} />
-            <KindCard active={kind === 'text'} onClick={() => { setKind('text'); setChannelId(null) }}
-              icon={<svg {...ic}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
-              title={t('w3e.loc_text')} sub={t('w3e.loc_text_sub')} />
-          </div>
-
-          <label style={labelStyle}>{t('w3e.select_channel')}</label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 'var(--space-3)' }}>
-            {chansOfKind.length === 0 && !creatingChan && (
-              <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', padding: 'var(--space-2) 0' }}>{t('w3e.no_channel_of_kind')}</p>
-            )}
-            {chansOfKind.map(c => (
-              <button key={c.id} onClick={() => setChannelId(c.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', background: channelId === c.id ? 'var(--primary-dim)' : 'var(--surface-neutral)', fontFamily: FB }}>
-                <span style={{ color: channelId === c.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: 14 }}>{c.kind === 'voice' ? '🔊' : '#'}</span>
-                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: channelId === c.id ? 'var(--primary)' : 'var(--text)' }}>{c.name}</span>
-                {channelId === c.id && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
-              </button>
-            ))}
-          </div>
-
-          {canManageChannels && (creatingChan ? (
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <input autoFocus value={newChanName} onChange={e => setNewChanName(e.target.value.slice(0, 60))}
-                onKeyDown={e => { if (e.key === 'Enter') void createChan() }}
-                placeholder={t('w1g.channelNamePlaceholder')} style={{ ...inputStyle, flex: 1 }} />
-              <button onClick={() => void createChan()} disabled={!newChanName.trim()}
-                style={{ flexShrink: 0, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: newChanName.trim() ? 'pointer' : 'default', opacity: newChanName.trim() ? 1 : 0.5 }}>{t('w3e.create_channel')}</button>
-            </div>
-          ) : (
-            <button onClick={() => setCreatingChan(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 'var(--space-2) 0' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-              {t('w3e.create_channel_cta')}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ÉTAPE 2 — Infos */}
-      {step === 1 && (
-        <div>
-          <h2 style={h2Style}>{t('w3e.q_what')}</h2>
-          <p style={pStyle}>{t('w3e.q_what_sub')}</p>
-          <Field label={t('w3e.field_subject')}><input value={title} onChange={e => setTitle(e.target.value.slice(0, 120))} placeholder={t('w3e.ph_event_title')} style={inputStyle} /></Field>
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <Field label={t('w3e.field_start')}><input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputStyle} /></Field>
-            <Field label={t('w3e.field_end')}><input type="datetime-local" value={end} min={start || undefined} onChange={e => setEnd(e.target.value)} style={inputStyle} /></Field>
-          </div>
-          <Field label={t('w3e.field_frequency')}>
-            <select value={frequency} onChange={e => setFrequency(e.target.value as EventFrequency)} style={{ ...inputStyle, appearance: 'auto' }}>
-              {FREQS.map(f => <option key={f} value={f}>{t(`w3e.freq_${f}`)}</option>)}
-            </select>
-          </Field>
-          <Field label={t('w3e.field_details')}><textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 2000))} rows={3} placeholder={t('w3e.ph_event_details')} style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} /></Field>
-          <Field label={t('w3e.field_theme')}>
-            <input value={theme} onChange={e => setTheme(e.target.value.slice(0, 60))} placeholder={t('w3e.ph_theme')} style={{ ...inputStyle, marginBottom: 'var(--space-2)' }} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-              {themeSuggest.map(s => (
-                <button key={s} type="button" onClick={() => setTheme(s)}
-                  style={{ height: 30, padding: '0 var(--space-3)', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: theme.toLowerCase() === s.toLowerCase() ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: theme.toLowerCase() === s.toLowerCase() ? 'var(--primary)' : 'var(--text-mid)' }}>{s}</button>
-              ))}
-            </div>
-          </Field>
-        </div>
-      )}
-
-      {/* ÉTAPE 3 — Vérification */}
-      {step === 2 && (
-        <div>
-          <h2 style={h2Style}>{t('w3e.q_review')}</h2>
-          <p style={pStyle}>{t('w3e.q_review_sub')}</p>
-          <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{title || t('w3e.untitled')}</p>
-            <SummaryRow label={t('w3e.sum_channel')} value={`${selChannel?.kind === 'voice' ? '🔊' : '#'} ${selChannel?.name ?? '—'}`} />
-            <SummaryRow label={t('w3e.sum_start')} value={fmtDT(start)} />
-            {end && <SummaryRow label={t('w3e.sum_end')} value={fmtDT(end)} />}
-            <SummaryRow label={t('w3e.field_frequency')} value={t(`w3e.freq_${frequency}`)} />
-            {theme.trim() && <SummaryRow label={t('w3e.field_theme')} value={theme.trim()} />}
-            {description.trim() && <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-1) 0 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{description.trim()}</p>}
-          </div>
-        </div>
-      )}
-
-      {error && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--charge-hard)', margin: 'var(--space-3) 0 0' }}>{error}</p>}
-
-      {/* Navigation */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-5)' }}>
-        <button onClick={() => step === 0 ? requestClose() : setStep(s => s - 1)}
-          style={{ flex: '0 0 auto', height: 46, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+      {error && <p className="cm-in" style={{ margin: 0, textAlign: 'center', fontSize: 14, fontWeight: 650, color: 'var(--danger)' }}>{error}</p>}
+      <div style={{ display: 'flex', gap: 10 }}>
+        <CmPill variant="chip" height={52} onClick={() => step === 0 ? close() : go(step - 1)} style={{ flex: '0 0 auto', minWidth: 110 }}>
           {step === 0 ? t('w3e.cancel') : t('w3e.back')}
-        </button>
+        </CmPill>
         {step < 2 ? (
-          <button onClick={() => setStep(s => s + 1)} disabled={step === 0 ? !canNext1 : !canNext2}
-            style={{ flex: 1, height: 46, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', opacity: (step === 0 ? canNext1 : canNext2) ? 1 : 0.5 }}>{t('w3e.next')}</button>
+          <CmPill variant="primary" height={52} disabled={step === 0 ? !canNext1 : !canNext2} onClick={() => go(step + 1)} style={{ flex: 1, fontSize: 16 }}>{t('w3e.next')}</CmPill>
         ) : (
-          <button onClick={() => void submit()} disabled={busy}
-            style={{ flex: 1, height: 46, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? t('w3e.creating') : t('w3e.create_event_btn')}</button>
+          <CmPill variant="primary" height={52} disabled={busy} onClick={() => void submit()} style={{ flex: 1, fontSize: 16 }}>{busy ? t('w3e.creating') : t('w3e.create_event_btn')}</CmPill>
         )}
       </div>
     </>
   )
 
-  return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 15600, display: 'flex', alignItems: isNarrow ? 'stretch' : 'center', justifyContent: 'center' }}>
-      <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }} />
-      <div role="dialog" aria-modal="true" style={isNarrow ? {
-        position: 'relative', width: '100%', height: '100dvh', overflowY: 'auto',
-        background: 'var(--bg-card)',
-        transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)',
-        padding: 'calc(env(safe-area-inset-top) + var(--space-4)) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom, 0px))',
-      } : {
-        position: 'relative', width: '100%', maxWidth: 480, maxHeight: 'calc(100dvh - 60px)', overflowY: 'auto',
-        background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)',
-        transform: shown && !closing ? 'scale(1)' : 'scale(0.96)', opacity: shown && !closing ? 1 : 0,
-        transition: 'transform 0.22s ease, opacity 0.22s ease', padding: 'var(--space-6)',
-      }}>
-        {body}
+  return (
+    <CmSheet full onClose={onClose} title={t('w3e.create_event')} sub={t('w3e.step_of', { n: step + 1, total: 3 })} zIndex={15600} footer={footer}>
+      {/* Progression */}
+      <div style={{ display: 'flex', gap: 6, margin: '2px 0 4px' }}>
+        {steps.map((s, i) => (
+          <div key={s} style={{ flex: 1 }}>
+            <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: '100%', borderRadius: 'var(--r-pill)', background: 'var(--primary)', transformOrigin: 'left', transform: `scaleX(${i <= step ? 1 : 0})`, transition: 'transform .45s cubic-bezier(.22,1,.36,1)' }} />
+            </div>
+            <span style={{ display: 'block', marginTop: 7, fontSize: 12.5, fontWeight: i === step ? 800 : 600, color: i === step ? 'var(--text)' : 'var(--text-dim)' }}>{s}</span>
+          </div>
+        ))}
       </div>
-    </div>,
-    document.body,
+
+      <div key={step} className={dir === 'next' ? 'cm-step-next' : 'cm-step-prev'}>
+        {/* ÉTAPE 1 — Emplacement */}
+        {step === 0 && (
+          <>
+            <StepTitle title={t('w3e.q_where')} sub={t('w3e.q_where_sub')} />
+            <CmCard style={{ overflow: 'hidden' }}>
+              {/* App Store 2.1 : pas de salon vocal sur iOS natif. */}
+              {!native && (
+                <KindRow first active={kind === 'voice'} onClick={() => { setKind('voice'); setChannelId(null) }}
+                  icon={<Volume2 size={19} strokeWidth={2} />} title={t('w3e.loc_voice')} sub={t('w3e.loc_voice_sub')} />
+              )}
+              <KindRow first={native} active={kind === 'text'} onClick={() => { setKind('text'); setChannelId(null) }}
+                icon={<MessageCircle size={19} strokeWidth={2} />} title={t('w3e.loc_text')} sub={t('w3e.loc_text_sub')} />
+            </CmCard>
+
+            <CmField label={t('w3e.select_channel')}>
+              {chansOfKind.length === 0 && !creatingChan ? (
+                <CmCard style={{ padding: 16, fontSize: 14.5, color: 'var(--text-mid)' }}>{t('w3e.no_channel_of_kind')}</CmCard>
+              ) : chansOfKind.length > 0 && (
+                <CmCard style={{ overflow: 'hidden' }}>
+                  {chansOfKind.map((c, i) => (
+                    <button key={c.id} type="button" onClick={() => { haptic('light'); setChannelId(c.id) }} className="cm-btn cm-row cm-in"
+                      style={{ ...stagger(i, 0, 24), display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 54, padding: '8px 16px', boxSizing: 'border-box', textAlign: 'left', borderTop: i ? '1px solid var(--border)' : 'none', fontFamily: FB }}>
+                      <span style={{ color: 'var(--text-mid)', display: 'flex', width: 22, justifyContent: 'center' }}>{c.kind === 'voice' ? <Volume2 size={18} strokeWidth={2} /> : <Hash size={19} strokeWidth={2.4} />}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      <CmCheck on={channelId === c.id} />
+                    </button>
+                  ))}
+                </CmCard>
+              )}
+              {canManageChannels && (creatingChan ? (
+                <div className="cm-in" style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <input autoFocus value={newChanName} onChange={e => setNewChanName(e.target.value.slice(0, 60))}
+                    onKeyDown={e => { if (e.key === 'Enter') void createChan() }}
+                    placeholder={t('w1g.channelNamePlaceholder')} className="cm-input" style={{ flex: 1 }} />
+                  <CmPill variant="primary" disabled={!newChanName.trim()} onClick={() => void createChan()} height={50}>{t('w3e.create_channel')}</CmPill>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setCreatingChan(true)} className="cm-btn cm-press"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, minHeight: 44, padding: '0 4px', color: 'var(--primary)', fontSize: 15, fontWeight: 750 }}>
+                  <Plus size={17} strokeWidth={2.4} />{t('w3e.create_channel_cta')}
+                </button>
+              ))}
+            </CmField>
+          </>
+        )}
+
+        {/* ÉTAPE 2 — Infos */}
+        {step === 1 && (
+          <>
+            <StepTitle title={t('w3e.q_what')} sub={t('w3e.q_what_sub')} />
+            <CmField label={t('w3e.field_subject')} style={{ marginTop: 0 }}>
+              <input value={title} onChange={e => setTitle(e.target.value.slice(0, 120))} placeholder={t('w3e.ph_event_title')} className="cm-input" />
+            </CmField>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <CmField label={t('w3e.field_start')}><input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} className="cm-input" style={{ ...TNUM, fontSize: 15, padding: '13px 10px' }} /></CmField>
+              <CmField label={t('w3e.field_end')}><input type="datetime-local" value={end} min={start || undefined} onChange={e => setEnd(e.target.value)} className="cm-input" style={{ ...TNUM, fontSize: 15, padding: '13px 10px' }} /></CmField>
+            </div>
+            <CmField label={t('w3e.field_frequency')}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {FREQS.map(f => <CmChip key={f} active={frequency === f} onClick={() => setFrequency(f)}>{t(`w3e.freq_${f}`)}</CmChip>)}
+              </div>
+            </CmField>
+            <CmField label={t('w3e.field_details')}>
+              <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 2000))} rows={3} placeholder={t('w3e.ph_event_details')} className="cm-input" style={{ resize: 'none', minHeight: 90 }} />
+            </CmField>
+            <CmField label={t('w3e.field_theme')}>
+              <input value={theme} onChange={e => setTheme(e.target.value.slice(0, 60))} placeholder={t('w3e.ph_theme')} className="cm-input" style={{ marginBottom: 10 }} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {themeSuggest.map(s => <CmChip key={s} active={theme.toLowerCase() === s.toLowerCase()} onClick={() => setTheme(s)}>{s}</CmChip>)}
+              </div>
+            </CmField>
+          </>
+        )}
+
+        {/* ÉTAPE 3 — Vérification */}
+        {step === 2 && (
+          <>
+            <StepTitle title={t('w3e.q_review')} sub={t('w3e.q_review_sub')} />
+            <CmCard style={{ padding: 18 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.015em' }}>{title || t('w3e.untitled')}</div>
+              {description.trim() && <p style={{ margin: '8px 0 0', fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{description.trim()}</p>}
+            </CmCard>
+            <CmCard style={{ overflow: 'hidden', marginTop: 12 }}>
+              <SummaryRow first label={t('w3e.sum_channel')} value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{selChannel?.kind === 'voice' ? <Volume2 size={15} strokeWidth={2} /> : <Hash size={15} strokeWidth={2.4} />}{selChannel?.name ?? '—'}</span>} />
+              <SummaryRow label={t('w3e.sum_start')} value={fmtDT(start)} />
+              {end && <SummaryRow label={t('w3e.sum_end')} value={fmtDT(end)} />}
+              <SummaryRow label={t('w3e.field_frequency')} value={t(`w3e.freq_${frequency}`)} />
+              {theme.trim() && <SummaryRow label={t('w3e.field_theme')} value={theme.trim()} />}
+            </CmCard>
+          </>
+        )}
+      </div>
+    </CmSheet>
   )
 }
 
-const ic = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-const h2Style: React.CSSProperties = { fontFamily: FD, fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }
-const pStyle: React.CSSProperties = { fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-4)' }
-const labelStyle: React.CSSProperties = { display: 'block', fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-2)' }
-const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-3) var(--space-4)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none' }
-
-function fmtDT(v: string): string {
-  if (!v) return '—'
-  try {
-    const d = new Date(v)
-    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  } catch { return v }
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StepTitle({ title, sub }: { title: string; sub: string }) {
   return (
-    <div style={{ marginBottom: 'var(--space-4)', flex: 1, minWidth: 0 }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
+    <div style={{ margin: '18px 4px 16px' }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{title}</div>
+      <div style={{ marginTop: 4, fontSize: 14.5, color: 'var(--text-mid)' }}>{sub}</div>
     </div>
   )
 }
-function KindCard({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string }) {
+function KindRow({ active, onClick, icon, title, sub, first }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string; first?: boolean }) {
   return (
-    <button type="button" onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer', background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', padding: 'var(--space-3) var(--space-4)' }}>
-      <span style={{ color: active ? 'var(--primary)' : 'var(--text-mid)', flexShrink: 0 }}>{icon}</span>
+    <button type="button" onClick={() => { haptic('light'); onClick() }} className="cm-btn cm-row"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 64, padding: '10px 16px', boxSizing: 'border-box', textAlign: 'left', borderTop: first ? 'none' : '1px solid var(--border)', fontFamily: FB }}>
+      <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: active ? 'var(--primary-dim)' : 'var(--surface-chip)', color: active ? 'var(--primary)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: FB, fontSize: 14, fontWeight: 700, color: active ? 'var(--primary)' : 'var(--text)' }}>{title}</span>
-        <span style={{ display: 'block', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{sub}</span>
+        <span style={{ display: 'block', fontSize: 16, fontWeight: 750, color: 'var(--text)' }}>{title}</span>
+        <span style={{ display: 'block', fontSize: 13.5, color: 'var(--text-mid)', marginTop: 1 }}>{sub}</span>
       </span>
-      <span aria-hidden style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: active ? 'var(--primary)' : 'transparent', boxShadow: active ? 'none' : 'inset 0 0 0 2px var(--border-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {active && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--on-primary)' }} />}
-      </span>
+      <CmCheck on={active} />
     </button>
   )
 }
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value, first }: { label: string; value: React.ReactNode; first?: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-      <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 50, padding: '8px 16px', borderTop: first ? 'none' : '1px solid var(--border)', fontFamily: FB }}>
+      <span style={{ fontSize: 14.5, color: 'var(--text-mid)', flexShrink: 0 }}>{label}</span>
+      <span style={{ ...TNUM, fontSize: 14.5, fontWeight: 750, color: 'var(--text)', textAlign: 'right', textTransform: 'capitalize' }}>{value}</span>
     </div>
   )
 }

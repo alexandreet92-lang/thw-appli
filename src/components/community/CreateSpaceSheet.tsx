@@ -1,27 +1,30 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Feuille coulissante de création d'espace (createPortal sur document.body).
-// Gating : l'UI masque/verrouille selon les entitlements, MAIS la vérification
-// dure reste côté serveur (POST /api/community/spaces). Free → écran d'upsell.
+// Feuille de création d'espace (nouveau style : champs doux, puces, liste
+// groupée). Gating : l'UI masque/verrouille selon les entitlements, MAIS la
+// vérification dure reste côté serveur (POST /api/community/spaces).
+// Free → écran d'upsell.
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useRef, useState } from 'react'
+import Link from 'next/link'
+import { Camera, Globe, Lock, Sparkles } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
 import { uploadCommunityMedia } from '@/lib/community/messages'
 import { SpaceBadge } from './SpaceBadge'
+import { CmSheet, CmPill, CmChip, CmField, CmCheck, CmCard, FB } from './kit'
 import type { CommunityEntitlements } from '@/lib/subscriptions/tier-limits'
 import type { CommunitySport } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const SPORTS: { value: CommunitySport | ''; label: string }[] = [
-  { value: '', label: 'Aucun' },
-  { value: 'running', label: 'Running' },
-  { value: 'trail', label: 'Trail' },
-  { value: 'cycling', label: 'Cycling' },
-  { value: 'triathlon', label: 'Triathlon' },
-  { value: 'hyrox', label: 'Hyrox' },
-  { value: 'gym', label: 'Gym' },
-  { value: 'combat', label: 'Sport de combat' },
+const SPORTS: { value: CommunitySport | ''; key: string }[] = [
+  { value: '', key: 'cm.sportNone' },
+  { value: 'running', key: 'cm.sportRunning' },
+  { value: 'trail', key: 'cm.sportTrail' },
+  { value: 'cycling', key: 'cm.sportCycling' },
+  { value: 'triathlon', key: 'cm.sportTriathlon' },
+  { value: 'hyrox', key: 'cm.sportHyrox' },
+  { value: 'gym', key: 'cm.sportGym' },
+  { value: 'combat', key: 'cm.sportCombat' },
 ]
 
 export function CreateSpaceSheet({
@@ -32,9 +35,6 @@ export function CreateSpaceSheet({
   onCreated: (space: { id: string; slug: string }) => void
 }) {
   const { t } = useI18n()
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [sport, setSport] = useState<CommunitySport | ''>('')
@@ -44,17 +44,6 @@ export function CreateSpaceSheet({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const logoRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  if (!mounted) return null
 
   async function submit() {
     if (!name.trim() || busy) return
@@ -73,130 +62,92 @@ export function CreateSpaceSheet({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data?.error ?? t('w1g.createFailed')); setBusy(false); return }
+      haptic('success')
       onCreated({ id: data.id, slug: data.slug })
     } catch {
       setError(t('w1g.networkError')); setBusy(false)
     }
   }
 
-  const scrim = (
-    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-6) var(--space-6) var(--space-8)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-5)' }} />
-
-        {!ent.canCreate ? (
-          <Upsell onClose={requestClose} />
-        ) : (
+  if (!ent.canCreate) {
+    return (
+      <CmSheet onClose={onClose} hideHeader surface="card"
+        footer={close => (
           <>
-            <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>{t('w1g.createSpace')}</h2>
-            <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 var(--space-5)' }}>
-              {t('w1g.createSpaceTagline')} {Number.isFinite(ent.maxMembers) ? t('w1g.upToMembers', { n: ent.maxMembers }) : t('w1g.unlimitedMembers')}
-            </p>
-
-            <Field label={t('w1g.logoOptional')}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <SpaceBadge space={{ name: name || '?', iconUrl }} size={56} radius="var(--r-md)" />
-                <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={async e => {
-                    const f = e.target.files?.[0]; e.target.value = ''
-                    if (!f) return
-                    setLogoBusy(true); setError(null)
-                    const att = await uploadCommunityMedia(f)
-                    setLogoBusy(false)
-                    if (att?.url) setIconUrl(att.url); else setError(t('w1g.logoUploadFailed'))
-                  }} />
-                <button type="button" onClick={() => logoRef.current?.click()} disabled={logoBusy}
-                  style={{ height: 36, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: logoBusy ? 'default' : 'pointer' }}>
-                  {logoBusy ? t('w1g.uploading') : iconUrl ? t('w1g.change') : t('w1g.chooseImage')}
-                </button>
-                {iconUrl && !logoBusy && (
-                  <button type="button" onClick={() => setIconUrl(null)}
-                    style={{ height: 36, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>{t('w1g.remove')}</button>
-                )}
-              </div>
-            </Field>
-
-            <Field label={t('w1g.name')}>
-              <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder={t('w1g.namePlaceholder')} style={inputStyle} />
-            </Field>
-
-            <Field label={t('w1g.description')}>
-              <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 400))} placeholder={t('w1g.descriptionPlaceholder')} rows={3} style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} />
-            </Field>
-
-            <Field label={t('w1g.sportOptional')}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                {SPORTS.map(s => (
-                  <button key={s.value || 'none'} type="button" onClick={() => setSport(s.value)}
-                    style={{ height: 36, padding: '0 var(--space-4)', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 500, background: sport === s.value ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: sport === s.value ? 'var(--primary)' : 'var(--text-mid)' }}>{s.label}</button>
-                ))}
-              </div>
-            </Field>
-
-            <Field label={t('w1g.visibility')}>
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <VisBtn active={isPublic} onClick={() => setIsPublic(true)} title={t('w1g.public')} sub={t('w1g.publicSub')} />
-                <VisBtn active={!isPublic} onClick={() => { if (ent.canPrivate) setIsPublic(false) }} disabled={!ent.canPrivate} title={t('w1g.private')} sub={ent.canPrivate ? t('w1g.privateSub') : t('w1g.proOnly')} />
-              </div>
-            </Field>
-
-            {error && <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--charge-hard)', margin: 'var(--space-2) 0 0' }}>{error}</p>}
-
-            <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-6)' }}>
-              <button onClick={requestClose} style={{ flex: '0 0 auto', height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
-              <button onClick={() => void submit()} disabled={!name.trim() || busy}
-                style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: name.trim() && !busy ? 'pointer' : 'default', opacity: name.trim() && !busy ? 1 : 0.6 }}>
-                {busy ? t('w1g.creating') : t('w1g.createSpaceBtn')}
-              </button>
-            </div>
+            <Link href="/settings/subscription" className="cm-press" style={{ minHeight: 52, borderRadius: 'var(--r-pill)', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FB, fontSize: 16, fontWeight: 700, textDecoration: 'none' }}>{t('w1g.seePlans')}</Link>
+            <CmPill variant="ghost" full onClick={close}>{t('w1g.later')}</CmPill>
           </>
-        )}
+        )}>
+        <div className="cm-in" style={{ textAlign: 'center', padding: '18px 8px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 72, height: 72, borderRadius: 'var(--r-lg)', background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Sparkles size={32} strokeWidth={1.8} /></span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.015em', marginTop: 6 }}>{t('w1g.upsellTitle')}</span>
+          <span style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, maxWidth: 360 }}>{t('w1g.upsellBody')}</span>
+        </div>
+      </CmSheet>
+    )
+  }
+
+  return (
+    <CmSheet onClose={onClose} title={t('w1g.createSpace')}
+      sub={`${t('w1g.createSpaceTagline')} ${Number.isFinite(ent.maxMembers) ? t('w1g.upToMembers', { n: ent.maxMembers }) : t('w1g.unlimitedMembers')}`}
+      footer={<CmPill variant="primary" full height={52} disabled={!name.trim() || busy} onClick={() => void submit()} style={{ fontSize: 16 }}>{busy ? t('w1g.creating') : t('w1g.createSpaceBtn')}</CmPill>}>
+      {/* Logo */}
+      <div className="cm-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 6 }}>
+        <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={async e => {
+            const f = e.target.files?.[0]; e.target.value = ''
+            if (!f) return
+            setLogoBusy(true); setError(null)
+            const att = await uploadCommunityMedia(f)
+            setLogoBusy(false)
+            if (att?.url) setIconUrl(att.url); else setError(t('w1g.logoUploadFailed'))
+          }} />
+        <button type="button" onClick={() => logoRef.current?.click()} disabled={logoBusy} aria-label={t('w1g.logoOptional')} className="cm-btn cm-press" style={{ position: 'relative', lineHeight: 0 }}>
+          <span className={logoBusy ? 'cm-shimmer' : undefined} style={{ display: 'block', lineHeight: 0 }}><SpaceBadge space={{ name: name || '?', iconUrl }} size={84} radius="calc(var(--r-lg) + 4px)" /></span>
+          <span style={{ position: 'absolute', right: -6, bottom: -6, width: 32, height: 32, borderRadius: '50%', background: 'var(--text)', color: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 3px var(--surface-page)' }}>
+            <Camera size={15} strokeWidth={2.2} />
+          </span>
+        </button>
+        <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          {logoBusy ? t('w1g.uploading') : iconUrl
+            ? <button type="button" className="cm-btn" onClick={() => setIconUrl(null)} style={{ color: 'var(--text-mid)', fontWeight: 650, fontSize: 13, minHeight: 32 }}>{t('w1g.remove')}</button>
+            : t('w1g.logoOptional')}
+        </span>
       </div>
-    </div>
+
+      <CmField label={t('w1g.name')}>
+        <input value={name} onChange={e => setName(e.target.value.slice(0, 80))} placeholder={t('w1g.namePlaceholder')} className="cm-input" />
+      </CmField>
+      <CmField label={t('w1g.description')}>
+        <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 400))} placeholder={t('w1g.descriptionPlaceholder')} rows={3} className="cm-input" style={{ resize: 'none', minHeight: 84 }} />
+      </CmField>
+      <CmField label={t('w1g.sportOptional')}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {SPORTS.map(s => <CmChip key={s.value || 'none'} active={sport === s.value} onClick={() => setSport(s.value)}>{t(s.key)}</CmChip>)}
+        </div>
+      </CmField>
+      <CmField label={t('w1g.visibility')}>
+        <CmCard style={{ overflow: 'hidden' }}>
+          <VisRow first active={isPublic} onClick={() => setIsPublic(true)} icon={<Globe size={18} strokeWidth={2} />} title={t('w1g.public')} sub={t('w1g.publicSub')} />
+          <VisRow active={!isPublic} disabled={!ent.canPrivate} onClick={() => { if (ent.canPrivate) setIsPublic(false) }} icon={<Lock size={18} strokeWidth={2} />}
+            title={t('w1g.private')} sub={ent.canPrivate ? t('w1g.privateSub') : t('w1g.proOnly')} />
+        </CmCard>
+      </CmField>
+      {error && <p className="cm-in" style={{ margin: '14px 4px 0', fontSize: 14, color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
+    </CmSheet>
   )
-
-  return createPortal(scrim, document.body)
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)',
-  borderRadius: 'var(--r-sm)', padding: 'var(--space-3) var(--space-4)', fontFamily: FB, fontSize: 13.5,
-  color: 'var(--text)', outline: 'none',
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function VisRow({ active, onClick, disabled, icon, title, sub, first }: { active: boolean; onClick: () => void; disabled?: boolean; icon: React.ReactNode; title: string; sub: string; first?: boolean }) {
   return (
-    <div style={{ marginBottom: 'var(--space-4)' }}>
-      <label style={{ display: 'block', fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-2)' }}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function VisBtn({ active, onClick, disabled, title, sub }: { active: boolean; onClick: () => void; disabled?: boolean; title: string; sub: string }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      style={{ flex: 1, textAlign: 'left', padding: 'var(--space-3) var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', cursor: disabled ? 'default' : 'pointer', background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', opacity: disabled ? 0.5 : 1 }}>
-      <span style={{ display: 'block', fontFamily: FB, fontSize: 13, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)' }}>{title}</span>
-      <span style={{ display: 'block', fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{sub}</span>
+    <button type="button" onClick={() => { haptic('light'); onClick() }} disabled={disabled} className="cm-btn cm-row"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 60, padding: '10px 16px', boxSizing: 'border-box', textAlign: 'left', borderTop: first ? 'none' : '1px solid var(--border)', opacity: disabled ? 0.5 : 1 }}>
+      <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
+        <span style={{ display: 'block', fontSize: 13.5, color: 'var(--text-mid)', marginTop: 1 }}>{sub}</span>
+      </span>
+      <CmCheck on={active} />
     </button>
-  )
-}
-
-function Upsell({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n()
-  return (
-    <div style={{ textAlign: 'center', padding: 'var(--space-4) var(--space-2) var(--space-2)' }}>
-      <div style={{ fontSize: 34, marginBottom: 'var(--space-3)' }}>✨</div>
-      <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w1g.upsellTitle')}</h2>
-      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 auto var(--space-5)', maxWidth: 360, lineHeight: 1.5 }}>
-        {t('w1g.upsellBody')}
-      </p>
-      <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
-        <button onClick={onClose} style={{ height: 44, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.later')}</button>
-        <a href="/settings/subscription" style={{ height: 44, display: 'inline-flex', alignItems: 'center', padding: '0 var(--space-5)', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>{t('w1g.seePlans')}</a>
-      </div>
-    </div>
   )
 }

@@ -1,52 +1,40 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Carte d'activité partagée (snapshot). Montre le tracé + le profil altimétrique
-// s'ils sont disponibles. Clic → surpage coulissante (détail read-only depuis le
-// snapshot) — JAMAIS de navigation vers la page training d'un autre athlète.
+// Carte d'activité partagée (snapshot) — carte blanche façon Strava (maquette
+// mock8 c2) : aperçu carte du tracé, titre, ligne « Sport · distance · durée ·
+// allure », métriques secondaires et mini profil altimétrique.
+// Clic → analyse complète lecture seule (RPC réservée aux membres) ou surpage
+// snapshot — JAMAIS de navigation vers la page training d'un autre athlète.
 // ══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { RouteMap, ElevationSvg } from './activityViz'
 import { ActivityDetailPanel } from './ActivityDetailPanel'
 import { CommunityActivityAnalysis } from './CommunityActivityAnalysis'
+import { CARD_BG, SOFT_SHADOW, TNUM, FB, fmtKm, fmtHms, fmtPaceKm } from './kit'
 import type { ActivityRef } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
-function fmtDistance(m: number | null): string | null {
-  if (!m || m <= 0) return null
-  return m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1).replace('.', ',')} km` : `${Math.round(m)} m`
-}
-function fmtDuration(s: number | null): string | null {
-  if (!s || s <= 0) return null
-  const h = Math.floor(s / 3600), min = Math.round((s % 3600) / 60)
-  return h > 0 ? `${h}h${String(min).padStart(2, '0')}` : `${min} min`
-}
-function fmtPace(sPerKm: number | null): string | null {
-  if (!sPerKm || sPerKm <= 0) return null
-  const m = Math.floor(sPerKm / 60), sec = Math.round(sPerKm % 60)
-  return `${m}:${String(sec).padStart(2, '0')} /km`
-}
 function fmtDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '' }
 }
 
 // `me` conservé pour compat d'appel. Avec `channelId`, le clic ouvre l'analyse
-// complète (mêmes fonctionnalités que la page training, lecture seule) via la
-// RPC réservée aux membres ; sinon, la surpage snapshot.
+// complète (mêmes fonctionnalités que la page training, lecture seule).
 export function ActivityCard({ activity, channelId }: { activity: ActivityRef; me?: string | null; channelId?: string }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const col = sportColor(activity.sport)
   const isBike = /bike|ride|cycl|v[ée]lo|velo/i.test(activity.sport)
-  const kmh = activity.avgSpeedMs && activity.avgSpeedMs > 0 ? (activity.avgSpeedMs * 3.6).toFixed(1).replace('.', ',') : null
-  // Métriques riches, ordonnées et adaptées au sport ; on n'affiche que ce qui existe.
-  const stats = [
-    fmtDistance(activity.distanceM),
-    fmtDuration(activity.durationS),
-    !isBike ? fmtPace(activity.avgPaceSKm) : null,
-    isBike && kmh ? `${kmh} km/h` : null,
+  const kmh = activity.avgSpeedMs && activity.avgSpeedMs > 0 ? `${(activity.avgSpeedMs * 3.6).toFixed(1).replace('.', ',')} km/h` : null
+  const main = [
+    sportLabel(activity.sport) + (activity.isRace ? ` · ${t('w2g.race')}` : ''),
+    fmtKm(activity.distanceM),
+    fmtHms(activity.durationS),
+    !isBike ? fmtPaceKm(activity.avgPaceSKm) : kmh,
+  ].filter(Boolean) as string[]
+  const extra = [
     activity.avgWatts ? `${Math.round(activity.avgWatts)} W${activity.npWatts ? ` · NP ${Math.round(activity.npWatts)}` : ''}` : null,
     activity.avgHr ? `${Math.round(activity.avgHr)} bpm${activity.maxHr ? ` · max ${Math.round(activity.maxHr)}` : ''}` : null,
     activity.elevGainM && activity.elevGainM > 0 ? `${Math.round(activity.elevGainM)} m D+` : null,
@@ -58,27 +46,27 @@ export function ActivityCard({ activity, channelId }: { activity: ActivityRef; m
 
   return (
     <>
-      <button onClick={() => setOpen(true)}
-        style={{ display: 'block', width: '100%', maxWidth: 340, textAlign: 'left', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 0, overflow: 'hidden', fontFamily: FB }}>
-        {activity.polyline && <RouteMap polyline={activity.polyline} height={150} />}
-        <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch', padding: 'var(--space-3) var(--space-4)' }}>
-          <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
-              <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{sportLabel(activity.sport)}{activity.isRace ? ` · ${t('w2g.race')}` : ''}</span>
-              <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtDate(activity.startedAt)}</span>
-            </div>
-            <p style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title || sportLabel(activity.sport)}</p>
-            {stats.length > 0 && (
-              <div className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-                {stats.map((s, i) => <span key={i}>{s}</span>)}
-              </div>
-            )}
-            {activity.elevation && activity.elevation.length > 1 && (
-              <div style={{ marginTop: 6 }}><ElevationSvg elevation={activity.elevation} height={38} /></div>
-            )}
-            <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('w2g.viewDetail')}</span>
+      <button type="button" onClick={() => { haptic('light'); setOpen(true) }} className="cm-btn cm-press"
+        style={{ display: 'block', width: '100%', maxWidth: 360, textAlign: 'left', background: CARD_BG, borderRadius: 'var(--r-lg)', overflow: 'hidden', boxShadow: SOFT_SHADOW, fontFamily: FB }}>
+        {activity.polyline && (
+          <div style={{ position: 'relative', lineHeight: 0 }}>
+            <RouteMap polyline={activity.polyline} height={128} />
+            <span style={{ position: 'absolute', top: 10, left: 10, padding: '4px 9px', borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', boxShadow: SOFT_SHADOW, fontSize: 12, fontWeight: 750, color: 'var(--text)', lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: col }} />{fmtDate(activity.startedAt)}
+            </span>
           </div>
+        )}
+        <div style={{ padding: '11px 14px 13px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!activity.polyline && <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />}
+            <span style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title || sportLabel(activity.sport)}</span>
+            {!activity.polyline && <span style={{ ...TNUM, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtDate(activity.startedAt)}</span>}
+          </div>
+          <div style={{ ...TNUM, marginTop: 3, fontSize: 13.5, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{main.join(' · ')}</div>
+          {extra.length > 0 && <div style={{ ...TNUM, marginTop: 3, fontSize: 12.5, color: 'var(--text-dim)', display: 'flex', flexWrap: 'wrap', columnGap: 10 }}>{extra.map((s, i) => <span key={i}>{s}</span>)}</div>}
+          {activity.elevation && activity.elevation.length > 1 && (
+            <div style={{ marginTop: 8 }}><ElevationSvg elevation={activity.elevation} height={30} /></div>
+          )}
         </div>
       </button>
       {open && (channelId

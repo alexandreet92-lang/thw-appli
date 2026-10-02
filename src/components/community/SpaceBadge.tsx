@@ -2,9 +2,11 @@
 // ══════════════════════════════════════════════════════════════════════════
 // Identité visuelle d'un espace, façon Discord — SOBRE (Design System).
 // 1) Logo image (icon_url) si présent → pastille ronde/arrondie.
-// 2) Sinon repli sur un MONOGRAMME propre (1re lettre, Inter) sur surface neutre.
-// Aucun emoji décoratif, aucun point de couleur (retiré : jugé trop chargé).
+// 2) Sinon repli sur un MONOGRAMME (1re lettre, Inter extra-gras, blanc) sur une
+//    teinte stable dérivée du slug (maquette validée mock8 c1).
 // ══════════════════════════════════════════════════════════════════════════
+
+import { toneFor } from './kit'
 
 const FB = 'var(--font-body)'
 
@@ -52,9 +54,10 @@ export function SpaceBadge({
     <span aria-hidden style={{
       width: size, height: size, flexShrink: 0, borderRadius: r,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)',
-      color: active ? 'var(--primary)' : 'var(--text-mid)',
-      fontFamily: FB, fontWeight: 600, fontSize: Math.round(size * 0.42), lineHeight: 1,
+      background: toneFor(space.slug ?? space.name),
+      color: 'var(--on-primary)',
+      fontFamily: FB, fontWeight: 800, fontSize: Math.round(size * 0.42), lineHeight: 1,
+      outline: active ? '2px solid var(--primary)' : 'none', outlineOffset: 1,
     }}>
       {monogram(space.name)}
     </span>

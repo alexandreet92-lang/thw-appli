@@ -1,20 +1,21 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Feuille « Partager une activité » : liste mes activités récentes ; en choisir
-// une la poste dans le canal (carte cliquable pour moi, snapshot pour les autres).
+// Feuille « Partager une activité » : mes activités récentes ; en choisir une
+// la met en attente au-dessus du champ (on peut ajouter un commentaire).
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { Activity, ChevronRight } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
 import { listMyRecentActivities } from '@/lib/community/activities'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
+import { CmSheet, CmSkel, CmEmpty, CARD_BG, SOFT_SHADOW, TNUM, FB, stagger, fmtKm, fmtHms } from './kit'
 import type { ActivityRef } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
 function fmtLine(a: ActivityRef): string {
-  const bits: string[] = []
-  if (a.distanceM && a.distanceM > 0) bits.push(a.distanceM >= 1000 ? `${(a.distanceM / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(a.distanceM)} m`)
-  if (a.durationS && a.durationS > 0) { const h = Math.floor(a.durationS / 3600), m = Math.round((a.durationS % 3600) / 60); bits.push(h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`) }
+  const bits: string[] = [sportLabel(a.sport)]
+  const d = fmtKm(a.distanceM); if (d) bits.push(d)
+  const h = fmtHms(a.durationS); if (h) bits.push(h)
   try { bits.push(new Date(a.startedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })) } catch { /* */ }
   return bits.join(' · ')
 }
@@ -22,45 +23,36 @@ function fmtLine(a: ActivityRef): string {
 export function ShareActivitySheet({ onClose, onShare }: {
   onClose: () => void; onShare: (a: ActivityRef) => void
 }) {
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
+  const { t } = useI18n()
   const [items, setItems] = useState<ActivityRef[] | null>(null)
-
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => { void listMyRecentActivities(25).then(setItems) }, [])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
-    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  if (!mounted) return null
 
-  const sheet = (
-    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-5) var(--space-5) var(--space-8)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
-        <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>Partager une activité</h2>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {items === null ? (
-            [0, 1, 2, 3].map(i => <span key={i} style={{ height: 52, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)' }} />)
-          ) : items.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', padding: 'var(--space-6)' }}>Aucune activité à partager pour l&apos;instant.</p>
-          ) : items.map(a => (
-            <button key={a.id} onClick={() => onShare(a)}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-3)', background: 'var(--bg-card2)', fontFamily: FB }}>
-              <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: sportColor(a.sport), flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || sportLabel(a.sport)}</span>
-                <span className="tnum" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{fmtLine(a)}</span>
-              </span>
-            </button>
-          ))}
+  return (
+    <CmSheet full onClose={onClose} title={t('w1g.shareActivity')} zIndex={15400}>
+      {items === null ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1, 2, 3].map(i => <CmSkel key={i} h={72} r="var(--r-lg)" />)}</div>
+      ) : items.length === 0 ? (
+        <CmEmpty icon={<Activity size={26} strokeWidth={2} />} title={t('cm.noActivityToShare')} />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {items.map((a, i) => {
+            const col = sportColor(a.sport)
+            return (
+              <button key={a.id} type="button" onClick={() => { haptic('light'); onShare(a) }} className="cm-btn cm-press cm-in"
+                style={{ ...stagger(i), display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: 12, borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW, fontFamily: FB }}>
+                <span style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: col, background: `color-mix(in srgb, ${col} 14%, transparent)` }}>
+                  <Activity size={20} strokeWidth={2.2} />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 16, fontWeight: 750, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || sportLabel(a.sport)}</span>
+                  <span style={{ ...TNUM, display: 'block', fontSize: 13.5, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtLine(a)}</span>
+                </span>
+                <ChevronRight size={18} strokeWidth={2} color="var(--text-dim)" />
+              </button>
+            )
+          })}
         </div>
-      </div>
-    </div>
+      )}
+    </CmSheet>
   )
-  return createPortal(sheet, document.body)
 }

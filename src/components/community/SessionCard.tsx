@@ -1,19 +1,19 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Carte de séance partagée (snapshot). Accent sport (filet 3px), pas de surface
-// colorée. Clic → surpage détail (blocs/exos) avec deux actions :
+// Carte de séance partagée (snapshot) — carte blanche, tuile sport teintée.
+// Clic → feuille détail (blocs/exos) avec deux actions :
 //   • Copier dans ma bibliothèque (session_favorites)
 //   • Ajouter à mon planning à une date choisie (planned_sessions)
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
+import { Dumbbell, ChevronRight, Copy, CalendarPlus, Check } from 'lucide-react'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { copySessionToLibrary, addSessionToPlanning } from '@/lib/community/sessions'
+import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { CmSheet, CmPill, CmCard, CmLabel, CARD_BG, SOFT_SHADOW, TNUM, FB, stagger } from './kit'
 import type { SessionRef } from '@/types/community'
 import type { Block } from '@/app/planning/page'
-import { useI18n } from '@/lib/i18n'
-
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 function fmtDuration(min: number | null): string | null {
   if (!min || min <= 0) return null
@@ -49,21 +49,19 @@ export function SessionCard({ session }: { session: SessionRef }) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)}
-        style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch', width: '100%', maxWidth: 380, textAlign: 'left', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-3) var(--space-4)', fontFamily: FB }}>
-        <span style={{ width: 3, borderRadius: 3, background: col, flexShrink: 0 }} />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
-            <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{t('w3e.session_label')}</span>
-          </span>
-          <span style={{ display: 'block', fontFamily: FD, fontSize: 14.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title}</span>
-          <span className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-            {meta.map((s, i) => <span key={i}>{s}</span>)}
-          </span>
-          <span style={{ display: 'block', marginTop: 6, fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>{t('w3e.see_detail')} →</span>
+      <button type="button" onClick={() => { haptic('light'); setOpen(true) }} className="cm-btn cm-press"
+        style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', maxWidth: 360, textAlign: 'left', background: CARD_BG, borderRadius: 'var(--r-lg)', padding: 12, boxShadow: SOFT_SHADOW, fontFamily: FB }}>
+        <span style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: col, background: `color-mix(in srgb, ${col} 14%, transparent)` }}>
+          <Dumbbell size={21} strokeWidth={2.2} />
         </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('w3e.session_label')}</span>
+          <span style={{ display: 'block', fontSize: 15.5, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{session.title}</span>
+          <span style={{ ...TNUM, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta.join(' · ')}</span>
+        </span>
+        <ChevronRight size={18} strokeWidth={2} color="var(--text-dim)" style={{ flexShrink: 0 }} />
       </button>
-      {open && <SessionDetailOverlay session={session} onClose={() => setOpen(false)} />}
+      {open && <SessionDetailSheet session={session} onClose={() => setOpen(false)} />}
     </>
   )
 }
@@ -73,122 +71,89 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function SessionDetailOverlay({ session, onClose }: { session: SessionRef; onClose: () => void }) {
+function SessionDetailSheet({ session, onClose }: { session: SessionRef; onClose: () => void }) {
   const { t } = useI18n()
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState<null | 'copy' | 'plan'>(null)
   const [done, setDone] = useState<null | string>(null)
   const [planning, setPlanning] = useState(false)
   const [date, setDate] = useState(todayStr())
   const col = sportColor(session.sport)
 
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
-    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  if (!mounted) return null
-
   async function doCopy() {
     setBusy('copy'); setDone(null)
     const ok = await copySessionToLibrary(session)
     setBusy(null); setDone(ok ? t('w3e.session_copied') : t('w3e.copy_failed_retry'))
+    if (ok) haptic('success')
   }
   async function doPlan() {
     setBusy('plan'); setDone(null)
     const [y, m, d] = date.split('-').map(Number)
     const ok = await addSessionToPlanning(session, new Date(y, m - 1, d))
     setBusy(null)
-    if (ok) { setPlanning(false); setDone(t('w3e.session_planned')) }
+    if (ok) { haptic('success'); setPlanning(false); setDone(t('w3e.session_planned')) }
     else setDone(t('w3e.add_failed_retry'))
   }
 
   const meta = [sportLabel(session.sport), fmtDuration(session.durationMin), session.rpe ? `RPE ${session.rpe}` : null].filter(Boolean) as string[]
 
-  const overlay = (
-    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
-        {/* En-tête */}
-        <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) var(--space-3)' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
-            <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: col, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{session.title}</h2>
-              <div className="tnum" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', marginTop: 4, fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-                {meta.map((s, i) => <span key={i}>{s}</span>)}
-              </div>
-              {session.trainingTypes?.length ? (
-                <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {session.trainingTypes.map(tt => <span key={tt} style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-neutral)', padding: '2px 8px', borderRadius: 'var(--r-sm)' }}>{tt}</span>)}
-                </div>
-              ) : null}
+  return (
+    <CmSheet onClose={onClose} title={session.title} sub={meta.join(' · ')} zIndex={15700}
+      footer={
+        <>
+          {done && <p className="cm-in" style={{ margin: 0, textAlign: 'center', fontSize: 14, fontWeight: 650, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Check size={15} strokeWidth={2.6} />{done}</p>}
+          {planning ? (
+            <div className="cm-in" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="date" value={date} min={todayStr()} onChange={e => setDate(e.target.value)} className="cm-input" style={{ flex: 1 }} />
+              <CmPill variant="primary" disabled={busy === 'plan'} onClick={() => void doPlan()} height={50}>{busy === 'plan' ? t('w3e.adding') : t('w3e.confirm')}</CmPill>
             </div>
-            <button onClick={requestClose} aria-label={t('w3e.close')} style={{ width: 28, height: 28, flexShrink: 0, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <CmPill variant="chip" disabled={busy === 'copy'} onClick={() => void doCopy()} height={52} style={{ flex: 1 }}><Copy size={17} strokeWidth={2.2} />{busy === 'copy' ? t('w3e.copying') : t('w3e.copy_to_library')}</CmPill>
+              <CmPill variant="primary" onClick={() => { setPlanning(true); setDone(null) }} height={52} style={{ flex: 1 }}><CalendarPlus size={17} strokeWidth={2.2} />{t('w3e.add_to_planning')}</CmPill>
+            </div>
+          )}
+        </>
+      }>
+      {session.trainingTypes?.length ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0 0 6px' }}>
+          {session.trainingTypes.map(tt => <span key={tt} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--surface-chip)', padding: '4px 10px', borderRadius: 'var(--r-pill)' }}>{tt}</span>)}
         </div>
-
-        {/* Contenu : blocs / exos */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {session.blocks.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', padding: 'var(--space-4) 0' }}>{t('w3e.no_detailed_block')}</p>
-          ) : session.blocks.map((b, i) => {
+      ) : null}
+      {session.blocks.length === 0 ? (
+        <p style={{ fontSize: 14.5, color: 'var(--text-mid)', padding: '16px 4px' }}>{t('w3e.no_detailed_block')}</p>
+      ) : (
+        <CmCard style={{ overflow: 'hidden', marginTop: 6 }}>
+          {session.blocks.map((b, i) => {
             const detail = blockDetail(b, t)
             return (
-              <div key={b.id || i} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'baseline', padding: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
-                <span className="tnum" style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', width: 18, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+              <div key={b.id || i} className="cm-in" style={{ ...stagger(i, 0, 26), display: 'flex', gap: 12, alignItems: 'center', minHeight: 56, padding: '10px 16px', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ ...TNUM, width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, color: col, background: `color-mix(in srgb, ${col} 14%, transparent)` }}>{i + 1}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{blockTitle(b, t)}</div>
-                  {detail && <div className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{detail}</div>}
+                  <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>{blockTitle(b, t)}</div>
+                  {detail && <div style={{ ...TNUM, fontSize: 13.5, color: 'var(--text-mid)', marginTop: 2 }}>{detail}</div>}
                 </div>
               </div>
             )
           })}
-          {session.notes?.trim() && (
-            <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, margin: 'var(--space-2) 0 0' }}>{session.notes.trim()}</p>
-          )}
-          {session.nutritionItems?.length ? (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-2)' }}>{t('w3e.nutrition')}</div>
-              {session.nutritionItems.map((n, i) => (
-                <div key={n.id || i} className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{n.timeMin} min · {n.name || n.type} · {n.quantity}</div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        {/* Actions */}
-        <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {done && <p style={{ margin: '0 0 var(--space-1)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', textAlign: 'center' }}>{done}</p>}
-          {planning ? (
-            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-              <input type="date" value={date} min={todayStr()} onChange={e => setDate(e.target.value)}
-                style={{ flex: 1, height: 40, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
-              <button onClick={() => void doPlan()} disabled={busy === 'plan'}
-                style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: busy === 'plan' ? 'default' : 'pointer', opacity: busy === 'plan' ? 0.6 : 1 }}>
-                {busy === 'plan' ? t('w3e.adding') : t('w3e.confirm')}
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <button onClick={() => void doCopy()} disabled={busy === 'copy'}
-                style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: busy === 'copy' ? 'default' : 'pointer', opacity: busy === 'copy' ? 0.6 : 1 }}>
-                {busy === 'copy' ? t('w3e.copying') : t('w3e.copy_to_library')}
-              </button>
-              <button onClick={() => { setPlanning(true); setDone(null) }}
-                style={{ flex: 1, height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-                {t('w3e.add_to_planning')}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+        </CmCard>
+      )}
+      {session.notes?.trim() && (
+        <p style={{ fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.5, margin: '14px 4px 0' }}>{session.notes.trim()}</p>
+      )}
+      {session.nutritionItems?.length ? (
+        <>
+          <CmLabel>{t('w3e.nutrition')}</CmLabel>
+          <CmCard style={{ overflow: 'hidden' }}>
+            {session.nutritionItems.map((n, i) => (
+              <div key={n.id || i} style={{ ...TNUM, display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, padding: '8px 16px', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 14.5, color: 'var(--text)' }}>
+                <span style={{ width: 54, color: 'var(--text-mid)', fontWeight: 700 }}>{n.timeMin} min</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{n.name || n.type}</span>
+                <span style={{ color: 'var(--text-mid)' }}>{n.quantity}</span>
+              </div>
+            ))}
+          </CmCard>
+        </>
+      ) : null}
+    </CmSheet>
   )
-  return createPortal(overlay, document.body)
 }

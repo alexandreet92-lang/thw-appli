@@ -1,12 +1,23 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Fil d'un canal — feed lisible « type Whoop/Discord », sobre (Design System).
-// Réactions, actions au survol (répondre / éditer / supprimer), réponses,
-// mentions @, dictée, pièces jointes, présence, append en direct (Realtime).
-// Tokens uniquement, aucune bordure hors input/focus.
+// Salon — messagerie moderne (maquette mock8 c2). En-tête rond retour · #nom +
+// « X en ligne » (→ membres) · ⋯ (recherche, épinglés, membres, sourdine).
+// Messages : avatars, noms, heure, réponses, réactions en pastilles ; mes
+// messages en bulles à droite. Appui long (mobile) / clic droit / survol
+// (desktop) → menu « verre » : réagir, répondre, copier, éditer, épingler,
+// signaler, supprimer. Composeur façon IA (carte blanche : +, Activité,
+// Séance, micro, envoyer) avec @mentions. Envoi optimiste (la bulle monte),
+// défilement fluide vers le bas, Realtime (messages, réactions, épinglés,
+// accusés de lecture). Tokens uniquement.
 // ══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useReducedMotion } from 'motion/react'
+import {
+  ChevronLeft, MoreHorizontal, Search, Pin, PinOff, Users, Bell, BellOff, Hash, Plus, Activity, Dumbbell, Mic, ArrowUp, ArrowDown,
+  Reply, Copy, Pencil, Flag, Trash2, Smile, X, FileText, Check,
+} from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
 import { createClient } from '@/lib/supabase/client'
 import {
   getChannelMessages, sendChannelMessage, editChannelMessage, deleteChannelMessage, uploadCommunityMedia, searchChannelMessages,
@@ -17,6 +28,7 @@ import { getPinnedIds, getPinnedMessages, togglePin } from '@/lib/community/pins
 import { listSpaceMembers } from '@/lib/community/spaces'
 import { usePresenceCount, usePresenceIds } from '@/lib/community/presence'
 import { MembersSheet } from './MembersSheet'
+import { MemberProfileSheet } from './MemberProfileSheet'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { myId } from '@/lib/community/shared'
@@ -26,43 +38,41 @@ import { ShareActivitySheet } from './ShareActivitySheet'
 import { ShareSessionSheet } from './ShareSessionSheet'
 import { ActivityCard } from './ActivityCard'
 import { SessionCard } from './SessionCard'
+import {
+  CmStyles, CmRound, CmHeader, CmAvatar, CmEmpty, CmPill, CmSkel, CmSheet, CmChip, CmToast, GlassMenu,
+  FB, PAGE_BG, CARD_BG, SOFT_SHADOW, TNUM, stagger, useLongPress, useNarrow, rectOf, type GlassEntry, type LpRect,
+} from './kit'
 import type { LibrarySession } from '@/lib/community/sessions'
 import type { CommunityChannel, CommunityMessage, CommunityAttachment, CommunityMemberInfo, ActivityRef } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
 // « Vu par » : dernier-lu de chaque membre (renvoyé par /api/community/channel-reads).
 interface ChannelRead { userId: string; lastReadAt: string; name: string; avatar: string | null }
+type Tr = (k: string, v?: Record<string, string | number>) => string
 
 function fmtTime(iso: string): string {
   try { return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
-function fmtDay(iso: string): string {
+function fmtDay(iso: string, t: Tr): string {
   try {
     const d = new Date(iso), today = new Date(), y = new Date(today); y.setDate(today.getDate() - 1)
-    if (d.toDateString() === today.toDateString()) return "Aujourd'hui"
-    if (d.toDateString() === y.toDateString()) return 'Hier'
+    if (d.toDateString() === today.toDateString()) return t('w4c.feed_today')
+    if (d.toDateString() === y.toDateString()) return t('w4c.feed_yesterday')
     return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   } catch { return '' }
 }
 const firstWord = (s: string) => s.trim().split(/\s+/)[0] ?? s
+const sameGroup = (a: CommunityMessage | undefined, b: CommunityMessage): boolean =>
+  !!a && !b.replyPreview && a.authorId === b.authorId &&
+  new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString() &&
+  (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) < 5 * 60_000
 
-function Avatar({ name, url, size = 36 }: { name: string; url: string | null; size?: number }) {
-  return (
-    <span style={{ width: size, height: size, borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontFamily: FB, fontWeight: 600, fontSize: size * 0.4 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name.slice(0, 1).toUpperCase()}
-    </span>
-  )
-}
-
-// Rend le corps d'un message avec les @mentions surlignées (accent discret).
-function Body({ text }: { text: string }) {
+// Corps d'un message avec les @mentions surlignées (accent discret).
+function Body({ text, size = 16 }: { text: string; size?: number }) {
   const parts = text.split(/(@[\p{L}][\p{L}\-]{1,30})/gu)
   return (
-    <p style={{ margin: 0, fontFamily: FB, fontSize: 13.5, color: 'var(--text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+    <p style={{ margin: 0, fontFamily: FB, fontSize: size, color: 'var(--text)', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
       {parts.map((p, i) => p.startsWith('@')
-        ? <span key={i} style={{ color: 'var(--primary)', fontWeight: 600 }}>{p}</span>
+        ? <span key={i} style={{ color: 'var(--primary)', fontWeight: 700 }}>{p}</span>
         : <span key={i}>{p}</span>)}
     </p>
   )
@@ -82,13 +92,16 @@ export function ChannelChat({
   onJoin: () => void
   joining: boolean
   onRead?: (channelId: string) => void
-  /** Fourni en MOBILE (vue immersive) : affiche un en-tête Discord (← nom + « X
-   *  en ligne », nom cliquable → sur-page Membres). Absent = en-tête desktop. */
+  /** Fourni en MOBILE (vue plein écran) : en-tête rond retour + titre centré. */
   onBack?: () => void
 }) {
+  void onCall // les appels se lancent depuis les salons vocaux (masqués sur iOS natif)
   const { t } = useI18n()
+  const narrow = useNarrow()
+  const reduce = useReducedMotion() ?? false
   const kbInset = useKeyboardInset()
   const [messages, setMessages] = useState<CommunityMessage[]>([])
+  const [temps, setTemps] = useState<CommunityMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -100,27 +113,39 @@ export function ChannelChat({
   const [rulesGate, setRulesGate] = useState<{ required: boolean; accepted: boolean; text: string | null }>({ required: false, accepted: true, text: null })
   const [me, setMe] = useState<string | null>(null)
   const [members, setMembers] = useState<CommunityMemberInfo[]>([])
-  const [reactFor, setReactFor] = useState<string | null>(null)
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [showPins, setShowPins] = useState(false)
   const [pinnedList, setPinnedList] = useState<CommunityMessage[] | null>(null)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQ, setSearchQ] = useState('')
   const [searchResults, setSearchResults] = useState<CommunityMessage[] | null>(null)
-  const [replyTo, setReplyTo] = useState<{ id: string; authorName: string } | null>(null)
+  const [replyTo, setReplyTo] = useState<{ id: string; authorName: string; body: string } | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [reads, setReads] = useState<ChannelRead[]>([])
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [profile, setProfile] = useState<CommunityMemberInfo | null>(null)
+  const [menu, setMenu] = useState<{ m: CommunityMessage; rect: LpRect; confirm: boolean; instant: boolean } | null>(null)
+  const [moreRect, setMoreRect] = useState<LpRect | null>(null)
+  const [reportFor, setReportFor] = useState<CommunityMessage | null>(null)
+  const [anim, setAnim] = useState<Record<string, 'rise' | 'arrive'>>({})
+  const [pop, setPop] = useState<{ key: string; n: number } | null>(null)
+  const [flashId, setFlashId] = useState<string | null>(null)
+  const [newBelow, setNewBelow] = useState(0)
+  const [showJump, setShowJump] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
-  const endRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const moreBtnRef = useRef<HTMLSpanElement>(null)
   const idsRef = useRef<Set<string>>(new Set())
+  const knownRef = useRef<{ ch: string; ids: Set<string> } | null>(null)
+  const loadedFor = useRef<string | null>(null)
+  const atBottomRef = useRef(true)
   const voiceBase = useRef('')
   const instanceId = useId()
   const presence = usePresenceCount(isMember ? `comm-presence-${channel.spaceId}` : null, me)
   const onlineIds = usePresenceIds(isMember ? `comm-presence-${channel.spaceId}` : null, me)
-  const [membersOpen, setMembersOpen] = useState(false)
 
   const { supported: micSupported, isListening, toggle: toggleMic } = useSpeechToText(
     (text) => setInput((voiceBase.current ? voiceBase.current.trimEnd() + ' ' : '') + text),
@@ -142,6 +167,7 @@ export function ChannelChat({
     if (!isMember) { setMessages([]); setLoading(false); return }
     const [msgs, pins] = await Promise.all([getChannelMessages(channel.id), getPinnedIds(channel.id)])
     idsRef.current = new Set(msgs.map(m => m.id))
+    loadedFor.current = channel.id
     setMessages(msgs); setPinnedIds(pins)
     setLoading(false)
     void markChannelRead(channel.id)
@@ -150,9 +176,8 @@ export function ChannelChat({
   }, [channel.id, isMember, onRead, loadReads])
 
   async function pin(m: CommunityMessage) {
-    setReactFor(null)
     const isPinned = pinnedIds.has(m.id)
-    if (await togglePin(channel.spaceId, channel.id, m.id, isPinned)) { void load(); if (showPins) setPinnedList(await getPinnedMessages(channel.id)) }
+    if (await togglePin(channel.spaceId, channel.id, m.id, isPinned)) { haptic('light'); void load(); if (showPins) setPinnedList(await getPinnedMessages(channel.id)) }
   }
   async function openPins() {
     setShowPins(true); setPinnedList(null)
@@ -164,7 +189,11 @@ export function ChannelChat({
     setSearchResults(await searchChannelMessages(channel.id, q))
   }
 
-  useEffect(() => { setLoading(true); setReplyTo(null); setEditing(null); setShowSearch(false); setSearchQ(''); setSearchResults(null); setShowPins(false); void load() }, [load])
+  useEffect(() => {
+    setLoading(true); setReplyTo(null); setEditing(null); setShowSearch(false); setSearchQ(''); setSearchResults(null); setShowPins(false)
+    setTemps([]); setAnim({}); atBottomRef.current = true; setNewBelow(0)
+    void load()
+  }, [load])
   useEffect(() => { void myId().then(setMe) }, [])
   useEffect(() => {
     if (!isMember) { setMembers([]); return }
@@ -185,8 +214,8 @@ export function ChannelChat({
     return () => { alive = false }
   }, [channel.spaceId, isMember])
 
-  // Append en direct : messages + réactions (un seul canal, nom unique par instance
-  // car la page est montée dans les deux shells simultanément).
+  // Append en direct : messages + réactions + épinglés + lectures (un seul canal,
+  // nom unique par instance car la page est montée dans les deux shells).
   useEffect(() => {
     if (!isMember) return
     const sb = createClient()
@@ -206,23 +235,77 @@ export function ChannelChat({
     return () => { void sb.removeChannel(ch) }
   }, [channel.id, isMember, load, loadReads, instanceId])
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // Nouveaux messages : animation d'arrivée (les miens « montent »), remplacement
+  // silencieux du message optimiste, défilement fluide si on est en bas.
+  useEffect(() => {
+    if (loading || loadedFor.current !== channel.id) return
+    if (!knownRef.current || knownRef.current.ch !== channel.id) { knownRef.current = { ch: channel.id, ids: new Set(messages.map(m => m.id)) }; return }
+    const known = knownRef.current.ids
+    const fresh = messages.filter(m => !known.has(m.id))
+    if (fresh.length === 0) return
+    const next: Record<string, 'rise' | 'arrive'> = {}
+    let others = 0
+    const consumed = new Set<string>()
+    for (const m of fresh) {
+      known.add(m.id)
+      if (m.authorId === me) {
+        const tmp = temps.find(x => !consumed.has(x.id) && x.body.trim() === m.body.trim() && x.attachments.length === m.attachments.length)
+        if (tmp) { consumed.add(tmp.id); continue }
+        next[m.id] = 'rise'
+      } else { next[m.id] = 'arrive'; others++ }
+    }
+    if (consumed.size) setTemps(prev => prev.filter(x => !consumed.has(x.id)))
+    if (Object.keys(next).length) setAnim(a => ({ ...a, ...next }))
+    if (others > 0 && !atBottomRef.current) setNewBelow(n => n + others)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, loading])
 
-  const roleOf = useMemo(() => {
-    const m = new Map<string, string>()
-    members.forEach(x => m.set(x.userId, x.role))
+  // Défilement : saut instantané au 1er chargement, glissé ensuite si on suit le bas.
+  const firstScroll = useRef(true)
+  useEffect(() => { firstScroll.current = true }, [channel.id])
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || loading) return
+    if (firstScroll.current) { el.scrollTop = el.scrollHeight; firstScroll.current = false; return }
+    if (atBottomRef.current) el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
+  }, [messages, temps, loading, reduce])
+
+  function onScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+    atBottomRef.current = dist < 90
+    if (atBottomRef.current && newBelow) setNewBelow(0)
+    setShowJump(dist > 320)
+  }
+  function scrollToBottom(quiet?: boolean) {
+    const el = scrollRef.current
+    if (!el) return
+    if (!quiet) haptic('light')
+    atBottomRef.current = true; setNewBelow(0)
+    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
+  }
+  function jumpTo(id: string) {
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-mid="${id}"]`)
+    if (!el) { setNotice(t('cm.notLoaded')); return }
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    setFlashId(id); setTimeout(() => setFlashId(f => (f === id ? null : f)), 1900)
+  }
+
+  const memberById = useMemo(() => {
+    const m = new Map<string, CommunityMemberInfo>()
+    members.forEach(x => m.set(x.userId, x))
     return m
   }, [members])
 
   const filteredMentions = useMemo(() => {
     if (mentionQuery === null) return []
     const q = mentionQuery.toLowerCase()
-    return members.filter(m => m.name.toLowerCase().includes(q)).slice(0, 6)
-  }, [mentionQuery, members])
+    return members.filter(m => m.userId !== me && m.name.toLowerCase().includes(q)).slice(0, 6)
+  }, [mentionQuery, members, me])
 
-  // « Vu par » (accusés de lecture, style avatars empilés) : on ne l'affiche que
-  // sous MON dernier message, et seulement pour les membres dont le dernier-lu
-  // est postérieur (ou égal) à la date de ce message. Soi-même exclu.
+  // « Vu par » : sous MON dernier message, membres dont le dernier-lu est
+  // postérieur (ou égal) à ce message. Soi-même exclu.
   const lastSeen = useMemo(() => {
     if (!me) return null
     let mine: CommunityMessage | null = null
@@ -234,8 +317,18 @@ export function ChannelChat({
     return { messageId: mine.id, seers }
   }, [messages, reads, me])
 
+  // Hauteur auto du champ (jusqu'à ~5 lignes).
+  const composerValue = editing ? editing.text : input
+  useLayoutEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(140, el.scrollHeight)}px`
+  }, [composerValue])
+
   function onInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const v = e.target.value.slice(0, 4000)
+    if (editing) { setEditing({ id: editing.id, text: v }); return }
     setInput(v)
     const upto = v.slice(0, e.target.selectionStart ?? v.length)
     const m = upto.match(/@([\p{L}\-]*)$/u)
@@ -243,25 +336,42 @@ export function ChannelChat({
   }
 
   function pickMention(member: CommunityMemberInfo) {
+    haptic('light')
     const el = taRef.current
     const caret = el?.selectionStart ?? input.length
     const before = input.slice(0, caret).replace(/@([\p{L}\-]*)$/u, `@${firstWord(member.name)} `)
     const after = input.slice(caret)
-    const next = before + after
-    setInput(next.slice(0, 4000)); setMentionQuery(null)
+    setInput((before + after).slice(0, 4000)); setMentionQuery(null)
     setTimeout(() => { el?.focus(); const pos = before.length; el?.setSelectionRange(pos, pos) }, 0)
   }
 
   async function send() {
+    if (editing) { void saveEdit(); return }
     const body = input.trim()
     if ((!body && pending.length === 0) || sending || uploading) return
+    haptic('light')
     setSending(true)
-    const atts = pending, rTo = replyTo?.id ?? null
+    const atts = pending, rTo = replyTo
+    const me0 = me ? memberById.get(me) : undefined
+    const tmp: CommunityMessage = {
+      id: `tmp-${Date.now()}`, channelId: channel.id, authorId: me ?? 'me', body, createdAt: new Date().toISOString(), editedAt: null,
+      replyTo: rTo?.id ?? null, attachments: atts, reactions: [],
+      replyPreview: rTo ? { id: rTo.id, authorName: rTo.authorName, body: rTo.body, hasAttachment: false } : null,
+      authorName: me0?.name ?? t('cm.you'), authorAvatar: me0?.avatar ?? null,
+    }
+    atBottomRef.current = true
+    setTemps(p => [...p, tmp]); setAnim(a => ({ ...a, [tmp.id]: 'rise' }))
     setInput(''); setPending([]); setReplyTo(null); setMentionQuery(null)
-    const ok = await sendChannelMessage(channel.id, body, atts, rTo)
+    const ok = await sendChannelMessage(channel.id, body, atts, rTo?.id ?? null)
     setSending(false)
-    if (ok) void load()
-    else { setInput(body); setPending(atts); setNotice(t('w1g.sendFailed')) }
+    if (ok) {
+      void load()
+      // Filet : un message optimiste resté orphelin disparaît après quelques secondes.
+      setTimeout(() => setTemps(p => p.filter(x => x.id !== tmp.id)), 8000)
+    } else {
+      setTemps(p => p.filter(x => x.id !== tmp.id))
+      setInput(body); setPending(atts); setNotice(t('w1g.sendFailed'))
+    }
   }
 
   function openFilePicker() {
@@ -274,27 +384,20 @@ export function ChannelChat({
     // champ : on peut ajouter un commentaire avant d'envoyer.
     const enriched = await enrichActivity(a)
     setPending(p => [...p, { type: 'activity', activity: enriched }])
+    taRef.current?.focus()
   }
   function shareSession(s: LibrarySession) {
     setSharingSession(false)
     // On ne partage que le snapshot (sans l'id de bibliothèque, propre au partageur).
-    // La séance est mise en attente au-dessus du champ : on peut ajouter un
-    // commentaire puis envoyer (pas d'envoi immédiat).
     const { id: _id, ...snapshot } = s
     void _id
     setPending(p => [...p, { type: 'session', session: snapshot }])
-  }
-
-  async function report(id: string) {
-    const reason = typeof window !== 'undefined' ? window.prompt(t('w1g.reportPrompt')) : ''
-    if (reason === null) return
-    const ok = await reportMessage(channel.spaceId, channel.id, id, reason || t('w1g.reported'))
-    setNotice(ok ? t('w1g.reportSent') : t('w1g.reportFailed'))
+    taRef.current?.focus()
   }
 
   async function doAcceptRules() {
     const ok = await acceptRules(channel.spaceId)
-    if (ok) setRulesGate(g => ({ ...g, accepted: true }))
+    if (ok) { haptic('success'); setRulesGate(g => ({ ...g, accepted: true })) }
   }
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); e.target.value = ''
@@ -309,346 +412,496 @@ export function ChannelChat({
   }
 
   async function react(m: CommunityMessage, emoji: string) {
-    setReactFor(null)
+    haptic('light')
+    setPop(p => ({ key: `${m.id}:${emoji}`, n: (p?.n ?? 0) + 1 }))
     const mine = m.reactions.find(r => r.emoji === emoji)?.mine ?? false
-    if (await toggleReaction(m.id, emoji, mine)) void load()
+    // Optimiste : la pastille change tout de suite, le Realtime confirmera.
+    setMessages(prev => prev.map(x => {
+      if (x.id !== m.id) return x
+      const has = x.reactions.find(r => r.emoji === emoji)
+      const reactions = has
+        ? x.reactions.map(r => r.emoji === emoji ? { ...r, mine: !mine, count: Math.max(0, r.count + (mine ? -1 : 1)) } : r).filter(r => r.count > 0)
+        : [...x.reactions, { emoji, count: 1, mine: true }]
+      return { ...x, reactions }
+    }))
+    await toggleReaction(m.id, emoji, mine)
+    void load()
   }
   async function saveEdit() {
     if (!editing) return
-    const t = editing.text.trim()
+    const txt = editing.text.trim()
     const cur = editing
     setEditing(null)
-    if (t && await editChannelMessage(cur.id, t)) void load()
+    if (txt && await editChannelMessage(cur.id, txt)) { haptic('light'); void load() }
   }
   async function remove(id: string) {
-    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteMessageConfirm'))) return
-    if (await deleteChannelMessage(id)) void load()
+    if (await deleteChannelMessage(id)) { haptic('medium'); void load() }
+  }
+  async function copyText(text: string) {
+    try { await navigator.clipboard.writeText(text); setNotice(t('cm.copied')) } catch { /* ignore */ }
+  }
+
+  function openMenu(m: CommunityMessage, el: HTMLElement, instant = false) {
+    if (m.id.startsWith('tmp-')) return
+    setMenu({ m, rect: rectOf(el), confirm: false, instant })
+  }
+  function openProfile(m: CommunityMessage) {
+    haptic('light')
+    setProfile(memberById.get(m.authorId) ?? { userId: m.authorId, role: 'member', name: m.authorName, avatar: m.authorAvatar })
   }
 
   const gatedByRules = rulesGate.required && !rulesGate.accepted
-  const canSend = (input.trim().length > 0 || pending.length > 0) && !sending && !uploading && canPost && !gatedByRules
+  const canSend = editing
+    ? editing.text.trim().length > 0
+    : (input.trim().length > 0 || pending.length > 0) && !sending && !uploading && canPost && !gatedByRules
+  const onlineN = Math.max(1, presence)
 
-  // En-tête MOBILE immersif (façon Discord) : ← + nom (cliquable → Membres) +
-  // « X en ligne ». Utilisé uniquement quand onBack est fourni (vue mobile).
+  // ── En-têtes ─────────────────────────────────────────────────────────────
+  const onlineSub = (
+    <><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} /><span style={TNUM}>{t('w1g.mem.nOnline', { n: onlineN })}</span></>
+  )
   const mobileHeader = (
-    <div style={{ flexShrink: 0, padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)', borderBottom: '1px solid var(--border)' }}>
-      <button onClick={onBack} aria-label={t('w1g.back')} style={{ width: 36, height: 36, flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-      </button>
-      <button onClick={() => setMembersOpen(true)} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-        <span style={{ display: 'block', fontFamily: FD, fontSize: 16.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>#{channel.name}</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)' }} />
-          {t('w1g.mem.nOnline', { n: Math.max(1, presence) })}
+    <CmHeader
+      left={<CmRound onClick={() => onBack?.()} label={t('w1g.back')}><ChevronLeft size={22} strokeWidth={2.2} /></CmRound>}
+      title={`# ${channel.name}`}
+      sub={isMember ? onlineSub : undefined}
+      onTitle={isMember ? () => { haptic('light'); setMembersOpen(true) } : undefined}
+      right={isMember ? (
+        <span ref={moreBtnRef} style={{ display: 'flex' }}>
+          <CmRound onClick={() => { if (moreBtnRef.current) setMoreRect(rectOf(moreBtnRef.current)) }} label={t('cm.more')}><MoreHorizontal size={21} strokeWidth={2.2} /></CmRound>
         </span>
-      </button>
-    </div>
+      ) : undefined}
+    />
   )
-
-  const header = (
-    <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', background: 'var(--bg-card)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>#{channel.name}</span>
-          {channel.topic && <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{channel.topic}</p>}
+  const deskBtn = (label: string, onClick: () => void, icon: React.ReactNode, on?: boolean) => (
+    <button type="button" onClick={onClick} aria-label={label} title={label} className="cm-btn cm-press"
+      style={{ width: 38, height: 38, borderRadius: '50%', background: on ? 'var(--primary-dim)' : 'var(--surface-chip)', color: on ? 'var(--primary)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {icon}
+    </button>
+  )
+  const deskHeader = (
+    <div style={{ flexShrink: 0, padding: '16px 18px 12px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border)' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          <Hash size={19} strokeWidth={2.5} color="var(--text-mid)" /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{channel.name}</span>
         </div>
-        {isMember && (
-          <button onClick={() => { setShowSearch(v => !v); setSearchQ(''); setSearchResults(null) }} title={t('w1g.search')} aria-label={t('w1g.search')}
-            style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: showSearch ? 'var(--surface-neutral)' : 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          </button>
-        )}
-        {isMember && (
-          <button onClick={onToggleMute} title={isMuted ? t('w1g.unmuteNotifications') : t('w1g.mute')} aria-label={isMuted ? t('w1g.unmute') : t('w1g.muteShort')}
-            style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isMuted ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isMuted
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>}
-          </button>
-        )}
-        {isMember && pinnedIds.size > 0 && (
-          <button onClick={() => void openPins()} title={t('w1g.pinnedMessages')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, height: 28, padding: '0 var(--space-2)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, fontSize: 11.5, fontWeight: 600 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" /></svg>
-            <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{pinnedIds.size}</span>
-          </button>
-        )}
-        {isMember && presence > 0 && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, fontFamily: FB, fontSize: 11.5, color: 'var(--text-mid)' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)' }} />
-            <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{presence}</span>{' '}{t('w1g.online')}
-          </span>
-        )}
+        {channel.topic && <p style={{ margin: '3px 0 0', fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{channel.topic}</p>}
       </div>
+      {isMember && (
+        <>
+          <button type="button" onClick={() => setMembersOpen(true)} className="cm-btn cm-press"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>
+            {onlineSub}
+          </button>
+          {deskBtn(t('w1g.search'), () => { setShowSearch(true); setSearchQ(''); setSearchResults(null) }, <Search size={17} strokeWidth={2.2} />)}
+          {deskBtn(t('w1g.pinnedMessages'), () => void openPins(), <span style={{ position: 'relative', display: 'flex' }}><Pin size={17} strokeWidth={2.2} />{pinnedIds.size > 0 && <span style={{ ...TNUM, position: 'absolute', top: -9, right: -11, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 'var(--r-pill)', background: 'var(--text)', color: 'var(--bg)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pinnedIds.size}</span>}</span>)}
+          {deskBtn(isMuted ? t('w1g.unmuteNotifications') : t('w1g.mute'), onToggleMute, isMuted ? <BellOff size={17} strokeWidth={2.2} /> : <Bell size={17} strokeWidth={2.2} />, isMuted)}
+        </>
+      )}
     </div>
   )
+  const header = onBack ? mobileHeader : deskHeader
+  const bg = onBack ? PAGE_BG : CARD_BG
 
   if (!isMember) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
-        {onBack ? mobileHeader : header}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', padding: 'var(--space-8)', textAlign: 'center' }}>
-          <span style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>{t('w1g.joinToRead')}</span>
-          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', maxWidth: 360, lineHeight: 1.5 }}>
-            {t('w1g.joinToReadDesc')}
-          </p>
-          <button onClick={onJoin} disabled={joining}
-            style={{ height: 40, padding: '0 var(--space-5)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: joining ? 'default' : 'pointer', opacity: joining ? 0.6 : 1 }}>
-            {joining ? t('w1g.connecting') : t('w1g.join')}
-          </button>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: bg, fontFamily: FB }}>
+        <CmStyles />
+        {header}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <CmEmpty icon={<Hash size={30} strokeWidth={2.2} />} title={t('w1g.joinToRead')} body={t('w1g.joinToReadDesc')}
+            action={<CmPill variant="primary" onClick={onJoin} disabled={joining}>{joining ? t('w1g.connecting') : t('w1g.join')}</CmPill>} />
         </div>
       </div>
     )
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
-      {onBack ? mobileHeader : header}
-      {membersOpen && <MembersSheet title={`#${channel.name}`} members={members} onlineIds={onlineIds} onClose={() => setMembersOpen(false)} />}
+  const all = temps.length ? [...messages, ...temps] : messages
 
-      {/* Panneau messages épinglés */}
-      {showPins && (
-        <div style={{ flexShrink: 0, maxHeight: 220, overflowY: 'auto', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{t('w1g.pinned')}</span>
-            <button onClick={() => setShowPins(false)} aria-label={t('w1g.close')} style={{ width: 22, height: 22, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
-          </div>
-          {pinnedList === null ? (
-            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('w1g.loading')}</p>
-          ) : pinnedList.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('w1g.noPinnedMessage')}</p>
-          ) : pinnedList.map(pm => (
-            <div key={pm.id} style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{pm.authorName}</span>
-                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pm.body || (pm.attachments.length ? t('w1g.attachment') : '')}</p>
-              </div>
-              {canModerate && (
-                <button onClick={() => void pin(pm)} aria-label={t('w1g.unpin')} style={{ width: 24, height: 24, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 13 }}>×</button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Panneau recherche */}
-      {showSearch && (
-        <div style={{ flexShrink: 0, maxHeight: 280, display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', padding: 'var(--space-3) var(--space-5)' }}>
-          <input autoFocus value={searchQ} onChange={e => void runSearch(e.target.value)} placeholder={t('w1g.searchInChannel', { name: channel.name })}
-            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none', marginBottom: 'var(--space-2)' }} />
-          <div style={{ overflowY: 'auto' }}>
-            {searchResults === null ? (
-              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{searchQ.trim().length >= 2 ? t('w1g.searching') : t('w1g.typeAtLeast2')}</p>
-            ) : searchResults.length === 0 ? (
-              <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0' }}>{t('w1g.noResults')}</p>
-            ) : searchResults.map(sr => (
-              <div key={sr.id} style={{ padding: 'var(--space-2) 0' }}>
-                <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{sr.authorName}</span>
-                <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>{fmtDay(sr.createdAt)}</span>
-                <p style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{sr.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Fil — les messages sont ANCRÉS EN BAS (près du composer, façon Discord/
-          iMessage) : marginTop:auto pousse le contenu vers le bas quand il est
-          court ; quand il dépasse, le conteneur défile normalement. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 'var(--space-2) var(--space-4) var(--space-4)' }}>
-        <div style={{ marginTop: 'auto' }}>
-        {loading ? <MessagesSkeleton /> : messages.length === 0 ? (
-          <div style={{ padding: 'var(--space-10) var(--space-4)', textAlign: 'center' }}>
-            <p style={{ fontFamily: FD, fontSize: 18, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w1g.channelStartsHere', { name: channel.name })}</p>
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('w1g.beFirstToWrite')}</p>
-          </div>
-        ) : messages.map((m, i) => {
-          const prev = messages[i - 1]
-          const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString()
-          const grouped = !newDay && !m.replyPreview && prev.authorId === m.authorId &&
-            (new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime()) < 5 * 60_000
-          const mine = m.authorId === me
-          const isEditing = editing?.id === m.id
+  // Menus contextuels ─────────────────────────────────────────────────────
+  const ic = { size: 20, strokeWidth: 1.9 }
+  let msgMenu: React.ReactNode = null
+  if (menu) {
+    const m = menu.m
+    const mine = m.authorId === me
+    const close = () => setMenu(null)
+    const items: GlassEntry[] = menu.confirm ? [
+      { key: 'q', label: <span style={{ display: 'block', whiteSpace: 'normal', padding: '8px 0', fontSize: 14.5, fontWeight: 600, color: 'var(--text-mid)' }}>{t('w1g.deleteMessageConfirm')}</span>, onClick: () => {} },
+      'sep',
+      { key: 'cancel', icon: <ChevronLeft {...ic} />, label: t('w1g.cancel'), onClick: () => setMenu({ ...menu, confirm: false }) },
+      { key: 'yes', icon: <Trash2 {...ic} />, label: t('w1g.delete'), danger: true, onClick: () => { close(); void remove(m.id) } },
+    ] : [
+      { key: 'reply', icon: <Reply {...ic} />, label: t('w1g.reply'), onClick: () => { close(); setEditing(null); setReplyTo({ id: m.id, authorName: m.authorName, body: m.body }); setTimeout(() => taRef.current?.focus(), 60) } },
+      ...(m.body ? [{ key: 'copy', icon: <Copy {...ic} />, label: t('cm.copy'), onClick: () => { close(); void copyText(m.body) } }] : []),
+      ...(mine && m.body ? [{ key: 'edit', icon: <Pencil {...ic} />, label: t('w1g.edit'), onClick: () => { close(); setReplyTo(null); setEditing({ id: m.id, text: m.body }); setTimeout(() => taRef.current?.focus(), 60) } }] : []),
+      ...(canModerate ? [{ key: 'pin', icon: pinnedIds.has(m.id) ? <PinOff {...ic} /> : <Pin {...ic} />, label: pinnedIds.has(m.id) ? t('w1g.unpin') : t('w1g.pin'), onClick: () => { close(); void pin(m) } }] : []),
+      ...(!mine ? [{ key: 'report', icon: <Flag {...ic} />, label: t('w1g.report'), onClick: () => { close(); setReportFor(m) } }] : []),
+      ...((mine || canModerate) ? ['sep' as const, { key: 'del', icon: <Trash2 {...ic} />, label: t('w1g.delete'), danger: true, onClick: () => setMenu({ ...menu, confirm: true }) }] : []),
+    ]
+    const reactRow = menu.confirm ? undefined : (
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 2, padding: '4px 10px 8px', borderBottom: '1px solid var(--cm-menu-sep)', marginBottom: 4 }}>
+        {QUICK_REACTIONS.map((e, i) => {
+          const on = m.reactions.find(r => r.emoji === e)?.mine
           return (
-            <div key={m.id}>
-              {newDay && <div style={{ textAlign: 'center', margin: 'var(--space-4) 0 var(--space-3)', fontFamily: FB, fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', textTransform: 'capitalize' }}>{fmtDay(m.createdAt)}</div>}
-              <div className="comm-msg" style={{ position: 'relative', display: 'flex', gap: 'var(--space-3)', padding: grouped ? '1px var(--space-2)' : 'var(--space-2) var(--space-2) 1px', alignItems: 'flex-start', borderRadius: 'var(--r-sm)' }}>
-                <div style={{ width: 36, flexShrink: 0 }}>{!grouped && <Avatar name={m.authorName} url={m.authorAvatar} />}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {m.replyPreview && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v1" /></svg>
-                      <span style={{ fontWeight: 600, color: 'var(--text-mid)' }}>{m.replyPreview.authorName}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.replyPreview.body || (m.replyPreview.hasAttachment ? t('w1g.attachment') : '')}</span>
-                    </div>
-                  )}
-                  {!grouped && (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 2 }}>
-                      <span style={{ fontFamily: FB, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{m.authorName}</span>
-                      <RoleBadge role={roleOf.get(m.authorId)} />
-                      <span className="tnum" style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(m.createdAt)}</span>
-                      {m.editedAt && <span style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)' }}>{t('w1g.edited')}</span>}
-                    </div>
-                  )}
-                  {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                      <textarea value={editing.text} onChange={e => setEditing({ id: m.id, text: e.target.value.slice(0, 4000) })} autoFocus
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void saveEdit() } if (e.key === 'Escape') setEditing(null) }}
-                        style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 40, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', fontFamily: FB, fontSize: 13.5, color: 'var(--text)', outline: 'none' }} />
-                      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                        <button onClick={() => void saveEdit()} style={{ height: 30, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{t('w1g.save')}</button>
-                        <button onClick={() => setEditing(null)} style={{ height: 30, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, cursor: 'pointer' }}>{t('w1g.cancel')}</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {m.body && <Body text={m.body} />}
-                      {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} channelId={channel.id} />}
-                      {m.reactions.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
-                          {m.reactions.map(r => (
-                            <button key={r.emoji} onClick={() => void react(m, r.emoji)}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 8px', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', background: r.mine ? 'var(--primary-dim)' : 'var(--surface-neutral)', outline: r.mine ? '1px solid var(--primary)' : 'none', fontFamily: FB, fontSize: 12 }}>
-                              <span>{r.emoji}</span>
-                              <span className="tnum" style={{ color: r.mine ? 'var(--primary)' : 'var(--text-mid)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{r.count}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Barre d'actions au survol */}
-                {!isEditing && (
-                  <div className="comm-actions" style={{ position: 'absolute', top: -10, right: 8, display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-sm)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-card)' }}>
-                    <ActionBtn label={t('w1g.react')} onClick={() => setReactFor(reactFor === m.id ? null : m.id)}>
-                      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14a3.5 3.5 0 0 0 7 0" /><path d="M9 9h.01M15 9h.01" />
-                    </ActionBtn>
-                    <ActionBtn label={t('w1g.reply')} onClick={() => { setReplyTo({ id: m.id, authorName: m.authorName }); taRef.current?.focus() }}>
-                      <path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v1" />
-                    </ActionBtn>
-                    {canModerate && (
-                      <ActionBtn label={pinnedIds.has(m.id) ? t('w1g.unpin') : t('w1g.pin')} onClick={() => void pin(m)}>
-                        <path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" />
-                      </ActionBtn>
-                    )}
-                    {mine && (
-                      <ActionBtn label={t('w1g.edit')} onClick={() => setEditing({ id: m.id, text: m.body })}>
-                        <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                      </ActionBtn>
-                    )}
-                    {!mine && (
-                      <ActionBtn label={t('w1g.report')} onClick={() => void report(m.id)}>
-                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" />
-                      </ActionBtn>
-                    )}
-                    {(mine || canModerate) && (
-                      <ActionBtn label={t('w1g.delete')} onClick={() => void remove(m.id)}>
-                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                      </ActionBtn>
-                    )}
-                  </div>
-                )}
-
-                {/* Popover de réaction rapide */}
-                {reactFor === m.id && (
-                  <div style={{ position: 'absolute', top: 18, right: 8, zIndex: 5, display: 'flex', gap: 2, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow)' }}>
-                    {QUICK_REACTIONS.map(e => (
-                      <button key={e} onClick={() => void react(m, e)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-sm)', fontSize: 17 }}>{e}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {lastSeen?.messageId === m.id && <SeenBy seers={lastSeen.seers} />}
-            </div>
+            <button key={e} type="button" onClick={() => { close(); void react(m, e) }} aria-label={e} className="cm-btn cm-press cm-in"
+              style={{ ...stagger(i, 40, 26), width: 40, height: 40, borderRadius: '50%', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'var(--primary-dim)' : 'transparent' }}>
+              {e}
+            </button>
           )
         })}
-        <div ref={endRef} />
+      </div>
+    )
+    msgMenu = (
+      <GlassMenu rect={menu.rect} instant={menu.instant} align={mine ? 'right' : 'left'} onClose={close} label={m.authorName} top={reactRow} items={items}
+        previewRadius={mine ? 'var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg)' : 'var(--r-lg)'}
+        preview={<MessagePreview m={m} mine={mine} />} />
+    )
+  }
+  const moreMenu = moreRect ? (
+    <GlassMenu rect={moreRect} align="right" instant onClose={() => setMoreRect(null)} items={[
+      { key: 'search', icon: <Search {...ic} />, label: t('w1g.search'), onClick: () => { setMoreRect(null); setShowSearch(true); setSearchQ(''); setSearchResults(null) } },
+      { key: 'pins', icon: <Pin {...ic} />, label: t('w1g.pinnedMessages'), trailing: pinnedIds.size > 0 ? <span style={{ ...TNUM, fontSize: 14, color: 'var(--text-mid)' }}>{pinnedIds.size}</span> : undefined, onClick: () => { setMoreRect(null); void openPins() } },
+      { key: 'members', icon: <Users {...ic} />, label: t('w1g.mem.members'), onClick: () => { setMoreRect(null); setMembersOpen(true) } },
+      'sep',
+      { key: 'mute', icon: isMuted ? <Bell {...ic} /> : <BellOff {...ic} />, label: isMuted ? t('w1g.unmuteNotifications') : t('w1g.mute'), onClick: () => { setMoreRect(null); onToggleMute() } },
+    ]} />
+  ) : null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: bg, fontFamily: FB, position: 'relative' }}>
+      <CmStyles />
+      {header}
+
+      {/* Fil — ancré en bas (près du composeur), défile normalement au-delà. */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <div ref={scrollRef} onScroll={onScroll} className="cm-scroll" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: narrow ? '4px 16px 12px' : '8px 20px 14px' }}>
+          <div style={{ marginTop: 'auto' }}>
+            {loading ? <MessagesSkeleton /> : all.length === 0 ? (
+              <CmEmpty icon={<Hash size={30} strokeWidth={2.2} />} title={t('w1g.channelStartsHere', { name: channel.name })} body={t('w1g.beFirstToWrite')} />
+            ) : all.map((m, i) => {
+              const prev = all[i - 1], next = all[i + 1]
+              const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString()
+              const grouped = !newDay && sameGroup(prev, m)
+              const lastOfGroup = !next || !sameGroup(m, next)
+              const mine = m.authorId === me || m.id.startsWith('tmp-')
+              const a = anim[m.id]
+              return (
+                <div key={m.id}>
+                  {newDay && <div className="cm-fade" style={{ textAlign: 'center', margin: '18px 0 10px', fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'capitalize' }}>{fmtDay(m.createdAt, t)}</div>}
+                  <MessageItem m={m} mine={mine} grouped={grouped} lastOfGroup={lastOfGroup} role={memberById.get(m.authorId)?.role}
+                    me={me} channelId={channel.id} pinned={pinnedIds.has(m.id)} pending={m.id.startsWith('tmp-')}
+                    animClass={a === 'rise' ? 'cm-rise' : a === 'arrive' ? 'cm-arrive' : undefined}
+                    flash={flashId === m.id} pop={pop}
+                    onLong={el => openMenu(m, el)} onMenu={el => openMenu(m, el, true)} onReact={e => void react(m, e)} onProfile={() => openProfile(m)}
+                    onReply={() => { setEditing(null); setReplyTo({ id: m.id, authorName: m.authorName, body: m.body }); taRef.current?.focus() }}
+                    onJumpReply={() => { if (m.replyPreview) jumpTo(m.replyPreview.id) }} />
+                  {lastSeen?.messageId === m.id && <SeenBy seers={lastSeen.seers} />}
+                </div>
+              )
+            })}
+          </div>
         </div>
+        {(showJump || newBelow > 0) && !loading && (
+          <button type="button" onClick={() => scrollToBottom()} aria-label={t('cm.toBottom')} className="cm-btn cm-press cm-in"
+            style={{ position: 'absolute', right: 16, bottom: 10, height: 40, minWidth: 40, padding: newBelow ? '0 14px 0 10px' : 0, borderRadius: 'var(--r-pill)', background: 'var(--float-bg)', color: 'var(--text)', boxShadow: 'var(--cm-float-shadow)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, fontWeight: 800 }}>
+            <ArrowDown size={18} strokeWidth={2.4} />{newBelow > 0 && <span style={TNUM}>{t('cm.newMessages', { n: newBelow })}</span>}
+          </button>
+        )}
       </div>
 
-      {/* Composer — sur mobile, remonte JUSTE au-dessus du clavier (visualViewport). */}
-      <div style={{ flexShrink: 0, padding: 'var(--space-2) var(--space-5) var(--space-4)', paddingBottom: kbInset ? kbInset + 10 : undefined, background: 'var(--bg-card)', position: 'relative', transition: 'padding-bottom 0.18s ease' }}>
-        {notice && <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{notice}</p>}
+      {/* Composeur — sur mobile, remonte JUSTE au-dessus du clavier (visualViewport). */}
+      <div style={{ flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column', gap: 8, padding: narrow ? '6px 12px 0' : '6px 18px 0',
+        paddingBottom: kbInset ? kbInset + 8 : narrow ? 'calc(12px + env(safe-area-inset-bottom))' : 16 }}>
+        {notice && <CmToast text={notice} onDone={() => setNotice(null)} />}
 
         {/* Autocomplétion mentions */}
-        {mentionQuery !== null && filteredMentions.length > 0 && (
-          <div style={{ position: 'absolute', bottom: 'calc(100% - var(--space-2))', left: 'var(--space-5)', right: 'var(--space-5)', maxWidth: 320, zIndex: 6, background: 'var(--bg-elev)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
-            {filteredMentions.map(mem => (
-              <button key={mem.userId} onClick={() => pickMention(mem)}
-                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', padding: 'var(--space-2) var(--space-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: FB }}>
-                <Avatar name={mem.name} url={mem.avatar} size={24} />
-                <span style={{ fontSize: 13, color: 'var(--text)' }}>{mem.name}</span>
+        {mentionQuery !== null && filteredMentions.length > 0 && !editing && (
+          <div className="cm-menu cm-in" style={{ maxWidth: 340, padding: '6px 0', overflow: 'hidden' }}>
+            {filteredMentions.map((mem, i) => (
+              <button key={mem.userId} type="button" onClick={() => pickMention(mem)} className="cm-btn cm-mi cm-in"
+                style={{ ...stagger(i, 0, 24), display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 46, padding: '0 14px', textAlign: 'left' }}>
+                <CmAvatar name={mem.name} url={mem.avatar} seed={mem.userId} size={30} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 650, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mem.name}</span>
+                {onlineIds.has(mem.userId) && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />}
               </button>
             ))}
-          </div>
-        )}
-
-        {replyTo && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', padding: '6px var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)' }}>
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('w1g.replyingTo')} <strong style={{ color: 'var(--text)' }}>{replyTo.authorName}</strong></span>
-            <button onClick={() => setReplyTo(null)} aria-label={t('w1g.cancelReply')} style={{ marginLeft: 'auto', width: 20, height: 20, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 14 }}>×</button>
-          </div>
-        )}
-
-        {(pending.length > 0 || uploading) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-            {pending.map((a, i) => <PendingChip key={a.url ?? `att-${i}`} att={a} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
-            {uploading && <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>{t('w1g.uploading')}</span>}
           </div>
         )}
 
         {gatedByRules && (
-          <div style={{ marginBottom: 'var(--space-2)', padding: 'var(--space-3)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
-            <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+          <div className="cm-in" style={{ padding: 14, borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW }}>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
               {rulesGate.text?.trim() || t('w1g.rulesGateDefault')}
             </p>
-            <button onClick={() => void doAcceptRules()}
-              style={{ height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-              {t('w1g.acceptRules')}
-            </button>
+            <CmPill variant="primary" full onClick={() => void doAcceptRules()}><Check size={17} strokeWidth={2.6} />{t('w1g.acceptRules')}</CmPill>
           </div>
         )}
 
         <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={handleFiles} />
-        {/* Composer façon IA : carte arrondie, champ sur une ligne PUIS rangée
-            d'actions en dessous (photo / activité / séance … micro / envoyer). */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '10px 12px 9px', boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 10px 28px rgba(0,0,0,0.09)' }}>
-          <textarea ref={taRef} data-guide="comm-composer" value={input} onChange={onInputChange}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); void send() } }}
+        <div style={{ background: 'var(--surface-card)', borderRadius: 'calc(var(--r-lg) + 6px)', boxShadow: 'var(--cm-composer-shadow)', padding: '10px 10px 10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(replyTo || editing) && (
+            <div className="cm-in" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 10px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)' }}>
+              {editing ? <Pencil size={15} strokeWidth={2.2} color="var(--primary)" /> : <Reply size={15} strokeWidth={2.2} color="var(--primary)" />}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {editing ? t('cm.editing') : <>{t('w1g.replyingTo')} <strong style={{ color: 'var(--text)' }}>{replyTo?.authorName}</strong>{replyTo?.body ? ` · ${replyTo.body}` : ''}</>}
+              </span>
+              <button type="button" onClick={() => { setReplyTo(null); setEditing(null) }} aria-label={t('w1g.cancelReply')} className="cm-btn cm-press"
+                style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-mid)' }}>
+                <X size={16} strokeWidth={2.4} />
+              </button>
+            </div>
+          )}
+
+          {(pending.length > 0 || uploading) && !editing && (
+            <div className="cm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingTop: 2 }}>
+              {pending.map((a, i) => <PendingChip key={a.url ?? `att-${i}`} att={a} index={i} onRemove={() => setPending(p => p.filter((_, j) => j !== i))} />)}
+              {uploading && <CmSkel h={52} w={52} r="var(--r-md)" style={{ flexShrink: 0 }} />}
+            </div>
+          )}
+
+          <textarea ref={taRef} data-guide="comm-composer" value={composerValue} onChange={onInputChange}
+            onKeyDown={e => {
+              if (e.key === 'Escape' && editing) { setEditing(null); return }
+              if (e.key === 'Enter' && !e.shiftKey && (mentionQuery === null || editing)) { e.preventDefault(); void send() }
+            }}
+            onFocus={() => { if (narrow) setTimeout(() => scrollToBottom(true), 250) }}
             placeholder={t('w1g.writeInChannel', { name: channel.name })} rows={1} disabled={!canPost}
-            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 14, lineHeight: 1.5, maxHeight: 140, padding: '2px 2px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-            <IconBtn label={t('w1g.photoFile')} onClick={openFilePicker} disabled={!canPost}>
-              <path d="M12 5v14M5 12h14" />
-            </IconBtn>
-            <IconBtn label={t('w1g.shareActivity')} onClick={() => canPost && setSharing(true)} disabled={!canPost}>
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </IconBtn>
-            <IconBtn label={t('w1g.shareSession')} onClick={() => canPost && setSharingSession(true)} disabled={!canPost}>
-              <path d="M20 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM6 12h4M12 10v4" />
-            </IconBtn>
+            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 16, lineHeight: 1.45, maxHeight: 140, padding: '2px 0', minHeight: 26 }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={openFilePicker} disabled={!canPost || !!editing} aria-label={t('w1g.photoFile')} title={t('w1g.photoFile')} className="cm-btn cm-press"
+              style={{ width: 38, height: 38, borderRadius: '50%', boxShadow: 'inset 0 0 0 1px var(--border-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', flexShrink: 0, opacity: editing ? 0.4 : 1 }}>
+              <Plus size={20} strokeWidth={2.2} />
+            </button>
+            <div className="cm-scroll" style={{ display: 'flex', gap: 6, minWidth: 0, overflowX: 'auto' }}>
+              <ComposerChip label={t('w1g.activity')} title={t('w1g.shareActivity')} disabled={!canPost || !!editing} onClick={() => setSharing(true)} icon={<Activity size={15} strokeWidth={2.2} />} />
+              <ComposerChip label={t('w1g.session')} title={t('w1g.shareSession')} disabled={!canPost || !!editing} onClick={() => setSharingSession(true)} icon={<Dumbbell size={15} strokeWidth={2.2} />} />
+            </div>
             <div style={{ flex: 1 }} />
-            {micSupported && (
-              <button type="button" onClick={() => { if (!isListening) voiceBase.current = input; toggleMic() }} disabled={!canPost}
+            {micSupported && !editing && (
+              <button type="button" onClick={() => { haptic('light'); if (!isListening) voiceBase.current = input; toggleMic() }} disabled={!canPost}
                 aria-label={isListening ? t('w1g.stopDictation') : t('w1g.dictate')} title={isListening ? t('w1g.stopDictation') : t('w1g.dictate')}
-                className={isListening ? 'mic-listening' : undefined}
-                style={{ width: 34, height: 34, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: isListening ? 'var(--charge-hard)' : 'var(--text-mid)', cursor: canPost ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+                className={`cm-btn cm-press${isListening ? ' cm-mic-live' : ''}`}
+                style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isListening ? 'var(--danger)' : 'var(--text)', background: isListening ? 'var(--danger-soft)' : 'transparent' }}>
+                <Mic size={20} strokeWidth={2} />
               </button>
             )}
-            <button onClick={() => void send()} disabled={!canSend} aria-label={t('w1g.send')}
-              style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: '50%', background: canSend ? 'var(--primary)' : 'var(--surface-neutral)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+            <button type="button" onClick={() => void send()} disabled={!canSend} aria-label={editing ? t('w1g.save') : t('w1g.send')} className="cm-btn cm-press"
+              style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: canSend ? 'var(--primary)' : 'var(--surface-chip)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)',
+                transform: canSend ? 'scale(1)' : 'scale(0.92)', transition: 'transform .22s cubic-bezier(.3,1.5,.5,1)' }}>
+              {editing ? <Check size={20} strokeWidth={2.6} /> : <ArrowUp size={20} strokeWidth={2.5} />}
             </button>
           </div>
         </div>
       </div>
 
+      {msgMenu}
+      {moreMenu}
+      {membersOpen && <MembersSheet title={`#${channel.name}`} members={members} onlineIds={onlineIds} onClose={() => setMembersOpen(false)} />}
+      {profile && <MemberProfileSheet member={profile} online={onlineIds.has(profile.userId)} onClose={() => setProfile(null)} />}
       {sharing && <ShareActivitySheet onClose={() => setSharing(false)} onShare={a => void shareActivity(a)} />}
       {sharingSession && <ShareSessionSheet onClose={() => setSharingSession(false)} onShare={shareSession} />}
+      {reportFor && (
+        <ReportSheet onClose={() => setReportFor(null)} onSend={async (reason) => {
+          const ok = await reportMessage(channel.spaceId, channel.id, reportFor.id, reason || t('w1g.reported'))
+          setNotice(ok ? t('w1g.reportSent') : t('w1g.reportFailed'))
+        }} />
+      )}
+      {showSearch && (
+        <CmSheet full onClose={() => setShowSearch(false)} title={t('w1g.search')} sub={`#${channel.name}`}>
+          {close => (
+            <>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <Search size={17} strokeWidth={2.2} color="var(--text-dim)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                <input autoFocus value={searchQ} onChange={e => void runSearch(e.target.value)} placeholder={t('w1g.searchInChannel', { name: channel.name })}
+                  className="cm-input" style={{ paddingLeft: 40 }} />
+              </div>
+              {searchResults === null ? (
+                <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', margin: '28px 0' }}>{searchQ.trim().length >= 2 ? t('w1g.searching') : t('w1g.typeAtLeast2')}</p>
+              ) : searchResults.length === 0 ? (
+                <CmEmpty icon={<Search size={26} strokeWidth={2} />} title={t('w1g.noResults')} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {searchResults.map((sr, i) => (
+                    <button key={sr.id} type="button" onClick={() => { close(); setTimeout(() => jumpTo(sr.id), 320) }} className="cm-btn cm-press cm-in"
+                      style={{ ...stagger(i), display: 'flex', gap: 12, textAlign: 'left', padding: 14, borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW }}>
+                      <CmAvatar name={sr.authorName} url={sr.authorAvatar} seed={sr.authorId} size={34} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                          <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>{sr.authorName}</span>
+                          <span style={{ ...TNUM, fontSize: 12, color: 'var(--text-dim)' }}>{fmtDay(sr.createdAt, t)} · {fmtTime(sr.createdAt)}</span>
+                        </span>
+                        <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 3, fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{sr.body}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </CmSheet>
+      )}
+      {showPins && (
+        <CmSheet onClose={() => setShowPins(false)} title={t('w1g.pinnedMessages')} sub={`#${channel.name}`}>
+          {close => pinnedList === null ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[0, 1, 2].map(i => <CmSkel key={i} h={72} r="var(--r-lg)" />)}</div>
+          ) : pinnedList.length === 0 ? (
+            <CmEmpty icon={<Pin size={26} strokeWidth={2} />} title={t('w1g.noPinnedMessage')} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {pinnedList.map((pm, i) => (
+                <div key={pm.id} className="cm-in" style={{ ...stagger(i), display: 'flex', gap: 12, alignItems: 'flex-start', padding: 14, borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW }}>
+                  <button type="button" onClick={() => { close(); setTimeout(() => jumpTo(pm.id), 320) }} className="cm-btn" style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12, textAlign: 'left' }}>
+                    <CmAvatar name={pm.authorName} url={pm.authorAvatar} seed={pm.authorId} size={34} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>{pm.authorName}</span>
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 3, fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.4 }}>{pm.body || (pm.attachments.length ? t('w1g.attachment') : '')}</span>
+                    </span>
+                  </button>
+                  {canModerate && (
+                    <button type="button" onClick={() => void pin(pm)} aria-label={t('w1g.unpin')} title={t('w1g.unpin')} className="cm-btn cm-press"
+                      style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <PinOff size={16} strokeWidth={2.2} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CmSheet>
+      )}
     </div>
+  )
+}
+
+// ── Un message ──────────────────────────────────────────────────────────────
+function MessageItem({ m, mine, grouped, lastOfGroup, role, me, channelId, pinned, pending, animClass, flash, pop, onLong, onMenu, onReact, onProfile, onReply, onJumpReply }: {
+  m: CommunityMessage; mine: boolean; grouped: boolean; lastOfGroup: boolean; role?: string; me: string | null; channelId: string
+  pinned: boolean; pending: boolean; animClass?: string; flash: boolean; pop: { key: string; n: number } | null
+  onLong: (el: HTMLElement) => void; onMenu: (el: HTMLElement) => void; onReact: (emoji: string) => void; onProfile: () => void; onReply: () => void; onJumpReply: () => void
+}) {
+  const { t } = useI18n()
+  const rowRef = useRef<HTMLDivElement>(null)
+  const lp = useLongPress(onLong)
+  const replyChip = m.replyPreview && (
+    <button type="button" onClick={onJumpReply} className="cm-btn"
+      style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '100%', marginBottom: 4, fontSize: 12.5, color: 'var(--text-dim)', overflow: 'hidden', alignSelf: mine ? 'flex-end' : 'flex-start' }}>
+      <Reply size={13} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, color: 'var(--text-mid)', flexShrink: 0 }}>{m.replyPreview.authorName}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.replyPreview.body || (m.replyPreview.hasAttachment ? t('w1g.attachment') : '')}</span>
+    </button>
+  )
+  const reactions = m.reactions.length > 0 && (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+      {m.reactions.map(r => {
+        const k = `${m.id}:${r.emoji}`
+        return (
+          <button key={r.emoji} type="button" onClick={() => onReact(r.emoji)} aria-pressed={r.mine} className="cm-btn cm-press"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', borderRadius: 'var(--r-pill)', fontSize: 14,
+              background: r.mine ? 'var(--primary-dim)' : 'var(--surface-card)', boxShadow: r.mine ? 'inset 0 0 0 1.5px var(--primary)' : SOFT_SHADOW }}>
+            <span key={pop?.key === k ? pop.n : 0} className={pop?.key === k ? 'cm-pop' : undefined} style={{ display: 'inline-block' }}>{r.emoji}</span>
+            <span style={{ ...TNUM, fontWeight: 800, color: r.mine ? 'var(--primary)' : 'var(--text)' }}>{r.count}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+  const hoverBar = !pending && (
+    <div className="cm-hover-actions" style={{ position: 'absolute', top: -14, ...(mine ? { left: 4 } : { right: 4 }), display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', boxShadow: 'var(--cm-float-shadow)', zIndex: 2 }}>
+      {[
+        { l: t('w1g.react'), i: <Smile size={16} strokeWidth={2} />, f: () => { if (rowRef.current) onMenu(rowRef.current) } },
+        { l: t('w1g.reply'), i: <Reply size={16} strokeWidth={2} />, f: onReply },
+        { l: t('cm.more'), i: <MoreHorizontal size={16} strokeWidth={2} />, f: () => { if (rowRef.current) onMenu(rowRef.current) } },
+      ].map(b => (
+        <button key={b.l} type="button" onClick={b.f} aria-label={b.l} title={b.l} className="cm-btn cm-press"
+          style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-mid)' }}>{b.i}</button>
+      ))}
+    </div>
+  )
+  const meta = (
+    <>
+      {pinned && <Pin size={11} strokeWidth={2.4} color="var(--text-dim)" />}
+      {m.editedAt && <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t('w1g.edited')}</span>}
+    </>
+  )
+
+  if (mine) {
+    return (
+      <div data-mid={m.id} className={`cm-msg ${flash ? 'cm-flash' : ''}`} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', padding: grouped ? '3px 0 0' : '12px 0 0' }}>
+        {hoverBar}
+        {replyChip}
+        <div ref={rowRef} {...lp.handlers} className={animClass} onClickCapture={e => { if (lp.consume()) { e.stopPropagation(); e.preventDefault() } }}
+          style={{ maxWidth: '82%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, opacity: pending ? 0.7 : 1, transition: 'opacity .25s ease' }}>
+          {m.body && (
+            <div style={{ background: 'var(--cm-bubble)', borderRadius: 'calc(var(--r-lg) + 2px) calc(var(--r-lg) + 2px) var(--r-sm) calc(var(--r-lg) + 2px)', padding: '10px 15px' }}>
+              <Body text={m.body} />
+            </div>
+          )}
+          {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} channelId={channelId} align="flex-end" />}
+        </div>
+        {reactions}
+        {lastOfGroup && (
+          <div style={{ ...TNUM, display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 11.5, color: 'var(--text-dim)' }}>
+            {meta}<span>{pending ? '…' : fmtTime(m.createdAt)}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div data-mid={m.id} className={`cm-msg ${flash ? 'cm-flash' : ''}`} style={{ position: 'relative', display: 'flex', gap: 10, padding: grouped ? '3px 0 0' : '14px 0 0' }}>
+      {hoverBar}
+      <div style={{ width: 36, flexShrink: 0 }}>
+        {!grouped && (
+          <button type="button" onClick={onProfile} aria-label={m.authorName} className="cm-btn cm-press" style={{ lineHeight: 0, borderRadius: '50%' }}>
+            <CmAvatar name={m.authorName} url={m.authorAvatar} seed={m.authorId} size={36} />
+          </button>
+        )}
+      </div>
+      <div ref={rowRef} {...lp.handlers} className={animClass} onClickCapture={e => { if (lp.consume()) { e.stopPropagation(); e.preventDefault() } }} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {replyChip}
+        {!grouped && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginBottom: 2, minWidth: 0 }}>
+            <button type="button" onClick={onProfile} className="cm-btn" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{m.authorName}</button>
+            <RoleBadge role={role} />
+            <span style={{ ...TNUM, fontSize: 12, fontWeight: 650, color: 'var(--text-dim)', flexShrink: 0 }}>{fmtTime(m.createdAt)}</span>
+            {meta}
+          </div>
+        )}
+        {m.body && <Body text={m.body} />}
+        {m.attachments.length > 0 && <Attachments items={m.attachments} me={me} channelId={channelId} align="flex-start" />}
+        {reactions}
+      </div>
+    </div>
+  )
+}
+
+/** Aperçu du message soulevé dans le menu d'appui long. */
+function MessagePreview({ m, mine }: { m: CommunityMessage; mine: boolean }) {
+  const { t } = useI18n()
+  const att = m.attachments[0]
+  const attLabel = att ? (att.type === 'activity' ? (att.activity?.title || t('w1g.activity')) : att.type === 'session' ? (att.session?.title || t('w1g.session')) : att.type === 'image' ? t('cm.photo') : (att.name || t('w1g.attachment'))) : null
+  return (
+    <div style={{ padding: '12px 14px', display: 'flex', gap: 10, background: mine ? 'var(--surface-chip)' : 'var(--surface-card)', minHeight: '100%', boxSizing: 'border-box' }}>
+      {!mine && <CmAvatar name={m.authorName} url={m.authorAvatar} seed={m.authorId} size={32} />}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {!mine && <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{m.authorName}</div>}
+        {m.body && <div style={{ display: '-webkit-box', WebkitLineClamp: 8, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}><Body text={m.body} size={15.5} /></div>}
+        {attLabel && <div style={{ marginTop: m.body ? 6 : 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 650, color: 'var(--text-mid)' }}><FileText size={14} strokeWidth={2.2} />{attLabel}</div>}
+      </div>
+    </div>
+  )
+}
+
+function ComposerChip({ label, title, icon, onClick, disabled }: { label: string; title: string; icon: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={() => { haptic('light'); onClick() }} disabled={disabled} aria-label={title} title={title} className="cm-btn cm-press"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 'var(--r-pill)', boxShadow: 'inset 0 0 0 1px var(--border-mid)',
+        fontSize: 13.5, fontWeight: 700, color: 'var(--text-mid)', whiteSpace: 'nowrap', flexShrink: 0, opacity: disabled ? 0.4 : 1 }}>
+      {icon}{label}
+    </button>
   )
 }
 
@@ -659,55 +912,33 @@ function RoleBadge({ role }: { role?: string }) {
   const label = role === 'owner' ? t('w1g.roleCreator') : role === 'coach' ? t('w1g.roleCoach') : t('w1g.roleMod')
   const accent = role === 'owner' || role === 'coach'
   return (
-    <span style={{ fontFamily: FB, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 'var(--r-sm)', color: accent ? 'var(--primary)' : 'var(--text-mid)', background: accent ? 'var(--primary-dim)' : 'var(--surface-neutral)' }}>{label}</span>
+    <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 'var(--r-sm)', color: accent ? 'var(--primary)' : 'var(--text-mid)', background: accent ? 'var(--primary-dim)' : 'var(--surface-chip)' }}>{label}</span>
   )
 }
 
-// Accusés de lecture « à la Discord/iMessage » : avatars empilés sous MON dernier
-// message. Au-delà de 5 lecteurs on affiche un compteur « +N ». Le survol donne
-// les noms complets.
+// Accusés de lecture : avatars empilés sous MON dernier message (5 max + « +N »).
 function SeenBy({ seers }: { seers: ChannelRead[] }) {
   const { t } = useI18n()
   const shown = seers.slice(0, 5)
   const extra = seers.length - shown.length
-  const names = seers.map(s => s.name).join(', ')
   return (
-    <div title={names} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '1px 0 var(--space-2)', paddingLeft: 'calc(36px + var(--space-3) + var(--space-2))' }}>
-      <span style={{ fontFamily: FB, fontSize: 10.5, color: 'var(--text-dim)' }}>{t('w1g.seenBy')}</span>
+    <div title={seers.map(s => s.name).join(', ')} className="cm-fade" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, margin: '4px 0 2px' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t('w1g.seenBy')}</span>
       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
         {shown.map((s, i) => (
-          <span key={s.userId} style={{ marginLeft: i === 0 ? 0 : -6, borderRadius: '50%', boxShadow: '0 0 0 1.5px var(--bg-card)', position: 'relative', zIndex: shown.length - i }}>
-            <Avatar name={s.name} url={s.avatar} size={16} />
+          <span key={s.userId} style={{ marginLeft: i === 0 ? 0 : -6, borderRadius: '50%', boxShadow: '0 0 0 1.5px var(--surface-page)', position: 'relative', zIndex: shown.length - i, lineHeight: 0 }}>
+            <CmAvatar name={s.name} url={s.avatar} seed={s.userId} size={16} />
           </span>
         ))}
-        {extra > 0 && (
-          <span className="tnum" style={{ marginLeft: 4, fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>+{extra}</span>
-        )}
+        {extra > 0 && <span style={{ ...TNUM, marginLeft: 4, fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>+{extra}</span>}
       </span>
     </div>
   )
 }
 
-function ActionBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function Attachments({ items, me, channelId, align }: { items: CommunityAttachment[]; me: string | null; channelId: string; align: 'flex-start' | 'flex-end' }) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label}
-      style={{ width: 28, height: 28, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-    </button>
-  )
-}
-function IconBtn({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label}
-      style={{ width: 36, height: 36, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-    </button>
-  )
-}
-
-function Attachments({ items, me, channelId }: { items: CommunityAttachment[]; me: string | null; channelId: string }) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: align, gap: 8, marginTop: 6, width: '100%' }}>
       {items.map((a, idx) => a.type === 'activity' && a.activity ? (
         <ActivityCard key={a.activity.id} activity={a.activity} me={me} channelId={channelId} />
       ) : a.type === 'session' && a.session ? (
@@ -715,12 +946,12 @@ function Attachments({ items, me, channelId }: { items: CommunityAttachment[]; m
       ) : a.type === 'image' ? (
         <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', lineHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={a.url} alt={a.name} style={{ maxWidth: 320, maxHeight: 320, width: 'auto', height: 'auto', borderRadius: 'var(--r-md)', objectFit: 'cover', background: 'var(--surface-neutral)' }} />
+          <img src={a.url} alt={a.name} style={{ maxWidth: 'min(280px, 100%)', maxHeight: 300, width: 'auto', height: 'auto', borderRadius: 'var(--r-lg)', objectFit: 'cover', background: 'var(--surface-chip)', boxShadow: SOFT_SHADOW }} />
         </a>
       ) : (
         <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', maxWidth: 280, padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', color: 'var(--text)', textDecoration: 'none', fontFamily: FB, fontSize: 12.5 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--text-mid)' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 10, maxWidth: 280, padding: '10px 14px', borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', boxShadow: SOFT_SHADOW, color: 'var(--text)', textDecoration: 'none', fontFamily: FB, fontSize: 14, fontWeight: 650 }}>
+          <FileText size={18} strokeWidth={2} color="var(--text-mid)" style={{ flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
         </a>
       ))}
@@ -728,41 +959,68 @@ function Attachments({ items, me, channelId }: { items: CommunityAttachment[]; m
   )
 }
 
-function PendingChip({ att, onRemove }: { att: CommunityAttachment; onRemove: () => void }) {
+function PendingChip({ att, index, onRemove }: { att: CommunityAttachment; index: number; onRemove: () => void }) {
   const { t } = useI18n()
   const label = att.type === 'session' ? (att.session?.title || t('w1g.session'))
     : att.type === 'activity' ? (att.activity?.title || t('w1g.activity'))
       : att.name
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', height: 44, padding: att.type === 'image' ? 0 : '0 var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', overflow: 'hidden' }}>
+    <span className="cm-in" style={{ ...stagger(index, 0, 40), position: 'relative', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 52, padding: att.type === 'image' ? 0 : '0 30px 0 12px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', overflow: 'hidden', maxWidth: 220 }}>
       {att.type === 'image'
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img src={att.url} alt={att.name} style={{ width: 44, height: 44, objectFit: 'cover' }} />
+        ? <img src={att.url} alt={att.name} style={{ width: 52, height: 52, objectFit: 'cover' }} />
         : (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 160 }}>
-            {att.type === 'session' && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="2" y="9" width="3" height="6" rx="1" /><rect x="19" y="9" width="3" height="6" rx="1" /><path d="M5 12h14" /></svg>
-            )}
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-          </span>
+          <>
+            <span style={{ color: 'var(--text-mid)', display: 'flex', flexShrink: 0 }}>
+              {att.type === 'session' ? <Dumbbell size={16} strokeWidth={2.2} /> : att.type === 'activity' ? <Activity size={16} strokeWidth={2.2} /> : <FileText size={16} strokeWidth={2.2} />}
+            </span>
+            <span style={{ fontSize: 13.5, fontWeight: 650, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+          </>
         )}
-      <button type="button" onClick={onRemove} aria-label={t('w1g.remove')} style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
+      <button type="button" onClick={onRemove} aria-label={t('w1g.remove')} className="cm-btn cm-press"
+        style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: 'var(--text)', color: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <X size={12} strokeWidth={3} />
+      </button>
     </span>
   )
 }
 
 function MessagesSkeleton() {
+  const rows: { mine: boolean; w: string }[] = [{ mine: false, w: '72%' }, { mine: false, w: '54%' }, { mine: true, w: '48%' }, { mine: false, w: '80%' }, { mine: true, w: '38%' }]
   return (
-    <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-2)' }}>
-      {[68, 82, 55, 74].map((w, i) => (
-        <div key={i} style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-neutral)', flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <span style={{ display: 'block', width: 120, height: 11, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', marginBottom: 8 }} />
-            <span style={{ display: 'block', width: `${w}%`, height: 12, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)' }} />
-          </div>
+    <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '12px 0' }}>
+      {rows.map((r, i) => r.mine ? (
+        <div key={i} style={{ display: 'flex', justifyContent: 'flex-end' }}><CmSkel h={40} w={r.w} r="var(--r-lg)" /></div>
+      ) : (
+        <div key={i} style={{ display: 'flex', gap: 10 }}>
+          <CmSkel h={36} w={36} r="50%" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}><CmSkel h={12} w={110} /><CmSkel h={14} w={r.w} /></div>
         </div>
       ))}
     </div>
+  )
+}
+
+// ── Signalement (raison en puces + précision optionnelle) ──────────────────
+function ReportSheet({ onClose, onSend }: { onClose: () => void; onSend: (reason: string) => Promise<void> }) {
+  const { t } = useI18n()
+  const reasons = [t('cm.reasonSpam'), t('cm.reasonHarass'), t('cm.reasonInappropriate'), t('cm.reasonOther')]
+  const [reason, setReason] = useState<string | null>(null)
+  const [detail, setDetail] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <CmSheet onClose={onClose} title={t('w1g.report')} zIndex={15600}
+      footer={close => (
+        <CmPill variant="primary" full height={52} disabled={!reason || busy} onClick={async () => {
+          if (!reason) return
+          setBusy(true); await onSend([reason, detail.trim()].filter(Boolean).join(' — ')); setBusy(false); close()
+        }}>{t('w1g.send')}</CmPill>
+      )}>
+      <p style={{ margin: '0 4px 14px', fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('w1g.reportPrompt')}</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        {reasons.map(r => <CmChip key={r} active={reason === r} onClick={() => setReason(r)}>{r}</CmChip>)}
+      </div>
+      <textarea value={detail} onChange={e => setDetail(e.target.value.slice(0, 400))} rows={3} placeholder={t('cm.reportDetail')} className="cm-input" style={{ resize: 'none' }} />
+    </CmSheet>
   )
 }

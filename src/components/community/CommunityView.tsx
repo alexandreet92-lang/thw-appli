@@ -1,19 +1,29 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Vue Communauté « type Discord », sobre (Design System).
-// Desktop : rail des espaces (~56px) + colonne des canaux + fil central.
-// Mobile  : vues empilées (espaces → canaux → fil), pas 3 colonnes serrées.
-// Séparation par l'espace et le fond (--bg-card / --bg-card2), jamais par des
-// bordures. Realtime dans ChannelChat.
+// Communauté « type Discord » — refonte mobile premium (maquettes mock8 c1/c2).
+// Mobile : vue plein écran (chrome de l'app masqué) — en-tête rond retour /
+//   recherche + titre centré, rangée horizontale des espaces (logos carrés
+//   arrondis, actif cerclé), carte de l'espace, salons groupés (aperçu du
+//   dernier message + pastille non-lus), vocal (web), puis salon / événements
+//   / appel qui glissent par-dessus.
+// Desktop : rail des espaces + colonne (carte + salons) + panneau central.
+// Realtime : salon (ChannelChat), événements (EventsView), aperçus (ici).
 // ══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Search, Plus, Compass, Settings, Check, Hash, Volume2, Lock, Pin, BellOff, ChevronLeft, ChevronRight, CalendarDays, Video, UserPlus, LogOut, Activity, GraduationCap } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { createClient } from '@/lib/supabase/client'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { listSpaces, joinSpace, leaveSpace, updateSpaceIcon } from '@/lib/community/spaces'
-import { listChannels, createChannel, getUnreadChannelIds, getMutedChannelIds, toggleChannelMute, getPinnedChannelIds, toggleChannelPin, duplicateChannel, deleteChannel } from '@/lib/community/channels'
+import { listChannels, createChannel, getMutedChannelIds, toggleChannelMute, getPinnedChannelIds, toggleChannelPin, duplicateChannel, deleteChannel } from '@/lib/community/channels'
 import { getActiveCalls } from '@/lib/community/calls'
 import { uploadCommunityMedia } from '@/lib/community/messages'
+import { listSpaceEvents } from '@/lib/community/events'
+import { usePresenceCount } from '@/lib/community/presence'
+import { myId } from '@/lib/community/shared'
 import { ChannelChat } from './ChannelChat'
 import { VoiceChannelSheet } from './VoiceChannelSheet'
 import { EventsView } from './EventsView'
@@ -25,85 +35,68 @@ import { CreateChannelSheet } from './CreateChannelSheet'
 import { ChannelContextMenu } from './ChannelContextMenu'
 import { ChannelEditSheet } from './ChannelEditSheet'
 import { InviteSheet } from './InviteSheet'
-import { MessagesView } from '@/components/coach/MessagesView'
 import { CommunityManageSheet } from './CommunityManageSheet'
 import { DiscoverSheet } from './DiscoverSheet'
 import { SpaceBadge } from './SpaceBadge'
+import { loadChannelDigests, digestLine, type ChannelDigest } from './channelDigest'
+import {
+  CmStyles, CmRound, CmCard, CmLabel, CmPill, CmSkel, CmSheet, CmRow, CmHeader, CmEmpty,
+  FB, PAGE_BG, CARD_BG, SOFT_SHADOW, TNUM, stagger, useLongPress, useImmersive, rectOf, type LpRect,
+} from './kit'
 import type { CommunitySpace, CommunityChannel } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
 type MobileView = 'home' | 'chat'
+type Panel = 'chat' | 'events' | 'call'
 
 export function CommunityView() {
   const { t } = useI18n()
+  const router = useRouter()
   const ent = useEntitlements()
   const call = useCall()
+  const instanceId = useId()
   const [spaces, setSpaces] = useState<CommunitySpace[]>([])
   const [loadingSpaces, setLoadingSpaces] = useState(true)
   const [spaceId, setSpaceId] = useState<string | null>(null)
   const [channels, setChannels] = useState<CommunityChannel[]>([])
   const [loadingChannels, setLoadingChannels] = useState(false)
   const [channelId, setChannelId] = useState<string | null>(null)
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [narrowState, setIsNarrow] = useState<boolean | null>(null)
+  const isNarrow = narrowState === true
   const [mView, setMView] = useState<MobileView>('home')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
-  const [panel, setPanel] = useState<'chat' | 'events' | 'call'>('chat')
-
-  // Vue IMMERSIVE (mobile uniquement) : quand un salon TEXTUEL est ouvert, on
-  // masque le chrome de l'app (boutons du haut + barre à bulles du bas) façon
-  // Discord. On le signale au shell via un attribut body + un événement.
-  useEffect(() => {
-    const immersive = isNarrow && mView === 'chat' && panel === 'chat'
-    try {
-      if (immersive) document.body.setAttribute('data-immersive', '1')
-      else document.body.removeAttribute('data-immersive')
-      window.dispatchEvent(new CustomEvent('thw:immersive', { detail: immersive }))
-    } catch { /* ignore */ }
-    return () => {
-      try { document.body.removeAttribute('data-immersive'); window.dispatchEvent(new CustomEvent('thw:immersive', { detail: false })) } catch { /* ignore */ }
-    }
-  }, [isNarrow, mView, panel])
-  const [joining, setJoining] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [showCreateChannel, setShowCreateChannel] = useState(false)
-  const [showDiscover, setShowDiscover] = useState(false)
-  const [showManage, setShowManage] = useState(false)
-  const [voiceSheetCh, setVoiceSheetCh] = useState<{ id: string; name: string } | null>(null)
-  const commSwipe = useRef<{ x: number; y: number } | null>(null)
-  const [unread, setUnread] = useState<Set<string>>(new Set())
-  const [muted, setMuted] = useState<Set<string>>(new Set())
-  const [pinned, setPinned] = useState<Set<string>>(new Set())
-  const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
-  const [menuChannel, setMenuChannel] = useState<CommunityChannel | null>(null)
-  const [editChannelState, setEditChannelState] = useState<CommunityChannel | null>(null)
-  const [inviteOpen, setInviteOpen] = useState(false)
-  // Mode « messages » (messagerie privée intégrée à la communauté, façon Discord).
-  const [msgMode, setMsgMode] = useState(false)
-  const [dmUser, setDmUser] = useState<string | null>(null)
-  const [dmGroup, setDmGroup] = useState<string | null>(null)
-  const exitMessages = () => { setMsgMode(false); setDmUser(null); setDmGroup(null) }
-  // Ouverture d'une conversation depuis « Message » d'un membre.
-  useEffect(() => {
-    const h = (e: Event) => {
-      const d = (e as CustomEvent).detail as { userId?: string; groupId?: string } | undefined
-      void d /* messages privés retirés */
-    }
-    window.addEventListener('thw:community-dm', h as EventListener)
-    return () => window.removeEventListener('thw:community-dm', h as EventListener)
-  }, [])
-  // Ancienne page /messages (supprimée) → /community?dm=… : ouvre le mode messages.
-  useEffect(() => {
-    try {
-      const p = new URLSearchParams(window.location.search)
-      /* Messages privés retirés (demande produit) : ?dm= n'ouvre plus rien. */
-    } catch { /* ignore */ }
-  }, [])
+  const [panel, setPanel] = useState<Panel>('chat')
+  const [me, setMe] = useState<string | null>(null)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
     const f = () => setIsNarrow(mq.matches); f(); mq.addEventListener('change', f)
     return () => mq.removeEventListener('change', f)
   }, [])
+  useEffect(() => { void myId().then(setMe) }, [])
+
+  // Vue IMMERSIVE (mobile) : la communauté a son propre en-tête (maquette) →
+  // on masque le chrome de l'app (boutons du haut + barre à bulles du bas).
+  useImmersive(isNarrow)
+
+  const [joining, setJoining] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [showCreateChannel, setShowCreateChannel] = useState(false)
+  const [showDiscover, setShowDiscover] = useState(false)
+  const [showManage, setShowManage] = useState(false)
+  const [spaceActions, setSpaceActions] = useState(false)
+  const [voiceSheetCh, setVoiceSheetCh] = useState<{ id: string; name: string } | null>(null)
+  const commSwipe = useRef<{ x: number; y: number } | null>(null)
+  const [digests, setDigests] = useState<Map<string, ChannelDigest>>(new Map())
+  // Dernière lecture locale par salon (ms) : un salon lu n'affiche plus de
+  // pastille tant qu'aucun message plus récent n'arrive.
+  const [readAt, setReadAt] = useState<Record<string, number>>({})
+  const [muted, setMuted] = useState<Set<string>>(new Set())
+  const [pinned, setPinned] = useState<Set<string>>(new Set())
+  const [activeCalls, setActiveCalls] = useState<Record<string, number>>({})
+  const [menu, setMenu] = useState<{ channel: CommunityChannel; rect: LpRect } | null>(null)
+  const [editChannelState, setEditChannelState] = useState<CommunityChannel | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [eventsCount, setEventsCount] = useState<number | null>(null)
 
   const loadSpaces = useCallback(async (preferId?: string) => {
     const list = await listSpaces()
@@ -141,23 +134,42 @@ export function CommunityView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.active, call.minimized, call.channelId, channels])
 
+  const refreshDigests = useCallback((list: CommunityChannel[]) => {
+    void loadChannelDigests(list.map(c => c.id)).then(setDigests)
+  }, [])
+
   const loadChannels = useCallback(async (sid: string) => {
     setLoadingChannels(true)
     const list = await listChannels(sid)
     setChannels(list)
     setLoadingChannels(false)
     setChannelId(prev => (prev && list.some(c => c.id === prev) ? prev : list[0]?.id ?? null))
-    void getUnreadChannelIds(list.map(c => c.id)).then(setUnread)
+    refreshDigests(list)
     void getMutedChannelIds().then(setMuted)
     void getPinnedChannelIds().then(setPinned)
-  }, [])
-
-  const doToggleMute = useCallback(async (channelId: string) => {
-    const wasMuted = muted.has(channelId)
-    setMuted(prev => { const n = new Set(prev); if (wasMuted) n.delete(channelId); else n.add(channelId); return n })
-    await toggleChannelMute(channelId, wasMuted)
-  }, [muted])
+  }, [refreshDigests])
   useEffect(() => { if (spaceId) void loadChannels(spaceId) }, [spaceId, loadChannels])
+
+  // Aperçus en direct : tout nouveau message d'un salon de l'espace rafraîchit
+  // la liste (dernier message + compteur non-lus), avec un léger débounce.
+  const channelIdsKey = channels.map(c => c.id).join(',')
+  useEffect(() => {
+    if (!channelIdsKey) return
+    const ids = channelIdsKey.split(',')
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const sb = createClient()
+    const ch = sb.channel(`comm-digest-${spaceId}-${instanceId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages', filter: `channel_id=in.(${ids.slice(0, 90).join(',')})` },
+        () => { if (timer) clearTimeout(timer); timer = setTimeout(() => { void loadChannelDigests(ids).then(setDigests) }, 600) })
+      .subscribe()
+    return () => { if (timer) clearTimeout(timer); void sb.removeChannel(ch) }
+  }, [channelIdsKey, spaceId, instanceId])
+
+  const doToggleMute = useCallback(async (cid: string) => {
+    const wasMuted = muted.has(cid)
+    setMuted(prev => { const n = new Set(prev); if (wasMuted) n.delete(cid); else n.add(cid); return n })
+    await toggleChannelMute(cid, wasMuted)
+  }, [muted])
 
   // « X en appel » par canal : sondage léger de LiveKit tant qu'un espace est ouvert.
   useEffect(() => {
@@ -171,26 +183,39 @@ export function CommunityView() {
 
   // Un canal ouvert / lu n'est plus « non-lu ».
   const markRead = useCallback((cid: string) => {
-    setUnread(prev => { if (!prev.has(cid)) return prev; const n = new Set(prev); n.delete(cid); return n })
+    setReadAt(prev => ({ ...prev, [cid]: Date.now() }))
   }, [])
 
   const space = useMemo(() => spaces.find(s => s.id === spaceId) ?? null, [spaces, spaceId])
   const channel = useMemo(() => channels.find(c => c.id === channelId) ?? null, [channels, channelId])
+  const online = usePresenceCount(space?.isMember ? `comm-presence-${space.id}` : null, me)
 
-  function goSpaces() { setDir('back'); setMView('home') }
+  // Compteur d'événements à venir (bouton « Événements · N »).
+  useEffect(() => {
+    if (!space?.isMember) { setEventsCount(null); return }
+    let alive = true
+    void listSpaceEvents(space.id).then(evs => {
+      if (!alive) return
+      const now = Date.now()
+      setEventsCount(evs.filter(e => new Date(e.endsAt ?? e.startsAt).getTime() >= now).length)
+    })
+    return () => { alive = false }
+  }, [space?.id, space?.isMember, panel])
+
+  function goHome() { haptic('light'); setDir('back'); setMView('home') }
   function selectSpace(id: string) {
-    // Mobile façon Discord : le rail des espaces reste visible, on ne change que
-    // la colonne des canaux (on reste sur « home »).
-    setMsgMode(false); setDmUser(null); setDmGroup(null)
-    setSpaceId(id); setChannelId(null); setPanel('chat')
+    if (id !== spaceId) haptic('light')
+    if (id !== spaceId) { setChannels([]); setLoadingChannels(true) }
+    setSpaceId(id); setChannelId(null); setPanel('chat'); setDigests(new Map())
   }
   function selectChannel(id: string) {
-    // Salon VOCAL → on ENTRE directement dans l'appel (façon Discord : un tap =
-    // on est dans le salon vocal). Salon TEXTUEL → ouvre la discussion.
+    // Salon VOCAL → on ENTRE directement dans l'appel (façon Discord). Salon
+    // TEXTUEL → ouvre la discussion.
     const ch = channels.find(c => c.id === id)
     // App Store 2.1 : appels désactivés sur iOS natif (les salons vocaux sont
     // masqués de la liste ; ce garde-fou évite tout tap « mort » résiduel).
     if (ch?.kind === 'voice') { if (isNativeApp()) return; joinVoice(ch.id, ch.name, { muted: false, cam: false }); return }
+    haptic('light')
     setChannelId(id); markRead(id); setPanel('chat')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
@@ -204,6 +229,7 @@ export function CommunityView() {
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
   function selectEvents() {
+    haptic('light')
     setPanel('events')
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
@@ -213,12 +239,17 @@ export function CommunityView() {
     if (channel) call.start({ channelId: channel.id }, `#${channel.name}`)
     if (isNarrow) { setDir('fwd'); setMView('chat') }
   }
+  function goBackOut() {
+    haptic('light')
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/')
+  }
 
   const doJoin = useCallback(async () => {
     if (!space || joining) return
     setJoining(true)
     const ok = await joinSpace(space.id)
-    if (ok) await loadSpaces(space.id)
+    if (ok) { haptic('success'); await loadSpaces(space.id) }
     setJoining(false)
   }, [space, joining, loadSpaces])
 
@@ -238,7 +269,7 @@ export function CommunityView() {
   // ── Actions du menu contextuel d'un salon (appui long) ──
   const doTogglePin = useCallback(async (cid: string) => {
     const was = pinned.has(cid)
-    setPinned(prev => { const n = new Set(prev); was ? n.delete(cid) : n.add(cid); return n })
+    setPinned(prev => { const n = new Set(prev); if (was) n.delete(cid); else n.add(cid); return n })
     await toggleChannelPin(cid, was)
   }, [pinned])
 
@@ -264,47 +295,68 @@ export function CommunityView() {
     if (att?.url && await updateSpaceIcon(space.id, att.url)) await loadSpaces(space.id)
   }, [space, loadSpaces])
 
-  // ── Sous-vues ──────────────────────────────────────────────────────────
-  const rail = (
-    <SpaceRail
-      spaces={spaces} activeId={spaceId} loading={loadingSpaces} messagesActive={msgMode}
-      onMessages={() => setMsgMode(m => { const n = !m; if (n) { setDmUser(null); setDmGroup(null) } return n })}
-      onSelect={selectSpace} onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)}
-    />
-  )
+  const unreadOf = (cid: string): number => {
+    const d = digests.get(cid)
+    if (!d) return 0
+    const r = readAt[cid]
+    return r && new Date(d.at).getTime() <= r ? 0 : d.unread
+  }
 
-  // Messagerie privée intégrée (coach + contacts + groupes), façon Discord.
-  const messagesPane = (
-    <div style={{ height: '100%', minHeight: 0, background: 'var(--bg-card)', paddingTop: isNarrow ? 'env(safe-area-inset-top)' : 0 }}>
-      <MessagesView role="athlete" title={t('w1g.privateMessages')} subtitle="" initialThread={dmUser} initialGroup={dmGroup} onBack={exitMessages} />
+  // ── Sous-vues ──────────────────────────────────────────────────────────
+  const spaceCard = space ? (
+    <SpaceCard key={`card-${space.id}`} space={space} online={online} joining={joining} canManage={canManage}
+      canBrand={canManage && ent.community.canBrand} eventsCount={eventsCount} eventsActive={panel === 'events' && !isNarrow}
+      onJoin={() => void doJoin()} onMember={() => setSpaceActions(true)} onEvents={selectEvents}
+      onManage={() => setShowManage(true)} onSetLogo={f => void doSetLogo(f)} />
+  ) : null
+
+  const channelList = space ? (
+    <ChannelLists key={`list-${space.id}`} channels={channels} loading={loadingChannels} activeId={isNarrow ? null : (panel === 'chat' ? channelId : null)}
+      canManage={canManage} digests={digests} unreadOf={unreadOf} muted={muted} pinned={pinned} activeCalls={activeCalls}
+      onSelect={selectChannel} onAdd={() => setShowCreateChannel(true)}
+      onLongPress={(c, el) => setMenu({ channel: c, rect: rectOf(el) })} />
+  ) : null
+
+  const crossLinks = (
+    <div className="cm-in" style={{ ...stagger(6), marginTop: 22 }}>
+      <CmCard style={{ overflow: 'hidden' }}>
+        <Link href="/coaches" className="cm-row" style={linkRow(true)}>
+          <span style={iconTile}><GraduationCap size={18} strokeWidth={2} /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>{t('w1g.findCoach').replace(/\s*→\s*$/, '')}</span>
+          <ChevronRight size={18} strokeWidth={2} color="var(--text-dim)" />
+        </Link>
+        <Link href="/feed" className="cm-row" style={linkRow(false)}>
+          <span style={iconTile}><Activity size={18} strokeWidth={2} /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>{t('cm.feedLink')}</span>
+          <ChevronRight size={18} strokeWidth={2} color="var(--text-dim)" />
+        </Link>
+      </CmCard>
     </div>
   )
 
-  const channelCol = (
-    <ChannelColumn
-      space={space} channels={channels} activeId={channelId} loading={loadingChannels}
-      isNarrow={isNarrow} joining={joining} canManage={canManage} unread={unread} muted={muted} pinned={pinned} activeCalls={activeCalls}
-      canBrand={canManage && ent.community.canBrand}
-      panel={panel} onEvents={selectEvents} onManage={() => setShowManage(true)}
-      onSelect={selectChannel} onJoin={doJoin} onLeave={doLeave}
-      onAddChannel={() => setShowCreateChannel(true)} onSetLogo={doSetLogo}
-      onLongPress={(c) => setMenuChannel(c)}
-      onBack={goSpaces}
-    />
+  const homeBody = loadingSpaces ? <HomeSkeleton /> : !space ? (
+    <CmEmpty icon={<Compass size={28} strokeWidth={1.8} />} title={t('cm.noSpaceTitle')} body={t('cm.noSpaceBody')}
+      action={<CmPill variant="primary" onClick={() => setShowDiscover(true)}><Search size={17} strokeWidth={2.2} />{t('w1g.searchGroup')}</CmPill>} />
+  ) : (
+    <>
+      {spaceCard}
+      {channelList}
+      {crossLinks}
+    </>
   )
 
   const eventsPane = space ? (
     <EventsView spaceId={space.id} isMember={space.isMember} canManage={canManage} isNarrow={isNarrow}
       channels={channels} onChannelsChanged={() => { if (space) void loadChannels(space.id) }}
-      onBack={() => { setDir('back'); setMView('home') }} />
+      onBack={goHome} />
   ) : null
 
   // Appel du canal courant : chaque canal a son salon (room `comm-<channelId>`).
-  // On lance/rejoint depuis l'en-tête du canal ; on y reste même seul, les autres
-  // membres du canal rejoignent quand ils veulent.
   const callPane = channel && space ? (
-    <VoiceView title={`#${channel.name}`} target={{ channelId: channel.id }} isMember={space.isMember} isNarrow={isNarrow}
-      onBack={() => setPanel('chat')} />
+    <div style={{ height: '100%', minHeight: 0, paddingTop: isNarrow ? 'env(safe-area-inset-top)' : 0, background: 'var(--bg-card)' }}>
+      <VoiceView title={`#${channel.name}`} target={{ channelId: channel.id }} isMember={space.isMember} isNarrow={isNarrow}
+        onBack={() => { if (isNarrow) goHome(); else setPanel('chat') }} />
+    </div>
   ) : null
 
   const chat = channel && space ? (
@@ -312,106 +364,29 @@ export function CommunityView() {
       channel={channel} isMember={space.isMember} canPost={space.isMember}
       canUpload={space.isMember && ent.community.canUploadFiles}
       canModerate={canManage}
-      isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
+      isMuted={muted.has(channel.id)} onToggleMute={() => void doToggleMute(channel.id)}
       onCall={selectCall}
-      onJoin={doJoin} joining={joining} onRead={markRead}
+      onJoin={() => void doJoin()} joining={joining} onRead={markRead}
+      onBack={isNarrow ? goHome : undefined}
     />
   ) : (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>
-      {loadingChannels ? '' : t('w1g.chooseChannel')}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: isNarrow ? PAGE_BG : CARD_BG }}>
+      {isNarrow && <CmHeader left={<CmRound onClick={goHome} label={t('w1g.back')}><ChevronLeft size={22} strokeWidth={2.2} /></CmRound>} title={space?.name ?? ''} />}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!loadingChannels && <CmEmpty icon={<Hash size={28} strokeWidth={2} />} title={t('w1g.chooseChannel')} />}
+      </div>
     </div>
   )
 
   const centerPane = panel === 'events' ? eventsPane : panel === 'call' ? callPane : chat
 
-  const chatWithBack = panel === 'events' ? eventsPane : panel === 'call' ? callPane : (
-    // Vue immersive : le chrome de l'app est masqué → on réserve nous-mêmes
-    // l'encoche (safe-area). Le bouton retour est DANS l'en-tête du salon
-    // (ChannelChat, en-tête mobile) via la prop onBack.
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingTop: 'env(safe-area-inset-top)' }}>
-      {channel && space ? (
-        <ChannelChat
-          channel={channel} isMember={space.isMember} canPost={space.isMember}
-          canUpload={space.isMember && ent.community.canUploadFiles}
-          canModerate={canManage}
-          isMuted={muted.has(channel.id)} onToggleMute={() => doToggleMute(channel.id)}
-          onCall={selectCall}
-          onJoin={doJoin} joining={joining} onRead={markRead}
-          onBack={() => { setDir('back'); setMView('home') }}
-        />
-      ) : (
-        <>
-          <button onClick={() => { setDir('back'); setMView('home') }} style={backBar}>
-            <BackIcon /> <span>{space ? space.name : t('w1g.back')}</span>
-          </button>
-          <div style={{ flex: 1, minHeight: 0 }}>{chat}</div>
-        </>
-      )}
-    </div>
-  )
-
-  // ── Rendu ──────────────────────────────────────────────────────────────
-  return (
-    <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: FB }}>
-      {isNarrow ? (
-        // data-hswipe : dans la communauté, le glissement horizontal N'OUVRE PAS
-        // la sidebar principale de l'app ; il fait revenir au panneau salons/groupes.
-        <div data-hswipe style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', position: 'relative' }}
-          onTouchStart={e => { commSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
-          onTouchEnd={e => {
-            const s = commSwipe.current; commSwipe.current = null; if (!s) return
-            const dx = e.changedTouches[0].clientX - s.x, dy = e.changedTouches[0].clientY - s.y
-            // Swipe franc vers la DROITE en vue « chat » → coulisse vers les salons/groupes.
-            if (dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && mView === 'chat' && panel !== 'call') { setDir('back'); setMView('home') }
-          }}>
-          {/* Mode messages (plein écran) : rail des espaces + messagerie. */}
-          {msgMode ? (
-            <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
-              <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
-              <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{messagesPane}</div>
-            </div>
-          ) : (
-          /* Vues empilées avec transition « ouverture de page » fluide (clé = vue). */
-          <div key={mView} className={dir === 'fwd' ? 'comm-slide-fwd' : 'comm-slide-back'} style={{ height: '100%', minHeight: 0 }}>
-            {mView === 'home' && (
-              <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
-                <div style={{ width: 60, flexShrink: 0, minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
-                <div style={{ flex: 1, minWidth: 0, minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-              </div>
-            )}
-            {mView === 'chat' && chatWithBack}
-          </div>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Réserve la bande haute occupée par les boutons flottants du shell
-              (IA / notifications / profil, position fixe top-right) pour que
-              l'en-tête du canal (appel, recherche, présence…) reste visible. */}
-          <div aria-hidden style={{ height: 46, flexShrink: 0 }} />
-          {/* Séparation Discord-like par le FOND (jamais par des bordures, cf.
-              Design System) : rail le plus sombre (--bg) → colonne salons
-              (--bg-card2) → zone chat/appel la plus claire (--bg-card). */}
-          {msgMode ? (
-            <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-              <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
-              <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{messagesPane}</div>
-            </div>
-          ) : (
-            <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '56px 248px 1fr', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)' }}>
-              <div style={{ minHeight: 0, background: 'var(--bg)' }}>{rail}</div>
-              <div style={{ minHeight: 0, background: 'var(--bg-card2)' }}>{channelCol}</div>
-              <div style={{ minHeight: 0, background: 'var(--bg-card)' }}>{centerPane}</div>
-            </div>
-          )}
-        </>
-      )}
-
+  const overlays = (
+    <>
       {showCreate && (
         <CreateSpaceSheet
           ent={ent.community}
           onClose={() => setShowCreate(false)}
-          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('fwd'); setMView('home') } }}
+          onCreated={(s) => { setShowCreate(false); void loadSpaces(s.id); setShowManage(true); if (isNarrow) { setDir('back'); setMView('home') } }}
         />
       )}
 
@@ -422,16 +397,17 @@ export function CommunityView() {
         />
       )}
 
-      {menuChannel && (
+      {menu && (
         <ChannelContextMenu
-          channel={menuChannel} isPinned={pinned.has(menuChannel.id)} canManage={canManage}
-          spaceName={space?.name} spaceAvatarUrl={space?.iconUrl}
-          onClose={() => setMenuChannel(null)}
+          channel={menu.channel} rect={menu.rect} isPinned={pinned.has(menu.channel.id)} canManage={canManage}
+          digest={digests.get(menu.channel.id) ?? null} unread={unreadOf(menu.channel.id)} isMuted={muted.has(menu.channel.id)}
+          onClose={() => setMenu(null)}
           onInvite={() => setInviteOpen(true)}
-          onTogglePin={() => void doTogglePin(menuChannel.id)}
-          onEdit={() => setEditChannelState(menuChannel)}
-          onDuplicate={() => void doDuplicateChannel(menuChannel.id)}
-          onDelete={() => void doDeleteChannel(menuChannel.id)}
+          onTogglePin={() => void doTogglePin(menu.channel.id)}
+          onToggleMute={() => void doToggleMute(menu.channel.id)}
+          onEdit={() => setEditChannelState(menu.channel)}
+          onDuplicate={() => void doDuplicateChannel(menu.channel.id)}
+          onDelete={() => void doDeleteChannel(menu.channel.id)}
         />
       )}
 
@@ -448,15 +424,22 @@ export function CommunityView() {
       )}
 
       {showManage && space && canManage && (
-        <CommunityManageSheet spaceId={space.id} onClose={() => setShowManage(false)}
+        <CommunityManageSheet spaceId={space.id} spaceName={space.name} onClose={() => setShowManage(false)}
           onDeleted={() => { setShowManage(false); void loadSpaces() }} />
       )}
 
       {showDiscover && (
         <DiscoverSheet
           onClose={() => setShowDiscover(false)}
-          onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('fwd'); setMView('home') } }}
+          onJoined={(id) => { setShowDiscover(false); void loadSpaces(id); if (isNarrow) { setDir('back'); setMView('home') } }}
         />
+      )}
+
+      {spaceActions && space && (
+        <SpaceActionsSheet space={space} canManage={canManage} eventsCount={eventsCount}
+          onClose={() => setSpaceActions(false)}
+          onInvite={() => setInviteOpen(true)} onManage={() => setShowManage(true)} onEvents={selectEvents}
+          onLeave={() => void doLeave()} />
       )}
 
       {voiceSheetCh && (
@@ -469,209 +452,383 @@ export function CommunityView() {
           onOpenChat={() => openChannelChat(voiceSheetCh.id)}
         />
       )}
+    </>
+  )
+
+  // ── Rendu ──────────────────────────────────────────────────────────────
+  // Avant montage (rendu serveur) : aucun choix de mise en page → pas de flash.
+  if (narrowState === null) return <div style={{ height: '100%', minHeight: 0 }} />
+
+  if (isNarrow) {
+    const viewKey = mView === 'home' ? 'home' : `chat-${panel}`
+    return (
+      // data-hswipe : le glissement horizontal N'OUVRE PAS la sidebar de l'app ;
+      // un glissement franc vers la droite fait revenir à l'accueil communauté.
+      <div data-hswipe style={{ position: 'fixed', inset: 0, zIndex: 3, background: PAGE_BG, overflow: 'hidden', fontFamily: FB }}
+        onTouchStart={e => { commSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
+        onTouchEnd={e => {
+          const s = commSwipe.current; commSwipe.current = null; if (!s) return
+          const dx = e.changedTouches[0].clientX - s.x, dy = e.changedTouches[0].clientY - s.y
+          if (s.x < 40 && dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.4 && mView === 'chat' && panel !== 'call') goHome()
+        }}>
+        <CmStyles />
+        <div key={viewKey} className={dir === 'fwd' ? 'cm-push' : 'cm-back'} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: PAGE_BG }}>
+          {mView === 'home' ? (
+            <>
+              <CmHeader
+                left={<CmRound onClick={goBackOut} label={t('w1g.back')}><ChevronLeft size={22} strokeWidth={2.2} /></CmRound>}
+                title={t('nav.community')}
+                right={<CmRound onClick={() => setShowDiscover(true)} label={t('w1g.searchGroup')}><Search size={20} strokeWidth={2.2} /></CmRound>}
+              />
+              <SpacesRow spaces={spaces} activeId={spaceId} loading={loadingSpaces} onSelect={selectSpace}
+                onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)} />
+              <div className="cm-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px calc(32px + env(safe-area-inset-bottom))' }}>
+                {homeBody}
+              </div>
+            </>
+          ) : centerPane}
+        </div>
+        {overlays}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: FB }}>
+      <CmStyles />
+      {/* Réserve la bande haute occupée par les boutons flottants du shell. */}
+      <div aria-hidden style={{ height: 46, flexShrink: 0 }} />
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '76px 320px 1fr', gap: 12, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: PAGE_BG, padding: 12 }}>
+        <SpaceRail spaces={spaces} activeId={spaceId} loading={loadingSpaces} onSelect={selectSpace}
+          onCreate={() => setShowCreate(true)} onDiscover={() => setShowDiscover(true)} />
+        <div className="cm-scroll" style={{ minHeight: 0, overflowY: 'auto', padding: '0 2px 16px' }}>
+          {homeBody}
+        </div>
+        <div style={{ minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW }}>{centerPane}</div>
+      </div>
+      {overlays}
     </div>
   )
 }
 
-// ── Rail des espaces (desktop) ──────────────────────────────────────────────
-function SpaceRail({ spaces, activeId, loading, messagesActive, onMessages, onSelect, onCreate, onDiscover }: {
-  spaces: CommunitySpace[]; activeId: string | null; loading: boolean; messagesActive: boolean
-  onMessages: () => void; onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
+// ── Rangée horizontale des espaces (mobile) ─────────────────────────────────
+function SpacesRow({ spaces, activeId, loading, onSelect, onCreate, onDiscover }: {
+  spaces: CommunitySpace[]; activeId: string | null; loading: boolean
+  onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
+}) {
+  const { t } = useI18n()
+  const rowRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = rowRef.current?.querySelector<HTMLElement>('[data-active="true"]')
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [activeId])
+  return (
+    <div ref={rowRef} data-guide="comm-spaces" className="cm-scroll" style={{ flexShrink: 0, display: 'flex', gap: 14, overflowX: 'auto', padding: '6px 16px 12px', scrollSnapType: 'x proximity' }}>
+      {loading ? [0, 1, 2, 3, 4].map(i => (
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <CmSkel h={60} w={60} r="var(--r-lg)" /><CmSkel h={10} w={44} />
+        </div>
+      )) : (
+        <>
+          {spaces.map((s, i) => (
+            <SpaceTile key={s.id} space={s} active={s.id === activeId} index={i} onClick={() => onSelect(s.id)} />
+          ))}
+          <ActionTile index={spaces.length} label={t('cm.create')} onClick={onCreate}><Plus size={26} strokeWidth={2.4} /></ActionTile>
+          <ActionTile index={spaces.length + 1} label={t('cm.discover')} onClick={onDiscover}><Compass size={24} strokeWidth={2.1} /></ActionTile>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SpaceTile({ space, active, index, onClick }: { space: CommunitySpace; active: boolean; index: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} data-active={active} aria-pressed={active} aria-label={space.name} title={space.name}
+      className="cm-btn cm-press cm-in" style={{ ...stagger(index), flexShrink: 0, width: 66, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, scrollSnapAlign: 'start' }}>
+      <span style={{ borderRadius: 'calc(var(--r-lg) + 2px)', padding: 3, boxShadow: active ? 'inset 0 0 0 2.5px var(--text)' : 'none', transition: 'box-shadow .2s ease', lineHeight: 0 }}>
+        <SpaceBadge space={space} size={58} radius="var(--r-lg)" />
+      </span>
+      <span style={{ maxWidth: 66, fontSize: 12.5, fontWeight: active ? 800 : 650, color: active ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
+    </button>
+  )
+}
+
+function ActionTile({ label, onClick, index, children }: { label: string; onClick: () => void; index: number; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={() => { haptic('light'); onClick() }} aria-label={label} title={label}
+      className="cm-btn cm-press cm-in" style={{ ...stagger(index), flexShrink: 0, width: 66, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+      <span style={{ padding: 3, lineHeight: 0 }}>
+        <span style={{ width: 58, height: 58, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</span>
+      </span>
+      <span style={{ fontSize: 12.5, fontWeight: 650, color: 'var(--text-mid)' }}>{label}</span>
+    </button>
+  )
+}
+
+// ── Rail vertical des espaces (desktop) ─────────────────────────────────────
+function SpaceRail({ spaces, activeId, loading, onSelect, onCreate, onDiscover }: {
+  spaces: CommunitySpace[]; activeId: string | null; loading: boolean
+  onSelect: (id: string) => void; onCreate: () => void; onDiscover: () => void
 }) {
   const { t } = useI18n()
   return (
-    <div data-guide="comm-spaces" style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) 0' }}>
-      {/* Messages privés — tout en haut : ouvre la messagerie DANS la communauté. */}
-      {/* Messages privés retirés (demande produit). */}
-      <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border)', flexShrink: 0, margin: '2px 0' }} />
-      {loading ? (
-        [0, 1, 2, 3].map(i => <span key={i} style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)
-      ) : spaces.map(s => {
+    <div data-guide="comm-spaces" className="cm-scroll" style={{ minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+      {loading ? [0, 1, 2, 3].map(i => <CmSkel key={i} h={52} w={52} r="var(--r-lg)" />) : spaces.map((s, i) => {
         const active = activeId === s.id
         return (
-          <div key={s.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-            <span style={{ position: 'absolute', left: 0, width: 3, height: active ? 26 : 0, borderRadius: '0 3px 3px 0', background: 'var(--primary)', transition: 'height 0.16s ease' }} />
-            <button onClick={() => onSelect(s.id)} title={s.name} aria-label={s.name}
-              style={{ width: 44, height: 44, border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-md)' }}>
-              <SpaceBadge space={s} size={44} active={active} />
-            </button>
-          </div>
+          <button key={s.id} type="button" onClick={() => onSelect(s.id)} title={s.name} aria-label={s.name} aria-pressed={active}
+            className="cm-btn cm-press cm-in" style={{ ...stagger(i), borderRadius: 'calc(var(--r-lg) + 2px)', padding: 3, lineHeight: 0, boxShadow: active ? 'inset 0 0 0 2.5px var(--text)' : 'none' }}>
+            <SpaceBadge space={s} size={50} radius="var(--r-lg)" />
+          </button>
         )
       })}
-      <button onClick={onDiscover} title={t('w1g.searchGroup')} aria-label={t('w1g.searchGroup')}
-        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--text-mid)', marginTop: 'var(--space-1)' }}>
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <button type="button" onClick={onCreate} title={t('w1g.createSpace')} aria-label={t('w1g.createSpace')} className="cm-btn cm-press"
+        style={{ width: 50, height: 50, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+        <Plus size={22} strokeWidth={2.4} />
       </button>
-      <button onClick={onCreate} title={t('w1g.createSpace')} aria-label={t('w1g.createSpace')}
-        style={{ width: 44, height: 44, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-neutral)', color: 'var(--primary)', marginTop: 'var(--space-1)' }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+      <button type="button" onClick={onDiscover} title={t('w1g.searchGroup')} aria-label={t('w1g.searchGroup')} className="cm-btn cm-press"
+        style={{ width: 50, height: 50, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Compass size={21} strokeWidth={2.1} />
       </button>
     </div>
   )
 }
 
-// ── Colonne des canaux ──────────────────────────────────────────────────────
-function ChannelColumn({ space, channels, activeId, loading, isNarrow, joining, canManage, canBrand, unread, muted, pinned, activeCalls, panel, onEvents, onManage, onSelect, onJoin, onLeave, onAddChannel, onSetLogo, onLongPress, onBack }: {
-  space: CommunitySpace | null; channels: CommunityChannel[]; activeId: string | null; loading: boolean
-  isNarrow: boolean; joining: boolean; canManage: boolean; canBrand: boolean; unread: Set<string>; muted: Set<string>; pinned: Set<string>; activeCalls: Record<string, number>
-  panel: 'chat' | 'events' | 'call'; onEvents: () => void; onManage: () => void
-  onSelect: (id: string) => void; onJoin: () => void; onLeave: () => void; onAddChannel: () => void; onSetLogo: (file: File) => void; onLongPress: (c: CommunityChannel) => void; onBack: () => void
+// ── Carte de l'espace ───────────────────────────────────────────────────────
+function SpaceCard({ space, online, joining, canManage, canBrand, eventsCount, eventsActive, onJoin, onMember, onEvents, onManage, onSetLogo }: {
+  space: CommunitySpace; online: number; joining: boolean; canManage: boolean; canBrand: boolean; eventsCount: number | null; eventsActive: boolean
+  onJoin: () => void; onMember: () => void; onEvents: () => void; onManage: () => void; onSetLogo: (f: File) => void
 }) {
   const { t } = useI18n()
   const logoRef = useRef<HTMLInputElement>(null)
-  // Appui long (mobile) / clic droit (desktop) → menu d'actions du salon.
-  const lpRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false })
-  if (!space) {
-    return <div style={{ padding: 'var(--space-6)', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13 }}>—</div>
-  }
+  const members = t(space.memberCount > 1 ? 'w1g.membersPlural' : 'w1g.memberSingular', { n: space.memberCount.toLocaleString('fr-FR') })
+  const badge = <SpaceBadge space={space} size={58} radius="var(--r-lg)" />
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {/* En-tête d'espace */}
-      <div data-guide="comm-space-header" style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-4) var(--space-3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          {canBrand ? (
-            <>
-              <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onSetLogo(f) }} />
-              <button onClick={() => logoRef.current?.click()} title={t('w1g.changeLogo')} aria-label={t('w1g.changeLogo')}
-                style={{ position: 'relative', border: 'none', padding: 0, background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-md)', lineHeight: 0 }}>
-                <SpaceBadge space={space} size={34} />
-                <span style={{ position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg-card2)' }}>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-                </span>
-              </button>
-            </>
-          ) : null /* le logo est déjà affiché dans le rail des espaces → pas de doublon */}
-          <span style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</span>
-          {canManage && (
-            <button onClick={onManage} title={t('w1g.manageSpace')} aria-label={t('w1g.manageSpace')}
-              style={{ width: 30, height: 30, flexShrink: 0, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+    <CmCard className="cm-in" style={{ padding: 16, ...stagger(0) }}>
+      <div data-guide="comm-space-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        {canBrand ? (
+          <>
+            <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onSetLogo(f) }} />
+            <button type="button" onClick={() => logoRef.current?.click()} title={t('w1g.changeLogo')} aria-label={t('w1g.changeLogo')}
+              className="cm-btn cm-press" style={{ position: 'relative', lineHeight: 0, flexShrink: 0 }}>
+              {badge}
+              <span style={{ position: 'absolute', right: -4, bottom: -4, width: 22, height: 22, borderRadius: '50%', background: 'var(--text)', color: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2.5px var(--surface-card)' }}>
+                <Plus size={13} strokeWidth={3} />
+              </span>
             </button>
-          )}
+          </>
+        ) : <span style={{ flexShrink: 0, lineHeight: 0 }}>{badge}</span>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.015em', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{space.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 5 }}>
+            {space.kind === 'official' && <span style={tagStyle(true)}>{t('cm.official')}</span>}
+            {!space.isPublic && <span style={tagStyle(false)}><Lock size={11} strokeWidth={2.6} />{t('w1g.private')}</span>}
+          </div>
+          <div style={{ ...TNUM, marginTop: 5, fontSize: 14, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>{members}</span>
+            {space.isMember && online > 0 && (<><span aria-hidden>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />{t('w1g.mem.nOnline', { n: online })}</span></>)}
+          </div>
         </div>
-        <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 'var(--space-1)', fontVariantNumeric: 'tabular-nums' }}>
-          {t(space.memberCount > 1 ? 'w1g.membersPlural' : 'w1g.memberSingular', { n: space.memberCount })}{space.kind === 'official' ? t('w1g.officialSuffix') : ''}
-        </div>
-        {space.description && (
-          <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0', lineHeight: 1.45 }}>{space.description}</p>
+        {canManage && (
+          <button type="button" onClick={() => { haptic('light'); onManage() }} title={t('w1g.manageSpace')} aria-label={t('w1g.manageSpace')} className="cm-btn cm-press"
+            style={{ width: 40, height: 40, marginTop: -2, marginRight: -6, borderRadius: '50%', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Settings size={21} strokeWidth={1.9} />
+          </button>
         )}
-        <div style={{ marginTop: 'var(--space-3)' }}>
-          {!space.isMember ? (
-            <button onClick={onJoin} disabled={joining} style={joinBtn}>{joining ? t('w1g.connecting') : t('w1g.join')}</button>
-          ) : space.myRole !== 'owner' ? (
-            <button onClick={onLeave} style={leaveBtn}>{t('w1g.leave')}</button>
-          ) : (
-            <span style={{ fontFamily: FB, fontSize: 11.5, fontWeight: 600, color: 'var(--primary)' }}>{t('w1g.yourSpace')}</span>
-          )}
-        </div>
       </div>
-
-      {/* Raccourci Événements */}
-      <div style={{ flexShrink: 0, padding: '0 var(--space-2) var(--space-2)' }}>
-        <button data-guide="comm-events" onClick={onEvents}
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: panel === 'events' ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-          <span style={{ flex: 1, fontSize: 13.5, fontWeight: panel === 'events' ? 600 : 500, color: panel === 'events' ? 'var(--text)' : 'var(--text-mid)' }}>{t('w1g.events')}</span>
-        </button>
+      {space.description && (
+        <p style={{ margin: '14px 0 0', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{space.description}</p>
+      )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        {!space.isMember ? (
+          <CmPill variant="primary" onClick={onJoin} disabled={joining} style={{ flex: 1 }}>{joining ? t('w1g.connecting') : t('w1g.join')}</CmPill>
+        ) : (
+          <CmPill variant="chip" onClick={() => { haptic('light'); onMember() }} style={{ flex: 1 }}>
+            <Check size={17} strokeWidth={2.6} />{space.myRole === 'owner' ? t('w1g.yourSpace') : t('w3e.member')}
+          </CmPill>
+        )}
+        <span data-guide="comm-events" style={{ flex: 1, display: 'flex' }}>
+          <CmPill variant={eventsActive ? 'dark' : 'chip'} onClick={onEvents} style={{ flex: 1 }}>
+            <span>{t('w1g.events')}</span>
+            {eventsCount !== null && eventsCount > 0 && <span style={TNUM}>· {eventsCount}</span>}
+          </CmPill>
+        </span>
       </div>
+    </CmCard>
+  )
+}
 
-      {/* Liste des canaux */}
-      <div data-guide="comm-channels" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 var(--space-2) var(--space-3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-2) var(--space-3)' }}>
-          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('w1g.channels')}</span>
-          {canManage && (
-            <button onClick={onAddChannel} aria-label={t('w1g.addChannel')} title={t('w1g.addChannel')}
-              style={{ width: 22, height: 22, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-            </button>
-          )}
-        </div>
-        {loading ? (
-          [0, 1, 2, 3].map(i => <span key={i} style={{ display: 'block', height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)', margin: '0 var(--space-2) var(--space-2)' }} />)
-        ) : (() => {
-          // Salons regroupés par type (façon Discord) : textuels et vocaux, chacun
-          // dans son compartiment visuel distinct.
-          const renderChan = (c: typeof channels[number]) => {
-            const active = activeId === c.id
-            const isMuted = muted.has(c.id)
-            const isPinned = pinned.has(c.id)
-            const isUnread = unread.has(c.id) && !active && !isMuted
-            const startPress = () => { lpRef.current.fired = false; lpRef.current.timer = setTimeout(() => { lpRef.current.fired = true; onLongPress(c) }, 480) }
-            const cancelPress = () => { if (lpRef.current.timer) { clearTimeout(lpRef.current.timer); lpRef.current.timer = null } }
-            return (
-              <button key={c.id}
-                onClick={() => { if (lpRef.current.fired) { lpRef.current.fired = false; return } onSelect(c.id) }}
-                onContextMenu={e => { e.preventDefault(); onLongPress(c) }}
-                onTouchStart={startPress} onTouchEnd={cancelPress} onTouchMove={cancelPress} onTouchCancel={cancelPress}
-                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', minHeight: 36, background: active ? 'var(--surface-neutral)' : 'transparent', fontFamily: FB, opacity: isMuted ? 0.5 : 1 }}>
-                {c.kind === 'voice'
-                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
-                  : <span style={{ color: 'var(--text-dim)', fontSize: 15, lineHeight: 1 }}>#</span>}
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active || isUnread ? 600 : 500, color: active || isUnread ? 'var(--text)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                {isPinned && <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }} aria-label={t('w1g.ch.pin')}><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6z" /></svg>}
-                {c.isPrivate && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }} aria-label={t('w1g.ch.private')}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
-                {(activeCalls[c.id] ?? 0) > 0 && (
-                  <span title={t('w1g.inCall', { n: activeCalls[c.id] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 700, color: 'var(--sport-run)' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-                    <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCalls[c.id]}</span>
-                  </span>
-                )}
-                {isMuted && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)', flexShrink: 0 }}><path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 0 0-9.33-5M5.2 5.2A6 6 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22" /></svg>}
-                {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
-              </button>
-            )
-          }
-          // Salons épinglés en haut (ordre stable sinon).
-          const byPin = (a: typeof channels[number], b: typeof channels[number]) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0)
-          const textChans = channels.filter(c => c.kind !== 'voice').sort(byPin)
-          // App Store 2.1 : sur l'app native iOS, les salons vocaux sont masqués
-          // (appels désactivés) → aucune entrée d'appel visible. Web : inchangé.
-          const voiceChans = isNativeApp() ? [] : channels.filter(c => c.kind === 'voice').sort(byPin)
-          const group = (label: string, list: typeof channels) => list.length === 0 ? null : (
-            <div style={{ marginBottom: 'var(--space-2)' }}>
-              <div style={{ padding: '2px var(--space-3) 5px', fontFamily: FB, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-1)' }}>
-                {list.map(renderChan)}
-              </div>
+function tagStyle(accent: boolean): React.CSSProperties {
+  return { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 'var(--r-sm)', fontSize: 12.5, fontWeight: 800,
+    background: accent ? 'var(--primary-dim)' : 'var(--surface-chip)', color: accent ? 'var(--primary)' : 'var(--text-mid)' }
+}
+
+// ── Listes de salons ────────────────────────────────────────────────────────
+function ChannelLists({ channels, loading, activeId, canManage, digests, unreadOf, muted, pinned, activeCalls, onSelect, onAdd, onLongPress }: {
+  channels: CommunityChannel[]; loading: boolean; activeId: string | null; canManage: boolean
+  digests: Map<string, ChannelDigest>; unreadOf: (id: string) => number; muted: Set<string>; pinned: Set<string>; activeCalls: Record<string, number>
+  onSelect: (id: string) => void; onAdd: () => void; onLongPress: (c: CommunityChannel, el: HTMLElement) => void
+}) {
+  const { t } = useI18n()
+  const byPin = (a: CommunityChannel, b: CommunityChannel) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0)
+  const textChans = channels.filter(c => c.kind !== 'voice').sort(byPin)
+  // App Store 2.1 : sur l'app native iOS, les salons vocaux sont masqués.
+  const voiceChans = isNativeApp() ? [] : channels.filter(c => c.kind === 'voice').sort(byPin)
+  const addBtn = canManage ? (
+    <button type="button" onClick={() => { haptic('light'); onAdd() }} aria-label={t('w1g.addChannel')} title={t('w1g.addChannel')} className="cm-btn cm-press"
+      style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -6, marginBottom: -6 }}>
+      <Plus size={17} strokeWidth={2.4} />
+    </button>
+  ) : undefined
+  return (
+    <div data-guide="comm-channels">
+      <CmLabel right={addBtn}>{t('cm.salons')}</CmLabel>
+      {loading ? (
+        <CmCard style={{ padding: '6px 16px' }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0' }}>
+              <CmSkel h={22} w={22} /><div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}><CmSkel h={14} w="45%" /><CmSkel h={12} w="75%" /></div>
             </div>
-          )
-          return <>{group(t('w1g.textChannels'), textChans)}{group(t('w1g.voiceChannels'), voiceChans)}</>
-        })()}
-      </div>
+          ))}
+        </CmCard>
+      ) : textChans.length === 0 ? (
+        <CmCard style={{ padding: 18, fontSize: 14, color: 'var(--text-mid)', textAlign: 'center' }}>{t('cm.noChannel')}</CmCard>
+      ) : (
+        <CmCard style={{ overflow: 'hidden' }}>
+          {textChans.map((c, i) => (
+            <ChannelRow key={c.id} c={c} index={i} first={i === 0} active={activeId === c.id} digest={digests.get(c.id) ?? null}
+              unread={unreadOf(c.id)} isMuted={muted.has(c.id)} isPinned={pinned.has(c.id)} inCall={activeCalls[c.id] ?? 0}
+              onSelect={() => onSelect(c.id)} onLongPress={el => onLongPress(c, el)} />
+          ))}
+        </CmCard>
+      )}
+      {voiceChans.length > 0 && (
+        <>
+          <CmLabel>{t('cm.vocal')}</CmLabel>
+          <CmCard style={{ overflow: 'hidden' }}>
+            {voiceChans.map((c, i) => (
+              <ChannelRow key={c.id} c={c} index={textChans.length + i} first={i === 0} active={false} digest={null}
+                unread={0} isMuted={muted.has(c.id)} isPinned={pinned.has(c.id)} inCall={activeCalls[c.id] ?? 0}
+                onSelect={() => onSelect(c.id)} onLongPress={el => onLongPress(c, el)} />
+            ))}
+          </CmCard>
+        </>
+      )}
+    </div>
+  )
+}
 
-      {/* Lien croisé (règle d'interconnexion) : annuaire des coachs publics.
-          La messagerie privée est intégrée (bouton en haut du rail). */}
-      <div style={{ flexShrink: 0, padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <Link href="/coaches" style={crossLink}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-          {t('w1g.findCoach')}
-        </Link>
-      </div>
+function ChannelRow({ c, index, first, active, digest, unread, isMuted, isPinned, inCall, onSelect, onLongPress }: {
+  c: CommunityChannel; index: number; first: boolean; active: boolean; digest: ChannelDigest | null; unread: number
+  isMuted: boolean; isPinned: boolean; inCall: number; onSelect: () => void; onLongPress: (el: HTMLElement) => void
+}) {
+  const { t } = useI18n()
+  const lp = useLongPress(onLongPress)
+  const voice = c.kind === 'voice'
+  const showUnread = unread > 0 && !isMuted && !active
+  const sub = voice ? (inCall > 0 ? t('w1g.inCall', { n: inCall }) : t('cm.voiceJoinHint')) : digestLine(digest, c, t)
+  return (
+    <button type="button" {...lp.handlers} onClick={() => { if (lp.consume()) return; onSelect() }}
+      className="cm-btn cm-row cm-in cm-noselect"
+      style={{ ...stagger(index, 80), display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 64, padding: '11px 16px', boxSizing: 'border-box', textAlign: 'left',
+        borderTop: first ? 'none' : '1px solid var(--border)', background: active ? 'var(--surface-chip)' : undefined, opacity: isMuted ? 0.55 : 1 }}>
+      <span aria-hidden style={{ width: 26, flexShrink: 0, display: 'flex', justifyContent: 'center', color: showUnread ? 'var(--text)' : 'var(--text-mid)' }}>
+        {voice ? <Volume2 size={21} strokeWidth={2} /> : <Hash size={22} strokeWidth={2.4} />}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 16.5, fontWeight: showUnread ? 800 : 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+          {isPinned && <Pin size={13} strokeWidth={2.2} color="var(--text-dim)" style={{ flexShrink: 0 }} aria-label={t('w1g.ch.pin')} />}
+          {c.isPrivate && <Lock size={13} strokeWidth={2.2} color="var(--text-dim)" style={{ flexShrink: 0 }} aria-label={t('w1g.ch.private')} />}
+        </span>
+        {sub && <span style={{ display: 'block', marginTop: 2, fontSize: 14, color: showUnread ? 'var(--text)' : 'var(--text-mid)', fontWeight: showUnread ? 550 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>}
+      </span>
+      {inCall > 0 && !voice && (
+        <span title={t('w1g.inCall', { n: inCall })} style={{ ...TNUM, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 12, fontWeight: 800, color: 'var(--success)' }}>
+          <Video size={14} strokeWidth={2.2} />{inCall}
+        </span>
+      )}
+      {isMuted && <BellOff size={16} strokeWidth={2} color="var(--text-dim)" style={{ flexShrink: 0 }} />}
+      {showUnread && (
+        <span key={unread} className="cm-pop" style={{ ...TNUM, flexShrink: 0, minWidth: 26, height: 24, padding: '0 8px', boxSizing: 'border-box', borderRadius: 'var(--r-pill)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ── Feuille d'actions de l'espace (bouton « Membre ») ───────────────────────
+function SpaceActionsSheet({ space, canManage, eventsCount, onClose, onInvite, onManage, onEvents, onLeave }: {
+  space: CommunitySpace; canManage: boolean; eventsCount: number | null; onClose: () => void
+  onInvite: () => void; onManage: () => void; onEvents: () => void; onLeave: () => void
+}) {
+  const { t } = useI18n()
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  return (
+    <CmSheet onClose={onClose} title={space.name} sub={t(space.memberCount > 1 ? 'w1g.membersPlural' : 'w1g.memberSingular', { n: space.memberCount })}>
+      {close => (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 16px' }}>
+            <SpaceBadge space={space} size={72} radius="var(--r-lg)" />
+          </div>
+          <CmCard style={{ overflow: 'hidden' }}>
+            <CmRow first icon={<span style={iconTile}><UserPlus size={18} strokeWidth={2} /></span>} title={t('w1g.ch.inviteTitle')}
+              right={<ChevronRight size={18} color="var(--text-dim)" />} onClick={() => { onInvite(); close() }} />
+            <CmRow icon={<span style={iconTile}><CalendarDays size={18} strokeWidth={2} /></span>} title={t('w1g.events')}
+              right={<span style={{ ...TNUM, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-mid)', fontSize: 15 }}>{eventsCount ? eventsCount : ''}<ChevronRight size={18} color="var(--text-dim)" /></span>}
+              onClick={() => { onEvents(); close() }} />
+            {canManage && (
+              <CmRow icon={<span style={iconTile}><Settings size={18} strokeWidth={2} /></span>} title={t('w1g.manageSpace')}
+                right={<ChevronRight size={18} color="var(--text-dim)" />} onClick={() => { onManage(); close() }} />
+            )}
+          </CmCard>
+          {space.myRole !== 'owner' && (
+            <CmCard style={{ overflow: 'hidden', marginTop: 14 }}>
+              <CmRow first danger icon={<span style={{ ...iconTile, color: 'var(--danger)', background: 'var(--danger-soft)' }}><LogOut size={18} strokeWidth={2} /></span>}
+                title={confirmLeave ? t('cm.leaveConfirm') : t('cm.leaveSpace')}
+                onClick={() => { if (!confirmLeave) { haptic('medium'); setConfirmLeave(true); return } onLeave(); close() }} />
+            </CmCard>
+          )}
+        </>
+      )}
+    </CmSheet>
+  )
+}
+
+// ── Squelette de l'accueil ──────────────────────────────────────────────────
+function HomeSkeleton() {
+  return (
+    <div aria-hidden>
+      <CmCard style={{ padding: 16 }}>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <CmSkel h={58} w={58} r="var(--r-lg)" />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}><CmSkel h={18} w="60%" /><CmSkel h={13} w="35%" /><CmSkel h={13} w="50%" /></div>
+        </div>
+        <CmSkel h={13} style={{ marginTop: 16 }} /><CmSkel h={13} w="70%" style={{ marginTop: 8 }} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}><CmSkel h={44} r="var(--r-pill)" /><CmSkel h={44} r="var(--r-pill)" /></div>
+      </CmCard>
+      <CmSkel h={12} w={70} style={{ margin: '24px 4px 12px' }} />
+      <CmCard style={{ padding: '6px 16px' }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0' }}>
+            <CmSkel h={22} w={22} /><div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}><CmSkel h={14} w="45%" /><CmSkel h={12} w="75%" /></div>
+          </div>
+        ))}
+      </CmCard>
     </div>
   )
 }
 
 // ── Bits partagés ───────────────────────────────────────────────────────────
-const backBar: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%', border: 'none',
-  background: 'var(--bg-card)', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)',
-  fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', textAlign: 'left',
+const iconTile: React.CSSProperties = {
+  width: 34, height: 34, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', color: 'var(--text)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
 }
-const crossLink: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: FB,
-  fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', textDecoration: 'none',
-}
-const joinBtn: React.CSSProperties = {
-  height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)',
-  background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-}
-const leaveBtn: React.CSSProperties = {
-  height: 34, padding: '0 var(--space-4)', border: 'none', borderRadius: 'var(--r-sm)',
-  background: 'var(--surface-neutral)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-}
-function BackIcon({ flip }: { flip?: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: flip ? 'rotate(180deg)' : 'none', color: 'var(--text-dim)' }}><path d="M15 18l-6-6 6-6" /></svg>
-  )
+function linkRow(first: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 16px', textDecoration: 'none', color: 'var(--text)',
+    fontFamily: FB, fontSize: 16, fontWeight: 650, borderTop: first ? 'none' : '1px solid var(--border)',
+  }
 }

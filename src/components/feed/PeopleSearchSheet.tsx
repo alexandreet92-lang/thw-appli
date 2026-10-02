@@ -1,14 +1,14 @@
 'use client'
-// Surpage « Trouver des athlètes » — recherche de profils à suivre (nom/username),
-// bouton Suivre/Suivi. Point d'entrée du graphe social (le fil se remplit ensuite).
+// Feuille « Trouver des athlètes » — recherche de profils à suivre (nom /
+// pseudo), Suivre / Suivi. Point d'entrée du graphe social (le fil se remplit
+// ensuite). Ligne → profil public (/u/[id], règle d'interconnexion).
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import Link from 'next/link'
+import { Search, Check, Users } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { Avatar } from '@/components/shared/Sidebar'
+import { haptic } from '@/lib/haptics'
 import { searchPeople, getFollowingIds, toggleFollow, type Person } from '@/lib/social/follows'
-
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de surpage
+import { CmSheet, CmCard, CmAvatar, CmSkel, CmEmpty, FB, stagger } from '@/components/community/kit'
 
 export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
@@ -16,7 +16,6 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
   const [people, setPeople] = useState<Person[] | null>(null)
   const [following, setFollowing] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<string | null>(null)
-  const [closing, setClosing] = useState(false)
 
   useEffect(() => { void getFollowingIds().then(setFollowing) }, [])
   useEffect(() => {
@@ -25,53 +24,56 @@ export function PeopleSearchSheet({ onClose }: { onClose: () => void }) {
     return () => { off = true; clearTimeout(id) }
   }, [q])
 
-  const close = () => { setClosing(true); setTimeout(onClose, 220) }
   async function toggle(id: string) {
     setBusy(id)
+    const was = following.has(id)
+    haptic(was ? 'light' : 'success')
+    setFollowing(prev => { const n = new Set(prev); if (was) n.delete(id); else n.add(id); return n })
     try {
-      const now = await toggleFollow(id, following.has(id))
-      setFollowing(prev => { const n = new Set(prev); now ? n.add(id) : n.delete(id); return n })
-    } catch { /* ignore */ } finally { setBusy(null) }
+      const now = await toggleFollow(id, was)
+      setFollowing(prev => { const n = new Set(prev); if (now) n.add(id); else n.delete(id); return n })
+    } catch {
+      setFollowing(prev => { const n = new Set(prev); if (was) n.add(id); else n.delete(id); return n })
+    } finally { setBusy(null) }
   }
   const list = useMemo(() => people ?? [], [people])
 
-  return createPortal(
-    <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 3200, background: SCRIM, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'}
-        style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontFamily: FD, fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('w3f.find_athletes')}</h2>
-          <button onClick={close} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 17 }}>×</button>
-        </div>
-        <div style={{ padding: '12px 20px 0' }}>
-          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3f.name_or_username')}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
-          {people === null ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>{t('w3f.searching')}</p>
-          ) : list.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', padding: '0 4px' }}>{t('w3f.no_athletes')}</p>
-          ) : list.map(p => {
+  return (
+    <CmSheet full onClose={onClose} title={t('w3f.find_athletes')} zIndex={15200}>
+      <div style={{ position: 'relative', margin: '2px 0 14px' }}>
+        <Search size={17} strokeWidth={2.2} color="var(--text-dim)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+        <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3f.name_or_username')} className="cm-input" style={{ paddingLeft: 40 }} />
+      </div>
+      {people === null ? (
+        <CmCard style={{ padding: '6px 16px' }}>
+          {[0, 1, 2, 3, 4].map(i => <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0' }}><CmSkel h={42} w={42} r="50%" /><CmSkel h={14} w="50%" /></div>)}
+        </CmCard>
+      ) : list.length === 0 ? (
+        <CmEmpty icon={<Users size={26} strokeWidth={2} />} title={t('w3f.no_athletes')} />
+      ) : (
+        <CmCard style={{ overflow: 'hidden' }}>
+          {list.map((p, i) => {
             const isF = following.has(p.id)
+            const sub = [p.username ? `@${p.username}` : null, p.sports.slice(0, 3).join(', ') || null].filter(Boolean).join(' · ')
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px', borderRadius: 'var(--r-md)' }}>
-                <Avatar url={p.avatar} name={p.name} size={38} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                  {(p.username || p.sports.length > 0) && <div style={{ fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username ? `@${p.username}` : ''}{p.username && p.sports.length ? ' · ' : ''}{p.sports.slice(0, 3).join(', ')}</div>}
-                </div>
-                <button onClick={() => void toggle(p.id)} disabled={busy === p.id}
-                  style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
-                    border: isF ? '1px solid var(--border-mid)' : 'none', background: isF ? 'transparent' : 'var(--primary)', color: isF ? 'var(--text-mid)' : 'var(--on-primary)' }}>
-                  {isF ? t('w3f.following') : t('w3f.follow')}
+              <div key={p.id} className="cm-in" style={{ ...stagger(i, 0, 22), display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '10px 14px 10px 16px', borderTop: i ? '1px solid var(--border)' : 'none', fontFamily: FB }}>
+                <Link href={`/u/${p.id}`} onClick={() => haptic('light')} className="cm-press" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                  <CmAvatar name={p.name} url={p.avatar} seed={p.id} size={42} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 16, fontWeight: 750, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                    {sub && <span style={{ display: 'block', fontSize: 13.5, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>}
+                  </span>
+                </Link>
+                <button type="button" onClick={() => void toggle(p.id)} disabled={busy === p.id} className="cm-btn cm-press"
+                  style={{ flexShrink: 0, height: 38, padding: '0 15px', borderRadius: 'var(--r-pill)', fontFamily: FB, fontSize: 14, fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: 5,
+                    background: isF ? 'var(--surface-chip)' : 'var(--primary)', color: isF ? 'var(--text-mid)' : 'var(--on-primary)' }}>
+                  {isF && <Check size={14} strokeWidth={2.8} />}{isF ? t('w3f.following') : t('w3f.follow')}
                 </button>
               </div>
             )
           })}
-        </div>
-      </div>
-    </div>,
-    document.body
+        </CmCard>
+      )}
+    </CmSheet>
   )
 }

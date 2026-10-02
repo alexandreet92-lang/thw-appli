@@ -1,64 +1,45 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Panneau « Gérer l'espace » (owner/admin) : réglages de sécurité, modération des
-// membres (exclure / bannir), et traitement des signalements. Inspiré des
-// Server Settings de Discord, sobre (Design System).
+// « Gérer l'espace » (owner/admin) : réglages de sécurité, modération des
+// membres (exclure / bannir), demandes d'adhésion, signalements. Feuille du bas
+// nouveau style : onglets segmentés, champs doux à unité intégrée, listes
+// groupées, confirmations en double tap (plus de window.confirm).
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { Trash2, Inbox, Flag, Users } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { SegTrack } from '@/components/ai/mobile/MobileKit'
 import { listSpaceMembers, deleteSpace } from '@/lib/community/spaces'
 import {
   getSpaceSettings, updateSpaceSettings, moderate, listReports, resolveReport,
   type CommunitySettings, type ReportInfo,
 } from '@/lib/community/moderation'
 import { listJoinRequests, type JoinRequestInfo } from '@/lib/community/discover'
+import { CmSheet, CmPill, CmCard, CmField, CmChip, CmSwitch, CmUnitInput, CmAvatar, CmSkel, CmEmpty, CmToast, FB, stagger } from './kit'
 import type { CommunityMemberInfo } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
 type Tab = 'settings' | 'members' | 'requests' | 'reports'
 
-export function CommunityManageSheet({ spaceId, onClose, onDeleted }: { spaceId: string; onClose: () => void; onDeleted?: () => void }) {
+export function CommunityManageSheet({ spaceId, spaceName, onClose, onDeleted }: { spaceId: string; spaceName?: string; onClose: () => void; onDeleted?: () => void }) {
   const { t } = useI18n()
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
   const [tab, setTab] = useState<Tab>('settings')
-
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
-    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!mounted) return null
-
-  const sheet = (
-    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown ? 1 : 0, transition: 'opacity 0.26s ease' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', boxShadow: 'var(--shadow)', transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
-        <div style={{ flexShrink: 0, padding: 'var(--space-5) var(--space-5) 0' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0, flex: 1 }}>{t('w1g.manageSpace')}</h2>
-            <button onClick={requestClose} aria-label={t('w1g.close')} style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 16 }}>×</button>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            {([['settings', t('w1g.tabSettings')], ['members', t('w1g.tabMembers')], ['requests', t('w1g.tabRequests')], ['reports', t('w1g.tabReports')]] as const).map(([k, label]) => (
-              <button key={k} onClick={() => setTab(k)}
-                style={{ flex: 1, height: 40, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 13.5, fontWeight: 600, background: tab === k ? 'var(--surface-neutral)' : 'transparent', color: tab === k ? 'var(--text)' : 'var(--text-mid)' }}>{label}</button>
-            ))}
-          </div>
-        </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-4) var(--space-5) var(--space-8)' }}>
-          {tab === 'settings' && <SettingsTab spaceId={spaceId} onDeleted={onDeleted} />}
-          {tab === 'members' && <MembersTab spaceId={spaceId} />}
-          {tab === 'requests' && <RequestsTab spaceId={spaceId} />}
-          {tab === 'reports' && <ReportsTab spaceId={spaceId} />}
-        </div>
+  return (
+    <CmSheet full onClose={onClose} title={t('w1g.manageSpace')} sub={spaceName} zIndex={15050}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 2, paddingBottom: 6, background: 'var(--surface-page)' }}>
+        <SegTrack<Tab> value={tab} onChange={v => { haptic('light'); setTab(v) }} options={[
+          { v: 'settings', l: t('w1g.tabSettings') }, { v: 'members', l: t('w1g.tabMembers') },
+          { v: 'requests', l: t('w1g.tabRequests') }, { v: 'reports', l: t('w1g.tabReports') },
+        ]} />
       </div>
-    </div>
+      <div key={tab} className="cm-step-next">
+        {tab === 'settings' && <SettingsTab spaceId={spaceId} onDeleted={onDeleted} />}
+        {tab === 'members' && <MembersTab spaceId={spaceId} />}
+        {tab === 'requests' && <RequestsTab spaceId={spaceId} />}
+        {tab === 'reports' && <ReportsTab spaceId={spaceId} />}
+      </div>
+    </CmSheet>
   )
-  return createPortal(sheet, document.body)
 }
 
 // ── Réglages ────────────────────────────────────────────────────────────────
@@ -69,79 +50,75 @@ function SettingsTab({ spaceId, onDeleted }: { spaceId: string; onDeleted?: () =
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
   const [delErr, setDelErr] = useState<string | null>(null)
+
+  useEffect(() => { void getSpaceSettings(spaceId).then(cfg => { if (cfg) { setS(cfg); setWords(cfg.blockedWords.join(', ')) } }) }, [spaceId])
 
   async function removeSpace() {
     if (deleting) return
-    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteSpaceConfirm'))) return
+    if (!confirmDel) { haptic('medium'); setConfirmDel(true); return }
     setDeleting(true); setDelErr(null)
     const ok = await deleteSpace(spaceId)
     setDeleting(false)
     if (ok) onDeleted?.()
     else setDelErr(t('w1g.deleteSpaceOwnerOnly'))
   }
-
-  useEffect(() => { void getSpaceSettings(spaceId).then(cfg => { if (cfg) { setS(cfg); setWords(cfg.blockedWords.join(', ')) } }) }, [spaceId])
-  if (!s) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
-
   async function save() {
     if (!s) return
     setSaving(true); setDone(null)
     const next: CommunitySettings = { ...s, blockedWords: words.split(',').map(w => w.trim()).filter(Boolean) }
     const ok = await updateSpaceSettings(spaceId, next)
     setSaving(false); setDone(ok ? t('w1g.settingsSaved') : t('w1g.saveFailed'))
+    if (ok) haptic('success')
   }
 
+  if (!s) return <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>{[0, 1, 2, 3].map(i => <CmSkel key={i} h={70} r="var(--r-lg)" />)}</div>
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <Field label={t('w1g.spaceAccess')} hint={t('w1g.spaceAccessHint')}>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+    <div style={{ paddingBottom: 8 }}>
+      <CmField label={t('w1g.spaceAccess')} hint={t('w1g.spaceAccessHint')}>
+        <div style={{ display: 'flex', gap: 8 }}>
           {(['open', 'closed'] as const).map(p => (
-            <button key={p} type="button" onClick={() => setS({ ...s, joinPolicy: p })}
-              style={pill(s.joinPolicy === p)}>{p === 'open' ? t('w1g.open') : t('w1g.closed')}</button>
+            <CmChip key={p} active={s.joinPolicy === p} onClick={() => setS({ ...s, joinPolicy: p })}>{p === 'open' ? t('w1g.open') : t('w1g.closed')}</CmChip>
           ))}
         </div>
-      </Field>
-      <Field label={t('w1g.slowMode')} hint={t('w1g.slowModeHint')}>
-        <input type="number" min={0} max={21600} value={s.slowModeSec}
-          onChange={e => setS({ ...s, slowModeSec: Number(e.target.value) || 0 })} style={input} />
-      </Field>
-      <Field label={t('w1g.maxCapacity')} hint={t('w1g.maxCapacityHint')}>
-        <input type="number" min={1} value={s.maxMembers ?? ''} placeholder={t('w1g.unlimited')}
-          onChange={e => setS({ ...s, maxMembers: e.target.value ? Number(e.target.value) : null })} style={input} />
-      </Field>
-      <Field label={t('w1g.minAccountAge')} hint={t('w1g.minAccountAgeHint')}>
-        <input type="number" min={0} max={3650} value={s.minAccountAgeDays}
-          onChange={e => setS({ ...s, minAccountAgeDays: Number(e.target.value) || 0 })} style={input} />
-      </Field>
-      <Field label={t('w1g.blockedWords')} hint={t('w1g.blockedWordsHint')}>
-        <input value={words} onChange={e => setWords(e.target.value)} placeholder={t('w1g.blockedWordsPlaceholder')} style={input} />
-      </Field>
-      <Field label={t('w1g.spaceRules')} hint={t('w1g.spaceRulesHint')}>
-        <textarea value={s.rulesText ?? ''} onChange={e => setS({ ...s, rulesText: e.target.value })} rows={3}
-          placeholder={t('w1g.spaceRulesPlaceholder')}
-          style={{ ...input, resize: 'vertical', minHeight: 64 }} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={s.requireRulesAccept} onChange={e => setS({ ...s, requireRulesAccept: e.target.checked })} />
-          {t('w1g.requireRulesAccept')}
-        </label>
-      </Field>
-      {done && <p style={{ margin: 0, fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)' }}>{done}</p>}
-      <button onClick={() => void save()} disabled={saving}
-        style={{ height: 44, border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13.5, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-        {saving ? t('w1g.saving') : t('w1g.saveSettings')}
-      </button>
+      </CmField>
+      <CmField label={t('w1g.slowMode')} hint={t('w1g.slowModeHint')}>
+        <CmUnitInput value={s.slowModeSec} unit="s" min={0} max={21600} onChange={v => setS({ ...s, slowModeSec: Number(v) || 0 })} />
+      </CmField>
+      <CmField label={t('w1g.maxCapacity')} hint={t('w1g.maxCapacityHint')}>
+        <CmUnitInput value={s.maxMembers ?? ''} unit={t('cm.unitMembers')} min={1} placeholder={t('w1g.unlimited')} onChange={v => setS({ ...s, maxMembers: v ? Number(v) : null })} />
+      </CmField>
+      <CmField label={t('w1g.minAccountAge')} hint={t('w1g.minAccountAgeHint')}>
+        <CmUnitInput value={s.minAccountAgeDays} unit={t('cm.unitDays')} min={0} max={3650} onChange={v => setS({ ...s, minAccountAgeDays: Number(v) || 0 })} />
+      </CmField>
+      <CmField label={t('w1g.blockedWords')} hint={t('w1g.blockedWordsHint')}>
+        <input value={words} onChange={e => setWords(e.target.value)} placeholder={t('w1g.blockedWordsPlaceholder')} className="cm-input" />
+      </CmField>
+      <CmField label={t('w1g.spaceRules')} hint={t('w1g.spaceRulesHint')}>
+        <textarea value={s.rulesText ?? ''} onChange={e => setS({ ...s, rulesText: e.target.value })} rows={4}
+          placeholder={t('w1g.spaceRulesPlaceholder')} className="cm-input" style={{ resize: 'none', minHeight: 100 }} />
+        <CmCard style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', minHeight: 56, boxSizing: 'border-box' }}>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 650, color: 'var(--text)', lineHeight: 1.35 }}>{t('w1g.requireRulesAccept')}</span>
+          <CmSwitch on={s.requireRulesAccept} onChange={v => setS({ ...s, requireRulesAccept: v })} label={t('w1g.requireRulesAccept')} />
+        </CmCard>
+      </CmField>
+      <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {done && <CmToast text={done} onDone={() => setDone(null)} />}
+        <CmPill variant="primary" full height={52} disabled={saving} onClick={() => void save()} style={{ fontSize: 16 }}>{saving ? t('w1g.saving') : t('w1g.saveSettings')}</CmPill>
+      </div>
 
       {/* Zone danger — suppression du groupe (réservée au créateur via RLS) */}
-      <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--danger)' }}>{t('w1g.dangerZone')}</span>
-        <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('w1g.deleteSpaceHint')}</span>
-        {delErr && <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--danger)' }}>{delErr}</span>}
-        <button onClick={() => void removeSpace()} disabled={deleting}
-          style={{ alignSelf: 'flex-start', height: 40, padding: '0 var(--space-5)', border: '1px solid var(--danger)', borderRadius: 'var(--r-sm)', background: 'var(--danger-soft)', color: 'var(--danger)', fontFamily: FB, fontSize: 13, fontWeight: 700, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
-          {deleting ? t('w1g.saving') : t('w1g.deleteSpace')}
-        </button>
-      </div>
+      <CmField label={<span style={{ color: 'var(--danger)' }}>{t('w1g.dangerZone')}</span>} style={{ marginTop: 28 }}>
+        <CmCard style={{ padding: 16 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('w1g.deleteSpaceHint')}</p>
+          {delErr && <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--danger)', fontWeight: 600 }}>{delErr}</p>}
+          <CmPill variant="danger" full disabled={deleting} onClick={() => void removeSpace()}>
+            <Trash2 size={17} strokeWidth={2.2} />{deleting ? t('w1g.saving') : confirmDel ? t('cm.confirmDeleteSpace') : t('w1g.deleteSpace')}
+          </CmPill>
+        </CmCard>
+      </CmField>
     </div>
   )
 }
@@ -151,43 +128,42 @@ function MembersTab({ spaceId }: { spaceId: string }) {
   const { t } = useI18n()
   const [members, setMembers] = useState<CommunityMemberInfo[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<{ id: string; action: 'kick' | 'ban' } | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const reload = () => { void listSpaceMembers(spaceId).then(setMembers) }
   useEffect(reload, [spaceId])
 
   async function act(userId: string, action: 'kick' | 'ban') {
-    if (typeof window !== 'undefined' && !window.confirm(action === 'ban' ? t('w1g.banMemberConfirm') : t('w1g.kickMemberConfirm'))) return
-    setBusy(userId); setErr(null)
+    if (!confirm || confirm.id !== userId || confirm.action !== action) { haptic('medium'); setConfirm({ id: userId, action }); return }
+    setBusy(userId); setErr(null); setConfirm(null)
     const r = await moderate(spaceId, action, { targetUserId: userId })
     setBusy(null)
-    if (r.ok) reload(); else setErr(r.error ?? t('w1g.actionFailed'))
+    if (r.ok) { haptic('success'); reload() } else setErr(r.error ?? t('w1g.actionFailed'))
   }
 
-  if (!members) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
+  if (!members) return <ListSkeleton />
+  if (members.length === 0) return <CmEmpty icon={<Users size={26} strokeWidth={2} />} title={t('w1g.mem.none')} />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      {err && <p style={{ margin: 0, fontFamily: FB, fontSize: 12.5, color: 'var(--danger)' }}>{err}</p>}
-      {members.map(m => (
-        <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
-          <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontFamily: FB, fontWeight: 600, fontSize: 13 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {m.avatar ? <img src={m.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : m.name.slice(0, 1).toUpperCase()}
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-            <span style={{ display: 'block', fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{m.role === 'owner' ? t('w1g.roleOwner') : m.role === 'admin' ? t('w1g.roleAdmin') : m.role === 'coach' ? t('w1g.roleCoach') : t('w1g.roleMember')}</span>
-          </span>
-          {m.role !== 'owner' && (
-            <>
-              <button onClick={() => void act(m.userId, 'kick')} disabled={busy === m.userId}
-                style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>{t('w1g.kick')}</button>
-              <button onClick={() => void act(m.userId, 'ban')} disabled={busy === m.userId}
-                style={miniBtn('var(--danger-soft)', 'var(--danger)')}>{t('w1g.ban')}</button>
-            </>
-          )}
-        </div>
-      ))}
+    <div style={{ marginTop: 12 }}>
+      {err && <p style={{ margin: '0 4px 10px', fontSize: 14, color: 'var(--danger)', fontWeight: 600 }}>{err}</p>}
+      <CmCard style={{ overflow: 'hidden' }}>
+        {members.map((m, i) => (
+          <div key={m.userId} className="cm-in" style={{ ...stagger(i, 0, 22), display: 'flex', alignItems: 'center', gap: 12, minHeight: 62, padding: '10px 14px 10px 16px', borderTop: i ? '1px solid var(--border)' : 'none', fontFamily: FB }}>
+            <CmAvatar name={m.name} url={m.avatar} seed={m.userId} size={38} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 15.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+              <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{m.role === 'owner' ? t('w1g.roleOwner') : m.role === 'admin' ? t('w1g.roleAdmin') : m.role === 'coach' ? t('w1g.roleCoach') : t('w1g.roleMember')}</span>
+            </span>
+            {m.role !== 'owner' && (
+              <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <MiniBtn tone="chip" disabled={busy === m.userId} onClick={() => void act(m.userId, 'kick')}>{confirm?.id === m.userId && confirm.action === 'kick' ? t('cm.confirmQ') : t('w1g.kick')}</MiniBtn>
+                <MiniBtn tone="danger" disabled={busy === m.userId} onClick={() => void act(m.userId, 'ban')}>{confirm?.id === m.userId && confirm.action === 'ban' ? t('cm.confirmQ') : t('w1g.ban')}</MiniBtn>
+              </span>
+            )}
+          </div>
+        ))}
+      </CmCard>
     </div>
   )
 }
@@ -203,25 +179,23 @@ function RequestsTab({ spaceId }: { spaceId: string }) {
   async function act(userId: string, action: 'approve_request' | 'reject_request') {
     setBusy(userId)
     await moderate(spaceId, action, { targetUserId: userId })
+    haptic(action === 'approve_request' ? 'success' : 'light')
     setBusy(null); reload()
   }
 
-  if (!reqs) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
-  if (reqs.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.noPendingRequests')}</p>
+  if (!reqs) return <ListSkeleton />
+  if (reqs.length === 0) return <CmEmpty icon={<Inbox size={26} strokeWidth={2} />} title={t('w1g.noPendingRequests')} />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      {reqs.map(r => (
-        <div key={r.userId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
-          <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-neutral)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, fontFamily: FB, fontWeight: 600, fontSize: 13 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {r.avatar ? <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : r.name.slice(0, 1).toUpperCase()}
-          </span>
-          <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-          <button onClick={() => void act(r.userId, 'approve_request')} disabled={busy === r.userId} style={miniBtn('var(--primary)', 'var(--on-primary)')}>{t('w1g.accept')}</button>
-          <button onClick={() => void act(r.userId, 'reject_request')} disabled={busy === r.userId} style={miniBtn('var(--surface-neutral)', 'var(--text-mid)')}>{t('w1g.reject')}</button>
+    <CmCard style={{ overflow: 'hidden', marginTop: 12 }}>
+      {reqs.map((r, i) => (
+        <div key={r.userId} className="cm-in" style={{ ...stagger(i, 0, 22), display: 'flex', alignItems: 'center', gap: 12, minHeight: 62, padding: '10px 14px 10px 16px', borderTop: i ? '1px solid var(--border)' : 'none', fontFamily: FB }}>
+          <CmAvatar name={r.name} url={r.avatar} seed={r.userId} size={38} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+          <MiniBtn tone="primary" disabled={busy === r.userId} onClick={() => void act(r.userId, 'approve_request')}>{t('w1g.accept')}</MiniBtn>
+          <MiniBtn tone="chip" disabled={busy === r.userId} onClick={() => void act(r.userId, 'reject_request')}>{t('w1g.reject')}</MiniBtn>
         </div>
       ))}
-    </div>
+    </CmCard>
   )
 }
 
@@ -229,55 +203,60 @@ function RequestsTab({ spaceId }: { spaceId: string }) {
 function ReportsTab({ spaceId }: { spaceId: string }) {
   const { t } = useI18n()
   const [reports, setReports] = useState<ReportInfo[] | null>(null)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const reload = () => { void listReports(spaceId).then(setReports) }
   useEffect(reload, [spaceId])
 
   async function resolve(id: string, status: 'resolved' | 'dismissed') {
+    haptic('light')
     await resolveReport(id, status); reload()
   }
-
   async function del(r: ReportInfo) {
     if (!r.messageId) return
-    if (typeof window !== 'undefined' && !window.confirm(t('w1g.deleteReportedConfirm'))) return
+    if (confirmDel !== r.id) { haptic('medium'); setConfirmDel(r.id); return }
+    setConfirmDel(null)
     await moderate(spaceId, 'delete_message', { messageId: r.messageId })
-    await resolveReport(r.id, 'resolved'); reload()
+    await resolveReport(r.id, 'resolved'); haptic('success'); reload()
   }
 
-  if (!reports) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.loading')}</p>
-  if (reports.length === 0) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('w1g.noPendingReports')}</p>
+  if (!reports) return <ListSkeleton />
+  if (reports.length === 0) return <CmEmpty icon={<Flag size={26} strokeWidth={2} />} title={t('w1g.noPendingReports')} />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      {reports.map(r => (
-        <div key={r.id} style={{ padding: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)' }}>
-          <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 13, color: 'var(--text)' }}>{r.reason}</p>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            {r.messageId && <button onClick={() => void del(r)} style={miniBtn('var(--danger-soft)', 'var(--danger)')}>{t('w1g.deleteMessage')}</button>}
-            <button onClick={() => void resolve(r.id, 'resolved')} style={miniBtn('var(--surface-neutral)', 'var(--text)')}>{t('w1g.resolved')}</button>
-            <button onClick={() => void resolve(r.id, 'dismissed')} style={miniBtn('transparent', 'var(--text-mid)')}>{t('w1g.dismiss')}</button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+      {reports.map((r, i) => (
+        <CmCard key={r.id} className="cm-in" style={{ ...stagger(i), padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--danger-soft)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Flag size={16} strokeWidth={2.2} /></span>
+            <p style={{ margin: 0, flex: 1, fontSize: 15, color: 'var(--text)', lineHeight: 1.45 }}>{r.reason}</p>
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+            {r.messageId && <MiniBtn tone="danger" onClick={() => void del(r)}>{confirmDel === r.id ? t('cm.confirmQ') : t('w1g.deleteMessage')}</MiniBtn>}
+            <MiniBtn tone="chip" onClick={() => void resolve(r.id, 'resolved')}>{t('w1g.resolved')}</MiniBtn>
+            <MiniBtn tone="ghost" onClick={() => void resolve(r.id, 'dismissed')}>{t('w1g.dismiss')}</MiniBtn>
+          </div>
+        </CmCard>
       ))}
     </div>
   )
 }
 
 // ── Bits ────────────────────────────────────────────────────────────────────
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function MiniBtn({ children, onClick, tone, disabled }: { children: React.ReactNode; onClick: () => void; tone: 'primary' | 'chip' | 'danger' | 'ghost'; disabled?: boolean }) {
+  const c = tone === 'primary' ? { background: 'var(--primary)', color: 'var(--on-primary)' }
+    : tone === 'danger' ? { background: 'var(--danger-soft)', color: 'var(--danger)' }
+      : tone === 'ghost' ? { background: 'transparent', color: 'var(--text-mid)' }
+        : { background: 'var(--surface-chip)', color: 'var(--text)' }
   return (
-    <div>
-      <label style={{ display: 'block', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{label}</label>
+    <button type="button" onClick={onClick} disabled={disabled} className="cm-btn cm-press"
+      style={{ height: 36, padding: '0 13px', borderRadius: 'var(--r-pill)', fontFamily: FB, fontSize: 13.5, fontWeight: 750, whiteSpace: 'nowrap', flexShrink: 0, opacity: disabled ? 0.5 : 1, ...c }}>
       {children}
-      {hint && <p style={{ margin: '5px 0 0', fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.45 }}>{hint}</p>}
-    </div>
+    </button>
   )
 }
-const input: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', height: 46, background: 'var(--input-bg)', border: '1px solid var(--border)',
-  borderRadius: 'var(--r-sm)', padding: '0 var(--space-3)', fontFamily: FB, fontSize: 15, color: 'var(--text)', outline: 'none',
-}
-function pill(active: boolean): React.CSSProperties {
-  return { flex: 1, height: 42, border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 600, background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', color: active ? 'var(--primary)' : 'var(--text-mid)' }
-}
-function miniBtn(bg: string, fg: string): React.CSSProperties {
-  return { height: 30, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600, background: bg, color: fg }
+function ListSkeleton() {
+  return (
+    <CmCard style={{ padding: '6px 16px', marginTop: 12 }}>
+      {[0, 1, 2, 3].map(i => <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 0' }}><CmSkel h={38} w={38} r="50%" /><CmSkel h={14} w="45%" /></div>)}
+    </CmCard>
+  )
 }

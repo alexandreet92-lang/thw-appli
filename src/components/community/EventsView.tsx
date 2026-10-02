@@ -1,28 +1,28 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Vue Événements / défis d'un espace : cartes à venir, RSVP (Je viens / Peut-être),
-// création (membres), suppression (créateur/modo). Append en direct (Realtime).
-// Sobre, tokens uniquement.
+// Événements / défis d'un espace : cartes (tuile date, type, horaire, lieu,
+// auteur) avec pastilles RSVP (Je viens / Peut-être), « À venir » puis
+// « Passés », création (membres), suppression (créateur/modo, double tap).
+// Append en direct (Realtime). Mobile : vue plein écran avec en-tête rond.
 // ══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { ChevronLeft, Plus, CalendarDays, MapPin, Trash2, Check, Repeat } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { listSpaceEvents, setRsvp, deleteEvent } from '@/lib/community/events'
 import { myId } from '@/lib/community/shared'
-import { CreateEventSheet } from './CreateEventSheet'
-import type { CommunityEvent, CommunityChannel } from '@/types/community'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { CreateEventSheet } from './CreateEventSheet'
+import { CmStyles, CmHeader, CmRound, CmCard, CmLabel, CmPill, CmSkel, CmEmpty, FB, PAGE_BG, CARD_BG, TNUM, stagger } from './kit'
+import type { CommunityEvent, CommunityChannel } from '@/types/community'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
-function fmtWhen(iso: string): string {
-  try {
-    const d = new Date(iso)
-    const day = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    return `${day} · ${time}`
-  } catch { return '' }
+function fmtTime(iso: string): string {
+  try { return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
-const isPast = (iso: string) => { try { return new Date(iso).getTime() < Date.now() } catch { return false } }
+function fmtWeekday(iso: string): string {
+  try { return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return '' }
+}
+const isPast = (ev: CommunityEvent) => { try { return new Date(ev.endsAt ?? ev.startsAt).getTime() < Date.now() } catch { return false } }
 
 export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack, channels = [], onChannelsChanged }: {
   spaceId: string; isMember: boolean; canManage: boolean; isNarrow: boolean; onBack: () => void
@@ -32,6 +32,7 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack, cha
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const instanceId = useId()
   const { t } = useI18n()
 
@@ -54,70 +55,115 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack, cha
 
   async function rsvp(ev: CommunityEvent, status: 'going' | 'maybe') {
     const next = ev.myRsvp === status ? null : status
-    if (await setRsvp(ev.id, next)) void load()
+    haptic(next ? 'success' : 'light')
+    // Optimiste : la pastille bascule tout de suite, le Realtime confirmera.
+    setEvents(prev => prev.map(e => {
+      if (e.id !== ev.id) return e
+      let going = e.goingCount, maybe = e.maybeCount
+      if (e.myRsvp === 'going') going--
+      if (e.myRsvp === 'maybe') maybe--
+      if (next === 'going') going++
+      if (next === 'maybe') maybe++
+      return { ...e, myRsvp: next, goingCount: Math.max(0, going), maybeCount: Math.max(0, maybe) }
+    }))
+    await setRsvp(ev.id, next)
+    void load()
   }
   async function remove(id: string) {
-    if (typeof window !== 'undefined' && !window.confirm(t('w3e.confirm_delete_event'))) return
+    if (confirmDel !== id) { haptic('medium'); setConfirmDel(id); return }
+    setConfirmDel(null)
     if (await deleteEvent(id)) void load()
   }
 
-  const header = (
-    <div style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5) var(--space-3)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-      {isNarrow && (
-        <button onClick={onBack} aria-label={t('w3e.back')} style={{ width: 30, height: 30, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-      )}
-      <span style={{ flex: 1, fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{t('w3e.events')}</span>
-      {isMember && (
-        <button onClick={() => setCreating(true)} style={{ height: 32, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{t('w3e.create_short')}</button>
-      )}
+  const { upcoming, past } = useMemo(() => {
+    const up: CommunityEvent[] = [], pa: CommunityEvent[] = []
+    for (const ev of events) (isPast(ev) ? pa : up).push(ev)
+    up.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    pa.sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime())
+    return { upcoming: up, past: pa }
+  }, [events])
+
+  const header = isNarrow ? (
+    <CmHeader
+      left={<CmRound onClick={onBack} label={t('w3e.back')}><ChevronLeft size={22} strokeWidth={2.2} /></CmRound>}
+      title={t('w3e.events')}
+      sub={isMember && !loading ? <span style={TNUM}>{upcoming.length}</span> : undefined}
+      right={isMember ? <CmRound onClick={() => setCreating(true)} label={t('w3e.create_event')}><Plus size={22} strokeWidth={2.3} /></CmRound> : undefined}
+    />
+  ) : (
+    <div style={{ flexShrink: 0, padding: '16px 18px 12px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border)' }}>
+      <CalendarDays size={20} strokeWidth={2.2} color="var(--text-mid)" />
+      <span style={{ flex: 1, fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{t('w3e.events')}</span>
+      {isMember && <CmPill variant="primary" height={40} onClick={() => setCreating(true)}><Plus size={17} strokeWidth={2.4} />{t('w3e.create_event')}</CmPill>}
     </div>
   )
 
+  const renderCard = (ev: CommunityEvent, i: number) => {
+    const past = isPast(ev)
+    const d = new Date(ev.startsAt)
+    const canDel = ev.createdBy === me || canManage
+    return (
+      <CmCard key={ev.id} className="cm-in" style={{ ...stagger(i), padding: 14, opacity: past ? 0.6 : 1 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <span style={{ width: 54, flexShrink: 0, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '7px 0 8px' }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.04em' }}>{d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}</span>
+            <span style={{ ...TNUM, fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>{d.getDate()}</span>
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>{t(`w3e.kindlabel_${ev.kind}`)}</span>
+              {ev.frequency !== 'once' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 650, color: 'var(--text-mid)' }}><Repeat size={12} strokeWidth={2.4} />{t(`w3e.freq_${ev.frequency}`)}</span>}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.25 }}>{ev.title}</div>
+            <div style={{ ...TNUM, marginTop: 3, fontSize: 13.5, color: 'var(--text-mid)', textTransform: 'capitalize' }}>{fmtWeekday(ev.startsAt)} · {fmtTime(ev.startsAt)}{ev.endsAt ? ` – ${fmtTime(ev.endsAt)}` : ''}</div>
+            <div style={{ marginTop: 2, fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+              {ev.location && <><MapPin size={12} strokeWidth={2.4} />{ev.location}<span aria-hidden>·</span></>}
+              {t('w3e.by_author', { name: ev.authorName })}
+            </div>
+          </div>
+          {canDel && (
+            <button type="button" onClick={() => void remove(ev.id)} aria-label={t('w3e.delete')} title={t('w3e.delete')} className="cm-btn cm-press"
+              style={{ height: 34, minWidth: 34, padding: confirmDel === ev.id ? '0 12px' : 0, borderRadius: 'var(--r-pill)', background: confirmDel === ev.id ? 'var(--danger-soft)' : 'transparent', color: confirmDel === ev.id ? 'var(--danger)' : 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 13, fontWeight: 750, flexShrink: 0, marginTop: -4, marginRight: -4 }}>
+              <Trash2 size={16} strokeWidth={2.1} />{confirmDel === ev.id && t('cm.confirmQ')}
+            </button>
+          )}
+        </div>
+        {ev.description && <p style={{ margin: '12px 0 0', fontSize: 14.5, color: 'var(--text-mid)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.description}</p>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <RsvpPill active={ev.myRsvp === 'going'} tone="primary" onClick={() => void rsvp(ev, 'going')} label={t('w3e.rsvp_going')} count={ev.goingCount} disabled={past} />
+          <RsvpPill active={ev.myRsvp === 'maybe'} tone="dark" onClick={() => void rsvp(ev, 'maybe')} label={t('w3e.rsvp_maybe')} count={ev.maybeCount} disabled={past} />
+        </div>
+      </CmCard>
+    )
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-card)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: isNarrow ? PAGE_BG : CARD_BG, fontFamily: FB }}>
+      <CmStyles />
       {header}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 'var(--space-3) var(--space-5) var(--space-5)' }}>
+      <div className="cm-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isNarrow ? '4px 16px calc(28px + env(safe-area-inset-bottom))' : '14px 18px 20px', background: isNarrow ? PAGE_BG : 'var(--surface-page)' }}>
         {!isMember ? (
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', padding: 'var(--space-8)' }}>{t('w3e.join_to_see_events')}</p>
+          <CmEmpty icon={<CalendarDays size={28} strokeWidth={1.8} />} title={t('w3e.join_to_see_events')} />
         ) : loading ? (
-          <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {[0, 1, 2].map(i => <span key={i} style={{ height: 96, borderRadius: 'var(--r-md)', background: 'var(--surface-neutral)' }} />)}
-          </div>
+          <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{[0, 1, 2].map(i => <CmSkel key={i} h={168} r="var(--r-lg)" />)}</div>
         ) : events.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 'var(--space-10) var(--space-4)' }}>
-            <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('w3e.no_events_yet')}</p>
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('w3e.events_empty_hint')}</p>
-          </div>
+          <CmEmpty icon={<CalendarDays size={28} strokeWidth={1.8} />} title={t('w3e.no_events_yet')} body={t('w3e.events_empty_hint')}
+            action={<CmPill variant="primary" onClick={() => setCreating(true)}><Plus size={17} strokeWidth={2.4} />{t('w3e.create_event')}</CmPill>} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {events.map(ev => {
-              const past = isPast(ev.startsAt)
-              return (
-                <div key={ev.id} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', opacity: past ? 0.6 : 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-                    <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>{t(`w3e.kindlabel_${ev.kind}`)}</span>
-                    <span className="tnum" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtWhen(ev.startsAt)}</span>
-                    {(ev.createdBy === me || canManage) && (
-                      <button onClick={() => void remove(ev.id)} aria-label={t('w3e.delete')} style={{ marginLeft: 'auto', width: 26, height: 26, border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-                      </button>
-                    )}
-                  </div>
-                  <p style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{ev.title}</p>
-                  <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
-                    {ev.location ? `${ev.location} · ` : ''}{t('w3e.by_author', { name: ev.authorName })}
-                  </p>
-                  {ev.description && <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.description}</p>}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-                    <RsvpBtn active={ev.myRsvp === 'going'} onClick={() => void rsvp(ev, 'going')} label={t('w3e.rsvp_going')} count={ev.goingCount} disabled={past} />
-                    <RsvpBtn active={ev.myRsvp === 'maybe'} onClick={() => void rsvp(ev, 'maybe')} label={t('w3e.rsvp_maybe')} count={ev.maybeCount} disabled={past} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <>
+            {upcoming.length > 0 && (
+              <>
+                <CmLabel style={{ marginTop: 6 }}>{t('cm.upcoming')}</CmLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{upcoming.map((ev, i) => renderCard(ev, i))}</div>
+              </>
+            )}
+            {past.length > 0 && (
+              <>
+                <CmLabel>{t('cm.past')}</CmLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{past.map((ev, i) => renderCard(ev, upcoming.length + i))}</div>
+              </>
+            )}
+          </>
         )}
       </div>
       {creating && (
@@ -132,11 +178,15 @@ export function EventsView({ spaceId, isMember, canManage, isNarrow, onBack, cha
   )
 }
 
-function RsvpBtn({ active, onClick, label, count, disabled }: { active: boolean; onClick: () => void; label: string; count: number; disabled?: boolean }) {
+function RsvpPill({ active, tone, onClick, label, count, disabled }: { active: boolean; tone: 'primary' | 'dark'; onClick: () => void; label: string; count: number; disabled?: boolean }) {
+  const on = tone === 'primary' ? { background: 'var(--primary)', color: 'var(--on-primary)' } : { background: 'var(--text)', color: 'var(--bg)' }
   return (
-    <button onClick={onClick} disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 var(--space-3)', border: 'none', borderRadius: 'var(--r-sm)', cursor: disabled ? 'default' : 'pointer', background: active ? 'var(--primary-dim)' : 'var(--surface-neutral)', outline: active ? '1px solid var(--primary)' : 'none', fontFamily: FB, fontSize: 12.5, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text-mid)' }}>
-      {label}{count > 0 && <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums', color: active ? 'var(--primary)' : 'var(--text-dim)' }}>{count}</span>}
+    <button type="button" onClick={onClick} disabled={disabled} aria-pressed={active} className="cm-btn cm-press"
+      style={{ flex: 1, height: 42, borderRadius: 'var(--r-pill)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FB, fontSize: 14.5, fontWeight: 750,
+        cursor: disabled ? 'default' : 'pointer', ...(active ? on : { background: 'var(--surface-chip)', color: 'var(--text)' }), transition: 'transform .18s cubic-bezier(.2,.8,.2,1)' }}>
+      {active && <Check key="c" className="cm-pop" size={16} strokeWidth={2.8} />}
+      {label}
+      {count > 0 && <span style={{ ...TNUM, opacity: 0.75 }}>· {count}</span>}
     </button>
   )
 }

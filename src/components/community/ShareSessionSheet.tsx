@@ -1,15 +1,15 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Feuille « Partager une séance » : liste mes séances de bibliothèque ; en choisir
-// une la poste dans le canal (carte cliquable → détail, copiable/planifiable).
+// Feuille « Partager une séance » : mes séances de bibliothèque ; en choisir
+// une la met en attente au-dessus du champ (carte → détail copiable/planifiable).
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
+import { Dumbbell, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { createPortal } from 'react-dom'
+import { haptic } from '@/lib/haptics'
 import { listMyLibrarySessions, type LibrarySession } from '@/lib/community/sessions'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
-
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
+import { CmSheet, CmSkel, CmEmpty, CARD_BG, SOFT_SHADOW, TNUM, FB, stagger } from './kit'
 
 function fmtDuration(min: number | null): string | null {
   if (!min || min <= 0) return null
@@ -29,45 +29,35 @@ export function ShareSessionSheet({ onClose, onShare }: {
   onClose: () => void; onShare: (s: LibrarySession) => void
 }) {
   const { t } = useI18n()
-  const [mounted, setMounted] = useState(false)
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
   const [items, setItems] = useState<LibrarySession[] | null>(null)
-
-  useEffect(() => { setMounted(true); const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
   useEffect(() => { void listMyLibrarySessions(40).then(setItems) }, [])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
-    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  if (!mounted) return null
 
-  const sheet = (
-    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg) 55%, transparent)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.26s ease' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '82vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 'var(--space-5) var(--space-5) var(--space-8)', boxShadow: 'var(--shadow)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1)' }}>
-        <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
-        <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>{t('w2g.shareSession')}</h2>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {items === null ? (
-            [0, 1, 2, 3].map(i => <span key={i} style={{ height: 52, borderRadius: 'var(--r-sm)', background: 'var(--surface-neutral)' }} />)
-          ) : items.length === 0 ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', padding: 'var(--space-6)' }}>{t('w2g.noSessions')}</p>
-          ) : items.map(s => (
-            <button key={s.id} onClick={() => onShare(s)}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-sm)', padding: 'var(--space-3)', background: 'var(--bg-card2)', fontFamily: FB }}>
-              <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: sportColor(s.sport), flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
-                <span className="tnum" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{fmtLine(s, t)}</span>
-              </span>
-            </button>
-          ))}
+  return (
+    <CmSheet full onClose={onClose} title={t('w2g.shareSession')} zIndex={15400}>
+      {items === null ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1, 2, 3].map(i => <CmSkel key={i} h={72} r="var(--r-lg)" />)}</div>
+      ) : items.length === 0 ? (
+        <CmEmpty icon={<Dumbbell size={26} strokeWidth={2} />} title={t('w2g.noSessions')} />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {items.map((s, i) => {
+            const col = sportColor(s.sport)
+            return (
+              <button key={s.id} type="button" onClick={() => { haptic('light'); onShare(s) }} className="cm-btn cm-press cm-in"
+                style={{ ...stagger(i), display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: 12, borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: SOFT_SHADOW, fontFamily: FB }}>
+                <span style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: col, background: `color-mix(in srgb, ${col} 14%, transparent)` }}>
+                  <Dumbbell size={20} strokeWidth={2.2} />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 16, fontWeight: 750, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
+                  <span style={{ ...TNUM, display: 'block', fontSize: 13.5, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtLine(s, t)}</span>
+                </span>
+                <ChevronRight size={18} strokeWidth={2} color="var(--text-dim)" />
+              </button>
+            )
+          })}
         </div>
-      </div>
-    </div>
+      )}
+    </CmSheet>
   )
-  return createPortal(sheet, document.body)
 }

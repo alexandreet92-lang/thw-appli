@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { createPortal } from 'react-dom'
+import { useIsMobile, roundBtnStyle } from './ActivityMobileKit'
 import { IconX, IconChevronLeft, IconChevronRight, IconShare2, IconDownload, IconTrophy, IconFlame, IconMountain, IconClock, IconBolt, IconMedal } from '@tabler/icons-react'
 import { SPORT_ICON, sportKeyFromType, type SportKey } from '@/components/icons/SportIcon'
 import { shareCard, type ShareStat } from '@/lib/share/shareCard'
@@ -621,6 +622,13 @@ export function RecapStory({ period, activities, refDate, onClose }: {
   const [idx, setIdx] = useState(0)
   const [drag, setDrag] = useState<{ x0: number; dx: number } | null>(null)
   const [paused, setPaused] = useState(false)
+  // Mobile (Strava) : chrome en boutons ronds blancs 44 px + pilule blanche ; l'illustration ne change pas.
+  const mob = useIsMobile()
+  const closeSt: React.CSSProperties = mob ? { ...roundBtnStyle, position: 'static' } : { ...closeBtn, position: 'static' }
+  const closeIcon = <IconX size={20} color={mob ? 'currentColor' : '#fff'} />
+  const shareSt: React.CSSProperties = mob
+    ? { display: 'inline-flex', alignItems: 'center', gap: 6, height: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', background: 'var(--float-bg)', color: 'var(--text)', border: 'none', boxShadow: 'var(--shadow-capsule)', cursor: 'pointer' }
+    : pillBtn
   const clamp = (i: number) => Math.max(0, Math.min(nPages - 1, i))
   const go = (i: number) => setIdx(clamp(i))
 
@@ -654,7 +662,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
   if (cur.count === 0) {
     return portal(
       <div style={overlay} role="dialog" aria-modal>
-        <button onClick={onClose} aria-label={t('lo.close')} style={closeBtn}><IconX size={20} color="#fff" /></button>
+        <button onClick={onClose} aria-label={t('lo.close')} style={mob ? { ...roundBtnStyle, position: 'absolute', top: 'calc(12px + env(safe-area-inset-top))', right: 16, zIndex: 6 } : closeBtn}>{closeIcon}</button>
         <div style={{ color: '#fff', textAlign: 'center', padding: 30, alignSelf: 'center' }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>{t(period === 'week' ? 'lo.noActivityWeek' : 'lo.noActivityMonth')}</div>
         </div>
@@ -703,10 +711,10 @@ export function RecapStory({ period, activities, refDate, onClose }: {
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-            <button onPointerDown={stop} onClick={shareCurrent} aria-label={t('lo.downloadSharePage')} style={pillBtn}>
-              <IconDownload size={17} color="#fff" /><span style={{ fontSize: 12.5, fontWeight: 700, color: '#fff' }}>{t('lo.share')}</span>
+            <button onPointerDown={stop} onClick={shareCurrent} aria-label={t('lo.downloadSharePage')} style={shareSt}>
+              <IconDownload size={17} color={mob ? 'currentColor' : '#fff'} /><span style={{ fontSize: mob ? 15 : 12.5, fontWeight: 700, color: mob ? 'var(--text)' : '#fff', fontFamily: 'var(--font-body)' }}>{t('lo.share')}</span>
             </button>
-            <button onPointerDown={stop} onClick={onClose} aria-label={t('lo.close')} style={{ ...closeBtn, position: 'static' }}><IconX size={20} color="#fff" /></button>
+            <button onPointerDown={stop} onClick={onClose} aria-label={t('lo.close')} style={closeSt}>{closeIcon}</button>
           </div>
         </div>
 
@@ -715,8 +723,9 @@ export function RecapStory({ period, activities, refDate, onClose }: {
         <button aria-label={t('lo.next')} onPointerDown={stop} onClick={() => go(idx + 1)} style={{ position: 'absolute', right: 0, top: 90, bottom: 70, width: '25%', background: 'transparent', border: 'none', cursor: 'pointer' }} />
 
         {/* Flèches desktop */}
-        {idx > 0 && <button onPointerDown={stop} onClick={() => go(idx - 1)} aria-label={t('lo.previous')} style={{ ...navArrow, left: 14 }}><IconChevronLeft size={22} color="#fff" /></button>}
-        {idx < nPages - 1 && <button onPointerDown={stop} onClick={() => go(idx + 1)} aria-label={t('lo.next')} style={{ ...navArrow, right: 14 }}><IconChevronRight size={22} color="#fff" /></button>}
+        {/* Mobile : navigation par zones de tap / balayage (pas de flèches). */}
+        {!mob && idx > 0 && <button onPointerDown={stop} onClick={() => go(idx - 1)} aria-label={t('lo.previous')} style={{ ...navArrow, left: 14 }}><IconChevronLeft size={22} color="#fff" /></button>}
+        {!mob && idx < nPages - 1 && <button onPointerDown={stop} onClick={() => go(idx + 1)} aria-label={t('lo.next')} style={{ ...navArrow, right: 14 }}><IconChevronRight size={22} color="#fff" /></button>}
       </div>
     </div>
   )

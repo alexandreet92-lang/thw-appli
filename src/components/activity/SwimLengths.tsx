@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useActivityExtras } from '@/lib/activity/extras'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_LABEL, AM_INPUT, NUMS, amChip } from './ActivityMobileKit'
 
 const PRESETS = [25, 33, 50]
 const SWIM = 'var(--sport-swim)'
@@ -33,6 +34,40 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
   }
 
   const lengths = isSet && distanceM && distanceM > 0 && pool > 0 ? Math.round(distanceM / pool) : null
+  const mob = useIsMobile()
+
+  // Mobile : carte blanche, gros chiffre, puces pilules + champ plein doux.
+  if (mob) {
+    return (
+      <div style={{ ...AM_CARD }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={AM_LABEL}>{t('activities.lengths')}</div>
+            <div style={{ ...NUMS, fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, marginTop: 4 }}>
+              {lengths != null ? lengths : '—'}
+              {lengths != null && <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 6 }}>{t('activities.lengthsUnit')}</span>}
+            </div>
+            <div style={{ ...NUMS, fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>
+              {isSet ? t('activities.poolLength', { n: pool }) : t('activities.poolNotSet')}{distanceM ? ` · ${(distanceM / 1000).toFixed(2)} km` : ''}
+            </div>
+          </div>
+          {!editing && (
+            <button onClick={() => setEditing(true)} style={{ ...amChip(false), color: 'var(--primary)' }}>{isSet ? t('activities.pool') : t('activities.fillIn')}</button>
+          )}
+        </div>
+        {editing && (
+          <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            {PRESETS.map(p => (
+              <button key={p} onClick={() => commit(p)} aria-pressed={pool === p} style={amChip(pool === p)}>{p} m</button>
+            ))}
+            <input type="number" inputMode="numeric" min={1} value={draft} onChange={e => setDraft(e.target.value)} placeholder="m"
+              style={{ ...AM_INPUT, width: 88, minHeight: 44, padding: '0 12px' }} />
+            <button onClick={() => commit(Number(draft))} style={{ ...amChip(false), background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700 }}>OK</button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>

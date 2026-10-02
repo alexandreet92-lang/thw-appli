@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import type { AIStatus } from '@/hooks/useAIAnalysis'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from './ActivityMobileKit'
 
 interface Props {
   text:    string
@@ -66,6 +67,18 @@ const markdownComponents: Components = {
   }} />,
 }
 
+// Mobile (Strava) : texte 15, titres en casse normale, tableaux sans fond d'en-tête.
+const markdownMobile: Components = {
+  ...markdownComponents,
+  h1: ({ children }) => <h1 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '14px 0 6px 0' }}>{children}</h1>,
+  h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '12px 0 5px 0' }}>{children}</h2>,
+  h3: ({ children }) => <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '10px 0 4px 0' }}>{children}</h3>,
+  p: ({ children }) => <p style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.55, margin: '0 0 8px 0' }}>{children}</p>,
+  li: ({ children }) => <li style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.55, marginBottom: 3 }}>{children}</li>,
+  th: ({ children }) => <th style={{ textAlign: 'left', padding: '8px 10px 8px 0', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{children}</th>,
+  td: ({ children }) => <td style={{ padding: '8px 10px 8px 0', fontSize: 14, color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>{children}</td>,
+}
+
 function ShurikenSpinner({ size = 24 }: { size?: number }) {
   return (
     <div style={{
@@ -81,12 +94,12 @@ function ShurikenSpinner({ size = 24 }: { size?: number }) {
   )
 }
 
-function ShurikenAvatar() {
+function ShurikenAvatar({ mob = false }: { mob?: boolean }) {
   return (
     <div style={{
       width: 34, height: 34, borderRadius: '50%',
       background: 'rgba(6,182,212,0.1)',
-      border: '1px solid rgba(6,182,212,0.2)',
+      border: mob ? 'none' : '1px solid rgba(6,182,212,0.2)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0, marginTop: 2,
     }}>
@@ -100,8 +113,20 @@ function ShurikenAvatar() {
 export function AIBubble({ text, status, onRetry }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
+  const mob = useIsMobile()
 
   if (status === 'idle') return null
+
+  // Mobile : la bulle vit DANS une carte blanche → bulle grise pleine largeur,
+  // sans bordure ni ombre ; libellés en casse normale ; boutons 44 px.
+  const bubble: React.CSSProperties = mob
+    ? { background: 'var(--surface-chip)', border: 'none', borderRadius: 'var(--r-lg)', boxShadow: 'none' }
+    : { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '4px 16px 16px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
+  const partLabel: React.CSSProperties = mob
+    ? { fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 8 }
+    : { fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }
+  const md = mob ? markdownMobile : markdownComponents
+  const actBtn: React.CSSProperties = mob ? { fontSize: 15, fontWeight: 600, minHeight: 44, padding: '0 6px', fontFamily: 'var(--font-body)' } : { fontSize: 12 }
 
   const sepIdx    = text.indexOf('---EN CLAIR---')
   const techPart  = sepIdx >= 0 ? text.slice(0, sepIdx).trim() : text.trim()
@@ -118,18 +143,15 @@ export function AIBubble({ text, status, onRetry }: Props) {
   /* ── Loading state ── */
   if (isLoading) {
     return (
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: mob ? 4 : 16, marginBottom: mob ? 12 : 0 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12,
           padding: '16px 20px',
-          background: 'var(--bg)',
-          border: '1px solid var(--border)',
-          borderRadius: '4px 16px 16px 16px',
-          maxWidth: '90%',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          ...bubble,
+          maxWidth: mob ? '100%' : '90%',
         }}>
           <ShurikenSpinner size={22} />
-          <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          <span style={{ fontSize: mob ? 15 : 13, color: 'var(--text-dim)' }}>
             {t('activities.analysisInProgress')}
           </span>
         </div>
@@ -140,21 +162,18 @@ export function AIBubble({ text, status, onRetry }: Props) {
   /* ── Error state ── */
   if (status === 'error') {
     return (
-      <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '90%' }}>
-        <ShurikenAvatar />
+      <div style={{ marginTop: mob ? 4 : 16, marginBottom: mob ? 12 : 0, display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: mob ? '100%' : '90%' }}>
+        <ShurikenAvatar mob={mob} />
         <div style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border)',
-          borderRadius: '4px 16px 16px 16px',
+          ...bubble,
           padding: '14px 18px',
-          fontSize: 13,
-          color: '#EF4444',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          fontSize: mob ? 15 : 13,
+          color: mob ? 'var(--danger)' : '#EF4444',
         }}>
           {t('activities.errorOccurred')}{' '}
           <button
             onClick={onRetry}
-            style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+            style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: mob ? 'none' : 'underline', padding: 0, fontSize: mob ? 15 : undefined, fontWeight: mob ? 600 : undefined, minHeight: mob ? 44 : undefined }}
           >
             {t('activities.retry')}
           </button>
@@ -165,62 +184,49 @@ export function AIBubble({ text, status, onRetry }: Props) {
 
   /* ── Streaming / Done state ── */
   return (
-    <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '90%' }}>
-      <ShurikenAvatar />
+    <div style={{ marginTop: mob ? 4 : 16, marginBottom: mob ? 12 : 0, display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: mob ? '100%' : '90%' }}>
+      {!mob && <ShurikenAvatar />}
 
       {/* Bulle */}
       <div style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--border)',
-        borderRadius: '4px 16px 16px 16px',
-        padding: '20px 24px',
+        ...bubble,
+        padding: mob ? '14px 16px' : '20px 24px',
         flex: 1,
         minWidth: 0,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
       }}>
 
         {/* Analyse technique */}
         {techPart && (
           <div>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
-              textTransform: 'uppercase', color: 'var(--text-dim)',
-              marginBottom: 12, paddingBottom: 8,
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div style={partLabel}>
               {t('activities.technicalAnalysis')}
             </div>
-            <ReactMarkdown components={markdownComponents}>{techPart}</ReactMarkdown>
+            <ReactMarkdown components={md}>{techPart}</ReactMarkdown>
           </div>
         )}
 
         {/* Séparateur + En clair */}
         {plainPart && (
           <>
-            <div style={{ margin: '20px 0', borderTop: '1px solid var(--border)' }} />
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
-              textTransform: 'uppercase', color: 'var(--text-dim)',
-              marginBottom: 12, paddingBottom: 8,
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div style={{ margin: mob ? '14px 0' : '20px 0', borderTop: '1px solid var(--border)' }} />
+            <div style={partLabel}>
               {t('activities.inPlainWords')}
             </div>
-            <ReactMarkdown components={markdownComponents}>{plainPart}</ReactMarkdown>
+            <ReactMarkdown components={md}>{plainPart}</ReactMarkdown>
           </>
         )}
 
         {/* Boutons */}
         {(status === 'done' || status === 'streaming') && text && (
           <div style={{
-            marginTop: 16, paddingTop: 12,
+            marginTop: mob ? 8 : 16, paddingTop: mob ? 2 : 12,
             borderTop: '1px solid var(--border)',
             display: 'flex', justifyContent: 'flex-end', gap: 12,
           }}>
             <button
               onClick={handleCopy}
               style={{
-                fontSize: 12, color: 'var(--text-dim)',
+                ...actBtn, color: 'var(--text-dim)',
                 background: 'none', border: 'none', cursor: 'pointer',
               }}
             >
@@ -230,7 +236,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
               <button
                 onClick={onRetry}
                 style={{
-                  fontSize: 12, color: 'var(--primary)',
+                  ...actBtn, color: 'var(--primary)',
                   background: 'none', border: 'none', cursor: 'pointer',
                 }}
               >

@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale, useI18n } from '@/lib/i18n'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { AM_CARD, AM_LABEL, amChip, NUMS } from './ActivityMobileKit'
 
 const BLUE = '#3B82F6'
 
@@ -83,7 +84,7 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   const { t } = useI18n()
   const [sport, setSport] = useState<SportKey>('all')
   const [selIdx, setSelIdx] = useState(11)          // dernière semaine par défaut
-  const narrow = useNarrow()                        // mobile → graphe plus grand/net
+  const narrow = useNarrow(767)                     // mobile (≤ 767 px) → graphe plus grand/net
   const svgRef = useRef<SVGSVGElement>(null)
   const [wsRows, setWsRows] = useState<WsRow[]>([])
 
@@ -262,14 +263,15 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
   const fmtVal = (v: number) => chartUnit === 'h' ? v.toFixed(v >= 10 ? 0 : 1).replace('.', ',') : String(Math.round(v))
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '16px 18px 12px', marginBottom: 16, boxShadow: 'var(--shadow-card)' }}>
+    // Mobile (Strava) : carte blanche sans bordure, puces pilules, libellés gris en casse normale.
+    <div style={narrow ? { ...AM_CARD, padding: '16px 16px 12px', marginBottom: 12 } : { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '16px 18px 12px', marginBottom: 16, boxShadow: 'var(--shadow-card)' }}>
       {/* Chips de sport */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 10 }}>
+      <div style={{ display: 'flex', gap: narrow ? 8 : 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 10, scrollbarWidth: narrow ? 'none' : undefined, margin: narrow ? '0 -16px' : undefined, padding: narrow ? '0 16px 10px' : undefined }}>
         {SPORT_DEFS.map(s => {
           const on = sport === s.key
           return (
-            <button key={s.key} onClick={() => { setSport(s.key); setSelIdx(11) }}
-              style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--r-pill)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
+            <button key={s.key} onClick={() => { setSport(s.key); setSelIdx(11) }} aria-pressed={on}
+              style={narrow ? { ...amChip(on), flexShrink: 0 } : { flexShrink: 0, padding: '6px 14px', borderRadius: 'var(--r-pill)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
                 border: on ? `1.5px solid ${BLUE}` : '1px solid var(--border)',
                 background: on ? 'rgba(59,130,246,0.08)' : 'var(--bg-card)',
                 color: on ? BLUE : 'var(--text-mid)' }}>
@@ -280,14 +282,14 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
       </div>
 
       {/* Semaine sélectionnée + stats */}
-      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '6px 0 10px', fontFamily: 'var(--font-display)' }}>
+      <div style={{ fontSize: narrow ? 17 : 16, fontWeight: narrow ? 700 : 800, color: 'var(--text)', margin: '6px 0 10px', fontFamily: narrow ? 'var(--font-body)' : 'var(--font-display)' }}>
         {t('w2f.week_of', { label: sel.label })}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px 14px', marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(3, minmax(0, 1fr))' : 'repeat(auto-fill, minmax(110px, 1fr))', gap: narrow ? '14px 12px' : '10px 14px', marginBottom: 14 }}>
         {stats.map(st => (
-          <div key={st.label}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{st.label}</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', marginTop: 2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{st.value}</div>
+          <div key={st.label} style={{ minWidth: 0 }}>
+            <div style={narrow ? { ...AM_LABEL, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : { fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{st.label}</div>
+            <div style={{ ...(narrow ? NUMS : {}), fontSize: narrow ? 18 : 17, fontWeight: narrow ? 700 : 800, color: 'var(--text)', marginTop: 2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{st.value}</div>
           </div>
         ))}
       </div>
@@ -320,7 +322,7 @@ export function TwelveWeekVolume({ activities }: { activities: ActLike[] }) {
         <text x={Math.max(PL + 18, Math.min(PL + cW - 18, X(selIdx)))} y={Math.max(PT + 10, Y(chartVals[selIdx]) - 12)} textAnchor="middle" fontSize={fsVal} fontWeight={800} fill="var(--text)" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtVal(chartVals[selIdx])} {chartUnit}</text>
         {/* Mois */}
         {monthTicks.map(t2 => (
-          <text key={t2.i} x={X(t2.i)} y={PT + cH + 16} textAnchor="middle" fontSize={fsMonth} fill="var(--text-dim)" style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t2.m}</text>
+          <text key={t2.i} x={X(t2.i)} y={PT + cH + 16} textAnchor="middle" fontSize={fsMonth} fill="var(--text-dim)" style={narrow ? undefined : { textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t2.m}</text>
         ))}
       </svg>
     </div>

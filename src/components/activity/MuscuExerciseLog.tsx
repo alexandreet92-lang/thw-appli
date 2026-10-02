@@ -14,6 +14,7 @@ import { useActivityExtras, type Exo, type StrengthLog } from '@/lib/activity/ex
 import { ExercisePicker } from '@/components/planning/mobile/ExercisePicker'
 import type { ExoDefinition } from '@/components/planning/exercises'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_INPUT, AM_LABEL, AmSheet, HAIRLINE, amChip, roundBtnStyle, Ico, ICON } from './ActivityMobileKit'
 
 const GYM = 'var(--sport-gym)'
 const EMPTY: StrengthLog = { circuits: '1', exos: [] }
@@ -48,6 +49,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   const [draft, setDraft] = useState<StrengthLog>(EMPTY)
   const [editorShown, setEditorShown] = useState(false)
   const [pickShown, setPickShown] = useState(false)
+  const mob = useIsMobile()
 
   useEffect(() => {
     if (open) { const r = requestAnimationFrame(() => setEditorShown(true)); return () => cancelAnimationFrame(r) }
@@ -74,6 +76,79 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   }
   function patchExo(id: string, k: keyof Exo, v: string) {
     setDraft(d => ({ ...d, exos: d.exos.map(e => e.id === id ? { ...e, [k]: v } : e) }))
+  }
+
+  // ── Mobile (Strava) : carte blanche, feuille du bas (au-dessus de la sur-page
+  // « Modifier »), champs pleins doux, sélecteur plein écran à bouton rond. ──
+  if (mob) {
+    const mIn: React.CSSProperties = { ...AM_INPUT, minHeight: 44, padding: '0 12px', fontSize: 15 }
+    return (
+      <div style={{ ...AM_CARD }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: nbExos ? 8 : 0 }}>
+          <div style={{ display: 'flex', gap: 24 }}>
+            <div>
+              <div style={AM_LABEL}>{t('activities.exercises')}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>{nbExos || '—'}</div>
+            </div>
+            <div>
+              <div style={AM_LABEL}>{t('activities.circuits')}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>{nbExos ? nbCircuits : '—'}</div>
+            </div>
+          </div>
+          <button onClick={openEditor} style={{ ...amChip(false), color: 'var(--primary)' }}>{nbExos ? t('activities.edit') : t('activities.enter')}</button>
+        </div>
+        {log.exos.filter(e => e.name.trim()).map(e => (
+          <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, minHeight: 48, borderTop: HAIRLINE, fontSize: 15 }}>
+            <span style={{ color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>
+            <span style={{ color: 'var(--text-mid)', fontSize: 13, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              {[e.sets && e.reps ? `${e.sets}×${e.reps}` : (e.sets || e.reps), e.load, e.rest && `${t('activities.restLabel')} ${e.rest}`].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        ))}
+
+        <AmSheet open={open} onClose={closeEditor} full title={t('activities.exercisesDone')}
+          leftLabel={t('activities.cancel')} rightLabel={t('activities.save')} onRight={commit}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 4px' }}>
+            <span style={{ fontSize: 15, color: 'var(--text-mid)' }}>{t('activities.circuitCount')}</span>
+            <input type="number" inputMode="numeric" min={1} value={draft.circuits} onChange={e => setDraft(d => ({ ...d, circuits: e.target.value }))} style={{ ...mIn, width: 88, textAlign: 'center' }} />
+          </div>
+          {draft.exos.map((e, i) => (
+            <div key={e.id} style={{ paddingTop: 12, borderTop: HAIRLINE, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={e.name} onChange={ev => patchExo(e.id, 'name', ev.target.value)} placeholder={t('activities.exerciseN', { n: i + 1 })} style={{ ...mIn, flex: 1, fontWeight: 600 }} />
+                <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label={t('activities.delete')}
+                  style={{ width: 44, height: 44, flexShrink: 0, border: 'none', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ico d={ICON.trash} size={18} />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <input value={e.sets} onChange={ev => patchExo(e.id, 'sets', ev.target.value)} placeholder={t('activities.sets')} style={mIn} />
+                <input value={e.reps} onChange={ev => patchExo(e.id, 'reps', ev.target.value)} placeholder={t('activities.reps')} style={mIn} />
+                <input value={e.load} onChange={ev => patchExo(e.id, 'load', ev.target.value)} placeholder={t('activities.load')} style={mIn} />
+                <input value={e.rest} onChange={ev => patchExo(e.id, 'rest', ev.target.value)} placeholder={t('activities.rest')} style={mIn} />
+              </div>
+            </div>
+          ))}
+          <button onClick={() => setPicking(true)} style={{ ...amChip(false), width: '100%', color: 'var(--primary)', minHeight: 48 }}>{t('activities.addExerciseLibrary')}</button>
+        </AmSheet>
+
+        {picking && typeof document !== 'undefined' && createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 18700, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', ...seVars, transform: pickShown ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px' }}>
+              <button onClick={closePicker} aria-label={t('activities.cancel')} style={roundBtnStyle}><Ico d={ICON.close} size={20} sw={2.2} /></button>
+              <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{t('activities.addExercise')}</span>
+              <span aria-hidden style={{ width: 44 }} />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 24px' }}>
+              <ExercisePicker accent={GYM}
+                onPick={def => { setDraft(d => ({ ...d, exos: [...d.exos, exoFromDef(def)] })); setPicking(false) }}
+                onCustom={name => { if (name) { setDraft(d => ({ ...d, exos: [...d.exos, { ...newExo(), name }] })); setPicking(false) } }} />
+            </div>
+          </div>,
+          document.body,
+        )}
+      </div>
+    )
   }
 
   return (

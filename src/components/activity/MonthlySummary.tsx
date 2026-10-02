@@ -9,6 +9,7 @@ import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import { shareCard } from '@/lib/share/shareCard'
 import { RecapStory, type RecapAct } from './RecapStory'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_TITLE, AmKpis, amChip, roundBtnStyle, Chevron } from './ActivityMobileKit'
 
 const LOCALE: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }
 
@@ -17,6 +18,7 @@ function fmtH(s: number): string { const h = Math.floor(s / 3600), m = Math.floo
 export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
   const { t, lang } = useI18n()
   const [storyOpen, setStoryOpen] = useState(false)
+  const mob = useIsMobile()
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${now.getMonth()}`
   const [dismissed, setDismissed] = useState(() => {
@@ -45,6 +47,26 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
   // La grosse carte ne s'affiche que les 3 premiers jours du mois ; ensuite,
   // un bouton compact reste disponible pour rouvrir le récap du mois écoulé.
   const showBig = now.getDate() <= 3 && !dismissed
+
+  if (!showBig && mob) {
+    // Mobile : rangée de carte blanche (rond ▶ · titre · résumé · ›).
+    return (
+      <>
+        {storyOpen && <RecapStory period="month" activities={activities} onClose={() => setStoryOpen(false)} />}
+        <button onClick={() => setStoryOpen(true)} style={{ ...AM_CARD, display: 'flex', alignItems: 'center', gap: 12, width: '100%', marginBottom: 12, cursor: 'pointer', textAlign: 'left', minHeight: 64 }}>
+          <span aria-hidden style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="13" height="14" viewBox="0 0 15 16" aria-hidden><path d="M2 1.5v13l11-6.5z" fill="var(--primary)" /></svg>
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{t('activities.msTitle')}</span>
+            <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{data.label}</span>
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{data.count} · {fmtH(data.time)}</span>
+          <Chevron />
+        </button>
+      </>
+    )
+  }
 
   if (!showBig) {
     return (
@@ -81,6 +103,36 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
       ],
       filename: 'hybrid-mois.png',
     })
+  }
+
+  if (mob) {
+    return (
+      <section style={{ ...AM_CARD, position: 'relative', marginBottom: 12 }}>
+        {storyOpen && <RecapStory period="month" activities={activities} onClose={() => setStoryOpen(false)} />}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-mid)' }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: accent }} />{t('activities.msTitle')}
+            </div>
+            <h2 style={{ ...AM_TITLE, fontSize: 20, fontWeight: 800, marginTop: 4, textTransform: 'capitalize' }}>{data.label}</h2>
+          </div>
+          <button onClick={dismiss} aria-label={t('activities.msHide')} style={{ width: 44, height: 44, margin: '-10px -10px 0 0', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
+        </div>
+        <AmKpis cols={2} items={[
+          { label: t('activities.msSessions'), value: String(data.count) },
+          { label: t('activities.msTime'), value: fmtH(data.time) },
+          data.dist > 0 ? { label: t('activities.msDistance'), value: `${Math.round(data.dist / 1000)} km` } : { label: t('activities.msSmTotal'), value: String(Math.round(data.sm)) },
+          data.best ? { label: t('activities.msTopSession'), value: t('activities.msTopVal', { n: Math.round(data.best.tss ?? 0) }) } : { label: t('activities.msSmTotal'), value: String(Math.round(data.sm)), key: 'sm2' },
+        ]} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <button onClick={onShare} style={amChip(false)}><IconShare2 size={17} /> {t('activities.msShare')}</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={() => setStoryOpen(true)} aria-label={t('activities.msOpen')} style={roundBtnStyle}>
+            <svg width="15" height="16" viewBox="0 0 15 16" aria-hidden><path d="M2 1.5v13l11-6.5z" fill="var(--primary)" /></svg>
+          </button>
+        </div>
+      </section>
+    )
   }
 
   const stat = (label: string, value: string) => (

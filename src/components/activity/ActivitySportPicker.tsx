@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { SportIcon } from '@/components/icons/SportIcon'
+import { useIsMobile, amChip } from './ActivityMobileKit'
 
 const OPTIONS: { type: string; label: string }[] = [
   { type: 'run', label: 'Course' },
@@ -34,6 +35,7 @@ export function ActivitySportPicker({ activityId, sport, onChanged }: { activity
   const { t } = useI18n()
   const [cur, setCur] = useState(sport)
   const [saving, setSaving] = useState(false)
+  const mob = useIsMobile()
 
   async function pick(type: string) {
     if (type === cur || saving) return
@@ -52,7 +54,7 @@ export function ActivitySportPicker({ activityId, sport, onChanged }: { activity
       {OPTIONS.map(o => {
         const on = o.type === cur
         return (
-          <button key={o.type} onClick={() => pick(o.type)} disabled={saving} style={{
+          <button key={o.type} onClick={() => pick(o.type)} disabled={saving} aria-pressed={on} style={mob ? { ...amChip(on), cursor: saving ? 'wait' : 'pointer' } : {
             display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 'var(--r-pill)', cursor: saving ? 'wait' : 'pointer',
             border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-dim)' : 'var(--bg-card)',
             color: on ? 'var(--primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)',

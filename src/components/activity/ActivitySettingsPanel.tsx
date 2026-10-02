@@ -19,6 +19,8 @@ import {
   type GearItem, type GearKind,
 } from '@/lib/gear/client'
 
+import { useIsMobile, AM_CARD, AM_INPUT, HAIRLINE, SegTrack, amChip, AmSectionLabel, PillButton, Ico, NUMS } from './ActivityMobileKit'
+
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 const VIS_OPTS: { k: ActivityVisibility; label: string }[] = [
@@ -63,6 +65,7 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
   const [draftName, setDraftName] = useState('')
   const [draftBrand, setDraftBrand] = useState('')
   const [busy, setBusy] = useState(false)
+  const mob = useIsMobile()
 
   // Charge la confidentialité effective (override activité → défaut global).
   useEffect(() => {
@@ -123,6 +126,73 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
       await loadGear()
       chooseGear(created.id)
     }
+  }
+
+  // ── Mobile (Strava) : libellés gris au-dessus, cartes blanches, piste
+  // segmentée, puces pilules, liste groupée à coche, champs pleins doux. ──
+  if (mob) {
+    return (
+      <div>
+        <AmSectionLabel>{t('w3f.visible_by')}</AmSectionLabel>
+        <SegTrack<ActivityVisibility> value={vis ?? 'public'} onChange={chooseVis}
+          options={VIS_OPTS.map(o => ({ v: o.k, l: t(`w3f.vis_${o.k}`) }))} />
+
+        <AmSectionLabel>{t('w3f.hide_some_data')}</AmSectionLabel>
+        <div style={{ ...AM_CARD }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {cats.map(c => {
+              const on = hidden.includes(c)
+              return (
+                <button key={c} onClick={() => toggleHidden(c)} aria-pressed={on} style={amChip(on)}>
+                  {on ? '🔒 ' : ''}{t(`w3f.hidden_${c}`)}
+                </button>
+              )
+            })}
+          </div>
+          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45, margin: '12px 2px 0' }}>{t('w3f.hidden_hint')}</p>
+        </div>
+
+        {kind && (
+          <>
+            <AmSectionLabel>{kind === 'bike' ? t('w3f.gear_bike_title') : t('w3f.gear_shoes_title')}</AmSectionLabel>
+            <div style={{ ...AM_CARD, padding: '0 16px' }}>
+              {gear.map((g, i) => {
+                const on = selGear === g.id
+                return (
+                  <button key={g.id} onClick={() => chooseGear(g.id)} aria-pressed={on}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 60, padding: '10px 0', textAlign: 'left', border: 'none', borderTop: i === 0 ? 'none' : HAIRLINE, background: 'transparent', cursor: 'pointer', fontFamily: FB }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{g.brand ? `${g.brand} ` : ''}{g.name}</span>
+                      <span style={{ ...NUMS, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>{g.stats.total_hours} h · {g.stats.total_elev_m} m D+ · {g.stats.total_km} km</span>
+                    </span>
+                    <span aria-hidden style={{ width: 24, display: 'flex', justifyContent: 'flex-end', color: 'var(--primary)' }}>
+                      {on && <Ico d={<path d="M20 6 9 17l-5-5" />} size={22} sw={2.6} />}
+                    </span>
+                  </button>
+                )
+              })}
+              {adding ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 0 16px', borderTop: gear.length ? HAIRLINE : 'none' }}>
+                  <input value={draftBrand} onChange={e => setDraftBrand(e.target.value)} placeholder={kind === 'bike' ? t('w3f.brand_ph_bike') : t('w3f.brand_ph_shoes')} style={AM_INPUT} />
+                  <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={kind === 'bike' ? t('w3f.model_ph_bike') : t('w3f.model_ph_shoes')}
+                    onKeyDown={e => { if (e.key === 'Enter') void submitGear() }} style={AM_INPUT} />
+                  <PillButton onClick={() => void submitGear()} disabled={busy || !(draftName.trim() || draftBrand.trim())}>{busy ? '…' : t('w3f.add')}</PillButton>
+                  <button onClick={() => { setAdding(false); setDraftName(''); setDraftBrand('') }}
+                    style={{ minHeight: 44, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+                    {t('w3f.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setAdding(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: 0, border: 'none', borderTop: gear.length ? HAIRLINE : 'none', background: 'transparent', color: 'var(--primary)', fontFamily: FB, fontSize: 16, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                  {kind === 'bike' ? t('w3f.add_gear_bike') : t('w3f.add_gear_shoes')}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (

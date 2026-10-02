@@ -11,6 +11,7 @@
 import { useLinkedWorkoutSession, type LinkedWorkout } from '@/lib/activity/workoutFusion'
 import { MuscuExerciseLog } from './MuscuExerciseLog'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD } from './ActivityMobileKit'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 
 const GYM = 'var(--sport-gym)'
@@ -29,11 +30,11 @@ function fmtSecShort(s: number): string {
   return r ? `${m}:${String(r).padStart(2, '0')}` : `${m}min`
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, mob = false }: { label: string; value: string | number; mob?: boolean }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, marginTop: 4 }}>{value}</div>
+      <div style={mob ? { fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' } : { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{label}</div>
+      <div style={{ fontSize: mob ? 22 : 24, fontWeight: mob ? 800 : 700, color: 'var(--text)', lineHeight: 1.1, marginTop: mob ? 3 : 4, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
     </div>
   )
 }
@@ -41,7 +42,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 /** Détail d'un exercice : « 4×6 · 20 kg · récup 60s ». Si des séries RÉELLES
  *  existent (completed_sets), on affiche ce qui a été fait — par ex. « 2 · 3 · 2 »
  *  quand les reps varient d'un tour à l'autre — plutôt que le plan initial. */
-function ExoRow({ e, restLabel, done }: { e: WorkoutExercise; restLabel: string; done?: CompletedSet[] }) {
+function ExoRow({ e, restLabel, done, mob = false }: { e: WorkoutExercise; restLabel: string; done?: CompletedSet[]; mob?: boolean }) {
   const hasTime = (e.durationSec ?? 0) > 0
   let main = ''
   let weight: string | null = null
@@ -71,9 +72,9 @@ function ExoRow({ e, restLabel, done }: { e: WorkoutExercise; restLabel: string;
   }
   const detail = [main || null, weight, rest].filter(Boolean).join(' · ')
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '7px 0', fontSize: 13 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: mob ? '12px 0' : '7px 0', fontSize: mob ? 15 : 13 }}>
       <span style={{ color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>
-      {detail && <span style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>{detail}</span>}
+      {detail && <span style={{ color: mob ? 'var(--text-mid)' : 'var(--text-muted)', fontSize: mob ? 13 : 12, whiteSpace: 'nowrap', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{detail}</span>}
     </div>
   )
 }
@@ -89,6 +90,7 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
       : (e.supersetPartner ? [e, e.supersetPartner] : [e])
   const nbExos = groups.reduce((n, e) => n + flat(e).length, 0)
   const restLabel = t('activities.restLabel')
+  const mob = useIsMobile()
   const vol = s.total_volume_kg != null ? Math.round(Number(s.total_volume_kg)) : null
   // Séries réellement faites, indexées par exercice (triées par n° de tour).
   const doneByExo = new Map<string, CompletedSet[]>()
@@ -99,18 +101,18 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
   doneByExo.forEach(arr => arr.sort((a, b) => a.setIndex - b.setIndex))
 
   return (
-    <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+    <div style={mob ? { ...AM_CARD, margin: '0 0 12px' } : { background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 16, margin: '12px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: mob ? 'wrap' : undefined }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{t('activities.recordedSession')}</span>
-        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('activities.mergedWithHr')}</span>
+        <span style={{ fontSize: mob ? 16 : 12, fontWeight: 700, color: 'var(--text)' }}>{t('activities.recordedSession')}</span>
+        <span style={{ fontSize: mob ? 13 : 11, color: mob ? 'var(--text-mid)' : 'var(--text-dim)' }}>{t('activities.mergedWithHr')}</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: nbExos ? 14 : 0 }}>
-        <Stat label={t('activities.exercises')} value={nbExos || '—'} />
-        <Stat label={t('activities.sets')} value={s.sets_completed ?? '—'} />
-        <Stat label={t('activities.volume')} value={vol != null ? `${vol} kg` : '—'} />
-        <Stat label={t('activities.duration')} value={fmtDur(s.duration_seconds)} />
+      <div style={mob ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, marginBottom: nbExos ? 14 : 0 } : { display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: nbExos ? 14 : 0 }}>
+        <Stat mob={mob} label={t('activities.exercises')} value={nbExos || '—'} />
+        <Stat mob={mob} label={t('activities.sets')} value={s.sets_completed ?? '—'} />
+        <Stat mob={mob} label={t('activities.volume')} value={vol != null ? `${vol} kg` : '—'} />
+        <Stat mob={mob} label={t('activities.duration')} value={fmtDur(s.duration_seconds)} />
       </div>
 
       {nbExos > 0 && (
@@ -127,11 +129,11 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
               return (
                 <div key={g.id ?? i} style={{ borderTop: '1px solid var(--border)', padding: '10px 0 4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 2 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: GYM }}>{g.name}</span>
-                    {meta && <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
+                    <span style={mob ? { fontSize: 15, fontWeight: 700, color: 'var(--text)' } : { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: GYM }}>{g.name}</span>
+                    {meta && <span style={{ fontSize: mob ? 13 : 11, color: mob ? 'var(--text-mid)' : 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
                   </div>
-                  <div style={{ paddingLeft: 10, borderLeft: '2px solid var(--border)' }}>
-                    {nested.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} />)}
+                  <div style={{ paddingLeft: 10, borderLeft: mob ? `3px solid ${GYM}` : '2px solid var(--border)' }}>
+                    {nested.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} mob={mob} />)}
                   </div>
                 </div>
               )
@@ -140,7 +142,7 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
             const rows = g.supersetPartner ? [g, g.supersetPartner] : [g]
             return (
               <div key={g.id ?? i} style={{ borderTop: '1px solid var(--border)' }}>
-                {rows.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} />)}
+                {rows.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} mob={mob} />)}
               </div>
             )
           })}
@@ -148,7 +150,7 @@ export function SessionCard({ s }: { s: LinkedWorkout }) {
       )}
 
       {(s.rpe != null || s.comment) && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: mob ? 14 : 12, color: mob ? 'var(--text-mid)' : 'var(--text-muted)' }}>
           {s.rpe != null ? `RPE ${s.rpe}/10` : ''}{s.rpe != null && s.comment ? ' · ' : ''}{s.comment ?? ''}
         </div>
       )}

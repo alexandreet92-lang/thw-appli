@@ -5,6 +5,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_INPUT } from './ActivityMobileKit'
 
 interface Props {
   activityId: string
@@ -20,6 +21,8 @@ export function ActivityTitle({ activityId, initialName, variant = 'default' }: 
   const inputRef = useRef<HTMLInputElement>(null)
   // Hero = grand titre éditorial (façon Strava) ; default = titre compact (desktop, header fixe).
   const hero = variant === 'hero'
+  // Mobile (variante compacte) : champ plein doux façon Strava, ≥ 48 px.
+  const field = useIsMobile() && !hero
   const fontSize = hero ? 27 : 14
   const fontWeight = hero ? 800 : 700
 
@@ -54,7 +57,7 @@ export function ActivityTitle({ activityId, initialName, variant = 'default' }: 
           if (e.key === 'Enter')  { e.preventDefault(); save()   }
           if (e.key === 'Escape') { e.preventDefault(); cancel() }
         }}
-        style={{
+        style={field ? { ...AM_INPUT, fontWeight: 600, opacity: saving ? 0.6 : 1 } : {
           width: '100%',
           background: 'transparent',
           border: 'none',
@@ -76,7 +79,7 @@ export function ActivityTitle({ activityId, initialName, variant = 'default' }: 
   return (
     <span
       onClick={() => setEditing(true)}
-      style={{
+      style={field ? { ...AM_INPUT, display: 'flex', alignItems: 'center', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text', userSelect: 'none' } : {
         display: 'block',
         fontSize,
         fontWeight,

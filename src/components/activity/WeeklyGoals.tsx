@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_TITLE, AM_LABEL, AmSheet, PillButton, HAIRLINE, Chevron, amChip } from './ActivityMobileKit'
 
 // Résolution i18n des libellés de métrique / sport (les libellés FR ci-dessous
 // restent pour typage/fallback ; l'affichage passe par ces clés).
@@ -59,7 +60,7 @@ const prefersReduced = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // ── Jauge de progression (barre animée 0 → valeur) ────────────────
-function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal: number; color: string }) {
+function Gauge({ metric, cur, goal, color, mob = false }: { metric: Metric; cur: number; goal: number; color: string; mob?: boolean }) {
   const { t } = useI18n()
   const pct = goal > 0 ? Math.min(100, (cur / goal) * 100) : 0
   const done = goal > 0 && cur >= goal
@@ -72,12 +73,12 @@ function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal
   }, [pct])
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ width: 58, flexShrink: 0, fontSize: 11.5, color: 'var(--text-mid)' }}>{t(METRIC_LABEL_KEY[metric])}</span>
-      <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+      <span style={{ width: mob ? 70 : 58, flexShrink: 0, fontSize: mob ? 13 : 11.5, color: 'var(--text-mid)' }}>{t(METRIC_LABEL_KEY[metric])}</span>
+      <div style={{ flex: 1, height: mob ? 8 : 6, borderRadius: 'var(--r-pill)', background: mob ? 'var(--surface-chip)' : 'var(--bg-card2)', overflow: 'hidden' }}>
         <div style={{ width: `${w}%`, height: '100%', background: color, borderRadius: 3, transition: prefersReduced() ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
       </div>
-      <span style={{ width: 72, flexShrink: 0, textAlign: 'right', fontSize: 11.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: done ? color : 'var(--text)', fontWeight: 700 }}>{fmtNum(cur)}</span>
+      <span style={{ width: mob ? 84 : 72, flexShrink: 0, textAlign: 'right', fontSize: mob ? 14 : 11.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: done && !mob ? color : 'var(--text)', fontWeight: 700 }}>{fmtNum(cur)}</span>
         <span style={{ color: 'var(--text-dim)' }}> / {fmtNum(goal)}{m.unit ? ` ${m.unit}` : ''}</span>
       </span>
     </div>
@@ -85,14 +86,17 @@ function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal
 }
 
 // ── Champ de saisie (unité intégrée à droite) ─────────────────────
-function Field({ metric, value, onChange }: { metric: Metric; value: number | undefined; onChange: (v: number | undefined) => void }) {
+function Field({ metric, value, onChange, mob = false }: { metric: Metric; value: number | undefined; onChange: (v: number | undefined) => void; mob?: boolean }) {
   const { t } = useI18n()
   const m = METRIC_META[metric]
   const [focus, setFocus] = useState(false)
   return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 12, color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>{t(METRIC_FIELD_KEY[metric])}</label>
-      <div style={{
+    <div style={{ marginBottom: mob ? 0 : 14 }}>
+      <label style={mob ? { ...AM_LABEL, display: 'block', margin: '0 4px 6px' } : { fontSize: 12, color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>{t(METRIC_FIELD_KEY[metric])}</label>
+      <div style={mob ? {
+        display: 'flex', alignItems: 'center', background: 'var(--surface-chip)', border: 'none', borderRadius: 'var(--r-md)', minHeight: 48,
+        boxShadow: focus ? '0 0 0 2px var(--primary)' : 'none', transition: 'box-shadow 0.15s',
+      } : {
         display: 'flex', alignItems: 'center', background: 'var(--input-bg)',
         border: `1px solid ${focus ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--r-sm)',
         boxShadow: focus ? '0 0 0 3px var(--primary-dim)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -103,10 +107,10 @@ function Field({ metric, value, onChange }: { metric: Metric; value: number | un
           onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
           onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
           style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
-            padding: '11px 12px', fontSize: 15, color: 'var(--text)', fontFamily: 'inherit',
+            padding: mob ? '12px 14px' : '11px 12px', fontSize: mob ? 16 : 15, color: 'var(--text)', fontFamily: 'inherit',
             fontVariantNumeric: 'tabular-nums' }}
         />
-        {m.unit && <span style={{ padding: '0 14px 0 4px', fontSize: 13, color: 'var(--text-dim)' }}>{m.unit}</span>}
+        {m.unit && <span style={{ padding: '0 14px 0 4px', fontSize: mob ? 15 : 13, color: mob ? 'var(--text-mid)' : 'var(--text-dim)' }}>{m.unit}</span>}
       </div>
     </div>
   )
@@ -119,6 +123,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
   const [editKey, setEditKey] = useState<string | null>(null) // sport en cours d'édition (sheet ouvert)
   const [picking, setPicking] = useState(false)               // picker « ajouter un sport »
   const [draft, setDraft] = useState<SportGoal>({})
+  const mob = useIsMobile()
 
   useEffect(() => {
     let alive = true
@@ -195,6 +200,78 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
   const configured = GOAL_SPORTS.filter(s => hasAny(perSport[s.key]))
   const editCfg: SportCfg | undefined = GOAL_SPORTS.find(s => s.key === editKey)
   const pickable = GOAL_SPORTS.filter(s => !hasAny(perSport[s.key]))
+
+  // ── Mobile (Strava) : carte blanche, liste groupée à filets, feuilles du bas. ──
+  if (mob) {
+    return (
+      <section style={{ ...AM_CARD, marginBottom: 12, paddingBottom: configured.length || pickable.length ? 8 : 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+          <h2 style={{ ...AM_TITLE, flex: 1, minWidth: 0 }}>{t('activities.weeklyGoals')}</h2>
+          {streak > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: 'var(--text)', background: 'var(--surface-chip)', padding: '6px 10px', borderRadius: 'var(--r-pill)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ display: 'flex', color: 'var(--sport-gym)' }}><IconFlame size={15} /></span> {t('activities.weeksStreak', { n: streak })}
+            </span>
+          )}
+        </div>
+        {configured.map((sp, i) => {
+          const goal = perSport[sp.key]!
+          const cur = wk(sp.match)
+          const mets = sp.metrics.filter(m => (goal[m] ?? 0) > 0)
+          return (
+            <button key={sp.key} onClick={() => openSport(sp.key)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : HAIRLINE, padding: '14px 0', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', flex: 1 }}>{sportLabel(sp.key)}</span>
+                <Chevron />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {mets.map(m => <Gauge key={m} metric={m} cur={cur[m]} goal={goal[m]!} color={sp.color} mob />)}
+              </div>
+            </button>
+          )
+        })}
+        {pickable.length > 0 && (
+          <button onClick={() => setPicking(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: 0, border: 'none', borderTop: configured.length ? HAIRLINE : 'none', background: 'transparent', color: 'var(--primary)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+            <IconPlus size={18} /> {configured.length ? t('activities.addSport') : t('activities.defineMyGoals')}
+          </button>
+        )}
+
+        <AmSheet open={picking} onClose={() => setPicking(false)} title={t('activities.addGoal')} leftLabel={t('activities.cancel')}>
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 4px', lineHeight: 1.45 }}>{t('activities.pickSportHint')}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {pickable.map(sp => (
+              <button key={sp.key} onClick={() => openSport(sp.key)} style={amChip(false)}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                {sportLabel(sp.key)}
+              </button>
+            ))}
+          </div>
+        </AmSheet>
+
+        <AmSheet open={!!editCfg} onClose={() => setEditKey(null)} leftLabel={t('activities.cancel')}
+          title={editCfg ? t('activities.goalsFor', { sport: sportLabel(editCfg.key) }) : ''}
+          rightLabel={t('activities.save')} onRight={saveDraft}>
+          {editCfg && (
+            <>
+              <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 4px', lineHeight: 1.45 }}>{t('activities.emptyFieldHint')}</p>
+              {editCfg.metrics.map(m => (
+                <Field key={m} metric={m} value={draft[m]} onChange={v => setDraft(d => ({ ...d, [m]: v }))} mob />
+              ))}
+              <PillButton onClick={saveDraft} style={{ marginTop: 4 }}>{t('activities.save')}</PillButton>
+              {hasAny(perSport[editCfg.key]) && (
+                <button onClick={() => removeSport(editCfg.key)}
+                  style={{ width: '100%', minHeight: 48, border: 'none', background: 'transparent', color: 'var(--danger)', fontWeight: 600, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit' }}>
+                  <IconTrash size={17} /> {t('activities.removeGoal')}
+                </button>
+              )}
+            </>
+          )}
+        </AmSheet>
+      </section>
+    )
+  }
 
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 16 }}>

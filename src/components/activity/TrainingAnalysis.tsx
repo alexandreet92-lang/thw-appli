@@ -19,6 +19,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { formatPace } from '@/lib/utils/pace'
 import { computeVapKmh, distanceFromVelocity } from '@/lib/utils/vap'
 import { useI18n } from '@/lib/i18n'
+import { AM_CARD, AM_TITLE, HAIRLINE, NUMS } from './ActivityMobileKit'
 
 // ── Types (miroir de page.tsx, gardés locaux pour l'autonomie) ──────────
 interface StreamData {
@@ -408,14 +409,17 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
         <style>{`
           @keyframes thwTaRise { from { opacity: 0; transform: translateY(6px) scaleY(0.92); } to { opacity: 1; transform: none; } }
         `}</style>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+        {/* Strava : graphique + commandes dans une carte blanche, tableau dans une autre. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
           {kpiNode}
           {feelingNode}
-          <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} sport={sport} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
-            onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} mobile />
-          <AnalysisControls mode={mode} metric={metric} sport={sport} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} />
+          <section style={{ ...AM_CARD, padding: '16px 12px 14px' }}>
+            <AnalysisGraph data={data} splits={splits} mode={mode} metric={metric} sport={sport} accent={accent} ramp={ramp} totalDurationS={totalDurationS}
+              onTap={onTapProp} hovered={hovered} setHovered={setHovered} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} mobile />
+            <AnalysisControls mode={mode} metric={metric} sport={sport} hasLaps={hasLaps} onMode={setMode} onMetric={setMetric} t={t} mobile />
+          </section>
           {mapNode}
-          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} />
+          <AnalysisTable splits={splits} mode={mode} sport={sport} hovered={hovered} setHovered={setHovered} onTap={onTapProp} onHoverRatio={onHoverRatio} onHoverSegment={onHoverSegment} ratioOf={ratioOf} segOf={segOf} t={t} mobile />
         </div>
       </div>
     )
@@ -450,12 +454,21 @@ export function TrainingAnalysis({ streams, laps: lapsProp, activityId, totalDur
 }
 
 // ── 5 boutons ───────────────────────────────────────────────────────────
-function AnalysisControls({ mode, metric, sport, hasLaps, onMode, onMetric, t }: {
+function AnalysisControls({ mode, metric, sport, hasLaps, onMode, onMetric, t, mobile = false }: {
   mode: Mode; metric: Metric; sport: Sport; hasLaps: boolean
   onMode: (m: Mode) => void; onMetric: (m: Metric) => void
   t: (k: string) => string
+  mobile?: boolean
 }) {
-  const seg = (active: boolean): React.CSSProperties => ({
+  // Mobile : pistes segmentées grises, pastille blanche, cibles 44 px.
+  const seg = (active: boolean): React.CSSProperties => mobile ? ({
+    flex: '1 0 auto', minHeight: 40, padding: '0 12px', fontSize: 14, fontWeight: active ? 700 : 600, cursor: 'pointer',
+    borderRadius: 'var(--r-pill)', border: 'none',
+    background: active ? 'var(--surface-card)' : 'transparent',
+    color: active ? 'var(--text)' : 'var(--text-mid)',
+    boxShadow: active ? '0 1px 3px rgba(0,0,0,0.10)' : 'none', // design-allow-color — ombre du segment actif
+    fontFamily: 'var(--font-body)', transition: 'background .15s ease, color .15s ease', whiteSpace: 'nowrap',
+  }) : ({
     padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
     borderRadius: 'var(--r-sm)', border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
     background: active ? 'var(--text)' : 'transparent',
@@ -469,6 +482,20 @@ function AnalysisControls({ mode, metric, sport, hasLaps, onMode, onMetric, t }:
   ]
   const m1 = sport === 'bike' ? t('actp.watts') : t('actp.pace')
   const m2 = sport === 'bike' ? t('actp.norm_watts') : 'VAP'
+  if (mobile) {
+    const track: React.CSSProperties = { display: 'flex', gap: 2, padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflowX: 'auto', scrollbarWidth: 'none' }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+        <div style={track}>
+          {modes.map(m => <button key={m.k} onClick={() => onMode(m.k)} aria-pressed={mode === m.k} style={seg(mode === m.k)}>{m.label}</button>)}
+        </div>
+        <div style={track}>
+          <button onClick={() => onMetric('pace')} aria-pressed={metric === 'pace'} style={seg(metric === 'pace')}>{m1}</button>
+          <button onClick={() => onMetric('vap')} aria-pressed={metric === 'vap'} style={seg(metric === 'vap')}>{m2}</button>
+        </div>
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
       <div style={{ display: 'flex', gap: 6 }}>
@@ -706,13 +733,14 @@ function SmoothTooltip({ s, metric, sport, totalDurationS, t }: { s: SmoothSampl
 // ══════════════════════════════════════════════════════════════════
 // TABLEAU statique
 // ══════════════════════════════════════════════════════════════════
-function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHoverRatio, onHoverSegment, ratioOf, segOf, t }: {
+function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHoverRatio, onHoverSegment, ratioOf, segOf, t, mobile = false }: {
   splits: Split[]; mode: Mode; sport: Sport
   hovered: number | null; setHovered: (i: number | null) => void
   onTap?: (sp: Split) => void
   onHoverRatio?: (r: number | null) => void; onHoverSegment?: (s: { start: number; end: number } | null) => void
   ratioOf: (i: number) => number; segOf: (i: number) => { start: number; end: number } | null
   t: (k: string) => string
+  mobile?: boolean
 }) {
   const isLaps = mode === 'laps'
   const isBike = sport === 'bike'
@@ -721,6 +749,49 @@ function AnalysisTable({ splits, mode, sport, hovered, setHovered, onTap, onHove
   const cols = isBike
     ? [firstCol, t('actp.watts'), t('actp.norm_watts'), 'D+', t('actp.hr_short'), t('actp.temp_short')]
     : [firstCol, t('actp.pace'), 'VAP', 'D+', t('actp.hr_short'), t('actp.temp_short')]
+  // Mobile : carte blanche, en-têtes gris en casse normale, rangées 44 px à filet.
+  if (mobile) {
+    const td: React.CSSProperties = { ...NUMS, padding: '0 0 0 8px', height: 46, textAlign: 'right', fontSize: 15, color: 'var(--text)', whiteSpace: 'nowrap' }
+    return (
+      <section style={{ ...AM_CARD, padding: '16px 16px 6px' }}>
+        <h2 style={{ ...AM_TITLE, marginBottom: 8 }}>{t('actp.precise_data')}</h2>
+        <div style={{ overflowX: 'auto', margin: '0 -4px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {cols.map((c, ci) => (
+                  <th key={c} style={{ padding: ci === 0 ? '6px 0 6px 4px' : '6px 0 6px 8px', textAlign: ci === 0 ? 'left' : 'right', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {splits.map((sp, i) => (
+                <tr key={i}
+                  onClick={() => { setHovered(i); onHoverRatio?.(ratioOf(i)); onHoverSegment?.(segOf(i)); onTap?.(sp) }}
+                  style={{ borderTop: HAIRLINE, background: hovered === i ? 'var(--surface-chip)' : 'transparent', cursor: onTap ? 'pointer' : 'default' }}>
+                  <td style={{ ...td, paddingLeft: 4, textAlign: 'left', fontWeight: 700, color: 'var(--text-mid)' }}>{sp.label}</td>
+                  {isBike ? (
+                    <>
+                      <td style={{ ...td, fontWeight: 600 }}>{Math.round(sp.watts)} W</td>
+                      <td style={td}>{Math.round(sp.normWatts)} W</td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ ...td, fontWeight: 600 }}>{paceStr(sp.speedMs)}</td>
+                      <td style={td}>{paceStr(sp.vapMs)}</td>
+                    </>
+                  )}
+                  <td style={td}>{Math.round(sp.dPlus)} m</td>
+                  <td style={td}>{sp.avgHr != null ? `${Math.round(sp.avgHr)}` : '—'}</td>
+                  <td style={{ ...td, paddingRight: 4 }}>{sp.avgTemp != null ? `${Math.round(sp.avgTemp)}°` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
   return (
     <div style={{ marginBottom: 22 }}>
       <SectionTitle text={t('actp.precise_data')} />
@@ -834,8 +905,8 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
   }
 
   return (
-    <div style={{ marginBottom: 10 }}>
-      <SectionTitle text={t('actp.training_analysis')} />
+    <div style={{ marginBottom: mobile ? 0 : 10 }}>
+      {mobile ? <h2 style={{ ...AM_TITLE, margin: '0 4px 10px' }}>{t('actp.training_analysis')}</h2> : <SectionTitle text={t('actp.training_analysis')} />}
       <div
         ref={wrapRef}
         onMouseMove={mobile ? undefined : e => onMove(e.clientX)}
@@ -923,7 +994,7 @@ function AnalysisGraph({ data, splits, mode, metric, sport, accent, ramp, totalD
         })()}
       </div>
       {mode !== 'smooth' && onTap && (
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{t('actp.tap_gauge_hint')}</div>
+        <div style={{ fontSize: mobile ? 13 : 11, color: mobile ? 'var(--text-mid)' : 'var(--text-dim)', marginTop: 4, padding: mobile ? '0 4px' : undefined }}>{t('actp.tap_gauge_hint')}</div>
       )}
     </div>
   )

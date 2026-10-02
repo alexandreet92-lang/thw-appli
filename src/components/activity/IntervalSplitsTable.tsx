@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { AIBubble } from './AIBubble'
+import { useIsMobile, AM_CARD, AM_TITLE, AmSoftButton } from './ActivityMobileKit'
 import type { AIStatus } from '@/hooks/useAIAnalysis'
 
 interface SplitStreams {
@@ -219,6 +220,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
     ? [{ label: '30 min', s: 1800 }, { label: '1 h', s: 3600 }]
     : [{ label: '15 min', s: 900 }, { label: '30 min', s: 1800 }]
   const [intervalS, setIntervalS] = useState(options[0].s)
+  const mob = useIsMobile()
 
   const rows = useMemo(() => computeSplits(streams, intervalS, sport), [streams, intervalS, sport])
 
@@ -259,10 +261,15 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
   }
 
   // ── Styles ──────────────────────────────────────────────────
-  const th: React.CSSProperties = { padding: '7px 10px', fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1.5px solid var(--border-mid)', fontFamily: 'var(--font-display)' }
-  const td: React.CSSProperties = { padding: '8px 10px', fontSize: 12, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
-  const sub: React.CSSProperties = { fontSize: 9.5, color: 'var(--text-dim)', marginLeft: 4 }
-  const sticky: React.CSSProperties = { position: 'sticky', left: 0, background: 'var(--bg-card)', textAlign: 'left', zIndex: 1 }
+  // Mobile (Strava) : en-têtes gris en casse normale, rangées à filet, carte blanche.
+  const th: React.CSSProperties = mob
+    ? { padding: '8px 10px', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-body)' }
+    : { padding: '7px 10px', fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1.5px solid var(--border-mid)', fontFamily: 'var(--font-display)' }
+  const td: React.CSSProperties = mob
+    ? { padding: '0 10px', height: 46, fontSize: 14, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
+    : { padding: '8px 10px', fontSize: 12, color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
+  const sub: React.CSSProperties = { fontSize: mob ? 12 : 9.5, color: 'var(--text-dim)', marginLeft: 4 }
+  const sticky: React.CSSProperties = { position: 'sticky', left: 0, background: mob ? 'var(--surface-card)' : 'var(--bg-card)', textAlign: 'left', zIndex: 1 }
 
   const dualCell = (avg: number | null, max: number | null, unit: string, dec = 0) => (
     avg == null ? <span style={{ color: 'var(--text-dim)' }}>—</span> : (
@@ -274,16 +281,20 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
   )
 
   return (
-    <div style={{ marginBottom: 32, paddingTop: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', fontFamily: 'var(--font-display)', flex: 1 }}>
+    <div style={mob ? { ...AM_CARD } : { marginBottom: 32, paddingTop: 24 }}>
+      <div style={mob ? { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 } : { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
+        <div style={mob ? { ...AM_TITLE, flex: 1, minWidth: 0 } : { fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', fontFamily: 'var(--font-display)', flex: 1 }}>
           {t('w3f.intervals_comparison')}
         </div>
         {/* Toggle 30 min / 1 h (vélo) · 15 / 30 min (course) */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)', padding: 2 }}>
+        <div style={mob ? { display: 'flex', gap: 2, background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: 2, flexShrink: 0 } : { display: 'flex', gap: 2, background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)', padding: 2 }}>
           {options.map(o => (
             <button key={o.s} onClick={() => setIntervalS(o.s)}
-              style={{ padding: '4px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)',
+              style={mob
+                ? { minHeight: 40, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: intervalS === o.s ? 700 : 600, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
+                    background: intervalS === o.s ? 'var(--surface-card)' : 'transparent', color: intervalS === o.s ? 'var(--text)' : 'var(--text-mid)',
+                    boxShadow: intervalS === o.s ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' } // design-allow-color — ombre du segment actif
+                : { padding: '4px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)',
                 background: intervalS === o.s ? 'var(--bg-card)' : 'transparent', color: intervalS === o.s ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: intervalS === o.s ? '0 1px 4px rgba(0,0,0,0.10)' : 'none' }}>
               {o.label}
@@ -292,8 +303,8 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: sport === 'bike' ? 860 : 700, background: 'var(--bg-card)' }}>
+      <div style={mob ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', margin: '0 -16px', padding: '0 6px' } : { overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: sport === 'bike' ? 860 : 700, background: mob ? 'transparent' : 'var(--bg-card)' }}>
           <thead>
             <tr>
               <th style={{ ...th, ...sticky }}>{t('w3f.col_interval')}</th>
@@ -374,7 +385,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
 
       {/* Contexte externe — ce que l'IA (et l'œil) doit garder en tête */}
       {ctxParts.length > 0 && (
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>
+        <div style={{ fontSize: mob ? 13 : 11, color: mob ? 'var(--text-mid)' : 'var(--text-dim)', marginTop: mob ? 10 : 8, fontFamily: 'var(--font-body)' }}>
           {t('w3f.context_label')}{ctxParts.join(' · ')}
         </div>
       )}
@@ -382,6 +393,12 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
       {/* Analyse IA — masquée si aucune poignée IA (consultation lecture seule) */}
       {ai && (
       <div style={{ marginTop: 12 }}>
+        {mob ? (
+          <AmSoftButton onClick={() => { if (ai.status === 'idle' || ai.status === 'done' || ai.status === 'error') ai.run(buildPrompt()) }} style={{ width: '100%' }}>
+            <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg></span>
+            {ai.status === 'loading' || ai.status === 'streaming' ? t('w3f.analyzing') : t('w3f.analyze_ai')}
+          </AmSoftButton>
+        ) : (
         <button
           onClick={() => (ai.status === 'idle' || ai.status === 'done' || ai.status === 'error') ? ai.run(buildPrompt()) : undefined}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', borderRadius: 'var(--r-lg)',
@@ -390,6 +407,7 @@ export function IntervalSplitsTable({ streams, sport, activityLabel, historyEF, 
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
           {ai.status === 'loading' || ai.status === 'streaming' ? t('w3f.analyzing') : t('w3f.analyze_ai')}
         </button>
+        )}
         {ai.status !== 'idle' && (
           <div style={{ marginTop: 10 }}>
             <AIBubble text={ai.text} status={ai.status} onRetry={() => { ai.reset(); ai.run(buildPrompt()) }} />

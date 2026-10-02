@@ -3,6 +3,7 @@
 // Course = tag is_race sur l'activité. Quand « Course » est choisi, l'appelant
 // masque les badges de type d'entraînement (une course n'est pas un entraînement).
 import { IconBarbell, IconFlag } from '@tabler/icons-react'
+import { useIsMobile, SegTrack } from './ActivityMobileKit'
 
 export function TrainingRaceSelector({ value, onChange }: { value: boolean; onChange: (isRace: boolean) => void }) {
   // value=false → Entraînement · value=true → Course
@@ -10,6 +11,17 @@ export function TrainingRaceSelector({ value, onChange }: { value: boolean; onCh
     { race: false, label: 'Entraînement', Icon: IconBarbell, color: 'var(--primary)' },
     { race: true,  label: 'Course',       Icon: IconFlag,    color: '#ef4444' },
   ]
+  const mob = useIsMobile()
+  // Mobile : piste segmentée grise + pastille blanche (aucune surface colorée).
+  if (mob) {
+    return (
+      <SegTrack<'train' | 'race'>
+        value={value ? 'race' : 'train'}
+        onChange={v => { const r = v === 'race'; if (value !== r) onChange(r) }}
+        options={opts.map(o => ({ v: o.race ? 'race' as const : 'train' as const, l: <><o.Icon size={17} /> {o.label}</> }))}
+      />
+    )
+  }
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4,

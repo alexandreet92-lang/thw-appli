@@ -71,12 +71,16 @@ const PowerDistribution = nextDynamic(() => import('@/components/activity/PowerD
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
 import { AIBubble } from '@/components/activity/AIBubble'
+import { useIsMobile, AmCard, AmRows, AmRow, AmKpis, AmSheet, AmDangerRow, AmSoftButton, AmPanelHeader, AM_CARD, AM_TITLE, NUMS, FB, PAGE_BG, SOFT_SHADOW, HAIRLINE, PillButton, SegTrack, RoundBtn, Ico, ICON, roundBtnStyle, amChip } from '@/components/activity/ActivityMobileKit'
 import { useAIAnalysis } from '@/hooks/useAIAnalysis'
 import { currentLocale } from '@/lib/i18n'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
 // ─────────────────────────────────────────────────────────────
+/** Ombre de la pastille active d'une piste segmentée (mobile). */
+const SEG_THUMB_SHADOW = '0 1px 3px rgba(0,0,0,0.10)' // design-allow-color — ombre du segment actif
+
 const T = {
   bg:          'var(--bg)',
   bgAlt:       'var(--bg-card2)',
@@ -555,6 +559,9 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
+  // Mobile (Strava) : titre de carte Inter 17 700 en casse normale.
+  const mob = useIsMobile()
+  if (mob) return <div style={{ ...AM_TITLE, marginBottom: 12 }}>{children}</div>
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 14,
       textTransform: 'uppercase', letterSpacing: 0.9, fontFamily: T.fontDisplay }}>
@@ -587,24 +594,25 @@ function TooltipInfo({ text }: { text: string }) {
 
 function ZoneBars({ zones, timesS }: { zones: ParsedZone[]; timesS: number[] }) {
   const { t } = useI18n()
+  const mob = useIsMobile()
   const total = timesS.reduce((a, b) => a + b, 0)
-  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_zone_data')}</div>
+  if (!total) return <div style={{ fontSize: mob ? 15 : 12, color: T.textMuted }}>{t('actp.no_zone_data')}</div>
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: mob ? 10 : 6 }}>
       {zones.map((z, i) => {
         const sec = timesS[i] ?? 0
         const pct = total > 0 ? (sec / total) * 100 : 0
         return (
-          <div key={z.label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 52px 40px', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, display: 'inline-block', flexShrink: 0 }} />
+          <div key={z.label} style={{ display: 'grid', gridTemplateColumns: mob ? '84px 1fr 60px 40px' : '72px 1fr 52px 40px', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: mob ? 13 : 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: mob ? '50%' : 2, background: z.color, display: 'inline-block', flexShrink: 0 }} />
               {t(z.label)}
             </div>
-            <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: mob ? 8 : 7, background: mob ? 'var(--surface-chip)' : T.border, borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: z.color, borderRadius: 4, transition: 'width 0.4s' }} />
             </div>
-            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500 }}>{fmtDur(sec)}</div>
-            <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'right' }}>{pct.toFixed(0)}%</div>
+            <div style={{ fontSize: mob ? 13 : 11, color: T.text, textAlign: 'right', fontWeight: mob ? 600 : 500, fontVariantNumeric: 'tabular-nums' }}>{fmtDur(sec)}</div>
+            <div style={{ fontSize: mob ? 13 : 10, color: T.textMuted, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(0)}%</div>
           </div>
         )
       })}
@@ -1162,8 +1170,15 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   const edgeTx = (pct: number) => pct < 3 ? 'translateX(0)' : pct > 97 ? 'translateX(-100%)' : 'translateX(-50%)'
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      {/* Header card : titre + compteur records battus */}
+    <div style={{ marginBottom: isMobileMmp ? 0 : 20 }}>
+      {/* Mobile : le titre est porté par la carte parente → seul le compteur reste. */}
+      {isMobileMmp ? (
+        (prLoading || trophies.length > 0) && (
+          <p style={{ margin: '-6px 0 6px', fontSize: 13, color: 'var(--text-mid)' }}>
+            {prLoading ? t('actp.computing_records') : `${trophies.length} record${trophies.length > 1 ? 's' : ''} battu${trophies.length > 1 ? 's' : ''}`}
+          </p>
+        )
+      ) : (
       <div style={{
         display:        'flex',
         alignItems:     'baseline',
@@ -1188,6 +1203,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
           </span>
         ) : null}
       </div>
+      )}
 
 <div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', display: 'flex', alignItems: 'flex-start' }}>
         {/* Axe Y FIXE (ne défile pas) */}
@@ -1396,8 +1412,8 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         marginTop:     10,
         paddingTop:    10,
         borderTop:     '1px solid var(--border)',
-        fontSize:      10,
-        color:         'var(--text-dim)',
+        fontSize:      isMobileMmp ? 13 : 10,
+        color:         isMobileMmp ? 'var(--text-mid)' : 'var(--text-dim)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ width: 16, height: 2.5, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>
@@ -1423,8 +1439,8 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         {ftp && ftp > 0 && (
           <div style={{
             marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
-            color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
-            letterSpacing: '0.05em',
+            color: isMobileMmp ? 'var(--text-mid)' : 'var(--text-dim)', fontSize: isMobileMmp ? 13 : 10, fontWeight: 600,
+            letterSpacing: isMobileMmp ? undefined : '0.05em',
           }}>
             Zones FTP {ftp} W
           </div>
@@ -1604,20 +1620,26 @@ function InfoAccordion({ title, summary, children }: {
   children: React.ReactNode
 }) {
   const { t } = useI18n()
+  const mobI = useIsMobile()
   const [open, setOpen] = useState(false)
   return (
-    <div style={{
+    <div style={mobI ? {
+      marginTop: 14, padding: '12px 14px', background: 'var(--surface-chip)', border: 'none', borderRadius: 'var(--r-md)',
+    } : {
       marginTop: 20,
       padding: '14px 18px',
       background: 'var(--bg-card2)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--r-sm)',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{title}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: mobI ? 'center' : 'flex-start', gap: 8 }}>
+        <span style={{ fontSize: mobI ? 15 : 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{title}</span>
         <button
           onClick={() => setOpen(v => !v)}
-          style={{
+          style={mobI ? {
+            fontSize: 15, fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', fontFamily: FB,
+            cursor: 'pointer', padding: '0 2px', minHeight: 44, whiteSpace: 'nowrap', flexShrink: 0,
+          } : {
             fontSize: 12, color: '#06B6D4', background: 'none', border: 'none',
             cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', flexShrink: 0,
           }}
@@ -1649,6 +1671,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
   altitude?: number[] | null; temp?: number[] | null; time?: number[] | null
 }) {
   const { t } = useI18n()
+  const mobD = useIsMobile()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const decoupContainerRef = useRef<HTMLDivElement>(null)
   const [decoupMousePos, setDecoupMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -1712,7 +1735,19 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
   function handleDecoupLeave() { setDecoupMousePos(null); onLeave() }
 
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div style={{ marginBottom: mobD ? 0 : 20 }}>
+      {mobD ? (
+        // Mobile : le titre est porté par la carte → libellé gris + valeur (point coloré).
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 13, color: 'var(--text-mid)' }}>
+          {t('actp.power_hr_decoupling')}
+          {decouplingPct != null && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: decoupColor }} />
+              {decouplingPct.toFixed(1)}%
+            </span>
+          )}
+        </div>
+      ) : (
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
         {t('actp.power_hr_decoupling')}
@@ -1722,6 +1757,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
           </span>
         )}
       </div>
+      )}
 
       <div
         ref={decoupContainerRef}
@@ -1873,6 +1909,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
 // ─────────────────────────────────────────────────────────────
 function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHrEst: number }) {
   const { t } = useI18n()
+  const mobH = useIsMobile()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef2 = useRef<HTMLDivElement>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -1931,11 +1968,13 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
   function handleMouseLeave() { setMousePos(null); onLeave() }
 
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div style={{ marginBottom: mobH ? 0 : 20 }}>
+      {!mobH && (
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
         {t('actp.cumulative_duration_hr')}
       </div>
+      )}
 
       <div
         ref={containerRef2}
@@ -2251,9 +2290,11 @@ function _donutArcPath(cx: number, cy: number, rOut: number, rIn: number, startA
 }
 
 interface ZoneArc { label: string; pct: number; color: string }
-function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
+function ZoneDonut({ data, title, mob = false }: { data: ZoneArc[]; title: string; mob?: boolean }) {
   const totalPct = data.reduce((s, d) => s + d.pct, 0)
-  const titleStyle: React.CSSProperties = {
+  const titleStyle: React.CSSProperties = mob
+    ? { fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 4, textAlign: 'center' }
+    : {
     fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
     textTransform: 'uppercase', color: 'var(--text-dim)',
     marginBottom: 12, textAlign: 'center',
@@ -2282,8 +2323,8 @@ function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
       <ul style={{
         listStyle: 'none', margin: 0, padding: 0,
         width: '100%',
-        display: 'flex', flexDirection: 'column', gap: 3,
-        fontSize: 10, color: 'var(--text)',
+        display: 'flex', flexDirection: 'column', gap: mob ? 4 : 3,
+        fontSize: mob ? 13 : 10, color: 'var(--text)',
         fontVariantNumeric: 'tabular-nums',
       }}>
         {visible.map((d, i) => (
@@ -2302,6 +2343,7 @@ function SelectionSheet(props: SelectionSheetProps) {
   const { t } = useI18n()
   const { sel, activity, time, distance, watts, hr, velocity, alt, cadence, temp, ftp, hrZones, onClose } = props
   const [closing, setClosing] = useState(false)
+  const mobSel = useIsMobile()
 
   const [i1, i2] = sel
   const len = Math.max(1, i2 - i1 + 1)
@@ -2750,10 +2792,52 @@ function SelectionSheet(props: SelectionSheetProps) {
     </>
   )
 
+  // ── Mobile (Strava) : feuille gris chaud, poignée, titre + rond ×, cartes
+  // blanches (KPI, détails groupés, répartitions, courbes). Mêmes données. ──
+  const mobileNode = (
+    <>
+      <style>{`
+        @keyframes selSheetFadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes selSheetFadeOut { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes selSheetUp      { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        @keyframes selSheetDown    { from { transform: translateY(0) } to { transform: translateY(100%) } }
+        .sel-sheet-in           { animation: selSheetUp 300ms ease-out; }
+        .sel-sheet-out          { animation: selSheetDown 250ms ease-in forwards; }
+        .sel-sheet-overlay-in   { animation: selSheetFadeIn 300ms ease-out; }
+        .sel-sheet-overlay-out  { animation: selSheetFadeOut 250ms ease-in forwards; }
+      `}</style>
+      <div onClick={handleClose} className={closing ? 'sel-sheet-overlay-out' : 'sel-sheet-overlay-in'}
+        style={{ position: 'fixed', inset: 0, zIndex: 99990, background: 'var(--scrim)' }} />
+      <div role="dialog" aria-modal="true" className={closing ? 'sel-sheet-out' : 'sel-sheet-in'}
+        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 99991, background: PAGE_BG, borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
+          boxShadow: 'var(--shadow-float)', maxHeight: 'calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px)', display: 'flex', flexDirection: 'column', fontFamily: FB }}>
+        <AmPanelHeader title={`${t('actp.selection')} — ${fmtDuration(dur)}`} sub={subtitle} onClose={handleClose} closeLabel={t('actp.close')} />
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <section style={{ ...AM_CARD, padding: '16px 16px 18px' }}>
+            <AmKpis cols={2} items={heroStats.map(h => ({ label: h.label, value: h.value, unit: h.unit ?? undefined }))} />
+          </section>
+          {detailColumns.map(col => (
+            <AmCard key={col.title} title={col.title} pad={16}>
+              <AmRows rows={col.rows.map(r => ({ label: r.label, value: r.value }))} />
+            </AmCard>
+          ))}
+          {visibleDonuts.length > 0 && (
+            <section style={{ ...AM_CARD, display: 'grid', gridTemplateColumns: visibleDonuts.length >= 2 ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: 20 }}>
+              {visibleDonuts.map(d => <ZoneDonut key={d.title} title={d.title} data={d.data} mob />)}
+            </section>
+          )}
+          <AmCard title={t('actp.curves')}>
+            <ActivityCurves activity={slicedActivity} />
+          </AmCard>
+        </div>
+      </div>
+    </>
+  )
+
   // SSR-safe : ne rend que côté client. Portal sur document.body pour
   // s'extraire de tout ancêtre transformé (containing-block fixed).
   if (typeof document === 'undefined') return null
-  return createPortal(sheetNode, document.body)
+  return createPortal(mobSel ? mobileNode : sheetNode, document.body)
 }
 
 function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, onHoverGps }: {
@@ -3446,6 +3530,8 @@ function sliceStreamsForLap(s: StreamData, i1: number, i2: number): StreamData {
 export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) {
   const { t } = useI18n()
   void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
+  // Mobile (Strava) : piste segmentée grise + pastille blanche, puces sans bordure.
+  const mobC = useIsMobile()
   const s = activity.streams ?? null
 
   // ── Adaptation au sport ─────────────────────────────────────────────
@@ -3798,7 +3884,9 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
   // TOGGLE FORMAT (Empilé / Superposé / Mono)
   // ─────────────────────────────────────────────────────────────
   const FormatToggle = (
-    <div style={{
+    <div style={mobC ? {
+      display: 'flex', gap: 2, padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', marginBottom: 12,
+    } : {
       display:      'inline-flex',
       gap:          2,
       padding:      3,
@@ -3817,7 +3905,13 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
           <button
             key={o.id}
             onClick={() => setFormat(o.id)}
-            style={{
+            aria-pressed={active}
+            style={mobC ? {
+              flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 40, padding: '0 8px',
+              borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: active ? 700 : 600,
+              background: active ? 'var(--surface-card)' : 'transparent', color: active ? 'var(--text)' : 'var(--text-mid)',
+              boxShadow: active ? SEG_THUMB_SHADOW : 'none',
+            } : {
               display:      'inline-flex',
               alignItems:   'center',
               gap:          6,
@@ -4187,7 +4281,8 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
               <button
                 key={d.key}
                 onClick={() => setMonoMetric(d.key)}
-                style={{
+                aria-pressed={active}
+                style={mobC ? { ...amChip(active), flexShrink: 0, minHeight: 40, fontSize: 14 } : {
                   flexShrink:   0,
                   padding:      '7px 12px',
                   borderRadius: 'var(--r-pill)',
@@ -4354,7 +4449,12 @@ export function ActivityCurves({ activity, onHoverRatio }: ActivityCurvesProps) 
                 else next.add(def.key)
                 setActiveMetrics(next)
               }}
-              style={{
+              aria-pressed={active}
+              style={mobC ? {
+                display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '0 10px', borderRadius: 'var(--r-pill)', border: 'none',
+                background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: active ? 1 : 0.45,
+                transition: 'opacity 0.15s', fontFamily: FB, whiteSpace: 'nowrap', overflow: 'hidden',
+              } : {
                 display:      'inline-flex',
                 alignItems:   'center',
                 gap:          6,
@@ -5089,19 +5189,24 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     [weekActs]
   )
 
+  // Mobile (Strava) : cartes blanches sans bordure ; bureau inchangé.
+  const wCard: React.CSSProperties = isMobile
+    ? { ...AM_CARD }
+    : { background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }
+
   // ── Section header style ───────────────────────────────────
-  const secTitle = (label: string) => (
+  const secTitle = (label: string) => isMobile ? <div style={{ ...AM_TITLE, marginBottom: 12 }}>{label}</div> : (
     <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
       letterSpacing: 0.8, marginBottom: 10, fontFamily: T.fontDisplay }}>{label}</div>
   )
 
   // ── Sport selector ─────────────────────────────────────────
   const sportSelectorEl = (
-    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+    <div style={{ display: 'flex', gap: isMobile ? 8 : 5, flexWrap: 'wrap', marginBottom: 12 }}>
       {(['all', ...sportsPresent.filter(sp => HR_SPORTS.includes(sp))] as string[]).map(sp => {
         const active = sportFilter === sp
         return (
-          <button key={sp} onClick={() => setSportFilter(sp)} style={{
+          <button key={sp} onClick={() => setSportFilter(sp)} aria-pressed={active} style={isMobile ? amChip(active) : {
             padding: '3px 11px', borderRadius: 'var(--r-lg)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             border: active ? 'none' : `1px solid ${T.border}`,
             background: active ? 'linear-gradient(135deg,#06B6D4,#3B82F6)' : T.bgAlt,
@@ -5119,20 +5224,23 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     return bands.map(band => {
       const pct = total > 0 ? (band.time / total) * 100 : 0
       return (
-        <div key={band.label} style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-              <span style={{ fontSize: 10, color: band.color, fontWeight: 700, marginRight: 5,
-                background: band.color + '22', borderRadius: 3, padding: '1px 4px' }}>{band.sub}</span>
+        <div key={band.label} style={{ marginBottom: isMobile ? 14 : 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 6 : 4 }}>
+            <div style={{ fontSize: isMobile ? 15 : 12, fontWeight: 600, color: T.text, display: 'flex', alignItems: 'center' }}>
+              {isMobile
+                ? <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: band.color, marginRight: 8 }} />
+                : <span style={{ fontSize: 10, color: band.color, fontWeight: 700, marginRight: 5,
+                background: band.color + '22', borderRadius: 3, padding: '1px 4px' }}>{band.sub}</span>}
               {band.label}
+              {isMobile && <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 500, marginLeft: 6 }}>{band.sub}</span>}
             </div>
-            <div style={{ fontSize: 11, color: T.textSub, display: 'flex', gap: 6 }}>
+            <div style={{ fontSize: isMobile ? 13 : 11, color: T.textSub, display: 'flex', gap: 6 }}>
               <span className="stat-number" style={{ fontWeight: 700, color: T.text }}>{fmtDur(band.time)}</span>
               <span style={{ color: T.textMuted }}>{pct.toFixed(0)}%</span>
             </div>
           </div>
-          <div style={{ height: 5, background: T.bgAlt, borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: band.color, borderRadius: 3 }} />
+          <div style={{ height: isMobile ? 8 : 5, background: isMobile ? 'var(--surface-chip)' : T.bgAlt, borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: band.color, borderRadius: 'var(--r-pill)' }} />
           </div>
         </div>
       )
@@ -5141,7 +5249,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── Répartition semaine ────────────────────────────────────
   const distributionEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+    <div style={{ ...wCard }}>
       {secTitle(t('actp.week_distribution'))}
       <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 80 }}>
         {daysOfWeek.map((day, i) => {
@@ -5153,15 +5261,15 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
                 <div style={{
                   width: '100%', height: barH, borderRadius: 3, overflow: 'hidden',
                   display: 'flex', flexDirection: 'column',
-                  background: day.time === 0 ? T.bgAlt : 'transparent',
-                  border: day.time === 0 ? `1px solid ${T.border}` : 'none',
+                  background: day.time === 0 ? (isMobile ? 'var(--surface-chip)' : T.bgAlt) : 'transparent',
+                  border: day.time === 0 && !isMobile ? `1px solid ${T.border}` : 'none',
                 }}>
                   {day.time > 0 && day.bySport.map(([sp, t]) => (
                     <div key={sp} style={{ width: '100%', height: `${(t / day.time) * 100}%`, background: SPORT_COLOR[sp as SportType] ?? '#888' }} />
                   ))}
                 </div>
               </div>
-              <span style={{ fontSize: isMobile ? 9 : 10, color: T.textMuted, fontWeight: 600 }}>
+              <span style={{ fontSize: isMobile ? 12 : 10, color: T.textMuted, fontWeight: 600 }}>
                 {t(isMobile ? day.short : day.long)}
               </span>
             </div>
@@ -5173,11 +5281,11 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── TSS total ──────────────────────────────────────────────
   const tssEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+    <div style={{ ...wCard }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
+        <span style={isMobile ? { ...AM_TITLE, flex: 1 } : { fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
           letterSpacing: 0.8, fontFamily: T.fontDisplay }}>{t('actp.sm_total')}</span>
-        <span className="stat-number" style={{ fontSize: 18, fontWeight: 700, color: T.text }}>
+        <span className="stat-number" style={{ fontSize: isMobile ? 20 : 18, fontWeight: isMobile ? 800 : 700, color: T.text }}>
           {totalTss > 0 ? Math.round(totalTss) : '—'}
         </span>
       </div>
@@ -5190,7 +5298,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
             {[...tssBySport.entries()].filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([sp, tss]) => (
-              <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.textSub }}>
+              <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: isMobile ? 13 : 11, color: T.textSub }}>
                 <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
                 {sportLabel(sp, t)}
                 <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 12 }}>{Math.round(tss)}</span>
@@ -5206,7 +5314,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── HR polarisation ────────────────────────────────────────
   const hrPolEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+    <div style={{ ...wCard }}>
       {secTitle(t('actp.hr_polarization'))}
       {sportSelectorEl}
       {hrBands ? renderBands(hrBands, hrTotal) : (
@@ -5217,7 +5325,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── Bike power polarisation ────────────────────────────────
   const bikePowerEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px',
+    <div style={isMobile ? wCard : { background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px',
       border: `1px solid ${T.border}`, borderTop: '3px solid #06B6D4' }}>
       {secTitle(t('actp.power_polarization_cycling'))}
       {bikeBands ? renderBands(bikeBands, bikeTotal) : (
@@ -5228,23 +5336,23 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── Zones FC détaillées ────────────────────────────────────
   const hrZonesEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+    <div style={{ ...wCard }}>
       {secTitle(t('actp.detailed_hr_zones'))}
       {sportSelectorEl}
       {hrTotal > 0 ? WK_HR_ZONES.map((zone, i) => {
         const sec = hrTimesZ[i]
         const pct = hrTotal > 0 ? (sec / hrTotal) * 100 : 0
         return (
-          <div key={zone.label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
+          <div key={zone.label} style={{ display: 'grid', gridTemplateColumns: isMobile ? '96px 1fr 96px' : '100px 1fr 90px', gap: 8, alignItems: 'center', marginBottom: isMobile ? 12 : 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: isMobile ? 13 : 11 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: zone.color, display: 'inline-block', flexShrink: 0 }} />
               <span style={{ color: T.text, fontWeight: 600 }}>{t(zone.label)}</span>
             </div>
             <div style={{ height: 5, background: T.bgAlt, borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: zone.color, borderRadius: 3 }} />
             </div>
-            <div style={{ display: 'flex', gap: 5, fontSize: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 11 }}>{fmtDur(sec)}</span>
+            <div style={{ display: 'flex', gap: 5, fontSize: isMobile ? 13 : 10, justifyContent: 'flex-end', alignItems: 'center' }}>
+              <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: isMobile ? 13 : 11 }}>{fmtDur(sec)}</span>
               <span style={{ color: T.textMuted }}>{pct.toFixed(0)}%</span>
             </div>
           </div>
@@ -5257,7 +5365,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── Activités ──────────────────────────────────────────────
   const activitiesEl = (
-    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+    <div style={{ ...wCard }}>
       {secTitle(t('actp.activities'))}
       {sortedActs.length === 0 ? (
         <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_activity')}</div>
@@ -5269,21 +5377,23 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
         return (
           <AnimatedItem key={act.id} index={actIdx}><div
             onClick={() => { window.location.href = `/activities?id=${act.id}` }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px',
+            style={isMobile
+              ? { display: 'flex', alignItems: 'center', gap: 12, minHeight: 60, padding: '8px 0', cursor: 'pointer', borderTop: actIdx === 0 ? 'none' : HAIRLINE }
+              : { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px',
               cursor: 'pointer', borderRadius: 'var(--r-sm)', marginBottom: 1 }}
             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = T.bgAlt }}
             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
           >
             <span style={{ width: 3, height: 36, background: col, borderRadius: 2, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: isMobile ? 16 : 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {act.title}
               </div>
-              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
+              <div style={{ fontSize: isMobile ? 13 : 10, color: T.textMuted, marginTop: isMobile ? 2 : 1 }}>
                 {new Date(act.started_at).toLocaleDateString(currentLocale(), { weekday: 'short', day: '2-digit', month: 'short' })}
               </div>
             </div>
-            <span className="stat-number" style={{ fontSize: 13, fontWeight: 700, color: T.text, flexShrink: 0 }}>{stat}</span>
+            <span className="stat-number" style={{ fontSize: isMobile ? 15 : 13, fontWeight: 700, color: T.text, flexShrink: 0 }}>{stat}</span>
             <ChevronRight size={14} color={T.textMuted} />
           </div></AnimatedItem>
         )
@@ -5364,13 +5474,53 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     </>
   )
 
-  // ── Mobile → BottomSheet (slide géré par isOpen) ───────────
+  // ── Mobile → feuille gris chaud (poignée, titre + rond ×), cartes blanches ──
   if (isMobile) {
-    return (
-      <BottomSheet isOpen={open} onClose={requestClose}>
-        {headerEl}
-        {bodyEl}
-      </BottomSheet>
+    const kpis = [
+      { label: t('actp.time'),    value: fmtDur(totalTime) },
+      { label: t('actp.distance'), value: fmtDist(totalDist) },
+      { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
+      { label: 'SM',       value: totalTss > 0 ? Math.round(totalTss).toString() : '—' },
+      { label: t('actp.avg_hr'),  value: meanHr ? `${meanHr} bpm` : '—' },
+      { label: t('actp.sessions'),  value: week.count.toString() },
+    ]
+    if (typeof document === 'undefined') return null
+    return createPortal(
+      <>
+        <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 99990, background: 'var(--scrim)', opacity: open ? 1 : 0, transition: 'opacity .3s ease' }} />
+        <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 99991, background: PAGE_BG, borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
+          boxShadow: 'var(--shadow-float)', maxHeight: 'calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px)', display: 'flex', flexDirection: 'column', fontFamily: FB,
+          transform: open ? 'translateY(0)' : 'translateY(100%)', transition: 'transform .34s cubic-bezier(.2,.8,.2,1)',
+        }}>
+          <AmPanelHeader title={`${t('actp.week_of')} ${dateLabel}`} onClose={requestClose} closeLabel={t('actp.close')}
+            sub={<>
+              {week.count} {week.count !== 1 ? t('actp.sessions_lc') : t('actp.session_lc')}
+              {compPct !== null && <span style={{ color: compPct >= 0 ? 'var(--success)' : 'var(--text-mid)', fontWeight: 600 }}> · {compPct >= 0 ? '↑ +' : '↓ '}{compPct}% {t('actp.vs_prev_week')}</span>}
+            </>} />
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {sportsPresent.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {sportsPresent.map(sp => (
+                  <span key={sp} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-card)', borderRadius: 'var(--r-pill)', padding: '6px 12px', fontSize: 14 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: SPORT_COLOR[sp as SportType] ?? 'var(--text-dim)', flexShrink: 0 }} />
+                    <span style={{ color: T.text, fontWeight: 600 }}>{sportLabel(sp, t)}</span>
+                    <span style={{ color: T.textMuted }}>{weekActs.filter(a => normalizeSport(a.sport_type) === sp).length}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            <section style={{ ...AM_CARD, padding: '16px 16px 18px' }}><AmKpis items={kpis} cols={3} /></section>
+            {distributionEl}
+            {tssEl}
+            {hrPolEl}
+            {bikePowerEl}
+            {hrZonesEl}
+            {activitiesEl}
+          </div>
+        </div>
+      </>,
+      document.body,
     )
   }
 
@@ -5509,6 +5659,10 @@ function SectionDonnees({ activities, zones, profile }: {
   const [heatHover, setHeatHover] = useState<{ date: string; tss: number; title: string } | null>(null)
   const width = useWindowWidth()
   const isMobile = width < 768
+  // Mobile (Strava) : cartes blanches radius 20 sans bordure ; bureau inchangé.
+  const cardSt: React.CSSProperties = isMobile
+    ? { background: 'var(--surface-card)', border: 'none', borderRadius: 'var(--r-lg)', boxShadow: SOFT_SHADOW }
+    : { background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius }
 
   useEffect(() => {
     void (async () => {
@@ -5709,44 +5863,10 @@ function SectionDonnees({ activities, zones, profile }: {
     <div style={{ overflowX: 'hidden' }}>
       {/* ── SECTION 0: Button bar ── */}
       {isMobile ? (
-        /* ── Contrôles compacts mobile ── */
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', marginBottom: 14 }}>
-          {/* GAUCHE: dropdown période */}
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setPeriodMenuOpen(v => !v)} style={{
-              padding: '6px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-              background: 'var(--bg)', fontSize: 13, fontWeight: 500, color: 'var(--text)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-            }}>
-              {t(TIME_FILTER_KEYS[filter])}
-              <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
-            </button>
-            {periodMenuOpen && (
-              <>
-                <div onClick={() => setPeriodMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
-              <div
-                onClick={e => e.stopPropagation()}
-                style={{
-                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 300,
-                  background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--r-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  overflow: 'hidden', minWidth: 130,
-                }}>
-                {(Object.keys(TIME_FILTER_KEYS) as TimeFilter[]).map(f => (
-                  <button key={f} onClick={() => { setFilter(f); setPeriodMenuOpen(false) }} style={{
-                    width: '100%', padding: '10px 14px', textAlign: 'left',
-                    fontSize: 13, fontWeight: filter === f ? 700 : 500,
-                    background: filter === f ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'transparent',
-                    color: filter === f ? '#fff' : 'var(--text)',
-                    border: 'none', cursor: 'pointer', display: 'block',
-                  }}>
-                    {t(TIME_FILTER_KEYS[f])}
-                  </button>
-                ))}
-              </div>
-              </>
-            )}
-          </div>
+        /* ── Mobile : piste segmentée défilante (période) ── */
+        <div style={{ marginBottom: 12 }}>
+          <SegTrack<TimeFilter> value={filter} onChange={setFilter}
+            options={(Object.keys(TIME_FILTER_KEYS) as TimeFilter[]).map(f => ({ v: f, l: t(TIME_FILTER_KEYS[f]) }))} />
         </div>
       ) : (
         /* ── Contrôles desktop (pills) ── */
@@ -5801,7 +5921,7 @@ function SectionDonnees({ activities, zones, profile }: {
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 16 }}>
               {/* LEFT: Forme du jour (TSB arc) */}
               <div style={{
-                background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
+                ...cardSt,
                 padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 20,
               }}>
                 <svg width="120" height="120" viewBox="0 0 120 120" style={{ flexShrink: 0 }}>
@@ -5827,9 +5947,9 @@ function SectionDonnees({ activities, zones, profile }: {
                   <text x={arcCx} y={arcCy + 12} textAnchor="middle" fontSize="10" fill="var(--text-dim)" fontWeight="600" letterSpacing="0.06em">TSB</text>
                 </svg>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: tsbColor, marginBottom: 4 }}>{tsbLabel}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{tsbAdvice}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>
+                  <div style={{ fontSize: isMobile ? 18 : 16, fontWeight: isMobile ? 800 : 700, color: isMobile ? 'var(--text)' : tsbColor, marginBottom: 4 }}>{tsbLabel}</div>
+                  <div style={{ fontSize: isMobile ? 14 : 12, color: isMobile ? 'var(--text-mid)' : 'var(--text-dim)', marginBottom: 8, lineHeight: 1.4 }}>{tsbAdvice}</div>
+                  <div style={{ fontSize: isMobile ? 13 : 11, color: 'var(--text-sub)', fontVariantNumeric: 'tabular-nums' }}>
                     CTL {Math.round(ctl)} · ATL {Math.round(atl)}
                   </div>
                   {tsb < 5 && tsb > -30 && (
@@ -5850,18 +5970,18 @@ function SectionDonnees({ activities, zones, profile }: {
                   const barPct = Math.min(100, Math.abs(val) / max * 100)
                   return (
                     <div key={key} style={{
-                      background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
-                      padding: '14px 14px 12px', borderTop: `3px solid ${color}`,
+                      ...cardSt,
+                      padding: '14px 14px 12px', borderTop: isMobile ? 'none' : `3px solid ${color}`,
                     }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{key}</div>
-                      <div className="stat-number" style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1, marginBottom: 4 }}>
+                      <div style={isMobile ? { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 6 } : { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{isMobile && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />}{key}</div>
+                      <div className="stat-number" style={{ fontSize: isMobile ? 26 : 28, fontWeight: isMobile ? 800 : 700, color: isMobile ? 'var(--text)' : color, lineHeight: 1, marginBottom: 4 }}>
                         {val > 0 && key === 'TSB' ? '+' : ''}{val}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>{sub}</div>
+                      <div style={{ fontSize: isMobile ? 12 : 10, color: isMobile ? 'var(--text-mid)' : 'var(--text-dim)', marginBottom: 8 }}>{sub}</div>
                       <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
                         <div style={{ height: '100%', width: `${barPct}%`, background: color, borderRadius: 2, transition: 'width 0.5s' }} />
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{note}</div>
+                      <div style={{ fontSize: isMobile ? 12 : 10, color: 'var(--text-dim)' }}>{note}</div>
                     </div>
                   )
                 })}
@@ -5870,12 +5990,12 @@ function SectionDonnees({ activities, zones, profile }: {
           )}
 
           {/* ── SECTION 2: PMC ──────────────────────────────────────────────── */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ ...cardSt, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: 12, flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : undefined }}>
               <SectionTitle>Performance Management Chart</SectionTitle>
-              <div style={{ display: 'flex', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 14, marginTop: isMobile ? -6 : 0 }}>
                 {[['CTL','#06B6D4'],['ATL','#F97316'],['TSB','#EF4444']].map(([label, col]) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-dim)' }}>
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: isMobile ? 12 : 10, color: 'var(--text-dim)' }}>
                     <div style={{ width: 18, height: 2, background: col, borderRadius: 1, opacity: label === 'TSB' ? 0.7 : 1 }} />
                     {label}
                   </div>
@@ -6021,10 +6141,10 @@ function SectionDonnees({ activities, zones, profile }: {
                 {stats.map(({ label, curr, prev, fmt }) => {
                   const tr = trendOf(curr, prev)
                   return (
-                    <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
-                      <div className="stat-number" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4 }}>{fmt(curr)}</div>
-                      <div style={{ fontSize: 11, color: tr.color, fontWeight: 600 }}>
+                    <div key={label} style={{ ...cardSt, padding: '14px 16px' }}>
+                      <div style={isMobile ? { fontSize: 13, fontWeight: 500, color: 'var(--text-mid)', marginBottom: 4 } : { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+                      <div className="stat-number" style={{ fontSize: 22, fontWeight: isMobile ? 800 : 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4 }}>{fmt(curr)}</div>
+                      <div style={{ fontSize: isMobile ? 13 : 11, color: tr.color, fontWeight: 600 }}>
                         {tr.arrow} {tr.pct !== 0 ? `${Math.abs(tr.pct).toFixed(0)}%` : 'Stable'}
                         {tr.pct > 25 && <span style={{ color: '#EF4444', marginLeft: 4, fontSize: 10 }}>surcharge?</span>}
                       </div>
@@ -6064,9 +6184,9 @@ function SectionDonnees({ activities, zones, profile }: {
               const BASE_Y = VH_T + VH_CH
 
               return (
-                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+                <div style={{ ...cardSt, padding: '16px 18px' }}>
                   {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: isMobile ? 'wrap' : undefined, gap: isMobile ? 6 : undefined }}>
                     <SectionTitle>{t('actp.weekly_volume')}</SectionTitle>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {/* Deltas discrets */}
@@ -6093,12 +6213,12 @@ function SectionDonnees({ activities, zones, profile }: {
                         <button
                           onClick={() => setWeekBlockOffset(v => Math.min(v + 1, maxBlockOffset))}
                           disabled={safeOffset >= maxBlockOffset}
-                          style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: safeOffset >= maxBlockOffset ? 'default' : 'pointer', opacity: safeOffset >= maxBlockOffset ? 0.3 : 1, padding: 0 }}
+                          style={{ width: isMobile ? 44 : 24, height: isMobile ? 44 : 24, borderRadius: '50%', border: isMobile ? 'none' : `1px solid ${T.border}`, background: isMobile ? 'var(--surface-chip)' : T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: safeOffset >= maxBlockOffset ? 'default' : 'pointer', opacity: safeOffset >= maxBlockOffset ? 0.3 : 1, padding: 0 }}
                         >
-                          <ChevronLeft size={12} color={T.textMuted} />
+                          <ChevronLeft size={isMobile ? 18 : 12} color={T.textMuted} />
                         </button>
                         {weekSlice.length > 0 && (
-                          <span style={{ fontSize: 10, color: T.textMuted, whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: isMobile ? 12 : 10, color: T.textMuted, whiteSpace: 'nowrap' }}>
                             {new Date(weekSlice[0].week).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
                             {' – '}
                             {new Date(weekSlice[weekSlice.length - 1].week).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
@@ -6107,9 +6227,9 @@ function SectionDonnees({ activities, zones, profile }: {
                         <button
                           onClick={() => setWeekBlockOffset(v => Math.max(v - 1, 0))}
                           disabled={isLatest}
-                          style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isLatest ? 'default' : 'pointer', opacity: isLatest ? 0.3 : 1, padding: 0 }}
+                          style={{ width: isMobile ? 44 : 24, height: isMobile ? 44 : 24, borderRadius: '50%', border: isMobile ? 'none' : `1px solid ${T.border}`, background: isMobile ? 'var(--surface-chip)' : T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isLatest ? 'default' : 'pointer', opacity: isLatest ? 0.3 : 1, padding: 0 }}
                         >
-                          <ChevronRight size={12} color={T.textMuted} />
+                          <ChevronRight size={isMobile ? 18 : 12} color={T.textMuted} />
                         </button>
                       </div>
                     </div>
@@ -6197,7 +6317,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     return sportList.length > 1 ? (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                         {sportList.map(sp => (
-                          <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
+                          <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: isMobile ? 13 : 10, color: T.textSub }}>
                             <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
                             {sportLabel(sp, t)}
                           </div>
@@ -6210,7 +6330,7 @@ function SectionDonnees({ activities, zones, profile }: {
             })()}
 
             {/* RIGHT: Polarisation */}
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+            <div style={{ ...cardSt, padding: '16px 18px' }}>
               <SectionTitle>{t('actp.polarization_distribution')}</SectionTitle>
               {polTotal > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -6224,12 +6344,12 @@ function SectionDonnees({ activities, zones, profile }: {
                       <div key={label}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                           <div>
-                            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
-                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>{zones}</span>
+                            <span style={{ fontSize: isMobile ? 15 : 12, fontWeight: isMobile ? 600 : 500, color: 'var(--text)' }}>{label}</span>
+                            <span style={{ fontSize: isMobile ? 13 : 10, color: 'var(--text-dim)', marginLeft: 6 }}>{zones}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{fmtDur(time)}</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 36, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                            <span style={{ fontSize: isMobile ? 13 : 11, color: 'var(--text-dim)' }}>{fmtDur(time)}</span>
+                            <span style={{ fontSize: isMobile ? 15 : 12, fontWeight: 700, color: isMobile ? 'var(--text)' : color, minWidth: 36, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                           </div>
                         </div>
                         <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -6252,14 +6372,14 @@ function SectionDonnees({ activities, zones, profile }: {
           </div>
 
           {/* ── SECTION 5: Heatmap calendrier ───────────────────────────────── */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', marginBottom: 16 }}>
+          <div style={{ ...cardSt, padding: '16px 18px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <SectionTitle>{t('actp.load_calendar')}</SectionTitle>
-              <span style={{
+              {!isMobile && <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
                 background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
                 padding: '2px 7px', borderRadius: 'var(--r-sm)', marginBottom: 14,
-              }}>{t('actp.new')}</span>
+              }}>{t('actp.new')}</span>}
             </div>
             {(() => {
               const heatDays = Math.min(displayDays, 365)
@@ -6341,7 +6461,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     </div>
                   )}
                   {/* Legend */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: 'var(--text-dim)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: isMobile ? 13 : 10, color: 'var(--text-dim)' }}>
                     <span>{t('actp.rest')}</span>
                     {[0, 25, 75, 125, 160].map((v, i) => (
                       <div key={i} style={{ width: 12, height: 12, borderRadius: 2, background: tssColor(v) }} />
@@ -6356,19 +6476,19 @@ function SectionDonnees({ activities, zones, profile }: {
           {/* ── SECTION 6: Zones (3 colonnes) ───────────────────────────────── */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
             {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ ...cardSt, padding: '16px 18px' }}>
                 <SectionTitle>{t('actp.zones_power_bike')}</SectionTitle>
                 <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
               </div>
             )}
             {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ ...cardSt, padding: '16px 18px' }}>
                 <SectionTitle>{t('actp.zones_pace_run')}</SectionTitle>
                 <ZoneBars zones={runZones} timesS={runTimesZ} />
               </div>
             )}
             {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ ...cardSt, padding: '16px 18px' }}>
                 <SectionTitle>{t('actp.zones_hr_global')}</SectionTitle>
                 <ZoneBars zones={hrZoneColors} timesS={hrTimesZ} />
               </div>
@@ -6444,6 +6564,7 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
   const [rpe, setRpe]             = useState(initialRpe ?? 5)
   const [sensation, setSensation] = useState(initialSensation ?? 3)
   const [saving, setSaving]       = useState(false)
+  const mob = useIsMobile()
 
   async function save() {
     setSaving(true)
@@ -6463,12 +6584,12 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
     const pct = ((value - min) / (max - min)) * 100
     return (
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>{label}</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color, fontFamily: T.fontDisplay }}>{value.toFixed(1)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <span style={{ fontSize: mob ? 16 : 13, color: T.text, fontWeight: mob ? 600 : 500 }}>{label}</span>
+          <span style={mob ? { ...NUMS, fontSize: 22, fontWeight: 800, color: 'var(--text)' } : { fontSize: 20, fontWeight: 700, color, fontFamily: T.fontDisplay }}>{value.toFixed(1)}</span>
         </div>
         <div style={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, background: T.border, borderRadius: 3 }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, background: mob ? 'var(--surface-chip)' : T.border, borderRadius: 3 }}>
             <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.1s' }} />
           </div>
           <input type="range" min={min} max={max} step={step} value={value}
@@ -6482,10 +6603,27 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
           }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 10, color: T.textMuted }}>{min}</span>
-          <span style={{ fontSize: 10, color: T.textMuted }}>{max}</span>
+          <span style={{ fontSize: mob ? 13 : 10, color: T.textMuted }}>{min}</span>
+          <span style={{ fontSize: mob ? 13 : 10, color: T.textMuted }}>{max}</span>
         </div>
       </div>
+    )
+  }
+
+  // Mobile : feuille du bas (poignée + en-tête), au-dessus de la sur-page « Modifier ».
+  if (mob) {
+    return (
+      <AmSheet open onClose={onClose} title={t('actp.feeling_effort')} leftLabel={t('actp.cancel')}>
+        <div style={{ padding: '4px 4px 0' }}>
+          <SliderRow label={t('actp.sensation')} value={sensation} min={1} max={5} step={0.5}
+            onChange={setSensation}
+            color={sensation <= 2 ? '#ef4444' : sensation <= 3 ? '#f97316' : '#22c55e'} />
+          <SliderRow label={t('actp.rpe_perceived')} value={rpe} min={1} max={10} step={0.5}
+            onChange={setRpe}
+            color={rpe >= 8 ? '#ef4444' : rpe >= 5 ? '#f97316' : '#22c55e'} />
+        </div>
+        <PillButton onClick={() => { void save() }} disabled={saving}>{saving ? t('actp.saving') : t('actp.save')}</PillButton>
+      </AmSheet>
     )
   }
 
@@ -6546,7 +6684,7 @@ function feelingDescriptor(v: number)    { return FEELING_THRESHOLDS.find(t => v
 function difficultyDescriptor(v: number) { return DIFFICULTY_THRESHOLDS.find(t => v <= t.max) ?? DIFFICULTY_THRESHOLDS[DIFFICULTY_THRESHOLDS.length - 1] }
 function fdFormat(v: number): string     { return Number.isInteger(v) ? `${v}` : v.toString().replace('.', ',') }
 
-function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit, compact = false }: {
+function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit, compact = false, card = false, hideEdit = false }: {
   value:      number | null
   max:        number
   denomLabel: string
@@ -6554,6 +6692,9 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit, compact =
   descriptor: { color: string; label: string } | null
   onEdit:     () => void
   compact?:   boolean
+  /** Mobile Strava : libellé en casse normale, lien d'édition 44 px. */
+  card?:      boolean
+  hideEdit?:  boolean
 }) {
   const { t } = useI18n()
   const isSet  = value != null
@@ -6595,20 +6736,39 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit, compact =
           )}
         </div>
       </div>
-      <div style={{
-        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em',
-        color: 'var(--text-dim)', marginTop: 4,
-      }}>{label}</div>
-      <div style={{
-        fontSize: 13, fontWeight: 600,
-        color: isSet ? 'var(--text)' : 'var(--text-dim)',
-        fontStyle: isSet ? 'normal' : 'italic',
-        transition: 'color 0.3s ease',
-      }}>{isSet && descriptor ? t(descriptor.label) : t('actp.not_set')}</div>
-      <button onClick={onEdit} style={{
-        fontSize: 11, color: '#06b6d4', textDecoration: 'underline',
-        cursor: 'pointer', background: 'none', border: 'none', padding: '8px 14px', marginTop: 0,
-      }}>{isSet ? t('actp.edit') : t('actp.add')}</button>
+      {card ? (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-mid)', marginTop: 2 }}>{label}</div>
+          <div style={{
+            fontSize: 15, fontWeight: 700,
+            color: isSet ? 'var(--text)' : 'var(--text-dim)',
+            transition: 'color 0.3s ease',
+          }}>{isSet && descriptor ? t(descriptor.label) : t('actp.not_set')}</div>
+          {!hideEdit && (
+            <button onClick={onEdit} style={{
+              fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'var(--font-body)',
+              cursor: 'pointer', background: 'none', border: 'none', minHeight: 44, padding: '0 14px',
+            }}>{isSet ? t('actp.edit') : t('actp.add')}</button>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em',
+            color: 'var(--text-dim)', marginTop: 4,
+          }}>{label}</div>
+          <div style={{
+            fontSize: 13, fontWeight: 600,
+            color: isSet ? 'var(--text)' : 'var(--text-dim)',
+            fontStyle: isSet ? 'normal' : 'italic',
+            transition: 'color 0.3s ease',
+          }}>{isSet && descriptor ? t(descriptor.label) : t('actp.not_set')}</div>
+          <button onClick={onEdit} style={{
+            fontSize: 11, color: '#06b6d4', textDecoration: 'underline',
+            cursor: 'pointer', background: 'none', border: 'none', padding: '8px 14px', marginTop: 0,
+          }}>{isSet ? t('actp.edit') : t('actp.add')}</button>
+        </>
+      )}
     </div>
   )
 }
@@ -6621,6 +6781,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   onSave:  (v: number) => Promise<void>
 }) {
   const { t } = useI18n()
+  const mob = useIsMobile()
   const max = kind === 'feeling' ? 5 : 10
   const [draft,  setDraft]  = useState<number>(value ?? max / 2)
   const [saving, setSaving] = useState(false)
@@ -6636,11 +6797,42 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
     const t = setTimeout(() => setReady(true), 350)
     return () => clearTimeout(t)
   }, [value, open, max])
-  if (!open || typeof document === 'undefined') return null
   const descriptor = kind === 'feeling' ? feelingDescriptor(draft) : difficultyDescriptor(draft)
   const color  = descriptor.color
   const filled = (draft / max) * FD_ARC_TOTAL
   const title  = kind === 'feeling' ? t('actp.feeling') : t('actp.difficulty')
+  // Mobile : feuille du bas (poignée + Annuler · titre), jauge, curseur, bouton cyan.
+  if (mob) {
+    return (
+      <AmSheet open={open} onClose={() => { if (ready) onClose() }} title={title} leftLabel={t('actp.cancel')}>
+        <style>{'@keyframes fdGaugePulse { 0%{transform:scale(0.92);opacity:0.6} 50%{transform:scale(1.05);opacity:1} 100%{transform:scale(1);opacity:1} }'}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0 8px' }}>
+          <div style={{ position: 'relative', width: 150, height: 150 }}>
+            <svg width={150} height={150} viewBox="0 0 110 110" preserveAspectRatio="xMidYMid meet">
+              <circle cx={55} cy={55} r={46} stroke="var(--surface-chip)" strokeWidth={7} fill="none"
+                strokeDasharray={`${FD_ARC_TOTAL} ${FD_ARC_FULL}`} transform="rotate(135 55 55)" strokeLinecap="round" />
+              <circle cx={55} cy={55} r={46} stroke={color} strokeWidth={7} fill="none"
+                strokeDasharray={`${filled} ${FD_ARC_FULL}`} transform="rotate(135 55 55)" strokeLinecap="round"
+                style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease' }} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div key={String(draft)} style={{ ...NUMS, fontSize: 40, fontWeight: 800, lineHeight: 1, color: 'var(--text)', animation: 'fdGaugePulse 0.3s ease-out' }}>{fdFormat(draft)}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 4 }}>{t('actp.out_of')} {max}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginTop: 6 }}>{t(descriptor.label)}</div>
+        </div>
+        <input type="range" min={0} max={max} step={0.5} value={draft}
+          onChange={e => setDraft(parseFloat(e.target.value))}
+          style={{ width: '100%', minHeight: 44, accentColor: color, margin: 0 }} />
+        <div style={{ ...NUMS, display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-mid)', margin: '-4px 2px 8px' }}>
+          <span>0</span><span>{max}</span>
+        </div>
+        <PillButton onClick={() => { setSaving(true); void onSave(draft) }} disabled={saving}>{saving ? '…' : t('actp.save')}</PillButton>
+      </AmSheet>
+    )
+  }
+  if (!open || typeof document === 'undefined') return null
   return createPortal(
     <>
       <style>{`
@@ -6740,24 +6932,30 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   )
 }
 
-function FeelingDifficultyCard({ feeling, difficulty, onEdit, compact = false }: {
+function FeelingDifficultyCard({ feeling, difficulty, onEdit, compact = false, card = false, hideEdit = false }: {
   feeling:    number | null
   difficulty: number | null
   onEdit:     (kind: 'feeling' | 'difficulty') => void
   compact?:   boolean
+  /** Mobile Strava : carte blanche radius 20 sans marge, libellés en casse normale. */
+  card?:      boolean
+  hideEdit?:  boolean
 }) {
   const { t } = useI18n()
   const fDesc = feeling    !== null ? feelingDescriptor(feeling)       : null
   const dDesc = difficulty !== null ? difficultyDescriptor(difficulty) : null
 
   return (
-    <div style={{
+    <div style={card ? {
+      ...AM_CARD, padding: '16px 12px 6px',
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+    } : {
       background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: compact ? 12 : 20,
       margin: compact ? 0 : '16px 0',
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: compact ? 8 : 16,
     }}>
-      <GaugeArc value={feeling}    max={5}  denomLabel={`${t('actp.out_of')} 5`}  label={t('actp.feeling_upper')}   descriptor={fDesc} onEdit={() => onEdit('feeling')} compact={compact} />
-      <GaugeArc value={difficulty} max={10} denomLabel={`${t('actp.out_of')} 10`} label={t('actp.difficulty_upper')} descriptor={dDesc} onEdit={() => onEdit('difficulty')} compact={compact} />
+      <GaugeArc value={feeling}    max={5}  denomLabel={`${t('actp.out_of')} 5`}  label={card ? t('actp.feeling') : t('actp.feeling_upper')}   descriptor={fDesc} onEdit={() => onEdit('feeling')} compact={compact} card={card} hideEdit={hideEdit} />
+      <GaugeArc value={difficulty} max={10} denomLabel={`${t('actp.out_of')} 10`} label={card ? t('actp.difficulty') : t('actp.difficulty_upper')} descriptor={dDesc} onEdit={() => onEdit('difficulty')} compact={compact} card={card} hideEdit={hideEdit} />
     </div>
   )
 }
@@ -7346,14 +7544,9 @@ conseil pour la prochaine séance similaire.`
     )
   }
 
+  // Section de la fiche mobile : carte blanche radius 20 + titre Inter 17.
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-        {title}
-      </div>
-      {children}
-    </div>
+    <AmCard title={title}>{children}</AmCard>
   )
 
   // ── Shared modals JSX (used by both mobile and desktop paths) ──
@@ -7372,6 +7565,24 @@ conseil pour la prochaine séance similaire.`
           }}
         />
       )}
+      {isMobile ? (
+        <AmSheet
+          open={showDeleteConfirm}
+          onClose={() => { if (isDeleting) return; setShowDeleteConfirm(false); setDeleteError(null) }}
+          title={t('actp.delete_activity')}
+          leftLabel={t('actp.cancel')}
+        >
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, margin: '4px 4px 4px' }}>
+            {t('actp.delete_confirm_body')}
+          </p>
+          {deleteError && (
+            <p style={{ fontSize: 14, color: 'var(--danger)', margin: '0 4px' }}>{deleteError}</p>
+          )}
+          <AmDangerRow onClick={() => { void handleDelete() }} disabled={isDeleting} bg="var(--surface-chip)">
+            {isDeleting ? t('actp.deleting') : t('actp.delete')}
+          </AmDangerRow>
+        </AmSheet>
+      ) : (
       <BottomSheet
         isOpen={showDeleteConfirm}
         onClose={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
@@ -7412,6 +7623,7 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
       </BottomSheet>
+      )}
       {/* Édition Ressenti / Difficulté — montée ici (sharedModals) pour s'afficher
           AUSSI sur mobile ; le mount desktop-only ne s'ouvrait jamais au tap mobile. */}
       <GaugeEditModal
@@ -7428,7 +7640,36 @@ conseil pour la prochaine séance similaire.`
   // vit ici ; la vue principale reste propre. Les composants enregistrent au fil
   // de la saisie ; « Enregistrer » ferme simplement la sur-page.
   const editLabel: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
-  const editSheet = (
+  // Mobile (Strava) : libellés gris au-dessus, contrôles dans des cartes
+  // blanches, champs pleins doux, bouton cyan pleine largeur en bas.
+  const mLabel = (txt: string) => <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-mid)', margin: '22px 4px 8px', fontFamily: FB }}>{txt}</div>
+  const editSheetMobile = (
+    <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title={t('act.editActivity')}>
+      <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom, 0px) + 40px)', display: 'flex', flexDirection: 'column', fontFamily: FB }}>
+        {mLabel(t('calendar.titleLabel'))}
+        <div style={{ ...AM_CARD, padding: 12 }}><ActivityTitle activityId={a.id} initialName={a.title} /></div>
+        {mLabel(t('shared.sport'))}
+        <div style={AM_CARD}><ActivitySportPicker activityId={a.id} sport={a.sport_type} /></div>
+        {mLabel(t('planning.sessionType'))}
+        <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
+        {!localIsRace && <div style={{ ...AM_CARD, marginTop: 12 }}><WorkoutTypeBadges activityId={a.id} sport={a.sport_type} /></div>}
+        {localIsRace && <div style={{ ...AM_CARD, marginTop: 12 }}><LinkedRacePicker activityId={a.id} activityDate={a.started_at} activitySport={a.sport_type} initialRaceId={(a as { linked_race_id?: string | null }).linked_race_id ?? null} initialRaceDate={(a as { linked_race_date?: string | null }).linked_race_date ?? null} /></div>}
+        {isGym && <>{mLabel(t('act.strengthSession'))}<MuscuSessionPanel activity={a} /></>}
+        {isPool && <>{mLabel(t('activities.lengths'))}<SwimLengths activityId={a.id} distanceM={a.distance_m} /></>}
+        {mLabel(t('pe3.edit.feeling'))}
+        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} card />
+        <div style={{ ...AM_CARD, padding: '0 16px', marginTop: 12 }}>
+          <AmRow first label={<span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 16 }}>{t('pe3.edit.rpe')}</span>}
+            value={localRpe != null ? `${Number(localRpe).toFixed(1)}/10` : undefined} onClick={() => setShowRpeModal(true)} />
+        </div>
+        <ActivitySettingsPanel activityId={a.id} sport={a.sport_type} />
+        {mLabel(t('pe3.edit.media'))}
+        <div style={AM_CARD}><ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} /></div>
+        <PillButton onClick={() => setEditOpen(false)} style={{ marginTop: 24 }}>{t('actp.save')}</PillButton>
+      </div>
+    </SlideSheet>
+  )
+  const editSheet = isMobile ? editSheetMobile : (
     <SlideSheet open={editOpen} onClose={() => setEditOpen(false)} title={t('act.editActivity')}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px clamp(16px,4vw,28px) 80px', display: 'flex', flexDirection: 'column', gap: 26 }}>
         <div>
@@ -7765,10 +8006,14 @@ conseil pour la prochaine séance similaire.`
         data-fullscreen-activity=""
         className={closing ? undefined : 'thw-actsheet-in'}
         style={{
-          position: 'fixed', inset: 0, zIndex: readOnly ? 15000 : 2000, background: 'var(--bg)', overflow: 'hidden',
+          position: 'fixed', inset: 0, zIndex: readOnly ? 15000 : 2000, background: PAGE_BG, overflow: 'hidden', fontFamily: FB,
           transform: closing ? 'translateX(100%)' : undefined,
           transition: closing ? 'transform 0.26s cubic-bezier(0.32,0.72,0,1)' : undefined,
-        }}
+          // Grammaire Strava (page gris chaud, cartes blanches) : le portail ne
+          // traverse pas le shell mobile → on reporte ici ses jetons de cartes.
+          ['--dash-card' as string]: 'var(--surface-card)', ['--dash-chip' as string]: 'var(--surface-chip)',
+          ['--dash-bar' as string]: 'var(--surface-bar)', ['--bg-card' as string]: 'var(--surface-card)',
+        } as React.CSSProperties}
       >
 
         {/* ── CARTE plein écran (derrière la sheet) ── */}
@@ -7788,14 +8033,14 @@ conseil pour la prochaine séance similaire.`
           ) : hasWorkoutHero && linkedSession ? (
             // Pas de GPS mais séance in-app appariée → on montre la SÉANCE RÉALISÉE
             // en hero (révélée en faisant glisser la feuille), à la place du blanc.
-            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', padding: 'calc(env(safe-area-inset-top, 0px) + 56px) 16px 16px' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('act.strengthSession')}</p>
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: PAGE_BG, padding: 'calc(env(safe-area-inset-top, 0px) + 68px) 16px 16px' }}>
+              <p style={{ ...AM_TITLE, fontSize: 20, fontWeight: 800, margin: '0 4px 10px' }}>{t('act.strengthSession')}</p>
               <WorkoutSessionCard s={linkedSession} />
             </div>
           ) : (
             // Pas de GPS, pas de séance → fond neutre (la feuille figée le recouvre
             // entièrement : aucune page blanche révélable).
-            <div style={{ width: '100%', height: '100%', background: 'var(--bg)' }} />
+            <div style={{ width: '100%', height: '100%', background: PAGE_BG }} />
           )}
         </div>
 
@@ -7817,27 +8062,20 @@ conseil pour la prochaine séance similaire.`
         <button
           onClick={onClose}
           aria-label={t('actp.back')}
-          className="thw-activity-back-btn"
-          style={{
-            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', left: 12,
-            zIndex: 10, width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)', padding: 0,
-          }}
+          style={{ ...roundBtnStyle, position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 16, zIndex: 10 }}
         >
-          <ChevronLeft size={20} strokeWidth={2.5} />
+          <Ico d={ICON.back} size={22} sw={2.2} />
         </button>
         )}
 
         {/* ── SHEET draggable plein écran (transform via ref, 60fps) ── */}
         <div
           ref={attachSheet}
-          data-bottom-sheet=""
           className="thw-activity-sheet"
           style={{
             position: 'absolute', left: 0, right: 0, top: 0, height: '100dvh', zIndex: 2,
-            background: 'var(--bg)', borderRadius: sheetPos === 'full' ? '0' : '20px 20px 0 0',
-            boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.18)',
+            background: PAGE_BG, color: 'var(--text)', borderRadius: sheetPos === 'full' ? '0' : 'var(--r-lg) var(--r-lg) 0 0',
+            boxShadow: 'var(--shadow-float)',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
             paddingTop: 0,
@@ -7849,7 +8087,7 @@ conseil pour la prochaine séance similaire.`
               une barre façon Strava (∨ fermer · sport centré · partager). */}
           <div
             className="thw-activity-sheet-handle"
-            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: sheetPos === 'full' ? 0 : '20px 20px 0 0',
+            style={{ position: 'sticky', top: 0, zIndex: 3, background: PAGE_BG, borderRadius: sheetPos === 'full' ? 0 : 'var(--r-lg) var(--r-lg) 0 0',
               // En plein écran, l'en-tête couvre AUSSI la zone de la barre d'état
               // (safe-area) avec un fond plein → le contenu qui défile ne se
               // superpose plus à l'heure/batterie. (padding porté ici, retiré de la sheet.)
@@ -7857,34 +8095,34 @@ conseil pour la prochaine séance similaire.`
           >
             {sheetPos === 'full' ? (
               <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                padding: '10px 12px', borderBottom: '1px solid var(--info-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                padding: '8px 16px 10px',
                 animation: 'thwHeadFade 0.22s ease',
               }}>
-                <button onClick={() => { if (slidable) setSheetPos('mid'); else onClose() }} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                  {slidable ? <ChevronDown size={24} strokeWidth={2.4} /> : <ChevronLeft size={24} strokeWidth={2.4} />}
+                <button onClick={() => { if (slidable) setSheetPos('mid'); else onClose() }} aria-label={t('actp.back')} style={roundBtnStyle}>
+                  {slidable ? <ChevronDown size={22} strokeWidth={2.2} /> : <Ico d={ICON.back} size={22} sw={2.2} />}
                 </button>
                 <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {sportLabel(a.sport_type, t)}
                 </span>
                 {/* Le partage est déjà dans l'en-tête de contenu (à côté de « Modifier ») :
-                    on retire le doublon ici. Spacer 38px pour garder le titre centré. */}
-                <div aria-hidden style={{ width: 38, height: 38, flexShrink: 0 }} />
+                    on retire le doublon ici. Spacer 44px pour garder le titre centré. */}
+                <div aria-hidden style={{ width: 44, height: 44, flexShrink: 0 }} />
               </div>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-                <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 10px' }}>
+                <div style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', backgroundColor: 'var(--surface-bar)' }} />
               </div>
             )}
           </div>
 
-          {/* Nom + sport + date */}
-          <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          {/* Nom + sport + date — titre Inter 24 800, méta grise, actions rondes. */}
+          <div style={{ padding: '4px 16px 14px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div data-activity-title="">
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{a.title}</h1>
+                <h1 style={{ fontFamily: FB, fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0, lineHeight: 1.15 }}>{a.title}</h1>
               </div>
-              <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '6px 0 0', lineHeight: 1.4 }}>
+              <p data-activity-subtitle="" style={{ fontSize: 14, color: 'var(--text-mid)', margin: '6px 0 0', lineHeight: 1.4 }}>
                 {sportLabel(a.sport_type, t)}
                 {' · '}
                 {fmtDate(a.started_at)}
@@ -7901,35 +8139,23 @@ conseil pour la prochaine séance similaire.`
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {!readOnly && (
                 <button onClick={() => setEditOpen(true)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 15px', borderRadius: 'var(--r-pill)', border: 'none',
-                  background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font-body)',
+                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none',
+                  background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: FB,
                 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                  Modifier
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                  {t('actp.edit')}
                 </button>
               )}
-              <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
-                width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
-                background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+              <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={roundBtnStyle}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
               </button>
             </div>
           </div>
 
-          {/* Jauges Ressenti / Difficulté (mobile) — AFFICHAGE seul.
-              L'édition (type, tags, confidentialité, ressenti, RPE, photos,
-              commentaire) est dans la sur-page « Modifier ». */}
-          <div style={{ padding: '0 16px' }}>
-            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={() => {}} />
-          </div>
+          {/* Cartes empilées (gap 12) : KPI, ressenti, records, IA, sections. */}
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {/* Records battus — sous la carte (mobile) */}
-          <div style={{ padding: '0 16px' }}>
-            <RecordsBeaten activityId={a.id} isBike={isBike} />
-          </div>
-
-          {/* Stats 3×2 compact */}
+          {/* Stats 3×2 — carte KPI façon Strava */}
           {(() => {
             const km = a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
             const avgSpeedKmh = a.avg_speed_ms
@@ -7941,7 +8167,6 @@ conseil pour la prochaine séance similaire.`
                   : null
             const avgWattsVal = a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : null
             const elevGainVal = (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null
-            const tssVal = a.tss ? Math.round(Number(a.tss)).toString() : null
             const STATS = [
               { label: t('actp.distance'),   value: !isGym && km ? `${km} km` : '—' },
               { label: t('actp.duration'),      value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
@@ -7953,71 +8178,49 @@ conseil pour la prochaine séance similaire.`
               { label: 'SM · SN',    value: `${smsn.sm} · ${smsn.sn}` },
             ]
             return (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                padding: '16px 20px',
-                gap: 0,
-                borderBottom: '1px solid var(--info-border)',
-                marginBottom: 24,
-              }}>
-                {STATS.map((s, i) => (
-                  <div key={s.label} style={{
-                    padding: '10px 0',
-                    paddingRight: i % 3 !== 2 ? 12 : 0,
-                    borderRight: i % 3 !== 2 ? '1px solid var(--info-border)' : 'none',
-                    paddingLeft: i % 3 !== 0 ? 12 : 0,
-                    marginBottom: i < 3 ? 8 : 0,
-                  }}>
-                    <p data-stat-label="" style={{
-                      fontSize: 10, fontWeight: 700,
-                      letterSpacing: '0.08em', textTransform: 'uppercase',
-                      color: 'var(--text-muted)', margin: '0 0 3px',
-                    }}>
-                      {s.label}
-                    </p>
-                    <p data-stat-value="" style={{
-                      fontSize: 18, fontWeight: 700,
-                      color: 'var(--text)', margin: 0, lineHeight: 1.2,
-                    }}>
-                      {s.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <section style={{ ...AM_CARD, padding: '16px 16px 18px' }}>
+                <AmKpis items={STATS} cols={3} />
+              </section>
             )
           })()}
 
+          {/* Jauges Ressenti / Difficulté (mobile). Le lien « Modifier » ouvre la
+              feuille d'édition (propriétaire) ; lecture seule = affichage. */}
+          <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={readOnly ? () => {} : setFdEditing} card hideEdit={readOnly} />
+
+          {/* Records battus — sous la carte (mobile) */}
+          <RecordsBeaten activityId={a.id} isBike={isBike} />
+
           {/* ── BOUTON IA GLOBAL (mobile) — masqué en lecture seule ── */}
           {!readOnly && (
-          <div style={{ padding: '0 16px 20px' }}>
+          <section style={{ ...AM_CARD, padding: '4px 16px' }}>
             <button
               onClick={() => globalAI.status === 'idle' || globalAI.status === 'done' || globalAI.status === 'error'
                 ? globalAI.run(buildGlobalPrompt())
                 : undefined}
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                width: '100%', padding: '10px 16px', borderRadius: 'var(--r-sm)',
-                background: 'none', border: '1px solid var(--border)',
-                color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 12,
+                width: '100%', minHeight: 52, padding: 0,
+                background: 'none', border: 'none', textAlign: 'left',
+                color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: FB,
               }}
             >
-              <Sparkles size={14} color="#06B6D4" />
-              {t('actp.full_ai_analysis')}
+              <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}><Sparkles size={20} /></span>
+              <span style={{ flex: 1, minWidth: 0 }}>{t('actp.full_ai_analysis')}</span>
+              <span aria-hidden style={{ display: 'flex', color: 'var(--text-dim)' }}><Ico d={ICON.chev} size={18} /></span>
             </button>
             <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
-          </div>
+          </section>
           )}
 
-          {/* ── SECTIONS dans le sheet ── */}
-          <div style={{ padding: '0 16px' }}>
+          {/* ── SECTIONS dans le sheet (cartes blanches) ── */}
 
             {/* ── ANALYSE DE L'ENTRAÎNEMENT (course / trail / vélo) — version
                  mobile du bloc Strava-like : graphique ajusté à l'écran, jauges
                  tactiles (appui → détail), tableau des splits. Remplace les
                  anciennes barres LapsRunChart / LapsBikeChart. ── */}
             {(isRun || isBike) && a.streams && (
-              <div style={{ marginBottom: 24 }}>
+              <div>
                 <TrainingAnalysis
                   streams={a.streams}
                   laps={a.laps}
@@ -8074,22 +8277,7 @@ conseil pour la prochaine séance similaire.`
                   { label: t('actp.max_temp'),     value: maxTempStream != null ? `${maxTempStream} °C` : null },
                   { label: t('actp.calories'),      value: a.calories != null ? `${Math.round(Number(a.calories))} kcal` : null },
                 ].filter(r => r.value)
-                return (
-                  <div style={{ margin: '0 -16px' }}>
-                    {rows.map(r => (
-                      <div key={r.label} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '10px 20px',
-                        borderBottom: '1px solid var(--info-border)',
-                      }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.label}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{r.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )
+                return <AmRows rows={rows.map(r => ({ label: r.label, value: r.value }))} />
               })()}
             </Section>
 
@@ -8129,14 +8317,12 @@ conseil pour la prochaine séance similaire.`
                     </Section>
                   )}
                   {isBike && s.watts && s.heartrate && s.watts.length > 120 && (
-                    <div style={{ marginBottom: 18 }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                    <AmCard title={t('actp.decoupling')} right={
                         <button onClick={() => setShowDecoupling(v => !v)} style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
+                          background: 'none', border: 'none', cursor: 'pointer', minHeight: 44,
+                          fontSize: 15, color: 'var(--primary)', fontWeight: 600, padding: '0 2px', fontFamily: FB }}>
                           {showDecoupling ? t('actp.hide') : t('actp.view_chart')}
-                        </button>
-                      </div>
+                        </button>}>
                       {showDecoupling && (
                         <DecouplingChart
                           watts={s.watts} heartrate={s.heartrate}
@@ -8146,40 +8332,32 @@ conseil pour la prochaine séance similaire.`
                       )}
                       {/* IA Découplage — masqué en lecture seule */}
                       {!readOnly && (
-                      <div style={{ marginTop: 12 }}>
-                        <button
+                      <div style={{ marginTop: showDecoupling ? 12 : 0 }}>
+                        <AmSoftButton
                           onClick={() => decoupAI.status === 'idle' || decoupAI.status === 'done' || decoupAI.status === 'error'
                             ? decoupAI.run(buildDecouplingPrompt())
                             : undefined}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 14px', borderRadius: 'var(--r-lg)',
-                            background: 'linear-gradient(135deg,#06B6D4,#818CF8)',
-                            border: 'none', color: 'white',
-                            fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                          }}
+                          style={{ width: '100%' }}
                         >
-                          <Sparkles size={14} /> {t('actp.analyze_with_ai')}
-                        </button>
+                          <span aria-hidden style={{ display: 'flex', color: 'var(--primary)' }}><Sparkles size={17} /></span> {t('actp.analyze_with_ai')}
+                        </AmSoftButton>
                         <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
                       </div>
                       )}
-                    </div>
+                    </AmCard>
                   )}
                   {/* Durée cumulée par FC — cyclisme uniquement (retiré du running) */}
                   {isBike && s.heartrate && s.heartrate.length > 60 && (
-                    <div style={{ marginBottom: 18 }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                    <AmCard title={t('actp.cumulative_duration_hr')} right={
                         <button onClick={() => setShowHrCumulative(v => !v)} style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
+                          background: 'none', border: 'none', cursor: 'pointer', minHeight: 44,
+                          fontSize: 15, color: 'var(--primary)', fontWeight: 600, padding: '0 2px', fontFamily: FB }}>
                           {showHrCumulative ? t('actp.hide') : t('actp.view_chart')}
-                        </button>
-                      </div>
+                        </button>}>
                       {showHrCumulative && (
                         <HrCumulativeChart heartrate={s.heartrate} maxHrEst={maxHrEst} />
                       )}
-                    </div>
+                    </AmCard>
                   )}
                 </>
               )
@@ -8188,7 +8366,7 @@ conseil pour la prochaine séance similaire.`
             {/* NOTES */}
             {(a.notes || a.description) && (
               <Section title={t('actp.comment')}>
-                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
+                <div style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.55 }}>{a.notes ?? a.description}</div>
               </Section>
             )}
 
@@ -8209,57 +8387,34 @@ conseil pour la prochaine séance similaire.`
                 mais ni watts (vélo) ni allure cliquable (course) déjà couverts. */}
             {a.laps && a.laps.length > 1 && !isRun && !(isBike && a.streams?.watts && a.streams.watts.length >= 2) && (
               <Section title={`Intervalles — ${a.laps.length} tours`}>
-                {(
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: T.textMuted }}>
-                          {['#', t('actp.dist_short'), t('actp.duration'), isBike ? t('actp.watts') : t('actp.pace'), t('actp.hr')].map(h => (
-                            <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {a.laps.map((lap, i) => {
-                          const lp = lap.moving_time_s && lap.distance_m > 0 ? (lap.moving_time_s / lap.distance_m) * 1000 : null
-                          return (
-                            <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
-                              <td style={{ padding: '5px 8px 5px 0', color: T.textMuted }}>{i+1}</td>
-                              <td style={{ padding: '5px 8px 5px 0' }}>{!isGym ? fmtDist(lap.distance_m) : '—'}</td>
-                              <td style={{ padding: '5px 8px 5px 0' }}>{fmtDur(lap.moving_time_s)}</td>
-                              <td style={{ padding: '5px 8px 5px 0' }}>
-                                {isBike ? (lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—')
-                                  : (isRun||isSwim) ? fmtPace(lp)
-                                  : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'}
-                              </td>
-                              <td style={{ padding: '5px 8px 5px 0' }}>{lap.avg_hr ? `${Math.round(lap.avg_hr)} bpm` : '—'}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {/* Tableau → rangées de carte : n° · distance/durée · allure|watts · FC. */}
+                <div>
+                  {a.laps.map((lap, i) => {
+                    const lp = lap.moving_time_s && lap.distance_m > 0 ? (lap.moving_time_s / lap.distance_m) * 1000 : null
+                    const main = isBike ? (lap.avg_watts ? `${Math.round(lap.avg_watts)} W` : '—')
+                      : (isRun||isSwim) ? fmtPace(lp)
+                      : lap.avg_speed_ms ? `${(lap.avg_speed_ms*3.6).toFixed(1)} km/h` : '—'
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, borderTop: i === 0 ? 'none' : HAIRLINE }}>
+                        <span style={{ ...NUMS, width: 26, flexShrink: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-mid)' }}>{i+1}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ ...NUMS, display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{!isGym ? fmtDist(lap.distance_m) : fmtDur(lap.moving_time_s)}</span>
+                          <span style={{ ...NUMS, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>{!isGym ? fmtDur(lap.moving_time_s) : ''}{lap.avg_hr ? `${!isGym ? ' · ' : ''}${Math.round(lap.avg_hr)} bpm` : ''}</span>
+                        </span>
+                        <span style={{ ...NUMS, fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{main}</span>
+                      </div>
+                    )
+                  })}
+                </div>
               </Section>
             )}
 
             {/* DELETE — masqué en lecture seule */}
             {!readOnly && (
-            <div style={{ marginTop: 28, paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
-              <button
-                className="thw-delete-activity-btn"
-                onClick={() => setShowDeleteConfirm(true)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '9px 16px', background: 'rgba(239,68,68,0.07)', color: '#ef4444',
-                  border: '1px solid rgba(239,68,68,0.32)', borderRadius: 'var(--r-pill)',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  transition: 'background 0.15s ease', fontFamily: 'inherit',
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/></svg>
+            <div style={{ marginTop: 12, paddingBottom: 8 }}>
+              <AmDangerRow onClick={() => setShowDeleteConfirm(true)}>
                 {t('actp.delete_activity')}
-              </button>
+              </AmDangerRow>
             </div>
             )}
 
@@ -10634,6 +10789,48 @@ function TrainingPageInner() {
             </button>
           </div>
   )
+  // ── Mobile : bouton rond « Connexions » + feuille du bas (services, recharger) ──
+  const services = [
+    { name: 'Strava', logo: 'strava', color: '#FC4C02', initial: 'ST', connected: stravaConnected, onPress: () => syncStrava() }, // design-allow-color — couleur de marque Strava
+    { name: 'Garmin', logo: null,     color: '#007CC3', initial: 'GC', connected: garminConnected, onPress: () => handleFileImport() }, // design-allow-color — couleur de marque Garmin
+    { name: 'Polar',  logo: 'polar',  color: '#D9001B', initial: 'PO', connected: polarConnected,  onPress: () => syncPolar() }, // design-allow-color — couleur de marque Polar
+  ]
+  const mobileStatus = loading ? t('actp.loading') : syncing ? 'Strava…' : syncingPolar ? 'Polar…' : syncMsg
+  const mobileTopControls = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display: 'none' }} onChange={handleImportFile} />
+      <RoundBtn label={t('actp.connections')} onClick={() => setAppMenuOpen(true)}>
+        <Ico d={ICON.plug} size={20} />
+      </RoundBtn>
+      <AmSheet open={appMenuOpen} onClose={() => setAppMenuOpen(false)} title={t('actp.connections')} leftLabel={t('actp.close')}>
+        <div>
+          {services.map((svc, i) => (
+            <button key={svc.name} type="button" onClick={() => { svc.onPress(); setAppMenuOpen(false) }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, minHeight: 60, padding: '8px 4px', border: 'none', borderTop: i === 0 ? 'none' : HAIRLINE, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: FB }}>
+              <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', flexShrink: 0, overflow: 'hidden', background: svc.logo ? 'var(--surface-chip)' : svc.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {svc.logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/logos/apps/${svc.logo}.png`} alt={svc.name} width={28} height={28} style={{ objectFit: 'contain', width: 28, height: 28 }} />
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--on-primary)' }}>{svc.initial}</span>
+                )}
+              </span>
+              <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{svc.name}</span>
+              {svc.connected
+                ? <span style={{ fontSize: 15, color: 'var(--success)', fontWeight: 600 }}>✓ {t('actp.connected')}</span>
+                : <span style={{ fontSize: 15, color: 'var(--primary)', fontWeight: 600 }}>{svc.name === 'Garmin' ? t('actp.import') : t('actp.connect')}</span>}
+            </button>
+          ))}
+          <button type="button" onClick={() => { void reload(); setAppMenuOpen(false) }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '8px 4px', border: 'none', borderTop: HAIRLINE, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: FB }}>
+            <span aria-hidden style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--surface-chip)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>↻</span>
+            <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{t('actp.reload_from_db')}</span>
+          </button>
+        </div>
+      </AmSheet>
+    </div>
+  )
+
   if (isMobilePage) {
     const mSec: Section = section === 'donnees' && !mobileTouched ? 'analyse' : section
     return (
@@ -10647,8 +10844,11 @@ function TrainingPageInner() {
                     background: mSec === id ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: mSec === id ? 'var(--text)' : 'var(--text-mid)', boxShadow: mSec === id ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' }}>{l}</button>
               ))}
             </div>
-            {topControls}
+            {mobileTopControls}
           </div>
+          {mobileStatus && (
+            <div role="status" style={{ fontSize: 13, fontWeight: 600, color: syncMsg && syncMsg.startsWith('+') ? 'var(--success)' : 'var(--text-mid)', margin: '-4px 4px 0' }}>{mobileStatus}</div>
+          )}
           {error && (
             <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '14px 16px' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--charge-hard)', marginBottom: 6 }}>{t('actp.load_error')}</div>

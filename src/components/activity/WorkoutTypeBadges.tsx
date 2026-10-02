@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useActivityExtras } from '@/lib/activity/extras'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, amChip, AmSheet, AM_INPUT, AM_LABEL, PillButton } from './ActivityMobileKit'
 
 interface TypeDef { id: string; label: string; color: string }
 
@@ -103,6 +104,7 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
   const [modalOpen, setModalOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [draftColor, setDraftColor] = useState(CUSTOM_COLORS[0])
+  const mob = useIsMobile()
 
   useEffect(() => {
     setCustomTypes(lsGet<TypeDef[]>(customKey, []))
@@ -121,6 +123,39 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
     const next = [...customTypes, def]
     setCustomTypes(next); lsSet(customKey, next)
     setModalOpen(false); setDraftName(''); setDraftColor(CUSTOM_COLORS[0])
+  }
+
+  // Mobile : puces pilules (actif = pilule sombre) + feuille du bas pour créer un type.
+  if (mob) {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {all.map(ty => {
+          const active = selected.includes(ty.id)
+          return (
+            <button key={ty.id} onClick={() => toggle(ty.id)} aria-pressed={active} style={amChip(active)}>
+              {ty.label}
+            </button>
+          )
+        })}
+        <button onClick={() => setModalOpen(true)} style={{ ...amChip(false), color: 'var(--primary)' }}>{t('activities.addBadge')}</button>
+        <AmSheet open={modalOpen} onClose={() => setModalOpen(false)} title={t('activities.newWorkoutType')}
+          leftLabel={t('activities.cancel')} rightLabel={t('activities.create')} onRight={createCustom} rightDisabled={!draftName.trim()}>
+          <label style={{ ...AM_LABEL, display: 'block', margin: '4px 4px 6px' }}>{t('activities.name')}</label>
+          <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={t('activities.workoutTypePlaceholder')} style={AM_INPUT} />
+          <label style={{ ...AM_LABEL, display: 'block', margin: '8px 4px 2px' }}>{t('activities.color')}</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {CUSTOM_COLORS.map(c => (
+              <button key={c} onClick={() => setDraftColor(c)} aria-label={c} aria-pressed={draftColor === c}
+                style={{ width: 44, height: 44, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 30, height: 30, borderRadius: '50%', background: c, boxShadow: draftColor === c ? '0 0 0 3px var(--surface-card), 0 0 0 5px var(--text)' : 'none' }} />
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45, margin: '0 4px 4px' }}>{t('activities.customTypesHint')}</p>
+          <PillButton onClick={createCustom} disabled={!draftName.trim()}>{t('activities.create')}</PillButton>
+        </AmSheet>
+      </div>
+    )
   }
 
   return (

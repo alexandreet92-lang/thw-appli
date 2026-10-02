@@ -11,6 +11,7 @@ import { shareCard } from '@/lib/share/shareCard'
 import { RecapStory, type RecapAct } from './RecapStory'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_TITLE, AmKpis, amChip, roundBtnStyle } from './ActivityMobileKit'
 
 function fmtH(s: number): string { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
 function getMonday(d: Date): Date { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const dow = (x.getDay() + 6) % 7; x.setDate(x.getDate() - dow); return x }
@@ -20,6 +21,7 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
   const now = new Date()
   const weekKey = getMonday(now).toISOString().slice(0, 10)
   const [storyOpen, setStoryOpen] = useState(false)
+  const mob = useIsMobile()
   const [dismissed, setDismissed] = useState(() => {
     try { return typeof window !== 'undefined' && window.localStorage.getItem(`weekly-dismiss-${weekKey}`) === '1' } catch { return false }
   })
@@ -58,6 +60,38 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
         { label: t('lo.smTotal'), value: String(Math.round(data.sm)) },
       ], filename: 'hybrid-semaine.png',
     })
+  }
+
+  // Mobile (Strava) : carte blanche (pas de surface colorée), point sport,
+  // KPI 2×2, puce « Partager » + bouton rond ▶ (récap stories).
+  if (mob) {
+    return (
+      <section style={{ ...AM_CARD, position: 'relative', marginBottom: 12 }}>
+        {storyOpen && <RecapStory period="week" activities={activities} onClose={() => setStoryOpen(false)} />}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-mid)' }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: accent }} />{t('lo.recapWeekLong')}
+            </div>
+            <h2 style={{ ...AM_TITLE, fontSize: 20, fontWeight: 800, marginTop: 4, textTransform: 'capitalize' }}>{data.label}</h2>
+          </div>
+          <button onClick={dismiss} aria-label={t('lo.hide')} style={{ width: 44, height: 44, margin: '-10px -10px 0 0', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={18} /></button>
+        </div>
+        <AmKpis cols={2} items={[
+          { label: t('lo.sessions'), value: String(data.count) },
+          { label: t('lo.time'), value: fmtH(data.time) },
+          data.dist > 0 ? { label: t('lo.distance'), value: `${Math.round(data.dist / 1000)} km` } : { label: t('lo.smTotal'), value: String(Math.round(data.sm)) },
+          data.best ? { label: t('lo.topSession'), value: `SM ${Math.round(data.best.tss ?? 0)}` } : { label: t('lo.smTotal'), value: String(Math.round(data.sm)), key: 'sm2' },
+        ]} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <button onClick={onShare} style={amChip(false)}><IconShare2 size={17} /> {t('lo.shareMyWeek')}</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={() => setStoryOpen(true)} aria-label={t('lo.openDetailedRecap')} style={roundBtnStyle}>
+            <svg width="15" height="16" viewBox="0 0 15 16" aria-hidden><path d="M2 1.5v13l11-6.5z" fill="var(--primary)" /></svg>
+          </button>
+        </div>
+      </section>
+    )
   }
 
   const stat = (label: string, value: string) => (

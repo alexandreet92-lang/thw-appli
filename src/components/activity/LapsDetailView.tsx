@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { formatPace, speedMsToPace } from '@/lib/utils/pace'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, AM_CARD, AM_TITLE, AmKpis, AmRows, AmPanelHeader, PAGE_BG, roundBtnStyle } from './ActivityMobileKit'
 
 type Sport = 'cycling' | 'running'
 
@@ -202,7 +203,7 @@ function donutArcPath(cx: number, cy: number, rOut: number, rIn: number, startAn
     'Z',
   ].join(' ')
 }
-function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[]; size?: number }) {
+function MiniDonut({ title, data, size = 80, mob = false }: { title: string; data: ZoneArc[]; size?: number; mob?: boolean }) {
   const totalPct = data.reduce((s, d) => s + d.pct, 0)
   if (totalPct <= 0) return null
   const CX = size / 2, CY = size / 2
@@ -211,7 +212,7 @@ function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[];
   const visible = data.filter(d => d.pct > 0)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{title}</div>
+      <div style={mob ? { fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' } : { fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{title}</div>
       <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size, flexShrink: 0 }}>
         <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
         {data.map((d, i) => {
@@ -231,10 +232,10 @@ function MiniDonut({ title, data, size = 80 }: { title: string; data: ZoneArc[];
       <ul style={{
         listStyle: 'none', margin: 0, padding: 0, width: '100%',
         display: 'flex', flexDirection: 'column', gap: 2,
-        fontSize: 10, color: 'var(--text)', fontVariantNumeric: 'tabular-nums',
+        fontSize: mob ? 13 : 10, color: 'var(--text)', fontVariantNumeric: 'tabular-nums',
       }}>
         {visible.map((d, i) => (
-          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: mob ? 6 : 4 }}>
             <span style={{ width: 7, height: 7, borderRadius: 2, background: d.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</span>
             <span style={{ fontWeight: 700, color: 'var(--text)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
@@ -370,6 +371,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   const { t } = useI18n()
   void bikeZones
   const isRun = sport === 'running'
+  const mob = useIsMobile()
   const [closing, setClosing] = useState(false)
   useEffect(() => { if (open) setClosing(false) }, [open])
   function doClose() { setClosing(true); setTimeout(onClose, 280) }
@@ -440,6 +442,72 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   if (cDist.length  > 0) donuts.push({ title: t('activities.cadence'),     data: cDist  })
 
   if (!open || typeof document === 'undefined') return null
+
+  // ── Mobile (Strava) : feuille du bas gris chaud, cartes blanches, chiffres neutres ──
+  if (mob) {
+    const subLine = `${fmtKm(lap.distance_m)} · ${fmtDur(lap.moving_time_s)}${isRun ? ` · ${formatPace(avgPaceMin)}/km` : ` · ${powerZoneLabel(lap.avg_watts, ftp)}`}`
+    const kpis = [
+      { label: t('activities.distance'), value: lap.distance_m != null ? (lap.distance_m / 1000).toFixed(2).replace('.', ',') : '—', unit: 'km' },
+      isRun
+        ? { label: t('activities.avgPaceLegend'), value: formatPace(avgPaceMin), unit: '/km' }
+        : { label: t('activities.wattsAvgDot'), value: lap.avg_watts != null ? `${Math.round(lap.avg_watts)}` : '—', unit: 'W' },
+      { label: t('activities.hrAvgDot'), value: lap.avg_hr != null ? `${Math.round(lap.avg_hr)}` : '—', unit: 'bpm' },
+      isRun
+        ? (gapPaceMin != null
+            ? { label: t('activities.adjustedPace'), value: formatPace(gapPaceMin), unit: '/km' }
+            : { label: t('activities.maxPace'), value: formatPace(maxPaceMin), unit: '/km' })
+        : { label: t('activities.avgSpeed'), value: lap.avg_speed_ms != null ? (lap.avg_speed_ms * 3.6).toFixed(1).replace('.', ',') : '—', unit: 'km/h' },
+    ]
+    const rows = [
+      { label: t('activities.duration'), value: fmtDur(lap.moving_time_s) },
+      isRun
+        ? { label: t('activities.maxPace'), value: isFinite(maxPaceMin) ? `${formatPace(maxPaceMin)}/km` : '—' }
+        : { label: t('activities.normalizedWatts'), value: npSeg != null ? `${npSeg} W` : '—' },
+      { label: 'D+', value: altSlice ? `+${Math.round(dPlus)} m` : '—' },
+      { label: 'D−', value: altSlice ? `−${Math.round(dMinus)} m` : '—' },
+      { label: t('activities.cadenceAvg'), value: cAvgPedal != null ? `${Math.round(cAvgPedal)} ${isRun ? 'spm' : 'rpm'}` : '—' },
+      { label: t('activities.tempAvgDot'), value: tAvg != null ? `${Math.round(tAvg)} °C` : '—' },
+    ]
+    return createPortal(
+      <>
+        <style>{`
+          @keyframes lapSheetFadeIn  { from{opacity:0} to{opacity:1} }
+          @keyframes lapSheetFadeOut { from{opacity:1} to{opacity:0} }
+          @keyframes lapSheetUp      { from{transform:translateY(100%)} to{transform:translateY(0)} }
+          @keyframes lapSheetDown    { from{transform:translateY(0)} to{transform:translateY(100%)} }
+        `}</style>
+        <div onClick={doClose} style={{ position: 'fixed', inset: 0, zIndex: 14800, background: 'var(--scrim)',
+          animation: `${closing ? 'lapSheetFadeOut 0.28s ease-in forwards' : 'lapSheetFadeIn 0.3s ease-out'}` }} />
+        <div role="dialog" aria-modal="true" style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 14900, background: PAGE_BG,
+          borderRadius: 'var(--r-lg) var(--r-lg) 0 0', maxHeight: 'calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px)',
+          display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-float)', fontFamily: 'var(--font-body)',
+          animation: `${closing ? 'lapSheetDown 0.28s ease-in forwards' : 'lapSheetUp 0.3s cubic-bezier(0.4,0,0.2,1)'}`,
+        }}>
+          <AmPanelHeader title={titleOverride ?? t('activities.lapDetailsTitle', { n: lapIndex + 1 })} sub={subLine} onClose={doClose} closeLabel={t('activities.close')} />
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <section style={{ ...AM_CARD, padding: '16px 16px 18px' }}><AmKpis items={kpis} cols={2} /></section>
+            <section style={{ ...AM_CARD, padding: '4px 16px' }}><AmRows rows={rows} /></section>
+            {donuts.length > 0 && (
+              <section style={AM_CARD}>
+                <h2 style={{ ...AM_TITLE, marginBottom: 12 }}>{t('activities.distributions')}</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: donuts.length >= 2 ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: 18 }}>
+                  {donuts.map(d => <MiniDonut key={d.title} title={d.title} data={d.data} size={96} mob />)}
+                </div>
+              </section>
+            )}
+            {renderCurves && (
+              <section style={AM_CARD}>
+                <h2 style={{ ...AM_TITLE, marginBottom: 12 }}>{t('actp.curves')}</h2>
+                {renderCurves}
+              </section>
+            )}
+          </div>
+        </div>
+      </>,
+      document.body,
+    )
+  }
 
   return createPortal(
     <>
@@ -601,6 +669,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
 // ─────────────────────────────────────────────────────────────
 export function LapsDetailView(props: LapsDetailViewProps) {
   const { t } = useI18n()
+  const mobView = useIsMobile()
   const { open, onClose, initialActiveLap, laps, streams, sportLabel,
           totalDistanceM, totalDurationS, ftp, bikeZones, hrZones } = props
   const isRun = props.sport === 'running'
@@ -765,7 +834,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         <button
           onClick={doClose}
           aria-label={t('activities.close')}
-          style={{
+          style={mobView ? { ...roundBtnStyle, position: 'fixed', top: 'calc(env(safe-area-inset-top) + 8px)', right: 16, zIndex: 3200, fontSize: 24, lineHeight: 1 } : {
             position: 'fixed', top: 'calc(env(safe-area-inset-top) + 8px)', right: 12, zIndex: 3200,
             width: 40, height: 40, borderRadius: '50%',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -787,7 +856,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           <button
             onClick={doClose}
             aria-label={t('activities.back')}
-            style={{
+            style={mobView ? { ...roundBtnStyle, fontSize: 26, lineHeight: 1, fontFamily: 'inherit' } : {
               width: 36, height: 36, borderRadius: '50%',
               background: 'var(--bg-card2)', border: 'none',
               color: 'var(--text)', fontSize: 22, lineHeight: 1, cursor: 'pointer',

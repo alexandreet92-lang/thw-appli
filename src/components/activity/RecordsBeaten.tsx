@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
+import { useIsMobile, AM_CARD, AM_TITLE, NUMS, HAIRLINE } from './ActivityMobileKit'
 
 interface BeatenAllTime { label: string; display: string; watts: number }
 interface BeatenYear    { label: string; display: string; watts: number; year: string }
@@ -46,6 +47,7 @@ interface RowData {
 export function RecordsBeaten({ activityId, isBike }: Props) {
   const [data,    setData]    = useState<BeatenPayload | null>(null)
   const [loading, setLoading] = useState(true)
+  const mob = useIsMobile()
 
   useEffect(() => {
     if (!isBike) { setLoading(false); return }
@@ -94,6 +96,29 @@ export function RecordsBeaten({ activityId, isBike }: Props) {
       yearLabel: e.year,
     })),
   ]
+
+  // Mobile (Strava) : carte blanche sans bordure, titre 17, valeurs neutres.
+  if (mob) {
+    return (
+      <section style={{ ...AM_CARD, padding: '14px 16px 6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <TrophyIcon color={GOLD} size={20} />
+          <h2 style={AM_TITLE}>Félicitations · New PR</h2>
+        </div>
+        {rows.map((r, i) => {
+          const accent = r.kind === 'allTime' ? GOLD : CYAN
+          return (
+            <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, borderTop: i === 0 ? 'none' : HAIRLINE }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+              <span style={{ ...NUMS, flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text-mid)' }}>{formatRecordDuration(r.label)}</span>
+              <span style={{ ...NUMS, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{r.watts}<span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 3 }}>W</span></span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', whiteSpace: 'nowrap', minWidth: 84, textAlign: 'right' }}>{r.kind === 'allTime' ? 'All Time' : `Record ${r.yearLabel}`}</span>
+            </div>
+          )
+        })}
+      </section>
+    )
+  }
 
   return (
     <div

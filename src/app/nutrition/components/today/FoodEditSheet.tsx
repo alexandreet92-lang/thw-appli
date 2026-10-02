@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MealIngredient, MealCourse } from '@/hooks/useDailyMeals'
 import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, SegTrack, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, M_INPUT, M_SHEET_CSS, MField, SheetBody } from '../mobile/ui'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const UNITS = ['g', 'ml', 'portion', 'pièce']
@@ -33,7 +35,86 @@ function toDraft(f: MealIngredient | null): Draft {
   }
 }
 
-export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
+export function FoodEditSheet(props: {
+  food: MealIngredient | null
+  slotLabel: string
+  onClose: () => void
+  onSave: (f: EditableFood) => void
+}) {
+  const mobile = useIsMobile()
+  return mobile ? <FoodEditSheetMobile {...props} /> : <FoodEditSheetDesktop {...props} />
+}
+
+// Brouillon + recalcul proportionnel (partagés bureau / mobile).
+function useFoodDraft(food: MealIngredient | null) {
+  const [d, setD] = useState<Draft>(() => toDraft(food))
+  const base = useRef<MealIngredient | null>(food)
+  useEffect(() => { base.current = food; setD(toDraft(food)) }, [food])
+  const num = (v: string) => Math.max(0, parseFloat(v.replace(',', '.')) || 0)
+  function onQty(v: string) {
+    const b = base.current
+    const baseQ = num(b?.qty ?? ''), newQ = num(v)
+    setD(p => {
+      if (!b || baseQ <= 0 || newQ <= 0) return { ...p, qty: v }
+      const r = newQ / baseQ
+      const sc = (x: number | undefined) => String(Math.round(((x ?? 0) * r) * 10) / 10)
+      return { ...p, qty: v, prot: sc(b.prot), gluc: sc(b.gluc), lip: sc(b.lip) }
+    })
+  }
+  const prot = num(d.prot), gluc = num(d.gluc), lip = num(d.lip)
+  const kcal = Math.round(prot * 4 + gluc * 4 + lip * 9)
+  return { d, setD, onQty, prot, gluc, lip, kcal, canSave: d.name.trim().length > 0 }
+}
+
+// Mobile : feuille MSheet (poignée + Annuler / titre / Enregistrer), champs doux.
+function FoodEditSheetMobile({ food, slotLabel, onClose, onSave }: {
+  food: MealIngredient | null
+  slotLabel: string
+  onClose: () => void
+  onSave: (f: EditableFood) => void
+}) {
+  const { t } = useI18n()
+  const [open, requestClose] = useSheetClose(onClose)
+  const { d, setD, onQty, prot, gluc, lip, kcal, canSave } = useFoodDraft(food)
+  function save() {
+    if (!canSave) return
+    onSave({ name: d.name.trim(), qty: d.qty.trim(), unit: d.unit, prot, gluc, lip, kcal, course: food?.course })
+  }
+  const macro = (key: 'prot' | 'gluc' | 'lip', label: string) => (
+    <MField label={label} unit="g">
+      <input className="ntm-in" type="number" inputMode="decimal" value={d[key]} onChange={e => setD(p => ({ ...p, [key]: e.target.value }))}
+        style={{ ...M_INPUT, paddingRight: 32, textAlign: 'right' }} />
+    </MField>
+  )
+  return (
+    <MSheet open={open} onClose={requestClose} full={false} zIndex={18700} label={food ? t('nutrition.food.edit') : t('nutrition.today.addFood')}>
+      <style>{M_SHEET_CSS}</style>
+      <SheetHeader leftLabel={t('nutrition.common.cancel')} onLeft={requestClose}
+        title={food ? t('nutrition.food.edit') : t('nutrition.today.addFood')}
+        rightLabel={t('nutrition.common.save')} onRight={save} rightDisabled={!canSave} />
+      <SheetBody>
+        <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)' }}>{slotLabel}</p>
+        <MField label={t('nutrition.food.name')}>
+          <input className="ntm-in" value={d.name} onChange={e => setD(p => ({ ...p, name: e.target.value }))} placeholder={t('nutrition.food.namePlaceholder')} style={M_INPUT} />
+        </MField>
+        <MField label={t('nutrition.food.quantity')}>
+          <input className="ntm-in" type="number" inputMode="decimal" value={d.qty} onChange={e => onQty(e.target.value)} placeholder="0" style={{ ...M_INPUT, textAlign: 'right' }} />
+        </MField>
+        <SegTrack options={UNITS.map(u => ({ v: u, l: u }))} value={d.unit} onChange={u => setD(p => ({ ...p, unit: u }))} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+          {macro('prot', t('nutrition.macro.proteins'))}
+          {macro('gluc', t('nutrition.macro.carbs'))}
+          {macro('lip', t('nutrition.macro.fats'))}
+        </div>
+        <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{kcal}</span> {t('nutrition.food.kcalCalculated')}
+        </p>
+      </SheetBody>
+    </MSheet>
+  )
+}
+
+function FoodEditSheetDesktop({ food, slotLabel, onClose, onSave }: {
   food: MealIngredient | null
   slotLabel: string
   onClose: () => void

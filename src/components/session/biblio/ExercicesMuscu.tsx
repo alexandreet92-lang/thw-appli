@@ -2,12 +2,13 @@
 // Muscu › Exercices : écran GROUPES (5 bulles) → LISTE filtrable → FICHE.
 // Modèle familles/variantes : une carte = une famille (N variantes).
 import { useState, useMemo } from 'react'
-import { IconSearch, IconAdjustmentsHorizontal, IconArrowLeft, IconChevronRight } from '@tabler/icons-react'
+import { IconSearch, IconAdjustmentsHorizontal, IconChevronRight } from '@tabler/icons-react'
 import {
   FAMILLES_MUSCU, GROUPE_ORDER, GROUPE_LABEL, GROUPE_SUBTITLE, MODE_LABEL,
   primaryMode, type FamilleExercice, type Groupe,
 } from '@/data/exercices'
 import { useI18n } from '@/lib/i18n'
+import { useSessionMobile, MSearchField, MFilterRound, ABack, ATitle, AClear, AEmpty, S_CARD } from '../mobile/kit'
 import { SlideView } from '@/components/ui/SlideView'
 import { CategoryPanel, CategoryRow } from './CategoryRow'
 import { SPORT_THEME } from './sportTheme'
@@ -20,6 +21,8 @@ const TH = SPORT_THEME.muscu
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
+  const m = useSessionMobile()
+  if (m) return <MSearchField value={value} onChange={onChange} placeholder={t('session.rechercherExercice')} />
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0 12px', height: 42,
       borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', flex: 1, minWidth: 0 }}>
@@ -33,6 +36,8 @@ function SearchBar({ value, onChange }: { value: string; onChange: (v: string) =
 
 function FiltreBtn({ n, onClick }: { n: number; onClick: () => void }) {
   const { t } = useI18n()
+  const m = useSessionMobile()
+  if (m) return <MFilterRound n={n} onClick={onClick} label={t('session.filtrer')} />
   return (
     <button onClick={onClick} aria-label={t('session.filtrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42,
       padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', flexShrink: 0,
@@ -45,24 +50,27 @@ function FiltreBtn({ n, onClick }: { n: number; onClick: () => void }) {
 
 function FamilleCard({ fam, showGroupe, onClick }: { fam: FamilleExercice; showGroupe: boolean; onClick: () => void }) {
   const { t } = useI18n()
+  const m = useSessionMobile()
   const nbVar = fam.variantes.length
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
+    <button onClick={onClick} style={m
+      ? { display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 64, textAlign: 'left', padding: '14px 16px', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', background: S_CARD, fontFamily: FB }
+      : { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
       textAlign: 'left', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer',
       background: 'var(--bg-card2)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{fam.nom}</span>
+          <span style={{ fontFamily: m ? FB : FD, fontSize: m ? 16 : 15, fontWeight: m ? 700 : 600, color: 'var(--text)' }}>{fam.nom}</span>
           {fam.flags.includes('a-encadrer') && (
-            <span style={{ padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--zone-bad-bg)',
-              color: 'var(--zone-bad-border)', fontFamily: FB, fontSize: 10, fontWeight: 600 }}>{t('session.aEncadrer')}</span>
+            <span style={{ padding: m ? '3px 9px' : '2px 8px', borderRadius: m ? 'var(--r-pill)' : 'var(--r-sm)', background: 'var(--zone-bad-bg)',
+              color: 'var(--zone-bad-border)', fontFamily: FB, fontSize: m ? 12 : 10, fontWeight: 600 }}>{t('session.aEncadrer')}</span>
           )}
           {fam.accessoire && (
-            <span style={{ padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-elev)',
-              color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, fontWeight: 600 }}>{t('session.accessoire')}</span>
+            <span style={{ padding: m ? '3px 9px' : '2px 8px', borderRadius: m ? 'var(--r-pill)' : 'var(--r-sm)', background: m ? 'var(--surface-chip)' : 'var(--bg-elev)',
+              color: m ? 'var(--text-mid)' : 'var(--text-dim)', fontFamily: FB, fontSize: m ? 12 : 10, fontWeight: 600 }}>{t('session.accessoire')}</span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 4, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: m ? 6 : 'var(--space-3)', marginTop: 4, fontFamily: FB, fontSize: m ? 13 : 11.5, color: m ? 'var(--text-mid)' : 'var(--text-dim)', flexWrap: 'wrap' }}>
           <span>{MODE_LABEL[primaryMode(fam.modes)]}</span>
           {showGroupe && <span>· {GROUPE_LABEL[fam.groupe]}</span>}
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>· {t('session.diffSlash', { n: fam.difficulteTechnique })}</span>
@@ -122,28 +130,17 @@ export function ExercicesMuscu() {
         </div>
       ) : (
         <>
-          <button onClick={backToGroupes} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-            cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-            <IconArrowLeft size={16} /> {t('session.groupes')}
-          </button>
-          <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>
-            {groupeLock ? GROUPE_LABEL[groupeLock] : t('session.tousExercices')}
-          </h2>
+          <ABack label={t('session.groupes')} onClick={backToGroupes} />
+          <ATitle>{groupeLock ? GROUPE_LABEL[groupeLock] : t('session.tousExercices')}</ATitle>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
             <SearchBar value={query} onChange={setQuery} />
             <FiltreBtn n={fh.nbActifs} onClick={() => setSheet(true)} />
           </div>
           {(fh.nbActifs > 0 || query.trim()) && (
-            <button onClick={() => { fh.reset(); setQuery('') }} style={{ background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, padding: '0 0 var(--space-3)' }}>
-              {t('session.effacerFiltres')}
-            </button>
+            <AClear onClick={() => { fh.reset(); setQuery('') }}>{t('session.effacerFiltres')}</AClear>
           )}
           {results.length === 0 ? (
-            <div style={{ padding: '48px 24px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', textAlign: 'center' }}>
-              <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{t('session.aucunExerciceColle')}</p>
-              <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('session.elargisGroupe')}</p>
-            </div>
+            <AEmpty title={t('session.aucunExerciceColle')} hint={t('session.elargisGroupe')} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {results.map(f => <FamilleCard key={f.id} fam={f} showGroupe={!groupeLock} onClick={() => openFiche(f)} />)}

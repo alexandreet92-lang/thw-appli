@@ -63,7 +63,7 @@ export default function RecoveryPage() {
   useGuideTabDemo('rec', (k) => { const s = GUIDE_KEY_TO_SECTION[k]; if (s) setGuideSection(s) })
   const data = useRecoveryData(reload)
   const tl = useTrainingLoad()
-  const isMobile = useNarrow(640)
+  const isMobile = useNarrow(767)
   const tsb = tl.series.length > 0 ? tl.TSB_SM : null
 
   const inputs = { hrvToday: data.hrvToday, hrvBaseline: data.hrvBaseline, hrvNightsCount: data.hrvNightsCount, tsb }

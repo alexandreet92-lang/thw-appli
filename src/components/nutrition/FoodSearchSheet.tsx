@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { searchFoods, getRecentFoods, saveToRecent, type FoodItem } from '@/lib/food-search'
 import { COMMON_FOODS } from '@/lib/common-foods'
 import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, useIsMobile } from '@/components/ai/mobile/MobileKit'
 
 interface Props {
   onSelect: (food: FoodItem, grams: number) => void
@@ -43,6 +44,24 @@ function FoodRow({ food, onSelect }: { food: FoodItem; onSelect: (food: FoodItem
   )
 }
 
+// Mobile : ligne de liste groupée ≥ 56 px (nom 16, macros grises 13).
+function FoodRowMobile({ food, first, onSelect }: { food: FoodItem; first: boolean; onSelect: (food: FoodItem) => void }) {
+  const n = food.nutriments
+  return (
+    <button type="button" onClick={() => onSelect(food)} className="thw-press"
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 56, padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+      {!first && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{food.product_name}</span>
+        <span style={{ display: 'block', marginTop: 2, fontSize: 13, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+          {n['energy-kcal_100g']} kcal · P {n.proteins_100g} · G {n.carbohydrates_100g} · L {n.fat_100g} g
+        </span>
+      </span>
+      <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
+    </button>
+  )
+}
+
 function Skeleton() {
   return (
     <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -58,10 +77,13 @@ function Skeleton() {
 
 export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
   const { t } = useI18n()
+  const mobile = useIsMobile()
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
+  // Mobile : la feuille MSheet joue elle-même l'entrée/sortie (open → false puis démontage).
+  const [mOpen, setMOpen] = useState(true)
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
+  const requestClose = () => { setClosing(true); setShown(false); setMOpen(false); setTimeout(onClose, 280) }
   const [query, setQuery] = useState(initialBarcode ?? '')
   const [loading, setLoading] = useState(!!initialBarcode)
   const [localResults, setLocalResults] = useState<FoodItem[]>([])
@@ -112,6 +134,89 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
 
   const showEmpty = !loading && query.trim() && !localResults.length && !apiResults.length
   const showDefault = !query.trim()
+
+  if (mobile) {
+    const section = (label: string, foods: FoodItem[]) => (
+      <section>
+        <p style={{ margin: '0 20px 8px', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>{label}</p>
+        <div style={{ margin: '0 16px', background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+          {foods.map((f, i) => <FoodRowMobile key={f.code} food={f} first={i === 0} onSelect={handleSelect} />)}
+        </div>
+      </section>
+    )
+    const g = parseFloat(grams) || 100
+    return (
+      <MSheet open={mOpen} onClose={requestClose} zIndex={18800} label={t('nutrition.foodSearch.placeholder')}>
+        <style>{'.fss-in:focus{box-shadow:0 0 0 2px var(--primary)}.fss-in::placeholder{color:var(--text-dim)}@keyframes fssPulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){.fss-skel{animation:none!important}}'}</style>
+        {pending ? (
+          <SheetHeader leftLabel={t('nutrition.common.back')} onLeft={() => setPending(null)} title={pending.product_name}
+            rightLabel={t('nutrition.common.add')} onRight={handleConfirm} />
+        ) : (
+          <SheetHeader leftLabel={t('nutrition.common.cancel')} onLeft={requestClose} title={t('nutrition.searchFood')} />
+        )}
+
+        {pending ? (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px calc(24px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label htmlFor="fss-grams" style={{ display: 'block', margin: '0 0 6px 4px', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>{t('nutrition.food.quantity')}</label>
+              <div style={{ position: 'relative' }}>
+                <input id="fss-grams" className="fss-in" type="number" inputMode="decimal" min="1" value={grams} onChange={e => setGrams(e.target.value)} autoFocus
+                  style={{ width: '100%', minHeight: 52, padding: '0 44px 0 16px', boxSizing: 'border-box', border: 'none', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 700, textAlign: 'right', outline: 'none', fontVariantNumeric: 'tabular-nums' }} />
+                <span aria-hidden style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: 'var(--text-dim)' }}>g</span>
+              </div>
+            </div>
+            <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{Math.round(pending.nutriments['energy-kcal_100g'] * g / 100)}</span> kcal · P {+((pending.nutriments.proteins_100g * g / 100).toFixed(1))} · G {+((pending.nutriments.carbohydrates_100g * g / 100).toFixed(1))} · L {+((pending.nutriments.fat_100g * g / 100).toFixed(1))} g
+            </p>
+            <button type="button" onClick={handleConfirm} className="thw-press"
+              style={{ width: '100%', minHeight: 52, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700 }}>
+              {t('nutrition.common.add')}
+            </button>
+          </div>
+        ) : <>
+          <div style={{ flexShrink: 0, padding: '4px 16px 12px' }}>
+            <div style={{ position: 'relative' }}>
+              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input ref={inputRef} className="fss-in" value={query} onChange={e => handleChange(e.target.value)} placeholder={t('nutrition.foodSearch.placeholder')}
+                style={{ width: '100%', minHeight: 48, padding: '0 14px 0 42px', boxSizing: 'border-box', border: 'none', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 16, outline: 'none' }} />
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
+            {loading && (
+              <div style={{ margin: '0 16px', background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', padding: '6px 16px' }}>
+                {[72, 56, 64].map((w, i) => (
+                  <div key={i} style={{ padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                    <div className="fss-skel" style={{ height: 14, borderRadius: 'var(--r-sm)', background: 'var(--surface-bar)', width: `${w}%`, animation: 'fssPulse 1.4s ease-in-out infinite' }} />
+                    <div className="fss-skel" style={{ height: 11, borderRadius: 'var(--r-sm)', background: 'var(--surface-bar)', width: '45%', marginTop: 6, opacity: 0.6, animation: 'fssPulse 1.4s ease-in-out infinite' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {!loading && showDefault && <>
+              {recentFoods.length > 0 && section(t('nutrition.foodSearch.recent'), recentFoods)}
+              {section(t('nutrition.foodSearch.frequent'), COMMON_FOODS)}
+            </>}
+            {!loading && !showDefault && <>
+              {localResults.length > 0 && section(t('nutrition.foodSearch.library'), localResults)}
+              {apiResults.length > 0 && section(t('nutrition.foodSearch.products'), apiResults)}
+              {showEmpty && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 24px 0', gap: 10, textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('nutrition.foodSearch.notFound', { query })}</p>
+                  <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('nutrition.foodSearch.tryAgain')}</p>
+                  <button type="button" onClick={requestClose}
+                    style={{ marginTop: 6, minHeight: 44, padding: '0 20px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+                    {t('nutrition.foodSearch.manualEntry')}
+                  </button>
+                </div>
+              )}
+            </>}
+          </div>
+        </>}
+      </MSheet>
+    )
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>

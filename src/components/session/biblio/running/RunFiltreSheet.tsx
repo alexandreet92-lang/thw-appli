@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { IconX } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
+import { useSessionMobile, useInFilterSheet, MFilterSheet, MFilterBloc, MPill, FRange } from '../../mobile/kit'
 import {
   FILIERE_ORDER, FILIERE_LABEL, BUCKET_ORDER, BUCKET_SHORT, PHASE_ORDER,
 } from '@/data/seances/running'
@@ -24,6 +25,8 @@ interface Props {
 }
 
 function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  const m = useInFilterSheet()
+  if (m) return <MPill active={active} onClick={onClick}>{label}</MPill>
   return (
     <button onClick={onClick} style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
       fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: active ? 600 : 500,
@@ -31,6 +34,8 @@ function Chip({ active, label, onClick }: { active: boolean; label: string; onCl
   )
 }
 function Bloc({ titre, children }: { titre: string; children: React.ReactNode }) {
+  const m = useInFilterSheet()
+  if (m) return <MFilterBloc titre={titre}>{children}</MFilterBloc>
   return (
     <div style={{ marginBottom: 'var(--space-6)' }}>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
@@ -42,11 +47,38 @@ function Bloc({ titre, children }: { titre: string; children: React.ReactNode })
 
 export function RunFiltreSheet(p: Props) {
   const { t } = useI18n()
+  const mobile = useSessionMobile()
   const { filtre: f } = p
   const reduce = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+  // Contenu partagé bureau / mobile (Chip / Bloc / FRange s'adaptent au contexte).
+  const body = (<>
+              <Bloc titre={t('session.filiere')}>
+                {FILIERE_ORDER.map(x => <Chip key={x} active={f.filieres.includes(x)} label={FILIERE_LABEL[x]} onClick={() => p.toggleFiliere(x)} />)}
+              </Bloc>
+              <Bloc titre={t('session.distanceCible')}>
+                {BUCKET_ORDER.map(x => <Chip key={x} active={f.distances.includes(x)} label={BUCKET_SHORT[x]} onClick={() => p.toggleDistance(x)} />)}
+              </Bloc>
+              <Bloc titre={t('session.phase')}>
+                {PHASE_ORDER.map(x => <Chip key={x} active={f.phases.includes(x)} label={x} onClick={() => p.togglePhase(x)} />)}
+              </Bloc>
+              <Bloc titre={f.dureeMax >= 180 ? t('session.dureeMaxToutes') : t('session.dureeMaxN', { n: f.dureeMax })}>
+                <FRange min={20} max={180} step={5} value={f.dureeMax} onChange={p.setDureeMax} />
+              </Bloc>
+              <Bloc titre={f.rpeMax >= 10 ? t('session.rpeMaxTous') : t('session.rpeMaxN', { n: f.rpeMax })}>
+                <FRange min={1} max={10} step={1} value={f.rpeMax} onChange={p.setRpeMax} />
+              </Bloc>
+  </>)
   if (!mounted) return null
+  if (mobile) {
+    return (
+      <MFilterSheet open={p.open} onClose={p.onClose} title={t('session.filtrer')} resetLabel={t('session.effacer')} onReset={p.reset}
+        applyLabel={t('session.voirNSeances', { n: p.nbResultats, s: p.nbResultats > 1 ? 's' : '' })}>
+        {body}
+      </MFilterSheet>
+    )
+  }
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column',
@@ -73,23 +105,7 @@ export function RunFiltreSheet(p: Props) {
               </button>
             </div>
             <div style={{ overflowY: 'auto', padding: '0 20px 8px', flex: 1 }}>
-              <Bloc titre={t('session.filiere')}>
-                {FILIERE_ORDER.map(x => <Chip key={x} active={f.filieres.includes(x)} label={FILIERE_LABEL[x]} onClick={() => p.toggleFiliere(x)} />)}
-              </Bloc>
-              <Bloc titre={t('session.distanceCible')}>
-                {BUCKET_ORDER.map(x => <Chip key={x} active={f.distances.includes(x)} label={BUCKET_SHORT[x]} onClick={() => p.toggleDistance(x)} />)}
-              </Bloc>
-              <Bloc titre={t('session.phase')}>
-                {PHASE_ORDER.map(x => <Chip key={x} active={f.phases.includes(x)} label={x} onClick={() => p.togglePhase(x)} />)}
-              </Bloc>
-              <Bloc titre={f.dureeMax >= 180 ? t('session.dureeMaxToutes') : t('session.dureeMaxN', { n: f.dureeMax })}>
-                <input type="range" min={20} max={180} step={5} value={f.dureeMax}
-                  onChange={e => p.setDureeMax(+e.target.value)} style={{ width: '100%', accentColor: 'var(--primary)' }} />
-              </Bloc>
-              <Bloc titre={f.rpeMax >= 10 ? t('session.rpeMaxTous') : t('session.rpeMaxN', { n: f.rpeMax })}>
-                <input type="range" min={1} max={10} step={1} value={f.rpeMax}
-                  onChange={e => p.setRpeMax(+e.target.value)} style={{ width: '100%', accentColor: 'var(--primary)' }} />
-              </Bloc>
+              {body}
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-3)', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
               <button onClick={p.reset} style={{ padding: '11px 16px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',

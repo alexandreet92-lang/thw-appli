@@ -13,6 +13,8 @@ import { SeancesVelo } from './velo/SeancesVelo'
 import { SeancesEndurance } from './endurance/SeancesEndurance'
 import { AVIRON_CONFIG, NATATION_CONFIG, TRAIL_CONFIG } from './endurance/config'
 import { EnPreparation } from './EnPreparation'
+import { SegTrack } from '@/components/ai/mobile/MobileKit'
+import { useSessionMobile, MBack, MTitle } from '../mobile/kit'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -65,6 +67,26 @@ export function SportDetail({ theme, onBack }: { theme: SportTheme; onBack: () =
   const [tab, setTab] = useState<'exos' | 'seances'>(hasExos ? 'exos' : 'seances')
   const [tabDir, setTabDir] = useState(1)
   const changeTab = (t: 'exos' | 'seances') => { setTabDir(t === 'seances' ? 1 : -1); setTab(t) }
+  const mobile = useSessionMobile()
+
+  if (mobile) {
+    // Mobile : ‹ Sports (cyan) · gros titre + point sport · segmenté gris.
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <MBack label={t('session.sports')} onClick={onBack} />
+        <MTitle dot={theme.accent} sub={t(theme.taglineKey)}>{t(theme.labelKey)}</MTitle>
+        {hasExos && (
+          <SegTrack<'exos' | 'seances'> value={tab} onChange={changeTab}
+            options={[{ v: 'exos', l: t('session.exercices') }, { v: 'seances', l: t('session.seances') }]} />
+        )}
+        <div style={{ overflowX: 'hidden', margin: '0 -4px', padding: '0 4px' }}>
+          <SlideView screenKey={tab} direction={tabDir}>
+            <Contenu theme={theme} tab={tab} />
+          </SlideView>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -8,6 +8,8 @@ import { useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { YearSummary } from './compositionData'
 import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, SheetBody, SoftGroup, SoftRow } from '../mobile/ui'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -25,7 +27,45 @@ function Spark({ pts }: { pts: { t: number; v: number }[] }) {
   )
 }
 
-export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: YearSummary; metricLabel: string; unit: string; onClose: () => void }) {
+type Props = { summary: YearSummary; metricLabel: string; unit: string; onClose: () => void }
+
+export function AnnualSheet(props: Props) {
+  const mobile = useIsMobile()
+  return mobile ? <AnnualSheetMobile {...props} /> : <AnnualSheetDesktop {...props} />
+}
+
+// Mobile : feuille MSheet (Fermer / « 2026 · Poids »), courbe, stats en liste groupée.
+function AnnualSheetMobile({ summary, metricLabel, unit, onClose }: Props) {
+  const { t } = useI18n()
+  const [open, requestClose] = useSheetClose(onClose)
+  const rows: [string, string][] = [
+    [t('nutrition.comp.max'), `${summary.max}${unit}`],
+    [t('nutrition.comp.min'), `${summary.min}${unit}`],
+    [t('nutrition.annual.amplitude'), `${summary.amplitude}${unit}`],
+    [t('nutrition.comp.variation'), `${summary.delta > 0 ? '+' : ''}${summary.delta}${unit}`],
+  ]
+  return (
+    <MSheet open={open} onClose={requestClose} full={false} zIndex={18700} label={`${summary.year} · ${metricLabel}`}>
+      <SheetHeader leftLabel={t('nutrition.common.close')} onLeft={requestClose} title={`${summary.year} · ${metricLabel}`} />
+      <SheetBody>
+        <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)' }}>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.count}</span> {t(summary.count > 1 ? 'nutrition.annual.measures' : 'nutrition.annual.measure')}
+        </p>
+        <div style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', padding: '14px 12px' }}><Spark pts={summary.pts} /></div>
+        <SoftGroup>
+          {rows.map(([l, v], i) => (
+            <SoftRow key={l} first={i === 0}>
+              <span style={{ flex: 1, fontSize: 16, color: 'var(--text)' }}>{l}</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+            </SoftRow>
+          ))}
+        </SoftGroup>
+      </SheetBody>
+    </MSheet>
+  )
+}
+
+function AnnualSheetDesktop({ summary, metricLabel, unit, onClose }: Props) {
   const { t } = useI18n()
   const startY = useRef<number | null>(null)
   const [closing, setClosing] = useState(false)

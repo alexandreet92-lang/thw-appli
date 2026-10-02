@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { IconX } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
+import { useSessionMobile, useInFilterSheet, MFilterSheet, MFilterBloc, MPill, FRange } from '../mobile/kit'
 import {
   MODE_LABEL, MODE_ORDER, MUSCLE_LABEL, MUSCLES_PAR_REGION, REGION_LABEL, REGION_ORDER,
   EQUIP_LABEL, EQUIP_ORDER,
@@ -26,6 +27,8 @@ interface Props {
 }
 
 function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  const m = useInFilterSheet()
+  if (m) return <MPill active={active} onClick={onClick}>{label}</MPill>
   return (
     <button onClick={onClick} style={{
       padding: '7px 12px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
@@ -37,6 +40,8 @@ function Chip({ active, label, onClick }: { active: boolean; label: string; onCl
 }
 
 function Bloc({ titre, children }: { titre: string; children: React.ReactNode }) {
+  const m = useInFilterSheet()
+  if (m) return <MFilterBloc titre={titre}>{children}</MFilterBloc>
   return (
     <div style={{ marginBottom: 'var(--space-6)' }}>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
@@ -48,11 +53,54 @@ function Bloc({ titre, children }: { titre: string; children: React.ReactNode })
 
 export function FiltreSheet(p: Props) {
   const { t } = useI18n()
+  const mobile = useSessionMobile()
   const { filtre: f } = p
   const reduce = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+  // Contenu partagé bureau / mobile (Chip / Bloc / FRange s'adaptent au contexte).
+  const body = (<>
+          <Bloc titre={t('session.qualiteMode')}>
+            {MODE_ORDER.map(m => <Chip key={m} active={f.modes.includes(m)} label={MODE_LABEL[m]} onClick={() => p.toggleMode(m)} />)}
+          </Bloc>
+
+          <Bloc titre={t('session.muscle')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', width: '100%' }}>
+              {REGION_ORDER.map(r => (
+                <div key={r}>
+                  <p style={mobile ? { fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '0 4px 8px' } : { fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 6px' }}>{REGION_LABEL[r]}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: mobile ? 8 : 'var(--space-2)' }}>
+                    {MUSCLES_PAR_REGION[r].map(m => <Chip key={m} active={f.muscles.includes(m)} label={MUSCLE_LABEL[m]} onClick={() => p.toggleMuscle(m)} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Bloc>
+
+          <Bloc titre={t('session.equipement')}>
+            {EQUIP_ORDER.map(eq => <Chip key={eq} active={f.equipement.includes(eq)} label={EQUIP_LABEL[eq]} onClick={() => p.toggleEquip(eq)} />)}
+          </Bloc>
+
+          <Bloc titre={f.difficulteMax === 10 ? t('session.difficulteMaxToutes', { n: f.difficulteMax }) : t('session.difficulteMax', { n: f.difficulteMax })}>
+            <FRange min={1} max={10} step={1} value={f.difficulteMax} onChange={p.setDifficulteMax} />
+          </Bloc>
+
+          <Bloc titre={t('session.filtres')}>
+            <Chip active={f.unilateral} label={t('session.unilateral')} onClick={() => p.toggleFlag('unilateral')} />
+            <Chip active={f.aEncadrer} label={t('session.aEncadrer')} onClick={() => p.toggleFlag('aEncadrer')} />
+            <Chip active={f.avecFiche} label={t('session.avecFiche')} onClick={() => p.toggleFlag('avecFiche')} />
+            <Chip active={f.masquerAccessoires} label={t('session.masquerAccessoires')} onClick={() => p.toggleFlag('masquerAccessoires')} />
+          </Bloc>
+  </>)
   if (!mounted) return null
+  if (mobile) {
+    return (
+      <MFilterSheet open={p.open} onClose={p.onClose} title={t('session.filtrer')} resetLabel={t('session.effacer')} onReset={p.reset}
+        applyLabel={t('session.voirNExercices', { n: p.nbResultats, s: p.nbResultats > 1 ? 's' : '' })}>
+        {body}
+      </MFilterSheet>
+    )
+  }
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column',
@@ -82,40 +130,8 @@ export function FiltreSheet(p: Props) {
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0 20px 8px', flex: 1 }}>
-          <Bloc titre={t('session.qualiteMode')}>
-            {MODE_ORDER.map(m => <Chip key={m} active={f.modes.includes(m)} label={MODE_LABEL[m]} onClick={() => p.toggleMode(m)} />)}
-          </Bloc>
-
-          <Bloc titre={t('session.muscle')}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', width: '100%' }}>
-              {REGION_ORDER.map(r => (
-                <div key={r}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 6px' }}>{REGION_LABEL[r]}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                    {MUSCLES_PAR_REGION[r].map(m => <Chip key={m} active={f.muscles.includes(m)} label={MUSCLE_LABEL[m]} onClick={() => p.toggleMuscle(m)} />)}
-                  </div>
-                </div>
-              ))}
+              {body}
             </div>
-          </Bloc>
-
-          <Bloc titre={t('session.equipement')}>
-            {EQUIP_ORDER.map(eq => <Chip key={eq} active={f.equipement.includes(eq)} label={EQUIP_LABEL[eq]} onClick={() => p.toggleEquip(eq)} />)}
-          </Bloc>
-
-          <Bloc titre={f.difficulteMax === 10 ? t('session.difficulteMaxToutes', { n: f.difficulteMax }) : t('session.difficulteMax', { n: f.difficulteMax })}>
-            <input type="range" min={1} max={10} step={1} value={f.difficulteMax}
-              onChange={e => p.setDifficulteMax(+e.target.value)}
-              style={{ width: '100%', accentColor: 'var(--primary)' }} />
-          </Bloc>
-
-          <Bloc titre={t('session.filtres')}>
-            <Chip active={f.unilateral} label={t('session.unilateral')} onClick={() => p.toggleFlag('unilateral')} />
-            <Chip active={f.aEncadrer} label={t('session.aEncadrer')} onClick={() => p.toggleFlag('aEncadrer')} />
-            <Chip active={f.avecFiche} label={t('session.avecFiche')} onClick={() => p.toggleFlag('avecFiche')} />
-            <Chip active={f.masquerAccessoires} label={t('session.masquerAccessoires')} onClick={() => p.toggleFlag('masquerAccessoires')} />
-          </Bloc>
-        </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-3)', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
           <button onClick={p.reset} style={{ padding: '11px 16px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',

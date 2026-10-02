@@ -13,6 +13,8 @@ import { createPortal } from 'react-dom'
 import type { NutritionPlanData, MealSet, MealSlotValue } from '@/hooks/useNutrition'
 import { slotText } from '@/hooks/useNutrition'
 import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, SegTrack, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, SheetBody, SoftGroup, SoftRow, MButton } from '../mobile/ui'
 
 // Mapping libellé de rayon (identifiant interne) → clé i18n d'affichage.
 const RAYON_I18N: Record<string, string> = {
@@ -61,15 +63,61 @@ function extractTokens(desc: string): string[] {
     .filter(t => t.length >= 3 && t.length <= 40)
 }
 
-export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClose }: Props) {
-  const { t } = useI18n()
-  const [shown, setShown] = useState(false)
-  const [closing, setClosing] = useState(false)
-  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
-  const [scope, setScope] = useState<'day' | 'week'>(selectedDate ? 'day' : 'week')
+export function PlanShoppingList(props: Props) {
+  const mobile = useIsMobile()
+  return mobile ? <PlanShoppingListMobile {...props} /> : <PlanShoppingListDesktop {...props} />
+}
 
-  const grouped = useMemo(() => {
+type Scope = 'day' | 'week'
+
+// Mobile : feuille MSheet (Fermer / Liste de courses), bascule segmentée, rayons
+// en listes groupées, impression en pilules.
+function PlanShoppingListMobile({ plan, variant, selectedDate, onClose }: Props) {
+  const { t } = useI18n()
+  const [open, requestClose] = useSheetClose(onClose)
+  const [scope, setScope] = useState<Scope>(selectedDate ? 'day' : 'week')
+  const grouped = useShoppingGroups(plan, variant, scope, selectedDate)
+  const isEmpty = grouped.length === 0
+  return (
+    <MSheet open={open} onClose={requestClose} zIndex={18700} label={t('nutrition.plan.shoppingList')}>
+      <style>{`@media print { body * { visibility: hidden; } #shopping-print, #shopping-print * { visibility: visible; } #shopping-print { position: absolute; inset: 0; } }`}</style>
+      <SheetHeader leftLabel={t('nutrition.common.close')} onLeft={requestClose} title={t('nutrition.plan.shoppingList')} />
+      <SheetBody>
+        <SegTrack<Scope>
+          options={[{ v: 'day', l: t('nutrition.shopping.perDay'), locked: !selectedDate }, { v: 'week', l: t('nutrition.shopping.fullWeek') }]}
+          value={scope} onChange={v => { if (v === 'day' && !selectedDate) return; setScope(v) }} />
+        <div id="shopping-print" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {isEmpty ? (
+            <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('nutrition.shopping.empty')}</p>
+          ) : grouped.map(g => (
+            <section key={g.rayon}>
+              <p style={{ margin: '0 4px 8px', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>{t(RAYON_I18N[g.rayon] ?? 'nutrition.rayon.other')}</p>
+              <SoftGroup>
+                {g.items.map((it, i) => (
+                  <SoftRow key={it.label} first={i === 0} style={{ minHeight: 48 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 16, color: 'var(--text)' }}>{it.label}</span>
+                    <span style={{ fontSize: 15, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{it.n}–{it.n + 1}</span>
+                  </SoftRow>
+                ))}
+              </SoftGroup>
+            </section>
+          ))}
+        </div>
+        {!isEmpty && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <MButton variant="soft" onClick={() => window.print()}>{t('nutrition.shopping.print')}</MButton>
+            <MButton variant="soft" onClick={() => window.print()}>{t('nutrition.shopping.downloadPdf')}</MButton>
+          </div>
+        )}
+        <p style={{ margin: '0 4px', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('nutrition.shopping.footnote')}</p>
+      </SheetBody>
+    </MSheet>
+  )
+}
+
+// Regroupement par rayon (partagé bureau / mobile).
+function useShoppingGroups(plan: NutritionPlanData, variant: 'A' | 'B', scope: Scope, selectedDate?: string | null) {
+  return useMemo(() => {
     const days = (plan.jours ?? []).filter(j => scope === 'week' || j.date === selectedDate)
     const counts = new Map<string, { label: string; rayon: string; n: number }>()
     for (const day of days) {
@@ -97,6 +145,16 @@ export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClo
       .filter(r => byRayon.has(r))
       .map(r => ({ rayon: r, items: (byRayon.get(r) ?? []).sort((a, b) => b.n - a.n) }))
   }, [plan.jours, variant, scope, selectedDate])
+}
+
+function PlanShoppingListDesktop({ plan, variant, selectedDate, isDesktop, onClose }: Props) {
+  const { t } = useI18n()
+  const [shown, setShown] = useState(false)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
+  const [scope, setScope] = useState<Scope>(selectedDate ? 'day' : 'week')
+  const grouped = useShoppingGroups(plan, variant, scope, selectedDate)
 
   const isEmpty = grouped.length === 0
 

@@ -6,22 +6,31 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { EditableFood } from './FoodEditSheet'
 import { useI18n } from '@/lib/i18n'
+import { MSheet, SheetHeader, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, M_INPUT, M_SHEET_CSS, MField, SheetBody, SheetFooter, MButton } from '../mobile/ui'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 interface Macros { kcal: number; prot: number; gluc: number; lip: number }
 
-export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
+interface Props {
   slotLabel: string
   onClose: () => void
   onConfirm: (food: EditableFood) => void
-}) {
+}
+
+export function AiMealSheet(props: Props) {
+  const mobile = useIsMobile()
+  return mobile ? <AiMealSheetMobile {...props} /> : <AiMealSheetDesktop {...props} />
+}
+
+// Analyse IA + rectification (partagées bureau / mobile).
+function useAiMeal(onConfirm: Props['onConfirm']) {
   const { t } = useI18n()
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [res, setRes] = useState<Macros | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [closing, setClosing] = useState(false)
 
   async function analyze() {
     if (!text.trim() || loading) return
@@ -48,6 +57,62 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
     if (!res) return
     onConfirm({ name: text.trim(), qty: '1', unit: '', kcal: res.kcal, prot: res.prot, gluc: res.gluc, lip: res.lip })
   }
+  return { text, setText, loading, res, setRes, err, setErr, analyze, setField, validate }
+}
+
+// Mobile : feuille MSheet (Annuler / titre / Valider), champ doux, macros en grille.
+function AiMealSheetMobile({ slotLabel, onClose, onConfirm }: Props) {
+  const { t } = useI18n()
+  const [open, requestClose] = useSheetClose(onClose)
+  const { text, setText, loading, res, setRes, err, setErr, analyze, setField, validate } = useAiMeal(onConfirm)
+  const ROWS: { k: keyof Macros; label: string; unit: string }[] = [
+    { k: 'prot', label: t('nutrition.macro.proteins'), unit: 'g' },
+    { k: 'gluc', label: t('nutrition.macro.carbs'), unit: 'g' },
+    { k: 'lip', label: t('nutrition.macro.fats'), unit: 'g' },
+    { k: 'kcal', label: t('nutrition.macro.calories'), unit: 'kcal' },
+  ]
+  return (
+    <MSheet open={open} onClose={requestClose} full={false} zIndex={18700} label={t('nutrition.ai.describeMeal')}>
+      <style>{M_SHEET_CSS}</style>
+      <SheetHeader leftLabel={t('nutrition.common.cancel')} onLeft={requestClose} title={slotLabel}
+        rightLabel={res ? t('nutrition.validate') : undefined} onRight={res ? validate : undefined} />
+      <SheetBody>
+        <MField label={t('nutrition.ai.describeMeal')}>
+          <textarea className="ntm-in" value={text} rows={4} autoFocus placeholder={t('nutrition.ai.mealPlaceholder')}
+            onChange={e => { setText(e.target.value); if (res) setRes(null); if (err) setErr(null) }}
+            style={{ ...M_INPUT, padding: '12px 14px', minHeight: 112, resize: 'none', lineHeight: 1.45 }} />
+        </MField>
+        {res && <>
+          <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)' }}>{t('nutrition.ai.estimatedResult')}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {ROWS.map(r => (
+              <MField key={r.k} label={r.label} unit={r.unit}>
+                <input className="ntm-in" type="number" inputMode="numeric" min={0} value={res[r.k]} onChange={e => setField(r.k, e.target.value)}
+                  style={{ ...M_INPUT, paddingRight: r.unit === 'kcal' ? 52 : 32, textAlign: 'right', fontWeight: 700 }} />
+              </MField>
+            ))}
+          </div>
+        </>}
+        {err && <p style={{ margin: '0 4px', fontSize: 14, color: 'var(--danger)' }}>{err}</p>}
+      </SheetBody>
+      <SheetFooter>
+        {!res ? (
+          <MButton onClick={() => void analyze()} disabled={loading || !text.trim()}>
+            {loading ? t('nutrition.ai.analyzing') : t('nutrition.ai.analyzeBtn')}
+          </MButton>
+        ) : <>
+          <MButton onClick={validate}>{t('nutrition.validate')}</MButton>
+          <MButton variant="soft" onClick={() => setRes(null)}>{t('nutrition.ai.restart')}</MButton>
+        </>}
+      </SheetFooter>
+    </MSheet>
+  )
+}
+
+function AiMealSheetDesktop({ slotLabel, onClose, onConfirm }: Props) {
+  const { t } = useI18n()
+  const [closing, setClosing] = useState(false)
+  const { text, setText, loading, res, setRes, err, setErr, analyze, setField, validate } = useAiMeal(onConfirm)
 
   const INP: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)',

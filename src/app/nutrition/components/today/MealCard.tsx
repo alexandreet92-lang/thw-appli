@@ -8,6 +8,7 @@ import { MealDetail } from './MealDetail'
 import type { EditableFood } from './FoodEditSheet'
 import type { MealCourse } from '@/hooks/useDailyMeals'
 import { useI18n } from '@/lib/i18n'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const COURSES: { key: MealCourse; label: string }[] = [
@@ -43,6 +44,74 @@ export function MealCard({ slotLabel, foods, courses, photoUrl, photos, score, a
   const textBtn: React.CSSProperties = { height: 32, padding: '0 var(--space-2)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12, fontWeight: 500, cursor: 'pointer' }
   // Multi-photos : on affiche toutes les photos accumulées (fallback sur l'ancienne photo unique).
   const allPhotos = (photos && photos.length) ? photos : (photoUrl ? [photoUrl] : [])
+  const mobile = useNarrow(767)
+
+  if (mobile) {
+    // Mobile : carte blanche radius 20 sans bordure ; titre 17/700 + note en pilule
+    // grise ; ajout d'aliment = pilule cyan pleine largeur ; actions secondaires en
+    // pilules grises ; « Vider » en texte rouge.
+    const pill: React.CSSProperties = { flex: 1, minWidth: 0, minHeight: 44, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: FB, fontSize: 15, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+    const plus = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M12 5v14M5 12h14" /></svg>
+    return (
+      <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '16px 18px 12px', boxSizing: 'border-box', width: '100%', maxWidth: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14, fontFamily: FB }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{slotLabel}</span>
+          {score != null && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '5px 10px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: scoreColor(score) }} />
+              <span className="tnum" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{score}/10</span>
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, width: '100%' }}>
+          {allPhotos.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0, maxWidth: allPhotos.length > 1 ? 176 : 104, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+              {allPhotos.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={src} alt="" style={{ width: 104, height: 104, objectFit: 'cover', borderRadius: 'var(--r-md)', flexShrink: 0, display: 'block' }} />
+              ))}
+            </div>
+          )}
+          <MacroDonut kcal={t.kcal} prot={t.prot} gluc={t.gluc} lip={t.lip} size={104} />
+        </div>
+
+        <MealMacroGauges prot={t.prot} gluc={t.gluc} lip={t.lip} />
+
+        <MealDetail foods={foods} grouped={courses} onTapFood={onTapFood} onDeleteFood={onDeleteFood} />
+
+        {advice && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logos/logo_4bras.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0, marginTop: 1, opacity: 0.85 }} />
+            <span style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5 }}>{advice}</span>
+          </div>
+        )}
+
+        {courses ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {COURSES.map(c => (
+              <button key={c.key} onClick={() => onAddSearch(c.key)} style={{ ...pill, color: 'var(--primary)' }}>
+                {plus}{tr(`nutrition.course.${c.key}`)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button onClick={() => onAddSearch()} className="thw-press" style={{ ...pill, flex: 'none', width: '100%', minHeight: 50, fontSize: 16, fontWeight: 700, background: 'var(--primary)', color: 'var(--on-primary)' }}>
+            {plus}{tr('nutrition.today.addFood')}
+          </button>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onPhoto} style={pill}>{tr('nutrition.today.photoAI')}</button>
+          <button onClick={() => onAddManual()} style={pill}>{tr('nutrition.today.manual')}</button>
+        </div>
+        <button onClick={onClear} style={{ minHeight: 44, border: 'none', background: 'transparent', color: 'var(--danger)', fontFamily: FB, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+          {tr('nutrition.today.clear')}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', boxSizing: 'border-box', width: '100%', maxWidth: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

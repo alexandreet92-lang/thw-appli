@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { MSheet, SheetHeader, SegTrack, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, M_INPUT, M_SHEET_CSS, MField, SheetBody, SheetFooter, SoftGroup, SoftRow, MButton } from './components/mobile/ui'
 import MobileNutrition from './components/MobileNutrition'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
 import { buildPeriod, periodSummary, periodDates } from './components/suivi/suiviData'
@@ -477,21 +479,22 @@ function TemplateForm({
   )
 }
 
-function MealTemplatesSection({
-  templates,
-  loading,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onClose,
-}: {
+interface MealTemplatesProps {
   templates: MealTemplate[]
   loading: boolean
   onAdd: (t: Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>) => Promise<void>
   onUpdate: (id: string, t: Partial<Omit<MealTemplate, 'id' | 'user_id' | 'created_at'>>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onClose: () => void
-}) {
+}
+
+function MealTemplatesSection(props: MealTemplatesProps) {
+  const mobile = useIsMobile()
+  return mobile ? <MealTemplatesSheetMobile {...props} /> : <MealTemplatesSectionDesktop {...props} />
+}
+
+// Édition des repas types (état + actions partagés bureau / mobile).
+function useTemplateEditor({ onAdd, onUpdate, onDelete }: Pick<MealTemplatesProps, 'onAdd' | 'onUpdate' | 'onDelete'>) {
   const [form, setForm] = useState<TemplateFormData>(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingFor, setAddingFor] = useState<MealKey | null>(null)
@@ -552,14 +555,117 @@ function MealTemplatesSection({
     cancelForm()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(tr('nutrition.templates.deleteConfirm'))) return
+  async function handleDelete(id: string): Promise<boolean> {
+    if (!confirm(tr('nutrition.templates.deleteConfirm'))) return false
     await onDelete(id)
+    return true
   }
 
   async function handleToggle(t: MealTemplate) {
     await onUpdate(t.id, { actif: !t.actif })
   }
+
+  return { form, setForm, editingId, addingFor, saving, startAdd, startEdit, cancelForm, handleSave, handleDelete, handleToggle }
+}
+
+const tplMacros = (t: MealTemplate) =>
+  `${t.kcal != null ? `${t.kcal} kcal` : '—'}${t.proteines != null ? ` · P ${t.proteines} g` : ''}${t.glucides != null ? ` · G ${t.glucides} g` : ''}${t.lipides != null ? ` · L ${t.lipides} g` : ''}`
+
+// Mobile : feuille MSheet (Fermer / Mes repas types). Un groupe par type de
+// repas (libellé gris), lignes séparées par un filet : tap = modifier,
+// interrupteur actif/inactif à droite, « + Ajouter » en ligne cyan. La saisie
+// s'ouvre dans une seconde feuille (Annuler / type de repas / Enregistrer).
+function MealTemplatesSheetMobile({ templates, loading, onAdd, onUpdate, onDelete, onClose }: MealTemplatesProps) {
+  const { t: tr } = useI18n()
+  const [open, requestClose] = useSheetClose(onClose)
+  const ed = useTemplateEditor({ onAdd, onUpdate, onDelete })
+  const formOpen = ed.addingFor !== null
+  const canSave = !!ed.form.nom.trim() && !ed.saving
+  return (
+    <>
+      <MSheet open={open} onClose={requestClose} label={tr('nutrition.templates.title')}>
+        <style>{'@keyframes tplPulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){.tpl-skel{animation:none!important}}'}</style>
+        <SheetHeader leftLabel={tr('nutrition.common.close')} onLeft={requestClose} title={tr('nutrition.templates.title')} />
+        <SheetBody gap={22}>
+          {loading ? (
+            [0, 1, 2].map(i => <div key={i} className="tpl-skel" style={{ height: 112, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', animation: 'tplPulse 1.4s ease-in-out infinite' }} />)
+          ) : (Object.keys(TEMPLATE_MEAL_LABELS) as MealKey[]).map(mealKey => {
+            const group = templates.filter(t => t.type_repas === mealKey)
+            return (
+              <section key={mealKey}>
+                <p style={{ margin: '0 4px 8px', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)' }}>{tr(`nutrition.meal.${mealKey}`)}</p>
+                <SoftGroup>
+                  {group.length === 0 && (
+                    <SoftRow first><span style={{ fontSize: 15, color: 'var(--text-mid)' }}>{tr('nutrition.templates.empty')}</span></SoftRow>
+                  )}
+                  {group.map((t, i) => (
+                    <SoftRow key={t.id} first={i === 0} style={{ padding: '6px 8px 6px 16px', opacity: t.actif ? 1 : 0.55 }}>
+                      <button type="button" onClick={() => ed.startEdit(t)}
+                        style={{ flex: 1, minWidth: 0, minHeight: 48, padding: '4px 0', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                        <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.nom}</span>
+                        {t.description && <span style={{ display: 'block', marginTop: 1, fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.description}</span>}
+                        <span style={{ display: 'block', marginTop: 1, fontSize: 13, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{tplMacros(t)}</span>
+                      </button>
+                      <button type="button" role="switch" aria-checked={t.actif} onClick={() => void ed.handleToggle(t)}
+                        aria-label={t.actif ? tr('nutrition.templates.deactivate') : tr('nutrition.templates.activate')}
+                        style={{ width: 60, height: 44, flexShrink: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        <span style={{ position: 'relative', width: 46, height: 28, borderRadius: 'var(--r-pill)', background: t.actif ? 'var(--success)' : 'var(--surface-bar)', transition: 'background 0.2s' }}>
+                          <span style={{ position: 'absolute', top: 2, left: t.actif ? 20 : 2, width: 24, height: 24, borderRadius: '50%', background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)', transition: 'left 0.2s' }} />
+                        </span>
+                      </button>
+                    </SoftRow>
+                  ))}
+                  <SoftRow onClick={() => ed.startAdd(mealKey)}>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--primary)' }}>{tr('nutrition.templates.addBtn')}</span>
+                  </SoftRow>
+                </SoftGroup>
+              </section>
+            )
+          })}
+        </SheetBody>
+      </MSheet>
+
+      {/* Saisie / édition d'un repas type */}
+      <MSheet open={formOpen} onClose={ed.cancelForm} full={false} zIndex={18700} label={ed.addingFor ? tr(`nutrition.meal.${ed.addingFor}`) : undefined}>
+        <style>{M_SHEET_CSS}</style>
+        <SheetHeader leftLabel={tr('nutrition.common.cancel')} onLeft={ed.cancelForm}
+          title={ed.addingFor ? tr(`nutrition.meal.${ed.addingFor}`) : ''}
+          rightLabel={ed.saving ? tr('nutrition.common.saving') : ed.editingId ? tr('nutrition.common.save') : tr('nutrition.common.add')}
+          onRight={() => void ed.handleSave()} rightDisabled={!canSave} />
+        <SheetBody>
+          <MField label={tr('nutrition.templateForm.name')}>
+            <input className="ntm-in" value={ed.form.nom} onChange={e => ed.setForm(prev => ({ ...prev, nom: e.target.value }))} placeholder={tr('nutrition.templateForm.namePlaceholder')} style={M_INPUT} />
+          </MField>
+          <MField label={tr('nutrition.templateForm.description')}>
+            <input className="ntm-in" value={ed.form.description} onChange={e => ed.setForm(prev => ({ ...prev, description: e.target.value }))} placeholder={tr('nutrition.templateForm.descPlaceholder')} style={M_INPUT} />
+          </MField>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {([
+              { key: 'kcal' as const, label: tr('nutrition.macro.kcal'), placeholder: '350' },
+              { key: 'proteines' as const, label: tr('nutrition.macro.protG'), placeholder: '20' },
+              { key: 'glucides' as const, label: tr('nutrition.macro.glucG'), placeholder: '45' },
+              { key: 'lipides' as const, label: tr('nutrition.macro.lipG'), placeholder: '8' },
+            ]).map(({ key, label, placeholder }) => (
+              <MField key={key} label={label}>
+                <input className="ntm-in" type="number" inputMode="decimal" value={ed.form[key]} placeholder={placeholder}
+                  onChange={e => ed.setForm(prev => ({ ...prev, [key]: e.target.value }))} style={{ ...M_INPUT, textAlign: 'right' }} />
+              </MField>
+            ))}
+          </div>
+          {ed.editingId && (
+            <MButton variant="danger" onClick={() => { const id = ed.editingId; if (id) void ed.handleDelete(id).then(ok => { if (ok) ed.cancelForm() }) }}>
+              {tr('nutrition.common.delete')}
+            </MButton>
+          )}
+        </SheetBody>
+      </MSheet>
+    </>
+  )
+}
+
+function MealTemplatesSectionDesktop({ templates, loading, onAdd, onUpdate, onDelete, onClose }: MealTemplatesProps) {
+  const { t: tr } = useI18n()
+  const { form, setForm, editingId, addingFor, saving, startAdd, startEdit, cancelForm, handleSave, handleDelete, handleToggle } = useTemplateEditor({ onAdd, onUpdate, onDelete })
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -898,6 +1004,19 @@ export default function NutritionPage() {
   const [editProt, setEditProt] = useState('')
   const [editGluc, setEditGluc] = useState('')
   const [editLip, setEditLip] = useState('')
+  // Mobile : feuilles MSheet — on replie (animation de sortie) avant de démonter.
+  const [daySheetOpen, setDaySheetOpen] = useState(false)
+  useEffect(() => { if (dayDetailOpen) setDaySheetOpen(true) }, [dayDetailOpen])
+  const closeDaySheet = useCallback(() => {
+    setDaySheetOpen(false)
+    setTimeout(() => { setDayDetailOpen(null); setEditSlot(null) }, 360)
+  }, [])
+  const [regenSheetOpen, setRegenSheetOpen] = useState(false)
+  useEffect(() => { if (regenConfirm) setRegenSheetOpen(true) }, [regenConfirm])
+  const closeRegenSheet = useCallback((then?: () => void) => {
+    setRegenSheetOpen(false)
+    setTimeout(() => { setRegenConfirm(false); then?.() }, 360)
+  }, [])
 
   // ── Desktop breakpoint ─────────────────────────────────────────
   useEffect(() => {
@@ -1318,6 +1437,121 @@ export default function NutritionPage() {
         const dow = new Date(dayDetailOpen.date + 'T00:00:00').getDay()
         const dayIdx = dow === 0 ? 6 : dow - 1
         const daySess = sessions.filter(s => s.day_index === dayIdx)
+        if (mobileUI) {
+          // Mobile : feuille MSheet plein écran (Fermer / date), type de jour en
+          // pilule, lien séance, donuts sur fond doux, Option A/B segmentée,
+          // repas en cartes grises (Valider = pilule sombre), édition en champs doux.
+          const dc = DAY_COLORS[dayDetailOpen.type_jour]
+          const mealSetM: MealSet = planVariant === 'A' ? dayDetailOpen.repas.option_A : dayDetailOpen.repas.option_B
+          return (
+            <MSheet open={daySheetOpen} onClose={closeDaySheet} label={formatDate(dayDetailOpen.date)}>
+              <style>{M_SHEET_CSS}</style>
+              <SheetHeader leftLabel={t('nutrition.common.close')} onLeft={closeDaySheet} title={<span style={{ textTransform: 'capitalize' }}>{formatDate(dayDetailOpen.date)}</span>} />
+              <SheetBody gap={14}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 32, padding: '0 12px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                    <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: dc.border }} />
+                    {t(`nutrition.dayType.${dayDetailOpen.type_jour}`)}
+                  </span>
+                  {daySess.length > 0 ? (
+                    <a href="/planning" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 15, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+                      {daySess.map(s => s.title).filter(Boolean).join(' · ') || t('nutrition.plannedSession')} →
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{t('nutrition.noSessionLinked')}</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 4, justifyContent: 'space-around', padding: '14px 6px', background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)' }}>
+                  <MacroDonut label={t('nutrition.macro.calories')} consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#06B6D4" size={68} />{/* design-allow-color — teinte macro du donut (identique bureau) */}
+                  <MacroDonut label={t('nutrition.macro.proteins')} consumed={modalTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={68} />{/* design-allow-color — teinte macro du donut (identique bureau) */}
+                  <MacroDonut label={t('nutrition.macro.carbs')}    consumed={modalTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={68} />{/* design-allow-color — teinte macro du donut (identique bureau) */}
+                  <MacroDonut label={t('nutrition.macro.fats')}     consumed={modalTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={68} />{/* design-allow-color — teinte macro du donut (identique bureau) */}
+                </div>
+
+                <SegTrack<PlanVariant> options={(['A', 'B'] as PlanVariant[]).map(v => ({ v, l: t('nutrition.optionLabel', { v }) }))} value={planVariant} onChange={setPlanVariant} />
+
+                {MEAL_KEYS.map(mealKey => {
+                  const text = slotText(mealSetM[mealKey])
+                  if (text === '-') return null
+                  const mealLog = modalMealLogs.find(l => l.meal_slot === mealKey)
+                  const isValidated = mealLog?.validated ?? false
+                  const isEditing = editSlot === mealKey
+                  return (
+                    <div key={mealKey} style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', padding: '12px 14px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t(`nutrition.meal.${mealKey}`)}</span>
+                        <button type="button" aria-label={t('nutrition.common.edit')} aria-pressed={isEditing}
+                          onClick={() => {
+                            if (isEditing) { setEditSlot(null); return }
+                            setEditSlot(mealKey)
+                            setEditDesc(mealLog?.actual_description ?? text)
+                            setEditKcal(mealLog?.actual_kcal != null ? String(mealLog.actual_kcal) : '')
+                            setEditProt(mealLog?.actual_prot != null ? String(mealLog.actual_prot) : '')
+                            setEditGluc(mealLog?.actual_gluc != null ? String(mealLog.actual_gluc) : '')
+                            setEditLip(mealLog?.actual_lip  != null ? String(mealLog.actual_lip)  : '')
+                          }}
+                          style={{ width: 44, height: 44, flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: isEditing ? 'var(--text)' : 'var(--surface-card)', color: isEditing ? 'var(--bg)' : 'var(--text-mid)' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                        </button>
+                        <button type="button" aria-pressed={isValidated} onClick={() => void modalToggleValidated(mealKey, !isValidated, text)}
+                          style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: isValidated ? 'var(--text)' : 'var(--surface-card)', color: isValidated ? 'var(--bg)' : 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700 }}>
+                          {isValidated && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                          {isValidated ? t('nutrition.validated') : t('nutrition.validate')}
+                        </button>
+                      </div>
+                      <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--text)', lineHeight: 1.45 }}>{mealLog?.actual_description ?? text}</p>
+                      {mealLog?.actual_kcal != null && (
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+                          {mealLog.actual_kcal} kcal
+                          {mealLog.actual_prot != null ? ` · P ${mealLog.actual_prot} g` : ''}
+                          {mealLog.actual_gluc != null ? ` · G ${mealLog.actual_gluc} g` : ''}
+                          {mealLog.actual_lip  != null ? ` · L ${mealLog.actual_lip} g`  : ''}
+                        </p>
+                      )}
+                      {isEditing && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                          <button type="button" onClick={() => { setFoodSearchBarcode(undefined); setFoodSearchOpen(true) }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 48, padding: '0 14px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-card)', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 16, fontFamily: 'var(--font-body)' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            {t('nutrition.searchFood')}
+                          </button>
+                          <textarea className="ntm-in" rows={3} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder={t('nutrition.actualDescPlaceholder')}
+                            style={{ ...M_INPUT, background: 'var(--surface-card)', padding: '12px 14px', minHeight: 88, resize: 'none', lineHeight: 1.45 }} />
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                            {[
+                              { label: t('nutrition.macro.kcal'),  val: editKcal, set: setEditKcal },
+                              { label: t('nutrition.macro.protG'), val: editProt, set: setEditProt },
+                              { label: t('nutrition.macro.glucG'), val: editGluc, set: setEditGluc },
+                              { label: t('nutrition.macro.lipG'),  val: editLip,  set: setEditLip  },
+                            ].map(({ label, val, set }) => (
+                              <MField key={label} label={label}>
+                                <input className="ntm-in" type="number" inputMode="decimal" value={val} onChange={e => set(e.target.value)} style={{ ...M_INPUT, background: 'var(--surface-card)', textAlign: 'right' }} />
+                              </MField>
+                            ))}
+                          </div>
+                          <MButton onClick={() => {
+                            void modalUpdateLog(mealKey, {
+                              actual_description: editDesc || null,
+                              actual_kcal: editKcal ? parseInt(editKcal, 10) : null,
+                              actual_prot: editProt ? parseFloat(editProt) : null,
+                              actual_gluc: editGluc ? parseFloat(editGluc) : null,
+                              actual_lip:  editLip  ? parseFloat(editLip)  : null,
+                            })
+                            setEditSlot(null)
+                          }}>{t('nutrition.common.save')}</MButton>
+                          <MButton variant="soft" onClick={() => setEditSlot(null)} style={{ background: 'var(--surface-card)' }}>{t('nutrition.common.cancel')}</MButton>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </SheetBody>
+            </MSheet>
+          )
+        }
         return createPortal(
         <div
           style={{
@@ -1634,7 +1868,20 @@ export default function NutritionPage() {
 
       {/* Confirmation de régénération (consommation tokens : cf. .md, système
           de crédits non localisé → garde-fou à brancher quand dispo). */}
-      {regenConfirm && createPortal(
+      {/* Mobile : feuille compacte (Annuler / titre), pilule cyan + pilule grise. */}
+      {regenConfirm && mobileUI && (
+        <MSheet open={regenSheetOpen} onClose={() => closeRegenSheet()} full={false} label={t('nutrition.regen.title')}>
+          <SheetHeader leftLabel={t('nutrition.common.cancel')} onLeft={() => closeRegenSheet()} title={t('nutrition.regen.title')} />
+          <div style={{ padding: '4px 20px 0' }}>
+            <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('nutrition.regen.desc')}</p>
+          </div>
+          <SheetFooter>
+            <MButton onClick={() => closeRegenSheet(() => setAiPanelOpen(true))}>{t('nutrition.regen.confirm')}</MButton>
+            <MButton variant="soft" onClick={() => closeRegenSheet()}>{t('nutrition.common.cancel')}</MButton>
+          </SheetFooter>
+        </MSheet>
+      )}
+      {regenConfirm && !mobileUI && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setRegenConfirm(false)}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: 22 }}>
             <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('nutrition.regen.title')}</h3>

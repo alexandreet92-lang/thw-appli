@@ -20,6 +20,7 @@ import { type Block, type Session, type SportType } from '@/app/planning/page'
 import { BuilderSportGrid } from './BuilderSportGrid'
 import { BUILDER_THEME, BUILDER_ORDER, builderIdFromPlanning, type BuilderSportId } from './builderTheme'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { MBack, MPill } from '../mobile/kit'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -148,12 +149,12 @@ function MobileReserveRow({ fav, first, onEdit, onToggleStar }: { fav: Fav; firs
   return (
     <div style={{ borderTop: first ? 'none' : '1px solid var(--dash-line, var(--border))', padding: '12px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button type="button" onClick={onEdit} style={{ flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button type="button" onClick={onEdit} style={{ flex: 1, minWidth: 0, minHeight: 44, textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
           <b style={{ display: 'block', fontSize: 16, color: 'var(--text)', lineHeight: 1.3 }}>{fav.name}</b>
           <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</span>
         </button>
         <button type="button" onClick={onToggleStar} aria-label={fav.starred ? t('session.retirerFavoris') : t('session.marquerFavori')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, flexShrink: 0, display: 'flex', color: fav.starred ? 'var(--lib-triathlon)' : 'var(--text-dim)' }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', width: 44, height: 44, marginRight: -10, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: fav.starred ? 'var(--lib-triathlon)' : 'var(--text-dim)' }}>
           {fav.starred ? <IconStarFilled size={20} /> : <IconStar size={20} />}
         </button>
       </div>
@@ -272,11 +273,7 @@ export function BuilderReserve() {
       <SlideView screenKey={sport ? `sport-${sport}` : 'grid'} direction={dir}>
         {sport && theme && narrow ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <button type="button" onClick={backToGrid}
-              style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--primary)', fontFamily: 'inherit' }}>
-              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-              {t('session.m.mine')}
-            </button>
+            <MBack label={t('session.m.mine')} onClick={backToGrid} />
             <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', display: 'grid', placeItems: 'center', background: theme.soft, color: theme.accent, flexShrink: 0 }}><theme.icon size={24} /></span>
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -286,11 +283,12 @@ export function BuilderReserve() {
             </div>
             {sportFavs.length > 0 && (
               <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
-                <button onClick={() => setStarredOnly(v => !v)} style={{ ...chip(starredOnly, 'var(--lib-triathlon)'), display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, padding: '7px 14px' }}>
-                  {starredOnly ? <IconStarFilled size={14} /> : <IconStar size={14} />} {t('session.favoris')}
-                </button>
+                {/* Pilules (sélection = sombre), sans bordure, cibles 44 px. */}
+                <MPill active={starredOnly} onClick={() => setStarredOnly(v => !v)}>
+                  {starredOnly ? <IconStarFilled size={15} /> : <IconStar size={15} />} {t('session.favoris')}
+                </MPill>
                 {availableTypes.map(tp => (
-                  <button key={tp} style={{ ...chip(typeFilters.includes(tp), theme.accent), fontSize: 13, padding: '7px 14px' }} onClick={() => toggleType(tp)}>{tp}</button>
+                  <MPill key={tp} active={typeFilters.includes(tp)} onClick={() => toggleType(tp)}>{tp}</MPill>
                 ))}
               </div>
             )}
@@ -301,8 +299,14 @@ export function BuilderReserve() {
                 ))}
               </div>
             ) : (
-              <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', fontSize: 15, color: 'var(--text-mid)' }}>
+              <div style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '16px 18px', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.45 }}>
                 {sportFavs.length === 0 ? t('session.aucuneSeanceReserve', { sport: t(theme.labelKey).toLowerCase() }) : t('session.aucuneSeanceFiltres')}
+                {sportFavs.length > 0 && (
+                  <button type="button" onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
+                    style={{ display: 'block', minHeight: 44, marginTop: 4, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>
+                    {t('session.effacerFiltres')}
+                  </button>
+                )}
               </div>
             )}
             <button type="button" onClick={() => setEditor({ mode: 'create', sport: theme.planning })} className="thw-press"
@@ -385,9 +389,23 @@ export function BuilderReserve() {
             )}
           </div>
         ) : (
-          loading ? (
-            <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{t('session.chargement')}</div>
+          loading ? (narrow ? (
+            // Mobile : squelette de la liste des sports (jamais de spinner / texte).
+            <div aria-busy="true" aria-label={t('session.chargement')} style={{ background: 'var(--dash-card, var(--bg-card))', borderRadius: 'var(--r-lg)', padding: '4px 16px' }}>
+              <style>{'@keyframes bldPulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){.bld-skel{animation:none!important}}'}</style>
+              {BUILDER_ORDER.map((id, i) => (
+                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--dash-line, var(--border))' : 'none' }}>
+                  <span className="bld-skel" style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', animation: 'bldPulse 1.4s ease-in-out infinite' }} />
+                  <span style={{ flex: 1 }}>
+                    <span className="bld-skel" style={{ display: 'block', width: '46%', height: 14, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', animation: 'bldPulse 1.4s ease-in-out infinite' }} />
+                    <span className="bld-skel" style={{ display: 'block', width: '70%', height: 11, marginTop: 6, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', animation: 'bldPulse 1.4s ease-in-out infinite' }} />
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : (
+            <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{t('session.chargement')}</div>
+          )) : (
             <BuilderSportGrid counts={counts} onSelect={openSport} />
           )
         )}

@@ -6,6 +6,7 @@
 // tabulaires, légendes en --text-mid / --text-dim. Couleurs en var() uniquement.
 // ══════════════════════════════════════════════════════════════
 
+import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { currentLocale } from '@/lib/i18n'
 
 export const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
@@ -125,4 +126,111 @@ export function PrimaryPill({ children, onClick, disabled }: { children: React.R
 
 export function Dot({ color, size = 8 }: { color: string; size?: number }) {
   return <span aria-hidden style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+}
+
+// ══════════════════════════════════════════════════════════════
+// Feuilles mobiles (MSheet de MobileKit) — briques de formulaire.
+// Fond de feuille blanc (--surface-card), champs « doux » remplis gris
+// (--surface-chip), sans bordure, rayon 14, ≥ 48 px ; libellés gris 13 px
+// en casse de phrase ; listes groupées séparées par un filet.
+// ══════════════════════════════════════════════════════════════
+
+/** Fermeture animée d'une feuille montée conditionnellement par son parent :
+ *  on replie d'abord (open=false → animation de sortie) puis on démonte. */
+export function useSheetClose(onClose: () => void, ms = 360): [boolean, () => void] {
+  const [open, setOpen] = useState(true)
+  const done = useRef(false)
+  const close = useCallback(() => {
+    if (done.current) return
+    done.current = true
+    setOpen(false)
+    setTimeout(onClose, ms)
+  }, [onClose, ms])
+  return [open, close]
+}
+
+/** Champ rempli doux (aucune bordure ; halo cyan au focus via la classe ntm-in). */
+export const M_INPUT: CSSProperties = {
+  width: '100%', minWidth: 0, minHeight: 48, padding: '0 14px', boxSizing: 'border-box', border: 'none', borderRadius: 'var(--r-md)',
+  background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 16, outline: 'none',
+  fontVariantNumeric: 'tabular-nums',
+}
+/** Styles partagés des feuilles mobiles (focus des champs). À poser une fois par feuille. */
+export const M_SHEET_CSS = '.ntm-in:focus{box-shadow:0 0 0 2px var(--primary)}.ntm-in::placeholder{color:var(--text-dim)}'
+
+/** Libellé gris 13 px au-dessus d'un champ (casse de phrase). */
+export function MLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+  return <label htmlFor={htmlFor} style={{ display: 'block', margin: '0 0 6px 4px', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{children}</label>
+}
+
+/** Champ avec libellé ; `unit` s'affiche intégré à droite du champ. */
+export function MField({ label, unit, children }: { label?: ReactNode; unit?: string; children: ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      {label != null && <MLabel>{label}</MLabel>}
+      {unit ? (
+        <div style={{ position: 'relative' }}>
+          {children}
+          <span aria-hidden style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--text-dim)', pointerEvents: 'none', fontFamily: 'var(--font-body)' }}>{unit}</span>
+        </div>
+      ) : children}
+    </div>
+  )
+}
+
+/** Zone défilable d'une feuille (sous l'en-tête). */
+export function SheetBody({ children, gap = 16, style }: { children: ReactNode; gap?: number; style?: CSSProperties }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 16px calc(24px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap, boxSizing: 'border-box', ...style }}>
+      {children}
+    </div>
+  )
+}
+
+/** Pied de feuille fixe (bouton principal pleine largeur). */
+export function SheetFooter({ children }: { children: ReactNode }) {
+  return <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 16px calc(12px + env(safe-area-inset-bottom))' }}>{children}</div>
+}
+
+/** Bloc gris arrondi (liste groupée posée sur une feuille blanche). */
+export function SoftGroup({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return <div style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', overflow: 'hidden', ...style }}>{children}</div>
+}
+
+/** Ligne de liste groupée (filet encarté au-dessus sauf la première). */
+export function SoftRow({ first, children, onClick, style, label }: { first?: boolean; children: ReactNode; onClick?: () => void; style?: CSSProperties; label?: string }) {
+  const base: CSSProperties = { position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 52, padding: '10px 16px', boxSizing: 'border-box', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--text)', ...style }
+  const rule = first ? null : <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />
+  if (!onClick) return <div style={base}>{rule}{children}</div>
+  return <button type="button" onClick={onClick} aria-label={label} className="thw-press" style={{ ...base, border: 'none', background: 'transparent', cursor: 'pointer' }}>{rule}{children}</button>
+}
+
+/** Bouton pilule pleine largeur. primary = cyan ; soft = gris ; danger = texte rouge. */
+export function MButton({ children, onClick, variant = 'primary', disabled, style }: {
+  children: ReactNode; onClick: () => void; variant?: 'primary' | 'soft' | 'danger'; disabled?: boolean; style?: CSSProperties
+}) {
+  const v: CSSProperties = variant === 'primary'
+    ? { background: 'var(--primary)', color: 'var(--on-primary)' }
+    : variant === 'danger'
+      ? { background: 'var(--surface-chip)', color: 'var(--danger)' }
+      : { background: 'var(--surface-chip)', color: 'var(--text)' }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className="thw-press"
+      style={{ width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)', border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+        fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, ...v, ...style }}>
+      {children}
+    </button>
+  )
+}
+
+/** Puce pilule (sélectionnée = sombre), cible 44 px. */
+export function MPill({ children, on, onClick, disabled }: { children: ReactNode; on?: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on} disabled={disabled}
+      style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
+        background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text)', opacity: disabled ? 0.45 : 1,
+        fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-body)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+      {children}
+    </button>
+  )
 }

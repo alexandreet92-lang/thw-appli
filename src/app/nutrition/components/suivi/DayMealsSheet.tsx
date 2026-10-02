@@ -12,6 +12,8 @@ import { MacroDonut } from '../today/MacroDonut'
 import { foodsOf } from '../today/mealJournalUtils'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { MSheet, SheetHeader, useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { useSheetClose, SheetBody } from '../mobile/ui'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -20,7 +22,81 @@ function fmtDate(iso: string): string {
   return d.toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-export function DayMealsSheet({ date, onClose }: { date: string; onClose: () => void }) {
+type DayTotal = { kcal: number; prot: number; gluc: number; lip: number }
+
+export function DayMealsSheet(props: { date: string; onClose: () => void }) {
+  const mobile = useIsMobile()
+  return mobile ? <DayMealsSheetMobile {...props} /> : <DayMealsSheetDesktop {...props} />
+}
+
+function sumFoods(foods: ReturnType<typeof foodsOf>): DayTotal {
+  return foods.reduce((s, f) => ({ kcal: s.kcal + f.kcal, prot: s.prot + f.prot, gluc: s.gluc + f.gluc, lip: s.lip + f.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
+}
+
+// Mobile : feuille MSheet (Fermer / date / —), une carte grise par repas
+// (titre 17/700, donut + photos, aliments en lignes séparées par un filet).
+function DayMealsSheetMobile({ date, onClose }: { date: string; onClose: () => void }) {
+  const { t: tr } = useI18n()
+  const { entries, loading } = useDailyMeals(date)
+  const [open, requestClose] = useSheetClose(onClose)
+  const meals = entries.map(e => ({ entry: e, foods: foodsOf(e) })).filter(m => m.foods.length > 0)
+  const dayTotal = meals.reduce<DayTotal>((a, m) => {
+    const t = sumFoods(m.foods)
+    return { kcal: a.kcal + t.kcal, prot: a.prot + t.prot, gluc: a.gluc + t.gluc, lip: a.lip + t.lip }
+  }, { kcal: 0, prot: 0, gluc: 0, lip: 0 })
+  const title = fmtDate(date)
+  return (
+    <MSheet open={open} onClose={requestClose} zIndex={18700} label={title}>
+      <style>{'@keyframes dmsPulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){.dms-skel{animation:none!important}}'}</style>
+      <SheetHeader leftLabel={tr('nutrition.common.close')} onLeft={requestClose} title={<span style={{ textTransform: 'capitalize' }}>{title}</span>} />
+      <SheetBody gap={12}>
+        {meals.length > 0 && (
+          <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{Math.round(dayTotal.kcal)}</span> kcal · P {Math.round(dayTotal.prot)} · G {Math.round(dayTotal.gluc)} · L {Math.round(dayTotal.lip)} g
+          </p>
+        )}
+        {loading && !entries.length ? (
+          [0, 1].map(i => <div key={i} className="dms-skel" style={{ height: 150, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', animation: 'dmsPulse 1.4s ease-in-out infinite' }} />)
+        ) : !meals.length ? (
+          <p style={{ margin: '0 4px', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{tr('nutrition.suivi.noMealsDay')}</p>
+        ) : meals.map(({ entry, foods }) => {
+          const t = sumFoods(foods)
+          const photos = (entry.photos && entry.photos.length) ? entry.photos : (entry.photo_url ? [entry.photo_url] : [])
+          return (
+            <div key={entry.id ?? entry.meal_slot} style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', padding: '14px 16px 4px' }}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>
+                {SLOT_LABELS[entry.meal_slot as MealSlotKey] ?? entry.meal_name}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <MacroDonut kcal={t.kcal} prot={t.prot} gluc={t.gluc} lip={t.lip} size={88} />
+                {photos.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+                    {photos.map((src, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={i} src={src} alt="" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 'var(--r-md)', flexShrink: 0, display: 'block' }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                {foods.map((f, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44, borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.name}{f.qty ? <span style={{ color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}> · {f.qty} {f.unit}</span> : null}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 14, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{f.kcal} kcal</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </SheetBody>
+    </MSheet>
+  )
+}
+
+function DayMealsSheetDesktop({ date, onClose }: { date: string; onClose: () => void }) {
   const { t: tr } = useI18n()
   const { entries, loading } = useDailyMeals(date)
   const startY = useRef<number | null>(null)

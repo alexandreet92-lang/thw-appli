@@ -12,11 +12,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import type { WeightLog } from '@/hooks/useNutrition'
 import { usePushNav } from '@/hooks/usePushNav'
-import { BottomSheet } from '@/components/ui/BottomSheet'
+import { MSheet, SheetHeader } from '@/components/ai/mobile/MobileKit'
 import { points, windowStats, annualSummaries, metricValue, METRIC_UNIT, type WeightMetric } from '../composition/compositionData'
 import { MeasureForm } from '../composition/MeasureForm'
 import { AnnualSheet } from '../composition/AnnualSheet'
-import { Card, Head, Tile, Seg, ListCard, ListRow, PrimaryPill, IC, NUM, fmt1 } from './ui'
+import { Card, Head, Tile, Seg, ListCard, ListRow, PrimaryPill, IC, NUM, fmt1, SheetBody } from './ui'
 
 export interface MobileBodyDetailProps {
   weightLogs: WeightLog[]
@@ -208,15 +208,19 @@ export function MobileBodyDetail(p: MobileBodyDetailProps) {
       <ListRow title={t('nutm.connectedScale')} sub={hasScale ? t('nutm.scaleSynced') : t('nutm.scaleNone')} onClick={() => push('/connections')} />
     </ListCard>
 
-    <BottomSheet isOpen={sheet} onClose={() => setSheet(false)} title={t('nutm.measureSheet')} icon={IC.scale}>
-      {/* .nt-mdetail : titres en police d'interface, comme les autres vues mobiles. */}
-      <div className="nt-mdetail"><MeasureForm
-        date={date} weight={weight} mg={mg} mm={mm}
-        onDate={setDate} onWeight={setWeight} onMg={setMg} onMm={setMm} onSave={() => void saveMeasure()}
-        goalInput={goalInput} goalWeight={goalWeight} onGoalInput={setGoalInput} onSaveGoal={saveGoal}
-        onGoToPlan={() => { setSheet(false); p.onGoToPlan() }}
-      /></div>
-    </BottomSheet>
+    {/* Feuille « Mesure » : poignée + Annuler / titre / Enregistrer (enregistre la mesure). */}
+    <MSheet open={sheet} onClose={() => setSheet(false)} label={t('nutm.measureSheet')}>
+      <SheetHeader leftLabel={t('nutrition.common.cancel')} onLeft={() => setSheet(false)} title={t('nutm.measureSheet')}
+        rightLabel={t('nutrition.common.save')} onRight={() => void saveMeasure()} rightDisabled={saving || (!weight && !mg && !mm)} />
+      <SheetBody>
+        <MeasureForm mobile hideSave
+          date={date} weight={weight} mg={mg} mm={mm}
+          onDate={setDate} onWeight={setWeight} onMg={setMg} onMm={setMm} onSave={() => void saveMeasure()}
+          goalInput={goalInput} goalWeight={goalWeight} onGoalInput={setGoalInput} onSaveGoal={saveGoal}
+          onGoToPlan={() => { setSheet(false); p.onGoToPlan() }}
+        />
+      </SheetBody>
+    </MSheet>
 
     {year != null && (() => {
       const s = summaries.find(x => x.year === year)

@@ -3,6 +3,7 @@
 // (Photo IA / Recherche / Manuel) pour ajouter le 1er aliment. Tokens uniquement.
 import { MealActions } from './MealActions'
 import { useI18n } from '@/lib/i18n'
+import { useNarrow } from '@/lib/hooks/useNarrow'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -13,6 +14,19 @@ export function MealEmpty({ slotLabel, onPhoto, onSearch, onAdd }: {
   onAdd: () => void
 }) {
   const { t } = useI18n()
+  const mobile = useNarrow(767)
+  if (mobile) {
+    // Mobile : carte blanche radius 20 sans bordure, titre 17/700, actions en pilules.
+    return (
+      <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '16px 18px', boxSizing: 'border-box', width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 14, fontFamily: FB }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{slotLabel}</span>
+          <span style={{ fontSize: 15, color: 'var(--text-mid)', flexShrink: 0 }}>{t('nutrition.today.noFood')}</span>
+        </div>
+        <MealActions onPhoto={onPhoto} onSearch={onSearch} onManual={onAdd} />
+      </div>
+    )
+  }
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-3) var(--space-4)', boxSizing: 'border-box', width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>

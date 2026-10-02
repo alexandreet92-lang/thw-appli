@@ -13,6 +13,8 @@ import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { SESSION_ONBOARDING } from '@/onboarding/configs/session.config'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { SegTrack } from '@/components/ai/mobile/MobileKit'
+import { SessionMobileProvider } from '@/components/session/mobile/kit'
 
 // Onglets de page : Builder (séances en réserve de l'athlète) · Bibliothèque.
 type TopTab = 'builder' | 'biblio'
@@ -49,16 +51,15 @@ export default function SessionPage() {
     return (
       <>
         <PageHelp config={SESSION_ONBOARDING} show={show} onDismiss={dismiss} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
-          <div role="tablist" style={{ display: 'flex', background: 'var(--dash-chip, var(--bg-card2))', borderRadius: 'var(--r-pill)', padding: 3 }}>
-            {([['builder', t('session.m.mine')], ['biblio', t('session.tabBiblioLabel')]] as [TopTab, string][]).map(([id, l]) => (
-              <button key={id} role="tab" aria-selected={topTab === id} type="button" onClick={() => setTopTab(id)}
-                style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 0', fontSize: 14, fontWeight: topTab === id ? 700 : 600, fontFamily: 'inherit',
-                  background: topTab === id ? 'var(--dash-card, var(--bg-elev))' : 'transparent', color: topTab === id ? 'var(--text)' : 'var(--text-mid)', boxShadow: topTab === id ? '0 1px 3px rgba(0,0,0,0.10)' : 'none' }}>{l}</button>
-            ))}
+        {/* Mobile : segmenté gris (pouce blanc) + contenu en cartes natives
+            (SessionMobileProvider → rendu mobile des écrans Séances). */}
+        <SessionMobileProvider>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
+            <SegTrack<TopTab> value={topTab} onChange={setTopTab}
+              options={[{ v: 'builder', l: t('session.m.mine') }, { v: 'biblio', l: t('session.tabBiblioLabel') }]} />
+            <div className="thw-mdetail">{topTab === 'builder' ? <BuilderReserve /> : <BibliothequeTab guideSport={guideSport} />}</div>
           </div>
-          <div className="thw-mdetail">{topTab === 'builder' ? <BuilderReserve /> : <BibliothequeTab guideSport={guideSport} />}</div>
-        </div>
+        </SessionMobileProvider>
       </>
     )
   }

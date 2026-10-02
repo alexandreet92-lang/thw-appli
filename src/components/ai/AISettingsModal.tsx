@@ -7,7 +7,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { Switch } from '@/components/shadcn/switch'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -23,10 +24,22 @@ import { getPushState, enablePush, disablePush, type PushState } from '@/lib/pus
 import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import PressPop from '@/components/ui/PressPop'
+import { SlideOverlay } from '@/components/ui/SlideOverlay'
+import { SlideView } from '@/components/ui/SlideView'
+import RoutinesView from '@/components/ai/RoutinesView'
+import { listRoutines } from '@/lib/routines/client'
+import { listSystems } from '@/lib/studio/store'
+import {
+  useIsMobile, MobileHeader, RoundBtn, Ico, ICON, MCard, SectionLabel, Group, GroupRow, IconTile, Chevron,
+  TILE, PAGE_BG, FB as MFB,
+} from '@/components/ai/mobile/MobileKit'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
   | 'agent_training' | 'agent_coach' | 'agent_networks' | 'studio' | 'connecteurs' | 'abonnement'
+
+// Écrans de la navigation mobile (racine + sections existantes + 2 listes mobiles).
+type MScreen = 'root' | SettingsSection | 'agents' | 'confidentialite'
 
 const SPORTS: [string, string][] = [
   ['running', 'Course à pied'], ['cycling', 'Vélo'], ['swimming', 'Natation'],
@@ -48,6 +61,14 @@ const inputStyle: React.CSSProperties = {
 const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 7, display: 'block', fontFamily: FB }
 const sectionTitleStyle: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)', letterSpacing: '-0.01em', marginBottom: 4 }
 const sectionLead: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560, fontFamily: FB }
+
+// Mobile : l'en-tête de la sous-page porte déjà le titre → on ne le répète pas.
+const MobilePaneCtx = createContext(false)
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  const mobile = useContext(MobilePaneCtx)
+  if (mobile) return null
+  return <div style={sectionTitleStyle}>{children}</div>
+}
 
 function onFocusRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-dim)' }
 function onBlurRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--border-mid)'; e.currentTarget.style.boxShadow = 'none' }
@@ -186,6 +207,46 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     return () => mq.removeEventListener('change', on)
   }, [])
 
+  // ── Mobile (≤ 767 px) : page plein écran façon réglages iOS (maquette validée).
+  // Pile de navigation : racine → sous-page (sections existantes) → sous-sous-page.
+  const isMobile = useIsMobile()
+  const [mStack, setMStack] = useState<MScreen[]>(['root'])
+  const [mDir, setMDir] = useState(1)
+  const [routinesOpen, setRoutinesOpen] = useState(false)
+  const [mVals, setMVals] = useState<{ routines: number | null; systems: number | null; connectors: number | null; tier: string | null }>({ routines: null, systems: null, connectors: null, tier: null })
+  const mScrollRef = useRef<HTMLDivElement>(null)
+  const mScrollPos = useRef<number[]>([])
+  useEffect(() => { if (open) { setMStack(['root']); setMDir(1) } }, [open])
+  const loadRoutineCount = useCallback(() => {
+    void listRoutines().then(r => setMVals(v => ({ ...v, routines: r.length }))).catch(() => { /* valeur masquée */ })
+  }, [])
+  useEffect(() => {
+    if (!open || !isMobile) return
+    let off = false
+    loadRoutineCount()
+    void listSystems().then(r => { if (!off) setMVals(v => ({ ...v, systems: r.length })) }).catch(() => { /* valeur masquée */ })
+    void fetch('/api/oauth/status').then(r => r.json() as Promise<{ connected?: { provider: string }[] }>)
+      .then(j => { if (!off) setMVals(v => ({ ...v, connectors: (j.connected ?? []).length })) }).catch(() => { /* valeur masquée */ })
+    void fetch('/api/subscription/details').then(r => r.json() as Promise<{ tier?: string }>)
+      .then(d => { if (!off) setMVals(v => ({ ...v, tier: d.tier ?? null })) }).catch(() => { /* valeur masquée */ })
+    return () => { off = true }
+  }, [open, isMobile, loadRoutineCount])
+  const mPush = (sc: MScreen) => {
+    mScrollPos.current[mStack.length - 1] = mScrollRef.current?.scrollTop ?? 0
+    if (sc !== 'root' && sc !== 'agents' && sc !== 'confidentialite') setSection(sc)
+    setMDir(1); setMStack(st => [...st, sc])
+    requestAnimationFrame(() => { if (mScrollRef.current) mScrollRef.current.scrollTop = 0 })
+  }
+  const mPop = () => {
+    if (mStack.length <= 1) { onClose(); return }
+    const next = mStack.slice(0, -1)
+    const top = next[next.length - 1]
+    if (top !== 'root' && top !== 'agents' && top !== 'confidentialite') setSection(top)
+    setMDir(-1); setMStack(next)
+    const y = mScrollPos.current[next.length - 1] ?? 0
+    requestAnimationFrame(() => { if (mScrollRef.current) mScrollRef.current.scrollTop = y })
+  }
+
   const [profile, setProfile] = useState<ProfileState>({ full_name: '', preferred_name: '', work_profession: '', work_hours_per_week: '', ideal_sleep_hours: '', sport_hours_per_week: '', sports: [] })
   const [instruction, setInstruction] = useState('')
   const [defaultModel, setDefaultModel] = useState('athena')
@@ -306,6 +367,23 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     { group: t('w1a.navCompte'), items: [ { id: 'connecteurs', label: t('w1a.navConnecteurs') }, { id: 'abonnement', label: t('w1a.navAbonnement') } ] },
   ]
 
+  // Toasts « Enregistré » / « Échec » — partagés desktop & mobile.
+  const toasts = (
+    <>
+        {/* Toast « Enregistré » */}
+        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          {t('w1a.enregistre')}
+        </div>
+
+        {/* Toast « Échec de l'enregistrement » */}
+        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          {t('w1a.echecEnregistrement')}
+        </div>
+    </>
+  )
+
   const sectionLabel = NAV.flatMap(g => g.items).find(it => it.id === section)?.label ?? t('w1a.parametres')
   const sectionPane = (
     <>
@@ -352,6 +430,111 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     </div>
   )
 
+  // ═══ MOBILE : page plein écran (racine en listes groupées → sous-pages existantes) ═══
+  if (isMobile) {
+    const mTop = mStack[mStack.length - 1]
+    const mLabel = (sc: MScreen): string =>
+      sc === 'root' ? t('aio.s_title')
+      : sc === 'agents' ? t('w1a.navAgents')
+      : sc === 'confidentialite' ? t('w1a.linkConfidentialite')
+      : sc === 'instructions' ? t('aio.s_instructions')
+      : NAV.flatMap(g => g.items).find(it => it.id === sc)?.label ?? t('w1a.parametres')
+    const displayName = profile.preferred_name.trim() || profile.full_name.trim()
+    const profileSub = [profile.sports.slice(0, 2).map(sp => t(`w1a.sport_${sp}`)).join(' + '), profile.work_profession].filter(Boolean).join(' · ') || t('aio.s_profileSub')
+    const modelName = defaultModel === 'hermes' ? 'Hermès' : defaultModel === 'zeus' ? 'Zeus' : 'Athéna'
+    const voiceName = voice.style === 'douce' ? t('w1a.styleDouce') : voice.style === 'energique' ? t('w1a.styleEnergique') : t('w1a.styleNeutre')
+    const tile = (color: string, d: React.ReactNode) => <IconTile color={color} size={40}><Ico d={d} size={20} /></IconTile>
+    const openLink = (href: string) => { try { window.open(href, '_blank', 'noopener') } catch { /* ignore */ } }
+
+    const root = (
+      <div>
+        <MCard onClick={() => mPush('profil')} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16 }}>
+          <span aria-hidden style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: 'var(--primary-gradient)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800 }}>
+            {(displayName || '?').charAt(0).toUpperCase()}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 20, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName || t('w1a.navProfil')}</span>
+            <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileSub}</span>
+          </span>
+          <Chevron size={20} />
+        </MCard>
+
+        <SectionLabel>{t('aio.s_discussion')}</SectionLabel>
+        <Group>
+          <GroupRow first icon={tile(TILE.cyan, ICON.sliders)} label={t('aio.s_instructions')} value={instruction.trim() ? t('aio.s_on') : t('aio.s_none')} onClick={() => mPush('instructions')} />
+          <GroupRow icon={tile(TILE.violet, ICON.star)} label={t('w1a.navModele')} value={modelName} onClick={() => mPush('modele')} />
+          <GroupRow icon={tile(TILE.green, ICON.mic)} label={t('w1a.navVoix')} value={voiceName} onClick={() => mPush('voix')} />
+        </Group>
+
+        <SectionLabel>{t('aio.s_automation')}</SectionLabel>
+        <Group>
+          <GroupRow first icon={tile(TILE.orange, ICON.clock)} label={t('w1a.r_routines')} value={mVals.routines ?? undefined} onClick={() => setRoutinesOpen(true)} />
+          <GroupRow icon={tile(TILE.violet, ICON.grid)} label={t('w1a.navStudio')} value={mVals.systems !== null ? t('aio.s_systems', { n: mVals.systems }) : undefined} onClick={() => mPush('studio')} />
+          <GroupRow icon={tile(TILE.green, ICON.users)} label={t('w1a.navAgents')} onClick={() => mPush('agents')} />
+        </Group>
+
+        <SectionLabel>{t('aio.s_data')}</SectionLabel>
+        <Group>
+          <GroupRow first icon={tile(TILE.indigo, ICON.plug)} label={t('w1a.navConnecteurs')} value={mVals.connectors !== null ? t('aio.s_connected', { n: mVals.connectors }) : undefined} onClick={() => mPush('connecteurs')} />
+          <GroupRow icon={tile(TILE.red, ICON.bell)} label={t('w1a.navNotifications')} value={globalNotif ? t('aio.s_on') : t('aio.s_off')} onClick={() => mPush('notifications')} />
+          <GroupRow icon={tile(TILE.grey, ICON.lock)} label={t('w1a.linkConfidentialite')} onClick={() => mPush('confidentialite')} />
+        </Group>
+
+        <SectionLabel>{t('w1a.navCompte')}</SectionLabel>
+        <Group>
+          <GroupRow first icon={tile(TILE.blue, ICON.card)} label={t('w1a.navAbonnement')} value={mVals.tier ? (PLAN_LABELS[mVals.tier] ?? mVals.tier) : undefined} onClick={() => mPush('abonnement')} />
+        </Group>
+      </div>
+    )
+
+    const agents = (
+      <Group>
+        <GroupRow first icon={tile(TILE.green, ICON.user)} label={t('w1a.navAthlete')} onClick={() => mPush('agent_training')} />
+        <GroupRow icon={tile(TILE.violet, ICON.users)} label={t('w1a.navCoach')} onClick={() => mPush('agent_coach')} />
+        <GroupRow icon={tile(TILE.grey, ICON.route)} label={t('w1a.navNetworks')} value={t('w1a.bientot')} disabled />
+      </Group>
+    )
+
+    const privacy = (
+      <div>
+        <MCard style={{ padding: 18 }}><AIConsentBlock bare /></MCard>
+        <div style={{ marginTop: 16 }}>
+          <Group>
+            <GroupRow first label={t('w1a.linkUtilisation')} onClick={() => openLink('/site/conditions-utilisation.html')} />
+            <GroupRow label={t('w1a.linkConfidentialite')} onClick={() => openLink('/site/confidentialite.html')} />
+          </Group>
+        </div>
+      </div>
+    )
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 13800, background: PAGE_BG, display: 'flex', flexDirection: 'column', fontFamily: MFB,
+        transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' }}>
+        <style>{`@keyframes thwDDin { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .thw-conn-row:hover { background: var(--bg-hover); }`}</style>
+        <MobileHeader
+          left={<RoundBtn label={t('w1a.retour')} onClick={mPop}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>}
+          title={mLabel(mTop)}
+          right={<RoundBtn label={t('w1a.fermer')} onClick={onClose}><Ico d={ICON.close} size={20} sw={2.2} /></RoundBtn>}
+        />
+        <div ref={mScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: '4px 16px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
+          <SlideView screenKey={String(mTop)} direction={mDir} variant="push" background={PAGE_BG} onBack={mStack.length > 1 ? mPop : undefined}>
+            {mTop === 'root' ? root
+              : mTop === 'agents' ? agents
+              : mTop === 'confidentialite' ? privacy
+              : <MobilePaneCtx.Provider value={true}><div style={{ paddingTop: 8 }}>{sectionPane}</div></MobilePaneCtx.Provider>}
+          </SlideView>
+        </div>
+        {toasts}
+        {routinesOpen && createPortal(
+          <SlideOverlay onClosed={() => { setRoutinesOpen(false); loadRoutineCount() }}>
+            {close => <RoutinesView onClose={close} />}
+          </SlideOverlay>,
+          document.body,
+        )}
+      </div>
+    )
+  }
+
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(15,23,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB, opacity: shown ? 1 : 0, pointerEvents: shown ? 'auto' : 'none', transition: 'opacity 0.28s ease' }}>
       <style>{`
@@ -395,17 +578,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
           </div>
         )}
 
-        {/* Toast « Enregistré » */}
-        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          {t('w1a.enregistre')}
-        </div>
-
-        {/* Toast « Échec de l'enregistrement » */}
-        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-          {t('w1a.echecEnregistrement')}
-        </div>
+        {toasts}
       </div>
     </div>
   )
@@ -428,7 +601,7 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
 
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navProfil')}</div>
+      <SectionTitle>{t('w1a.navProfil')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.profilLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
         <div>
@@ -481,7 +654,7 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
 // Reflète et pilote le consentement demandé avant le 1er envoi (clé
 // localStorage 'thw_ai_consent_v1', partagée avec AIPanel). Le retirer
 // désactive l'assistant : le prochain envoi redemandera l'accord.
-function AIConsentBlock() {
+function AIConsentBlock({ bare = false }: { bare?: boolean } = {}) {
   const [on, setOn] = useState(true)
   useEffect(() => {
     try { setOn(localStorage.getItem('thw_ai_consent_v1') === '1') } catch { /* ignore */ }
@@ -491,7 +664,7 @@ function AIConsentBlock() {
     try { localStorage.setItem('thw_ai_consent_v1', v ? '1' : '0') } catch { /* ignore */ }
   }
   return (
-    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ borderTop: bare ? 'none' : '1px solid var(--border)', paddingTop: bare ? 0 : 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)', fontFamily: FB, marginBottom: 3 }}>Partage de données avec l’IA</div>
@@ -519,7 +692,7 @@ function InstructionsSection({ value, setValue, save }: { value: string; setValu
   const { t } = useI18n()
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navInstructions')}</div>
+      <SectionTitle>{t('w1a.navInstructions')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.instructionsLead')}</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         {INSTRUCTION_PRESETS.map((_, i) => { const text = t(`w1a.preset_${i}_text`); return <PresetChip key={i} onClick={() => { setValue(text); save(text) }}>{t(`w1a.preset_${i}_label`)}</PresetChip> })}
@@ -537,7 +710,7 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
   const MODELS: [string, string, string][] = [['hermes', 'Hermès', t('w1a.speedRapide')], ['athena', 'Athéna', t('w1a.speedEquilibre')], ['zeus', 'Zeus', t('w1a.speedMax')]]
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navModele')}</div>
+      <SectionTitle>{t('w1a.navModele')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.modeleLead')}</p>
       <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
         {MODELS.map(([id, label, speed]) => {
@@ -580,7 +753,7 @@ function StudioSection() {
   const AUTON: [('auto' | 'manual'), string, string][] = [['auto', t('w1a.autonAutoLabel'), t('w1a.autonAutoDesc')], ['manual', t('w1a.autonManualLabel'), t('w1a.autonManualDesc')]]
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navStudio')}</div>
+      <SectionTitle>{t('w1a.navStudio')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.studioLead')}</p>
 
       <label style={fieldLabel}>{t('w1a.modeleArchitecte')}</label>
@@ -634,7 +807,7 @@ function VoixSection({ voice, save }: { voice: { lang: string; style: string; sp
   const { t } = useI18n()
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navVoix')}</div>
+      <SectionTitle>{t('w1a.navVoix')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.voixLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 420 }}>
         <div><label style={fieldLabel}>{t('w1a.langue')}</label><Dropdown value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', t('w1a.langFr')], ['en-US', t('w1a.langEn')], ['es-ES', t('w1a.langEs')]]} /></div>
@@ -658,7 +831,7 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
   }
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navNotifications')}</div>
+      <SectionTitle>{t('w1a.navNotifications')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.notificationsLead')}</p>
       {pushState !== 'unsupported' && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
@@ -695,7 +868,7 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
   )
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.agentTrainingTitle')}</div>
+      <SectionTitle>{t('w1a.agentTrainingTitle')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.agentTrainingLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -760,7 +933,7 @@ function AgentCoachSection({ agent, save }: { agent: CoachAgentSettings; save: (
   )
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.agentCoachTitle')}</div>
+      <SectionTitle>{t('w1a.agentCoachTitle')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.agentCoachLead')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 560 }}>
 
@@ -853,7 +1026,7 @@ function ConnecteursSection() {
 
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navConnecteurs')}</div>
+      <SectionTitle>{t('w1a.navConnecteurs')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.connecteursLead')}</p>
       <div style={{ maxWidth: 560 }}>
         {CONNECTORS.map((c, i) => {
@@ -929,7 +1102,7 @@ function AbonnementSection() {
 
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('w1a.navAbonnement')}</div>
+      <SectionTitle>{t('w1a.navAbonnement')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.abonnementLead')}</p>
 
       {/* Abonnement actuel */}

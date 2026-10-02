@@ -17,6 +17,11 @@ import {
   listRoutines, createRoutine, updateRoutine, deleteRoutine, runRoutine, listRuns,
   scheduleLabel, type Routine, type RoutineRun, type RoutineInput,
 } from '@/lib/routines/client'
+import {
+  useIsMobile, MobileHeader, RoundBtn, Ico, ICON, MCard, SectionLabel, Group, GroupRow, IconTile, Dot,
+  SegTrack, PillButton, HCard, HScroll, MSheet, SheetHeader, SkeletonCard, SKELETON_CSS,
+  TILE, MODEL_DOT, MODEL_NAME, STATUS_DOT, PAGE_BG, HAIRLINE, FB as MFB,
+} from '@/components/ai/mobile/MobileKit'
 
 const ACCENT = 'var(--primary)'
 
@@ -145,7 +150,14 @@ function RoutineSwitch({ on, onClick, ariaLabel }: { on: boolean; onClick: () =>
 
 type FormState = Partial<Routine> & { id?: string }
 
+// Mobile (≤ 767 px) : interface dédiée façon maquettes validées (cartes blanches,
+// feuille du bas pour le formulaire). Desktop : interface historique inchangée.
 export default function RoutinesView({ onClose }: { onClose: () => void }) {
+  const isMobile = useIsMobile()
+  return isMobile ? <RoutinesMobile onClose={onClose} /> : <RoutinesDesktop onClose={onClose} />
+}
+
+function RoutinesDesktop({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
   const [routines, setRoutines] = useState<Routine[]>([])
   const [loading, setLoading]   = useState(true)
@@ -456,5 +468,372 @@ function DetailView({ id, routine, onEdit, onChanged, onDeleted }: {
         )}
       </div>
     </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// MOBILE — liste en cartes blanches, détail en cartes, formulaire en
+// feuille du bas (Annuler · titre · Créer). Mêmes données et mêmes
+// appels API que le desktop (listRoutines, create/update/delete, run, runs).
+// ══════════════════════════════════════════════════════════════
+
+type RModel = Routine['model']
+const asModel = (m: string | undefined | null): RModel => (m === 'hermes' || m === 'zeus' ? m : 'athena')
+
+// Tuile d'icône de chaque modèle prêt à l'emploi (même ordre que TEMPLATES).
+const TPL_TILES: { color: string; icon: React.ReactNode }[] = [
+  { color: TILE.violet, icon: ICON.activity },
+  { color: TILE.orange, icon: ICON.sun },
+  { color: TILE.cyan,   icon: ICON.clock },
+  { color: TILE.indigo, icon: ICON.moon },
+  { color: TILE.red,    icon: ICON.flag },
+]
+
+function useScheduleText() {
+  const { t } = useI18n()
+  return useCallback((r: Pick<Routine, 'frequency' | 'hour' | 'weekday'>) => {
+    const hh = `${String(r.hour ?? 0).padStart(2, '0')}:00`
+    const base = r.frequency === 'weekly' ? t(`w1a.r_day_${r.weekday ?? 0}`) : t(`w1a.r_freq_${r.frequency}`)
+    return `${base} · ${hh}`
+  }, [t])
+}
+
+function RoutinesMobile({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
+  const [routines, setRoutines] = useState<Routine[]>([])
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [dir, setDir] = useState(1)
+  const [form, setForm] = useState<FormState | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formKey, setFormKey] = useState(0)
+
+  const load = useCallback(async () => {
+    try { setRoutines(await listRoutines()); setErr(null) } catch (e) { setErr(e instanceof Error ? e.message : t('w1a.r_erreur')) }
+    finally { setLoading(false) }
+  }, [t])
+  useEffect(() => { void load() }, [load])
+
+  const blank: FormState = { name: '', prompt: '', frequency: 'daily', hour: 7, weekday: 0, model: 'athena', allow_write: false }
+  const openForm = (f: FormState) => { setForm(f); setFormKey(k => k + 1); setFormOpen(true) }
+  const openTemplate = (i: number) => {
+    const tpl = TEMPLATES[i]
+    openForm({ ...blank, name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) })
+  }
+  const toggle = async (r: Routine) => {
+    setRoutines(list => list.map(x => x.id === r.id ? { ...x, enabled: !r.enabled } : x))
+    try { await updateRoutine(r.id, { enabled: !r.enabled }) } catch { /* rechargé ci-dessous */ }
+    void load()
+  }
+  const detail = detailId ? routines.find(r => r.id === detailId) ?? null : null
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: PAGE_BG, display: 'flex', flexDirection: 'column', fontFamily: MFB }}>
+      <style>{SKELETON_CSS}</style>
+      <MobileHeader
+        left={<RoundBtn label={t('w1a.r_retour')} onClick={() => { if (detailId) { setDir(-1); setDetailId(null) } else onClose() }}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>}
+        title={t('w1a.r_routines')}
+        right={!detailId ? <RoundBtn label={t('w1a.r_nouvelle')} onClick={() => openForm(blank)}><Ico d={ICON.plus} size={22} sw={2.2} /></RoundBtn> : undefined}
+      />
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: '4px 16px', paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }}>
+        <SlideView screenKey={detailId ? `d-${detailId}` : 'list'} direction={dir} variant="push" background={PAGE_BG} onBack={detailId ? () => { setDir(-1); setDetailId(null) } : undefined}>
+          {detailId ? (
+            <MobileDetail id={detailId} routine={detail} onEdit={r => openForm({ ...r })} onChanged={load}
+              onDeleted={() => { setDir(-1); setDetailId(null); void load() }} onToggle={toggle} />
+          ) : (
+            <MobileList routines={routines} loading={loading} err={err} onNew={() => openForm(blank)}
+              onOpen={id => { setDir(1); setDetailId(id) }} onToggle={toggle} onTemplate={openTemplate} />
+          )}
+        </SlideView>
+      </div>
+      <MSheet open={formOpen} onClose={() => setFormOpen(false)} label={t('w1a.r_nouvelleRoutine')}>
+        {form && <MobileForm key={formKey} initial={form} onCancel={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); void load() }} />}
+      </MSheet>
+    </div>
+  )
+}
+
+function MobileList({ routines, loading, err, onNew, onOpen, onToggle, onTemplate }: {
+  routines: Routine[]; loading: boolean; err: string | null; onNew: () => void
+  onOpen: (id: string) => void; onToggle: (r: Routine) => void; onTemplate: (i: number) => void
+}) {
+  const { t } = useI18n()
+  const sched = useScheduleText()
+  return (
+    <div>
+      <p style={{ margin: '0 4px 16px', fontSize: 16, lineHeight: 1.4, color: 'var(--text-mid)' }}>{t('aio.r_intro')}</p>
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{[0, 1, 2].map(i => <SkeletonCard key={i} height={112} />)}</div>
+      ) : err ? (
+        <MCard><div style={{ fontSize: 15, color: 'var(--danger)' }}>{err}</div></MCard>
+      ) : routines.length === 0 ? (
+        <MCard style={{ padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{t('w1a.r_aucuneRoutine')}</div>
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, margin: '6px 0 16px' }}>{t('w1a.r_aucuneRoutineDesc')}</p>
+          <PillButton onClick={onNew}>{t('w1a.r_creerPremiere')}</PillButton>
+        </MCard>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <AnimatedList>
+            {routines.map((r, i) => {
+              const model = asModel(r.model)
+              const right = !r.enabled ? t('aio.r_paused')
+                : r.last_run_at ? t('aio.r_lastRun', { when: fmtWhen(r.last_run_at) })
+                : t('aio.r_neverRun')
+              return (
+                <AnimatedItem key={r.id} index={i}>
+                  <MCard onClick={() => onOpen(r.id)} style={{ padding: '16px 16px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1.25 }}>{r.name}</div>
+                        <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 3 }}>{sched(r)}</div>
+                      </div>
+                      <div onClick={e => e.stopPropagation()} style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                        <Switch checked={r.enabled} onCheckedChange={() => onToggle(r)} aria-label={r.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: HAIRLINE, minHeight: 48, fontSize: 15 }}>
+                      <Dot color={MODEL_DOT[model]} />
+                      <span style={{ color: 'var(--text-mid)', flexShrink: 0 }}>{MODEL_NAME[model]}</span>
+                      <span style={{ flex: 1, minWidth: 0, textAlign: 'right', color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{right}</span>
+                    </div>
+                  </MCard>
+                </AnimatedItem>
+              )
+            })}
+          </AnimatedList>
+        </div>
+      )}
+
+      <SectionLabel>{t('w1a.r_modelesPrets')}</SectionLabel>
+      <HScroll>
+        {TEMPLATES.map((_, i) => (
+          <HCard key={i} onClick={() => onTemplate(i)} width={160}
+            icon={<IconTile color={TPL_TILES[i]?.color ?? TILE.cyan} size={36}><Ico d={TPL_TILES[i]?.icon ?? ICON.clock} size={18} /></IconTile>}
+            title={t(`w1a.r_tpl_${i}_label`)} />
+        ))}
+      </HScroll>
+    </div>
+  )
+}
+
+function MobileDetail({ id, routine, onEdit, onChanged, onDeleted, onToggle }: {
+  id: string; routine: Routine | null
+  onEdit: (r: Routine) => void; onChanged: () => void; onDeleted: () => void; onToggle: (r: Routine) => void
+}) {
+  const { t } = useI18n()
+  const sched = useScheduleText()
+  const [runs, setRuns] = useState<RoutineRun[]>([])
+  const [loadingRuns, setLoadingRuns] = useState(true)
+  const [running, setRunning] = useState(false)
+  const [openRun, setOpenRun] = useState<string | null>(null)
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  const loadRuns = useCallback(async () => {
+    setLoadingRuns(true)
+    try { setRuns(await listRuns(id)) } catch { /* ignore */ } finally { setLoadingRuns(false) }
+  }, [id])
+  useEffect(() => { void loadRuns() }, [loadRuns])
+  const doRunNow = async () => {
+    setRunning(true)
+    try { await runRoutine(id); await loadRuns(); onChanged() } catch { /* ignore */ } finally { setRunning(false) }
+  }
+
+  if (!routine) return <MCard><div style={{ fontSize: 15, color: 'var(--text-mid)' }}>{t('w1a.r_introuvable')}</div></MCard>
+  const model = asModel(routine.model)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <MCard style={{ padding: '18px 16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{routine.name}</div>
+            <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 4 }}>{sched(routine)}</div>
+          </div>
+          <div style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>
+            <Switch checked={routine.enabled} onCheckedChange={() => onToggle(routine)} aria-label={routine.enabled ? t('w1a.r_mettrePause') : t('w1a.r_activer')} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: HAIRLINE, minHeight: 48, fontSize: 15, color: 'var(--text-mid)' }}>
+          <Dot color={MODEL_DOT[model]} />
+          <span style={{ flexShrink: 0 }}>{MODEL_NAME[model]}</span>
+          <span style={{ flex: 1, minWidth: 0, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {!routine.enabled ? t('aio.r_paused') : routine.allow_write ? t('aio.r_canEdit') : t('aio.r_proposeOnly')}
+          </span>
+        </div>
+      </MCard>
+
+      <div style={{ marginTop: 14 }}>
+        <PillButton onClick={() => void doRunNow()} disabled={running}>
+          <Ico d={ICON.play} size={16} fill="currentColor" sw={0} />
+          {running ? t('w1a.r_execution') : t('w1a.r_executerMaintenant')}
+        </PillButton>
+      </div>
+
+      <SectionLabel>{t('w1a.r_instruction')}</SectionLabel>
+      <MCard><div style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{routine.prompt}</div></MCard>
+
+      <SectionLabel>{t('w1a.r_executions')}</SectionLabel>
+      {loadingRuns ? (
+        <SkeletonCard height={120} />
+      ) : runs.length === 0 ? (
+        <MCard><div style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('w1a.r_aucuneExecution')}</div></MCard>
+      ) : (
+        <Group>
+          {runs.map((run, i) => {
+            const isOpen = openRun === run.id
+            const color = run.status === 'error' ? STATUS_DOT.err : run.status === 'running' ? STATUS_DOT.warn : STATUS_DOT.ok
+            return (
+              <div key={run.id} style={{ borderTop: i === 0 ? 'none' : HAIRLINE }}>
+                <button type="button" onClick={() => setOpenRun(isOpen ? null : run.id)} aria-expanded={isOpen}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 52, padding: '0 16px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: MFB }}>
+                  <Dot color={color} size={9} />
+                  <span style={{ flex: 1, fontSize: 16, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtWhen(run.created_at)}</span>
+                  <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{run.status === 'error' ? t('w1a.r_statusError') : run.status === 'running' ? t('w1a.r_statusRunning') : t('w1a.r_statusDone')}</span>
+                  <span style={{ color: 'var(--text-dim)', display: 'flex', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><Ico d={ICON.chev} size={16} /></span>
+                </button>
+                {isOpen && (
+                  <div style={{ padding: '0 16px 16px 37px', fontSize: 15, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                    {run.error ? <span style={{ color: 'var(--danger)' }}>{run.error}</span> : (run.output || '—')}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Group>
+      )}
+
+      <div style={{ marginTop: 22 }}>
+        <Group>
+          <GroupRow first icon={<span style={{ color: 'var(--text-mid)', display: 'flex' }}><Ico d={ICON.edit} size={19} /></span>} label={t('w1a.r_modifier')} onClick={() => onEdit(routine)} />
+          <GroupRow danger chevron={false}
+            icon={<span style={{ color: 'var(--danger)', display: 'flex' }}><Ico d={ICON.trash} size={19} /></span>}
+            label={confirmDel ? t('w1a.r_confirmerSuppression') : t('w1a.r_supprimer')}
+            onClick={() => { if (confirmDel) void deleteRoutine(id).then(onDeleted); else setConfirmDel(true) }} />
+        </Group>
+      </div>
+    </div>
+  )
+}
+
+// Ligne de réglage avec <select> natif invisible (roue iOS) par-dessus.
+function SelectRow({ label, display, value, options, onChange, first }: {
+  label: string; display: React.ReactNode; value: string; options: DDOpt[]; onChange: (v: string) => void; first?: boolean
+}) {
+  return (
+    <label style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 16px', borderTop: first ? 'none' : HAIRLINE, cursor: 'pointer' }}>
+      <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 7, fontVariantNumeric: 'tabular-nums' }}>{display}</span>
+      <select value={value} onChange={e => onChange(e.target.value)} aria-label={label}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', fontSize: 16, border: 'none' }}>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function MobileForm({ initial, onCancel, onSaved }: { initial: FormState; onCancel: () => void; onSaved: () => void }) {
+  const { t } = useI18n()
+  const [f, setF] = useState<FormState>(initial)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [appliedTpl, setAppliedTpl] = useState<number | null>(null)
+  const set = (patch: Partial<FormState>) => setF(prev => ({ ...prev, ...patch }))
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = taRef.current
+    if (el) { el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 260)}px` }
+  }, [f.prompt])
+
+  // Même enregistrement que le formulaire desktop.
+  const save = async () => {
+    if (!f.name?.trim() || !f.prompt?.trim()) { setError(t('w1a.r_validationMsg')); return }
+    setSaving(true); setError(null)
+    try {
+      const body: RoutineInput = {
+        name: f.name!.trim(), prompt: f.prompt!.trim(),
+        frequency: (f.frequency as RoutineInput['frequency']) ?? 'daily',
+        hour: f.hour ?? 7, weekday: f.weekday ?? 0,
+        model: (f.model as RoutineInput['model']) ?? 'athena',
+        allow_write: !!f.allow_write,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris',
+      }
+      if (f.id) await updateRoutine(f.id, body)
+      else await createRoutine(body)
+      onSaved()
+    } catch (e) { setError(e instanceof Error ? e.message : t('w1a.r_erreur')) }
+    finally { setSaving(false) }
+  }
+
+  const freqOptions = FREQ_OPTS.map(o => ({ v: o.v, l: t(`w1a.r_freq_${o.v}`) }))
+  const hourOptions: DDOpt[] = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: `${String(i).padStart(2, '0')}:00` }))
+  const dayOptions: DDOpt[] = DAYS.map((_, i) => ({ value: String(i), label: t(`w1a.r_day_${i}`) }))
+  const modelOptions: DDOpt[] = MODEL_OPTS.map(o => ({ value: o.v, label: t(`w1a.r_model_${o.v}`) }))
+  const model = asModel(f.model)
+  const grp: React.CSSProperties = { background: 'var(--surface-chip)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }
+  const lab: React.CSSProperties = { display: 'block', fontSize: 14, color: 'var(--text-mid)', marginBottom: 4 }
+  const fieldBase: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: MFB, padding: 0, caretColor: 'var(--primary)' }
+
+  return (
+    <>
+      <SheetHeader leftLabel={t('w1a.r_annuler')} onLeft={onCancel}
+        title={f.id ? t('w1a.r_modifierRoutine') : t('w1a.r_nouvelleRoutine')}
+        rightLabel={saving ? '…' : f.id ? t('w1a.r_enregistrer') : t('aio.r_create')} onRight={() => void save()} rightDisabled={saving} />
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 16px', paddingBottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
+        {!f.id && (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -16px 14px', padding: '0 16px' }}>
+            {TEMPLATES.map((tpl, i) => {
+              const on = appliedTpl === i
+              return (
+                <button key={i} type="button"
+                  onClick={() => { set({ name: t(`w1a.r_tpl_${i}_name`), prompt: t(`w1a.r_tpl_${i}_prompt`), frequency: tpl.frequency, hour: tpl.hour, ...(tpl.model ? { model: tpl.model } : {}) }); setAppliedTpl(i) }}
+                  style={{ flexShrink: 0, minHeight: 40, padding: '0 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: MFB, fontSize: 14, fontWeight: 700,
+                    background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text-mid)' }}>
+                  {t(`w1a.r_tpl_${i}_label`)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div style={grp}>
+          <div style={{ padding: '12px 16px 14px' }}>
+            <label style={lab} htmlFor="aio-r-name">{t('w1a.r_nom')}</label>
+            <input id="aio-r-name" value={f.name ?? ''} onChange={e => { set({ name: e.target.value }); setAppliedTpl(null) }} placeholder={t('w1a.r_nomPh')}
+              style={{ ...fieldBase, fontSize: 17, fontWeight: 800 }} />
+          </div>
+          <div style={{ padding: '12px 16px 14px', borderTop: HAIRLINE }}>
+            <label style={lab} htmlFor="aio-r-prompt">{t('aio.r_whatAi')}</label>
+            <textarea id="aio-r-prompt" ref={taRef} value={f.prompt ?? ''} rows={3} onChange={e => { set({ prompt: e.target.value }); setAppliedTpl(null) }} placeholder={t('w1a.r_promptPh')}
+              style={{ ...fieldBase, fontSize: 16, lineHeight: 1.5, resize: 'none', minHeight: 72, display: 'block' }} />
+          </div>
+        </div>
+
+        <SectionLabel>{t('aio.r_when')}</SectionLabel>
+        <SegTrack full={false} options={freqOptions} value={(f.frequency ?? 'daily') as RoutineInput['frequency']} onChange={v => set({ frequency: v })} />
+        <div style={{ ...grp, marginTop: 12 }}>
+          {f.frequency === 'weekly' && (
+            <SelectRow first label={t('w1a.r_jour')} display={t(`w1a.r_day_${f.weekday ?? 0}`)} value={String(f.weekday ?? 0)} options={dayOptions} onChange={v => set({ weekday: Number(v) })} />
+          )}
+          <SelectRow first={f.frequency !== 'weekly'} label={t('w1a.r_heure')} display={`${String(f.hour ?? 7).padStart(2, '0')}:00`} value={String(f.hour ?? 7)} options={hourOptions} onChange={v => set({ hour: Number(v) })} />
+        </div>
+
+        <SectionLabel>{t('aio.r_options')}</SectionLabel>
+        <div style={grp}>
+          <SelectRow first label={t('w1a.r_modeleIA')} value={model} options={modelOptions} onChange={v => set({ model: asModel(v) })}
+            display={<><Dot color={MODEL_DOT[model]} /><span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>{MODEL_NAME[model]}</span></>} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '10px 16px', borderTop: HAIRLINE }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('aio.r_canEdit')}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.4 }}>{t('aio.r_canEditSub')}</div>
+            </div>
+            <Switch checked={!!f.allow_write} onCheckedChange={v => set({ allow_write: v })} aria-label={t('aio.r_canEdit')} />
+          </div>
+        </div>
+
+        {error && <div style={{ marginTop: 14, fontSize: 15, color: 'var(--danger)', lineHeight: 1.45 }}>{error}</div>}
+      </div>
+    </>
   )
 }

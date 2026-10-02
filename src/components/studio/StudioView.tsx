@@ -36,6 +36,11 @@ import TokenEmailModal from './TokenEmailModal'
 import PressPop from '@/components/ui/PressPop'
 import { useI18n } from '@/lib/i18n'
 import { isNativeApp } from '@/lib/native/platform'
+import {
+  MobileHeader, RoundBtn, Ico, ICON, MCard, SectionLabel, Group, GroupRow, IconTile, NeutralTile, Dot, Chevron,
+  SegTrack, ChipTabs, PillButton, HCard, HScroll, MSheet, TextLink, SkeletonCard, SKELETON_CSS,
+  TILE, STATUS_DOT, PAGE_BG, CARD_BG, HAIRLINE, SOFT_SHADOW,
+} from '@/components/ai/mobile/MobileKit'
 
 // Nœuds = « bulles-logos » circulaires (façon Make) : diamètre fixe, libellé
 // dessous, port d'entrée à gauche / de sortie à droite (au centre vertical).
@@ -203,7 +208,7 @@ interface RunRow {
 }
 
 export default function StudioView({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [graph, setGraph] = useState<StudioGraph>(() => emptyGraph())
   const [tab, setTab] = useState<Tab>('canvas')
   // ── Accueil multi-systèmes + accès (offre Pro/Expert) ────────
@@ -349,7 +354,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null)
 
   // Mobile : inspecteur en sheet bas + barre compacte.
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
   const [, setPaletteOpen] = useState(true)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -1455,7 +1460,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   // ── Journal de progression : runs de CE système, du plus récent au plus
   // ancien (l'onglet vit à l'intérieur d'un système → on le scope). ─────────
   useEffect(() => {
-    if (tab !== 'runs' || runs !== null) return
+    // Mobile : la carte « Dernières exécutions » du Pilotage lit aussi le journal.
+    if (!(tab === 'runs' || (isMobile && tab === 'chat')) || runs !== null) return
     void (async () => {
       try {
         const supabase = createClient()
@@ -1470,7 +1476,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         setRuns((data ?? []) as RunRow[])
       } catch { setRuns([]) }
     })()
-  }, [tab, runs])
+  }, [tab, runs, isMobile])
 
   const copyRender = (id: string, text: string) => {
     void navigator.clipboard?.writeText(text)
@@ -1593,9 +1599,502 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   // site marketing (NEXT_PUBLIC_MARKETING_SITE_URL) qui n'est pas à jour.
   const siteUrl = '/site/theme.html#studio'
 
+  // ══════════════════════════════════════════════════════════════
+  // MOBILE (≤ 767 px) — grammaire des maquettes validées : page gris clair,
+  // cartes blanches, en-tête à boutons ronds, onglets en puces, feuilles du
+  // bas. Mêmes handlers que le desktop (aucune logique dupliquée côté données).
+  // ══════════════════════════════════════════════════════════════
+  const [moreOpen, setMoreOpen] = useState(false)                 // feuille « … » d'un système
+  const [sysMenuFor, setSysMenuFor] = useState<string | null>(null) // feuille d'actions d'un système (accueil)
+  type HomeMeta = { enabled: boolean; lastAt: string | null; lastStatus: string | null }
+  const [homeMeta, setHomeMeta] = useState<Record<string, HomeMeta>>({})
+  // Statut des systèmes à l'accueil (planification active + dernier run) — lecture seule.
+  useEffect(() => {
+    if (!isMobile || view !== 'home' || !access?.allowed || systems.length === 0) return
+    let off = false
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const ids = systems.map(x => x.id)
+        const [sch, rr] = await Promise.all([
+          supabase.from('studio_schedules').select('system_id, enabled').in('system_id', ids),
+          supabase.from('studio_runs').select('system_id, status, created_at').in('system_id', ids).order('created_at', { ascending: false }).limit(200),
+        ])
+        const meta: Record<string, HomeMeta> = {}
+        for (const row of (sch.data ?? []) as { system_id: string; enabled: boolean | null }[]) {
+          meta[row.system_id] = { enabled: !!row.enabled, lastAt: null, lastStatus: null }
+        }
+        for (const row of (rr.data ?? []) as { system_id: string | null; status: string; created_at: string }[]) {
+          if (!row.system_id) continue
+          const m = meta[row.system_id] ?? (meta[row.system_id] = { enabled: false, lastAt: null, lastStatus: null })
+          if (!m.lastAt) { m.lastAt = row.created_at; m.lastStatus = row.status }
+        }
+        if (!off) setHomeMeta(meta)
+      } catch { /* best-effort : statut neutre */ }
+    })()
+    return () => { off = true }
+  }, [isMobile, view, access?.allowed, systems])
+
+  const openNewSys = () => { setNewSysName(t('w1i.my_system')); setNewSysFolder(activeFolder); setNewSysNewFolder(''); setNewSysAthlete(null); setNewSysOpen(true) }
+  const mFolders = Array.from(new Set(systems.map(x => x.folder).filter((f): f is string => Boolean(f)))).sort()
+  const relDay = (iso: string): string => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const day0 = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+    const diff = Math.round((day0(new Date()) - day0(d)) / 86400_000)
+    if (diff === 0) return t('w1i.today')
+    if (diff === 1) return t('aio.st_yesterday')
+    try { return d.toLocaleDateString(lang, { day: 'numeric', month: 'short' }) } catch { return '' }
+  }
+  const sysStatus = (x: StudioSystemRow): { color: string; text: string } => {
+    const m = homeMeta[x.id]
+    const last = m?.lastAt ? ` · ${t('aio.st_lastRun', { when: relDay(m.lastAt) })}` : ''
+    if (!(x.graph?.nodes ?? []).length) return { color: STATUS_DOT.idle, text: t('aio.st_draft') }
+    if (m?.lastStatus === 'error') return { color: STATUS_DOT.err, text: `${m.enabled ? t('aio.st_active') : t('aio.st_manual')}${last}` }
+    if (m?.enabled) return { color: STATUS_DOT.ok, text: `${t('aio.st_active')}${last}` }
+    return { color: STATUS_DOT.idle, text: `${t('aio.st_manual')}${last}` }
+  }
+  const sysDesc = (x: StudioSystemRow): string => {
+    const nodes = x.graph?.nodes ?? []
+    const nAgents = nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length
+    return x.graph?.objective?.text?.trim()
+      || nodes.find(n => n.kind === 'trigger')?.role?.trim()
+      || `${nodes.length} ${t(nodes.length !== 1 ? 'w1i.block_many' : 'w1i.block_one')} · ${nAgents} ${t(nAgents !== 1 ? 'w1i.agent_many' : 'w1i.agent_one')}`
+  }
+  const DAYS_LC = [t('w1i.day_monday_lc'), t('w1i.day_tuesday_lc'), t('w1i.day_wednesday_lc'), t('w1i.day_thursday_lc'), t('w1i.day_friday_lc'), t('w1i.day_saturday_lc'), t('w1i.day_sunday_lc')]
+  const dayShort = (i: number) => { const d = DAYS_LC[i] ?? ''; return d ? `${d.charAt(0).toUpperCase()}${d.slice(1, 3)}.` : '' }
+  const nextRunIn = (sc: { frequency: 'daily' | 'weekly'; hour: number; weekday: number }): string => {
+    const now = new Date()
+    const next = new Date(now); next.setMinutes(0, 0, 0); next.setHours(sc.hour)
+    if (sc.frequency === 'weekly') {
+      const target = (sc.weekday + 1) % 7   // 0 = lundi côté Studio, 0 = dimanche côté JS
+      next.setDate(now.getDate() + ((target - now.getDay() + 7) % 7))
+      if (next <= now) next.setDate(next.getDate() + 7)
+    } else if (next <= now) next.setDate(next.getDate() + 1)
+    const h = Math.round((next.getTime() - now.getTime()) / 3600_000)
+    return h < 24 ? t('aio.st_nextHours', { n: Math.max(1, h) }) : t('aio.st_nextDays', { n: Math.round(h / 24) })
+  }
+  const stepSub = (n: StudioNode) => n.role?.trim() || (n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind])
+  const tplTiles: { color: string; d: React.ReactNode }[] = [
+    { color: TILE.cyan, d: ICON.activity }, { color: TILE.violet, d: ICON.grid }, { color: TILE.red, d: ICON.flag }, { color: TILE.green, d: ICON.heart },
+  ]
+  const balanceText = access?.allowed ? (access.remaining > 1e12 ? t('w1i.unlimited') : t('w1i.tokens_amount', { n: formatTokens(access.remaining) })) : ''
+  const mInput: React.CSSProperties = { width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '0 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--surface-soft)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font-body)', outline: 'none' }
+  const mChip = (on: boolean): React.CSSProperties => ({ flexShrink: 0, minHeight: 44, padding: '0 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-body)', background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text-mid)' })
+  const checkIco = <Ico d={<path d="M20 6 9 17l-5-5" />} size={18} sw={2.6} />
+  const mobileCard: React.CSSProperties = { background: CARD_BG, borderRadius: 'var(--r-lg)', boxShadow: SOFT_SHADOW, border: 'none' }
+
+  const mStatusEl = running
+    ? <><Dot color={STATUS_DOT.warn} /><span style={{ color: 'var(--text-mid)' }}>{t('aio.st_running')}</span></>
+    : schedule?.enabled
+      ? <><Dot color={STATUS_DOT.ok} /><span style={{ color: 'var(--success)' }}>{t('aio.st_active')}</span></>
+      : <><Dot color={STATUS_DOT.idle} /><span style={{ color: 'var(--text-mid)' }}>{t('aio.st_manual')}</span></>
+
+  const mobileTop = !isMobile ? null : view === 'canvas' ? (
+    <div style={{ flexShrink: 0, paddingBottom: 10 }}>
+      <MobileHeader
+        left={<><RoundBtn label={t('w1i.back_to_systems')} onClick={backToHome}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn><span aria-hidden style={{ width: 44, flexShrink: 0 }} /></>}
+        title={graph.name || t('w1i.my_system')}
+        subtitle={mStatusEl}
+        right={<>
+          <RoundBtn label={t('aio.st_more')} onClick={() => setMoreOpen(true)}><Ico d={ICON.more} size={22} /></RoundBtn>
+          {running
+            ? <RoundBtn label={t('w1i.stop')} onClick={stopRun}><Ico d={ICON.stop} size={18} fill="currentColor" sw={0} /></RoundBtn>
+            : <RoundBtn label={t('w1a.r_executerMaintenant')} onClick={() => void runOnce()}><Ico d={ICON.play} size={20} sw={2} /></RoundBtn>}
+        </>}
+      />
+      <ChipTabs<Tab> value={tab} onChange={setTab} options={[
+        { v: 'canvas', l: t('w1i.tab_canvas') }, { v: 'chat', l: t('w1i.tab_pilotage') }, { v: 'rendu', l: t('w1i.tab_rendu') },
+        { v: 'runs', l: t('w1i.tab_journal') }, { v: 'methode', l: t('w1i.tab_method') },
+      ]} />
+    </div>
+  ) : (
+    <MobileHeader
+      left={<RoundBtn label={t('w1i.close')} onClick={onClose}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>}
+      title="Studio"
+      right={access?.allowed ? <RoundBtn label={t('w1i.new_system')} onClick={openNewSys}><Ico d={ICON.plus} size={22} sw={2.2} /></RoundBtn> : undefined}
+    />
+  )
+
+  // Accueil mobile (le paywall reste celui du desktop).
+  const mobileHomeOn = isMobile && !(access && !access.allowed)
+  const mobileHome = !mobileHomeOn ? null : (
+    <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: '4px 16px 0', fontFamily: 'var(--font-body)' }}>
+      <style>{SKELETON_CSS}</style>
+      {homeErr && <MCard style={{ marginBottom: 12 }}><div style={{ fontSize: 15, color: 'var(--danger)' }}>{homeErr}</div></MCard>}
+
+      {activeFolder === null && (
+        <div style={{ marginBottom: 14 }}>
+          <SegTrack<'perso' | 'coach'> value={scopeTab}
+            onChange={v => { if (v === 'coach' && !coachAccess) { setScopeTab('perso'); alert(t('w1i.athletes_space_locked')); return } setScopeTab(v) }}
+            options={[
+              { v: 'perso', l: t('w1i.for_me') },
+              { v: 'coach', l: <>{t('w1i.for_my_athletes')}{!coachAccess && <Ico d={ICON.lock} size={13} />}</>, locked: !coachAccess },
+            ]} />
+        </div>
+      )}
+
+      {/* Dossiers (rail horizontal) */}
+      {mFolders.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -16px 14px', padding: '0 16px' }} aria-label={t('w1i.folders')}>
+          {([null, ...mFolders] as (string | null)[]).map(f => {
+            const count = f === null ? systems.length : systems.filter(x => x.folder === f).length
+            return (
+              <button key={f ?? '__all'} type="button" onClick={() => setActiveFolder(f)} style={mChip(activeFolder === f)}>
+                {f ?? t('w1i.all_systems')} <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Signal santé → système dédié */}
+      {activeFolder === null && !homeLoading && healthAlert && !systems.some(s => /bless|retour|récup|recup|rééduc|reeduc|prudent/.test(`${s.name} ${s.graph?.objective?.text ?? ''}`.toLowerCase())) && (
+        <MCard onClick={() => void startFirstSystem(t('w1i.manage_situation_obj', { alert: healthAlert }))} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4 }}>
+          <IconTile color={TILE.orange} size={44}><Ico d={ICON.bell} size={22} /></IconTile>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{t('w1i.ease_off_title')}</span>
+            <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: 14, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.4 }}>{t('w1i.ease_off_body', { alert: healthAlert })}</span>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--primary)', marginTop: 6 }}>{t('w1i.create_this_system')}</span>
+          </span>
+          <Chevron size={20} />
+        </MCard>
+      )}
+
+      {/* Onboarding : premier système */}
+      {activeFolder === null && !homeLoading && systems.length === 0 && (
+        <MCard style={{ padding: 18, marginTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <StudioLogo size={26} />
+            <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)' }}>{t('w1i.your_first_system')}</span>
+          </div>
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 14px' }}>{t('w1i.first_system_intro')}</p>
+          <input value={firstObjective} onChange={e => setFirstObjective(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void startFirstSystem(firstObjective) }}
+            placeholder={t('w1i.first_objective_ph')} aria-label={t('w1i.first_objective_ph')} style={mInput} />
+          <div style={{ marginTop: 10 }}>
+            <PillButton onClick={() => void startFirstSystem(firstObjective)}>{t('w1i.create_my_system')}<Ico d={<path d="M5 12h14M13 6l6 6-6 6" />} size={18} sw={2.4} /></PillButton>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '10px 0 0' }}>{t('w1i.no_precise_objective')}</p>
+        </MCard>
+      )}
+
+      {/* Coach : sport + sélection d'athlètes */}
+      {activeFolder === null && scopeTab === 'coach' && coachAccess && coachAthletes.length > 0 && (() => {
+        const sportLabel = (s: string) => ({ running: 'Course', run: 'Course', cycling: 'Vélo', bike: 'Vélo', hyrox: 'Hyrox', gym: 'Muscu', musculation: 'Muscu', swimming: 'Natation', swim: 'Natation', rowing: 'Aviron', triathlon: 'Triathlon' } as Record<string, string>)[s] ?? (s.charAt(0).toUpperCase() + s.slice(1))
+        const sports = Array.from(new Set(coachAthletes.flatMap(a => a.sports))).filter(Boolean)
+        const filtered = coachAthletes.filter(a => !sportFilter || a.sports.includes(sportFilter))
+        const toggleA = (id: string) => setAthleteSel(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+        return (
+          <MCard style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{t('w1i.select_athletes')}</div>
+            <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '2px 0 12px', lineHeight: 1.45 }}>{t('w1i.select_athletes_hint')}</p>
+            {sports.length > 1 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 10 }}>
+                <button type="button" onClick={() => setSportFilter(null)} style={mChip(!sportFilter)}>{t('w1i.all_sports')}</button>
+                {sports.map(sp => <button key={sp} type="button" onClick={() => setSportFilter(sp)} style={mChip(sportFilter === sp)}>{sportLabel(sp)}</button>)}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {filtered.map(a => {
+                const on = athleteSel.has(a.id)
+                return <button key={a.id} type="button" onClick={() => toggleA(a.id)} style={mChip(on)} aria-pressed={on}>{a.name}</button>
+              })}
+              {filtered.length === 0 && <span style={{ fontSize: 14, color: 'var(--text-dim)' }}>{t('w1i.no_athlete_for_sport')}</span>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, fontSize: 14 }}>
+              <button type="button" onClick={() => setAthleteSel(new Set(filtered.map(a => a.id)))} style={{ minHeight: 44, background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700, padding: 0, fontFamily: 'var(--font-body)', fontSize: 14 }}>{t('w1i.select_all')}</button>
+              <button type="button" onClick={() => setAthleteSel(new Set())} style={{ minHeight: 44, background: 'none', border: 'none', color: 'var(--text-mid)', cursor: 'pointer', fontWeight: 700, padding: 0, fontFamily: 'var(--font-body)', fontSize: 14 }}>{t('w1i.select_none')}</button>
+              <span style={{ flex: 1, textAlign: 'right', color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{t('w1i.n_selected', { n: athleteSel.size })}</span>
+            </div>
+          </MCard>
+        )
+      })()}
+
+      {/* Mes systèmes */}
+      <SectionLabel>{activeFolder ?? (scopeTab === 'coach' ? t('w1i.systems_for_athletes') : t('w1i.my_systems'))}</SectionLabel>
+      {scopeTab === 'coach' && <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '-4px 4px 12px', lineHeight: 1.45 }}>{t('w1i.coach_systems_hint')}</p>}
+      {homeLoading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{[0, 1, 2].map(i => <SkeletonCard key={i} height={104} />)}</div>
+      ) : (() => {
+        const list = systems.filter(x => x.scope === scopeTab && (activeFolder === null || x.folder === activeFolder))
+        if (list.length === 0) return systems.length > 0 ? <MCard><div style={{ fontSize: 15, color: 'var(--text-mid)' }}>{t('aio.st_noSystems')}</div></MCard> : null
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <AnimatedList>
+              {list.map((x, i) => {
+                const st = sysStatus(x)
+                const athlete = x.scope === 'coach' && x.athlete_id ? (coachAthletes.find(a => a.id === x.athlete_id)?.name ?? t('w1i.linked_athlete')) : null
+                return (
+                  <AnimatedItem key={x.id} index={i}>
+                    <MCard onClick={() => openSystem(x)} style={{ padding: '14px 6px 14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <NeutralTile size={44}><Ico d={ICON.grid} size={22} /></NeutralTile>
+                        <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</div>
+                          <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sysDesc(x)}</div>
+                        </div>
+                        <button type="button" aria-label={t('aio.st_more')} onClick={e => { e.stopPropagation(); setNewFolderName(''); setSysMenuFor(x.id) }}
+                          style={{ width: 44, height: 44, marginTop: -6, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Ico d={ICON.more} size={20} />
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingRight: 10, fontSize: 15, color: 'var(--text-mid)', minWidth: 0 }}>
+                        <Dot color={st.color} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.text}{x.folder ? ` · ${x.folder}` : ''}{athlete ? ` · ${athlete}` : ''}</span>
+                      </div>
+                    </MCard>
+                  </AnimatedItem>
+                )
+              })}
+            </AnimatedList>
+          </div>
+        )
+      })()}
+
+      {/* Recommandés (IA) */}
+      {activeFolder === null && (recosLoading || recos.length > 0 || recosError) && (
+        <>
+          <SectionLabel right={<button type="button" onClick={() => void loadRecos(true)} disabled={recosLoading}
+            style={{ minHeight: 44, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', padding: '0 4px', margin: '-12px 0' }}>{t('w1i.regenerate')}</button>}>
+            {t('aio.st_recommended')}
+          </SectionLabel>
+          {recosLoading && recos.length === 0 ? (
+            <HScroll>{[0, 1].map(i => <div key={i} style={{ flex: '0 0 200px' }}><SkeletonCard height={140} /></div>)}</HScroll>
+          ) : recosError && recos.length === 0 ? (
+            <MCard><span style={{ fontSize: 15, color: 'var(--text-mid)' }}>{t('w1i.recos_error')} </span>
+              <button type="button" onClick={() => void loadRecos(true)} style={{ minHeight: 44, background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700, fontSize: 15, padding: 0, fontFamily: 'var(--font-body)' }}>{t('w1i.retry')}</button>
+            </MCard>
+          ) : (
+            <HScroll>
+              {recos.map((r, i) => (
+                <HCard key={i} width={200} onClick={() => { setPreviewSel(null); setRecoMockup(r) }}
+                  icon={<IconTile color="var(--studio-accent)" size={36}><Ico d={<><circle cx="5" cy="6" r="2.4" /><circle cx="19" cy="6" r="2.4" /><circle cx="12" cy="18" r="2.4" /><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16" /></>} size={18} /></IconTile>}
+                  title={r.title} sub={r.why} />
+              ))}
+            </HScroll>
+          )}
+        </>
+      )}
+
+      {/* Modèles pré-construits */}
+      {activeFolder === null && (
+        <>
+          <SectionLabel>{t('w1i.start_from_template')}</SectionLabel>
+          <HScroll>
+            {STUDIO_TEMPLATES.map((tpl, i) => (
+              <HCard key={tpl.key} width={200} onClick={() => void newSystem(tpl.name, tpl.build())}
+                icon={<IconTile color={tplTiles[i % tplTiles.length].color} size={36}><Ico d={tplTiles[i % tplTiles.length].d} size={18} /></IconTile>}
+                title={tpl.name} sub={tpl.description} />
+            ))}
+          </HScroll>
+        </>
+      )}
+
+      {/* Solde + aide */}
+      <div style={{ marginTop: 22 }}>
+        <Group>
+          {access?.allowed && (
+            <GroupRow first icon={<IconTile color={TILE.orange} size={36}><Ico d={ICON.bolt} size={18} /></IconTile>} label={t('aio.st_balance')} value={balanceText} onClick={() => setWalletOpen(true)} />
+          )}
+          <GroupRow first={!access?.allowed} icon={<IconTile color={TILE.grey} size={36}><Ico d={ICON.help} size={18} /></IconTile>} label={t('w1i.how_it_works')} onClick={() => setHelpOpen(true)} />
+        </Group>
+      </div>
+
+      {/* Action principale — collée en bas */}
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 2, margin: '0 -16px', padding: '18px 16px calc(16px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${PAGE_BG} 72%, transparent)` }}>
+        <PillButton onClick={openNewSys}><Ico d={ICON.plus} size={20} sw={2.4} />{t('w1i.new_system')}</PillButton>
+      </div>
+    </div>
+  )
+
+  // Pilotage mobile : planification · étapes · dernières exécutions · objectif · journal du run.
+  const mobilePilotage = !isMobile ? null : (() => {
+    const steps = [...graph.nodes].sort((a, b) => (a.x - b.x) || (a.y - b.y))
+    const lastRuns = (runs ?? []).slice(0, 3)
+    const cardTitle: React.CSSProperties = { fontSize: 18, fontWeight: 800, color: 'var(--text)' }
+    return (
+      <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 16px', paddingBottom: 'calc(28px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 12, fontFamily: 'var(--font-body)' }}>
+        <style>{SKELETON_CSS}</style>
+        {approval && (
+          <MCard style={{ padding: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <IconTile color={TILE.orange} size={36}><KindIcon kind={approval.node.kind} size={18} /></IconTile>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{approval.node.title}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', display: 'flex', alignItems: 'center', gap: 6 }}><Dot color={STATUS_DOT.warn} />{t('w1i.your_approval')}</span>
+            </div>
+            {approval.node.role && <div style={{ fontSize: 14, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.45 }}>{approval.node.role}</div>}
+            <div style={{ maxHeight: '45vh', overflowY: 'auto', padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-soft)', marginBottom: 14 }}>
+              {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 14, color: 'var(--text-dim)' }}>{t('w1i.no_input_content')}</span>}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <PillButton onClick={() => approval.resolve(true)}>{t('w1i.validate_continue')}</PillButton>
+              <PillButton variant="white" onClick={() => approval.resolve(false)} style={{ background: 'var(--surface-chip)', boxShadow: 'none' }}>{t('w1i.refuse')}</PillButton>
+            </div>
+          </MCard>
+        )}
+        {runErr && <MCard><div style={{ fontSize: 15, color: 'var(--danger)', lineHeight: 1.45 }}>{runErr}</div></MCard>}
+
+        {/* Planification */}
+        <MCard>
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span style={{ ...cardTitle, flex: 1 }}>{t('aio.st_schedule')}</span>
+            <TextLink onClick={() => setScheduleOpen(true)}>{t('w1a.r_modifier')}</TextLink>
+          </div>
+          {schedule?.enabled ? (
+            <>
+              <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                {schedule.frequency === 'weekly' ? `${dayShort(schedule.weekday)} ` : ''}{schedule.hour}:00
+              </div>
+              <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 4 }}>
+                {schedule.frequency === 'weekly' ? t('aio.st_weekly') : t('aio.st_daily')} · {nextRunIn(schedule)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1.15, marginTop: 4 }}>{t('aio.st_notScheduled')}</div>
+              <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 4 }}>{t('w1i.schedule_this_system_auto')}</div>
+            </>
+          )}
+        </MCard>
+
+        {/* Étapes */}
+        <MCard>
+          <div style={{ ...cardTitle, marginBottom: 6 }}>{t('aio.st_steps')}</div>
+          {steps.length === 0 ? (
+            <div style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.45 }}>
+              {t('aio.st_noSteps')} <button type="button" onClick={() => setTab('canvas')} style={{ minHeight: 44, border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 700, fontSize: 15, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)' }}>{t('w1i.tab_canvas')}</button>
+            </div>
+          ) : steps.map((n, i) => (
+            <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: i === 0 ? 'none' : HAIRLINE }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+                boxShadow: status[n.id] && status[n.id] !== 'idle' ? `0 0 0 2px ${STATUS_RING[status[n.id]]}` : 'none' }}>{i + 1}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</span>
+                <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stepSub(n)}</span>
+              </span>
+            </div>
+          ))}
+        </MCard>
+
+        {/* Dernières exécutions */}
+        <MCard>
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span style={{ ...cardTitle, flex: 1 }}>{t('aio.st_lastRuns')}</span>
+            <TextLink onClick={() => setTab('runs')}>{t('w1i.tab_journal')}</TextLink>
+          </div>
+          {runs === null ? <div style={{ marginTop: 8 }}><SkeletonCard height={60} /></div>
+            : lastRuns.length === 0 ? <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 4 }}>{t('w1i.no_cycles_yet')}</div>
+            : lastRuns.map((r, i) => {
+              const col = r.status === 'done' ? STATUS_DOT.ok : r.status === 'error' ? STATUS_DOT.err : STATUS_DOT.warn
+              const snippet = ((r.renders ?? []).find(x => x.text)?.text ?? '').replace(/[#*_`>-]/g, ' ').replace(/\s+/g, ' ').trim()
+              const label = snippet || (r.status === 'done' ? t('w1i.status_done') : r.status === 'error' ? t('w1i.status_error') : t('w1i.status_stopped'))
+              return (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 48, borderTop: i === 0 ? 'none' : HAIRLINE }}>
+                  <Dot color={col} size={9} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                  <span style={{ fontSize: 15, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{relDay(r.created_at)}</span>
+                </div>
+              )
+            })}
+        </MCard>
+
+        {/* Objectif du collectif (rôle du déclencheur) */}
+        <MCard>
+          <div style={{ ...cardTitle, marginBottom: 8 }}>{t('w1i.collective_objective')}</div>
+          {trigger ? (
+            <textarea value={trigger.role ?? ''} onChange={e => patchNode(trigger.id, { role: e.target.value })} rows={3} aria-label={t('w1i.collective_objective')}
+              placeholder={t('w1i.agents_together_ph')}
+              style={{ ...mInput, minHeight: 88, padding: '12px 14px', resize: 'vertical', lineHeight: 1.5 }} />
+          ) : <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0 }}>{t('w1i.no_trigger_hint')}</p>}
+        </MCard>
+
+        {/* Journal du run en cours */}
+        <MCard>
+          <div style={{ ...cardTitle, marginBottom: 4 }}>{t('w1i.run_journal')}</div>
+          {runCost !== null && <div style={{ fontSize: 14, color: 'var(--text-mid)', marginBottom: 6, fontVariantNumeric: 'tabular-nums' }}>{t('w1i.run_cost', { n: formatTokens(runCost) })}</div>}
+          {logs.length === 0 && !running && <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0 }}>{t('w1i.run_once_to_see')}</p>}
+          {running && logs.length === 0 && <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0, animation: 'studio_pulse 1.4s ease infinite' }}>{t('w1i.agents_working')}</p>}
+          {logs.map((l, i) => (
+            <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : HAIRLINE }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>{l.title}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{l.text}</div>
+            </div>
+          ))}
+        </MCard>
+
+        <PillButton variant="white" onClick={() => { if (running) stopRun(); else void runOnce() }}>
+          {running ? t('w1i.stop') : t('w1a.r_executerMaintenant')}
+        </PillButton>
+      </div>
+    )
+  })()
+
+  // Feuilles mobiles : « … » d'un système ouvert, actions d'un système (accueil).
+  const menuSys = sysMenuFor ? systems.find(x => x.id === sysMenuFor) ?? null : null
+  const mobileSheets = !isMobile ? null : (
+    <>
+      <MSheet open={moreOpen && view === 'canvas'} onClose={() => setMoreOpen(false)} full={false} label={graph.name}>
+        <div style={{ overflowY: 'auto', padding: '8px 16px calc(20px + env(safe-area-inset-bottom))' }}>
+          <label htmlFor="aio-sys-name" style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', margin: '0 4px 6px' }}>{t('w1i.system_name')}</label>
+          <input id="aio-sys-name" value={graph.name} onChange={e => commit({ ...graph, name: e.target.value })} style={mInput} />
+          <div style={{ marginTop: 14 }}>
+            <Group bg="var(--surface-chip)">
+              <GroupRow first icon={<IconTile color="var(--studio-accent)" size={36}><Ico d={ICON.chat} size={18} /></IconTile>} label={t('w1i.chat_architect')}
+                onClick={() => { setMoreOpen(false); setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} />
+              <GroupRow icon={<IconTile color={TILE.orange} size={36}><Ico d={ICON.clock} size={18} /></IconTile>} label={t('w1i.schedule_this_system')}
+                value={schedule?.enabled ? t('aio.st_active') : undefined} onClick={() => { setMoreOpen(false); setScheduleOpen(true) }} />
+              {isCoachSystem && coachAccess && (
+                <GroupRow icon={<IconTile color={TILE.indigo} size={36}><Ico d={ICON.users} size={18} /></IconTile>} label={t('w1i.roster')}
+                  onClick={() => { setMoreOpen(false); setRosterView(null); setRosterOpen(true) }} />
+              )}
+              {access?.allowed && (
+                <GroupRow icon={<IconTile color={TILE.green} size={36}><Ico d={ICON.bolt} size={18} /></IconTile>} label={t('aio.st_balance')} value={balanceText}
+                  onClick={() => { setMoreOpen(false); setWalletOpen(true) }} />
+              )}
+              <GroupRow icon={<IconTile color={TILE.grey} size={36}><Ico d={ICON.help} size={18} /></IconTile>} label={t('w1i.how_it_works')}
+                onClick={() => { setMoreOpen(false); setHelpOpen(true) }} />
+            </Group>
+          </div>
+        </div>
+      </MSheet>
+
+      <MSheet open={!!menuSys} onClose={() => setSysMenuFor(null)} full={false} label={menuSys?.name}>
+        {menuSys && (
+          <div style={{ overflowY: 'auto', padding: '4px 16px calc(20px + env(safe-area-inset-bottom))' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', textAlign: 'center', margin: '4px 0 14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{menuSys.name}</div>
+            <Group bg="var(--surface-chip)">
+              <GroupRow first chevron={false} icon={<span style={{ color: 'var(--text-mid)', display: 'flex' }}><Ico d={ICON.copy} size={19} /></span>} label={t('w1i.duplicate')}
+                onClick={() => { setSysMenuFor(null); void copySystem(menuSys) }} />
+              <GroupRow danger chevron={false} icon={<span style={{ color: 'var(--danger)', display: 'flex' }}><Ico d={ICON.trash} size={19} /></span>} label={t('w1i.delete')}
+                onClick={() => { setSysMenuFor(null); void removeSystem(menuSys.id) }} />
+            </Group>
+            <SectionLabel>{t('w1i.move_to_folder')}</SectionLabel>
+            <Group bg="var(--surface-chip)">
+              {mFolders.map((f, i) => (
+                <GroupRow key={f} first={i === 0} chevron={false} icon={<span style={{ color: 'var(--text-mid)', display: 'flex' }}><Ico d={ICON.folder} size={19} /></span>} label={f}
+                  right={menuSys.folder === f ? <span style={{ color: 'var(--primary)', display: 'flex' }}>{checkIco}</span> : undefined}
+                  onClick={() => { setSysMenuFor(null); void moveToFolder(menuSys.id, f) }} />
+              ))}
+              {menuSys.folder && (
+                <GroupRow first={mFolders.length === 0} chevron={false} label={t('w1i.remove_from_folder')} onClick={() => { setSysMenuFor(null); void moveToFolder(menuSys.id, null) }} />
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 8px 16px', borderTop: (mFolders.length || menuSys.folder) ? HAIRLINE : 'none' }}>
+                <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder={t('w1i.new_folder_ph')} aria-label={t('w1i.new_folder_ph')}
+                  onKeyDown={e => { const f = newFolderName.trim(); if (e.key === 'Enter' && f) { setSysMenuFor(null); void moveToFolder(menuSys.id, f) } }}
+                  style={{ flex: 1, minWidth: 0, minHeight: 44, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font-body)' }} />
+                <button type="button" disabled={!newFolderName.trim()} onClick={() => { const f = newFolderName.trim(); if (f) { setSysMenuFor(null); void moveToFolder(menuSys.id, f) } }}
+                  style={{ minHeight: 44, minWidth: 64, borderRadius: 'var(--r-pill)', border: 'none', background: newFolderName.trim() ? 'var(--primary)' : 'var(--surface-bar)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>OK</button>
+              </div>
+            </Group>
+          </div>
+        )}
+      </MSheet>
+    </>
+  )
+
   // ── UI ─────────────────────────────────────────────────────
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 13600, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 13600, background: isMobile && !(view === 'canvas' && tab === 'canvas') ? PAGE_BG : 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @keyframes studio_spin { to { transform: rotate(360deg); } }
         @keyframes studio_dash { to { stroke-dashoffset: -14; } }
@@ -1615,7 +2114,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         .studio-port:hover { transform: scale(1.35); }
       `}</style>
 
-      {/* ══ Header ══ */}
+      {/* ══ Header ══ (mobile : en-tête rond + puces d'onglets, cf. mobileTop) */}
+      {mobileTop}
+      {!isMobile && (
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', padding: 'max(12px, env(safe-area-inset-top)) 16px 12px' }}>
         <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? t('w1i.back_to_systems') : t('w1i.close')} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -1693,6 +2194,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
         </>)}
       </div>
+      )}
 
       {/* ══ Corps ══ */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
@@ -2251,7 +2753,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           const m: StudioMethod = graph.method ?? {}
           const setM = (patch: Partial<StudioMethod>) => commit({ ...graph, method: { ...m, ...patch } })
           const segRow = (label: string, hint: string, current: string, opts: [string, string][], pick: (v: string) => void) => (
-            <div style={{ marginBottom: 20 }}>
+            <div style={isMobile ? { ...mobileCard, padding: 16, marginBottom: 12 } : { marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{label}</div>
               {hint && <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 9px', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{hint}</div>}
               <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 4 }}>
@@ -2266,7 +2768,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             </div>
           )
           return (
-            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '22px 18px 60px', maxWidth: 680, margin: '0 auto', fontFamily: 'var(--font-body)' }}>
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: isMobile ? '4px 16px 60px' : '22px 18px 60px', maxWidth: 680, margin: '0 auto', fontFamily: 'var(--font-body)' }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: '0 0 4px' }}>{t('w3d.method_title')}</h2>
               <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 22px', lineHeight: 1.5 }}>{t('w3d.method_hint')}</p>
               {segRow(t('w3d.method_aiwrites'), t('w1i.method_ai_hint'), m.aiWrites ?? 'simple',
@@ -2290,14 +2792,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {segRow(t('w3d.method_learn'), t('w3d.method_learn_hint'), m.learnFromCoach === false ? 'off' : 'on',
                 [['on', t('w3d.method_on')], ['off', t('w3d.method_off')]],
                 v => setM({ learnFromCoach: v === 'on' }))}
-              <div style={{ marginBottom: 20 }}>
+              <div style={isMobile ? { ...mobileCard, padding: 16, marginBottom: 12 } : { marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_rules')}</div>
                 <textarea value={(m.rules ?? []).join('\n')} onChange={e => setM({ rules: e.target.value.split('\n') })}
                   placeholder={t('w3d.method_rules_ph')} rows={5}
                   style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', borderRadius: 'var(--r-md)', padding: '12px 14px', fontFamily: 'var(--font-body)', fontSize: 13.5, lineHeight: 1.55, outline: 'none' }} />
                 <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'var(--font-body)' }}>{t('w1i.method_autosave')}</div>
               </div>
-              <div>
+              <div style={isMobile ? { ...mobileCard, padding: 16 } : undefined}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{t('w3d.method_examples')}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 9px', lineHeight: 1.5 }}>{t('w3d.method_examples_hint')}</div>
                 <textarea value={(m.sessionExamples ?? []).join('\n')} onChange={e => setM({ sessionExamples: e.target.value.split('\n') })}
@@ -2308,7 +2810,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           )
         })()}
 
-        {view === 'canvas' && tab === 'chat' && (
+        {view === 'canvas' && tab === 'chat' && mobilePilotage}
+        {view === 'canvas' && tab === 'chat' && !isMobile && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
             <label style={lbl}>{t('w1i.collective_objective')}</label>
             {trigger ? (
@@ -2377,7 +2880,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             return { id: n.id, first, link, linkLabel }
           })
           return (
-          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: isMobile ? '4px 16px 32px' : '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {runCost !== null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 'var(--r-pill)', background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: 'var(--studio-accent)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -2415,7 +2918,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <>
                 {/* Carte du système — bulles cliquables, statut du run */}
                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('w1i.system_tap_bubble')}</div>
-                <div style={{ maxWidth: 360 }}>
+                <div style={isMobile ? { ...mobileCard, padding: 8, marginTop: 6 } : { maxWidth: 360 }}>
                   {miniGraph(graph, { height: 220, selectedId: selId, onSelect: setRenduSelId, status })}
                 </div>
 
@@ -2457,7 +2960,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       </>)}
                     </div>
                     {selNode.role && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>{selNode.role}</div>}
-                    <div style={{ padding: '14px 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={isMobile ? { ...mobileCard, padding: 16 } : { padding: '14px 18px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       {selText.trim()
                         ? <StudioMarkdown text={selText} />
                         : <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{selNode.kind === 'source' ? t('w1i.source_no_text') : t('w1i.no_output_last_run')}</span>}
@@ -2501,11 +3004,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             ? ((lastDone.renders ?? []).find(x => x.text)?.text ?? '').replace(/[#*_`>-]/g, '').trim().slice(0, 150)
             : ''
           return (
-          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px 40px' }}>
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: isMobile ? '4px 16px 40px' : '20px 18px 40px' }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
             {/* En-tête : progression vers l'objectif */}
             {(obj?.text || allRuns.length > 0) && (
-              <div style={{ padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', marginBottom: 18 }}>
+              <div style={isMobile ? { ...mobileCard, padding: 16, marginBottom: 14 } : { padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'linear-gradient(150deg, color-mix(in srgb, var(--studio-accent) 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, var(--studio-accent) 22%, var(--border))', marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ color: 'var(--studio-accent)', display: 'flex', flexShrink: 0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.7" fill="currentColor"/></svg></span>
                   <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('w1i.progress_to_objective')}</span>
@@ -2559,11 +3062,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div key={r.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
                       {/* Pastille de la timeline */}
                       <div style={{ flexShrink: 0, width: 32, display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
-                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: stCol, border: '3px solid var(--bg)', boxShadow: `0 0 0 1px ${stCol}`, zIndex: 1 }} />
+                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: stCol, border: `3px solid ${isMobile ? PAGE_BG : 'var(--bg)'}`, boxShadow: `0 0 0 1px ${stCol}`, zIndex: 1 }} />
                       </div>
-                      <div style={{ flex: 1, minWidth: 0, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
+                      <div style={{ flex: 1, minWidth: 0, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease', ...(isMobile ? { ...mobileCard, overflow: 'hidden' } : null) }}>
                         <button onClick={() => setOpenRunId(open ? null : r.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: isMobile ? '14px 16px' : '12px 14px', minHeight: isMobile ? 56 : undefined, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                               {new Date(r.created_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -2601,7 +3104,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         })()}
 
         {/* ══ ACCUEIL — paywall / mes systèmes / templates ══ */}
-        {view === 'home' && (
+        {view === 'home' && mobileHome}
+        {view === 'home' && !mobileHomeOn && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '24px 20px 40px' }}>
             {access && !access.allowed ? (
               /* ── Paywall : Studio réservé Pro/Expert ── */
@@ -3489,6 +3993,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
       {/* La dictée est désormais INTÉGRÉE dans le champ (renderComposer) —
           plus de barre flottante détachée en bas. */}
+
+      {/* Mobile : feuilles « … » (système ouvert) et actions d'un système (accueil). */}
+      {mobileSheets}
     </div>
   )
 }

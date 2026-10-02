@@ -8,6 +8,7 @@ import { ZoneBars } from './ZoneBars'
 import { Radar } from './Radar'
 import { fcZones, paceZones, swimZones, powerZones } from './zones'
 import type { BenchField } from './BenchmarkSheet'
+import { MBlock, MPills, MRow, SegTrack, SoftPill, MTextBtn, NUM } from '@/app/injuries/components/mobileUi'
 
 const FB = 'var(--font-body)'
 type Sport = 'running' | 'cycling' | 'swimming' | 'hyrox'
@@ -28,11 +29,13 @@ const ZTABS: Record<Sport, { id: ZType; label: string }[]> = {
 }
 const clamp = (x: number) => Math.max(0, Math.min(100, x))
 
-export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onEditBenchmarks, snapshot, year, years, onYear, onAnalyze, analyzing, notEnough }: {
+export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onEditBenchmarks, snapshot, year, years, onYear, onAnalyze, analyzing, notEnough, mobile }: {
   p: Prof; wkg: string; specSport: Sport; onSport: (id: Sport) => void; params: Record<string, string>; fields: BenchField[]; onEditBenchmarks: () => void
   snapshot?: Record<string, number>           // scores IA par axe-id pour ce sport + année
   year?: number; years?: number[]; onYear?: (y: number) => void
   onAnalyze?: () => void; analyzing?: boolean; notEnough?: boolean
+  /** Rendu mobile natif (cartes blanches). */
+  mobile?: boolean
 }) {
   const { t } = useI18n()
   const [ztype, setZtype] = useState<ZType>('fc')
@@ -93,6 +96,70 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onE
   const radar = {
     labels: axesDef.map(a => a.label),
     scores: axesDef.map(a => snapshot && snapshot[a.id] != null ? snapshot[a.id] : a.base),
+  }
+
+  // ── Mobile natif : puces sport, puis une carte par sujet ──────────
+  if (mobile) {
+    const yearList = years && years.length ? years : (year ? [year] : [])
+    const filled = fields.filter(f => (params[f.key] ?? '').trim() !== '')
+    return (
+      <>
+        <MPills scroll onCard={false} guide="perf-profil-sport" value={specSport} onChange={onSport}
+          options={SPORTS.map(s => ({ v: s.id, l: sportLabel(s.id), dot: s.dot }))} />
+
+        <MBlock title={t('performance.specificProfile')} sub={t('performance.specificProfileSubtitle')}
+          right={onAnalyze ? <MTextBtn onClick={onAnalyze} disabled={analyzing}>{analyzing ? t('performance.analyzing') : `${t('performance.analyze')} ↻`}</MTextBtn> : undefined}>
+          {yearList.length > 0 && onYear && (
+            <div style={{ marginBottom: 12 }}>
+              <MPills scroll value={String(year ?? '')} onChange={v => onYear(Number(v))} options={yearList.map(y => ({ v: String(y), l: <span style={NUM}>{y}</span> }))} />
+            </div>
+          )}
+          {notEnough && (
+            <p style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-mid)', margin: '0 0 12px', padding: '10px 14px', background: 'var(--surface-chip)', borderRadius: 'var(--r-md)', lineHeight: 1.45 }}>
+              {t('performance.notEnoughData')}
+            </p>
+          )}
+          <div data-guide="perf-profil-radar" style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 10px' }}>
+            <Radar scores={radar.scores} labels={radar.labels} size={220} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${subs.length}, minmax(0, 1fr))`, gap: 8 }}>
+            {subs.map(m => (
+              <div key={m.label} style={{ minWidth: 0 }}>
+                <p style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</p>
+                <p style={{ ...NUM, fontFamily: FB, fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '2px 0 0', whiteSpace: 'nowrap' }}>{m.value}<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 3 }}>{m.unit}</span></p>
+              </div>
+            ))}
+          </div>
+        </MBlock>
+
+        <MBlock title={t('pe2.zones')}>
+          {ZTABS[specSport].length > 1 && (
+            <div data-guide="perf-profil-zones" style={{ marginBottom: 16 }}>
+              <SegTrack value={ztype} onChange={setZtype} options={ZTABS[specSport].map(z => ({ v: z.id, l: zTabLabel(z.id) }))} />
+            </div>
+          )}
+          {zonesAvailable
+            ? <ZoneBars zones={zones} animKey={`${specSport}-${ztype}`} mobile />
+            : <p style={{ fontFamily: FB, fontSize: 15, color: 'var(--text-mid)', margin: 0, lineHeight: 1.45 }}>{t('performance.zonesNeedData')}</p>}
+          <div style={{ marginTop: 16 }}>
+            <SoftPill onClick={onEditBenchmarks}>{t('performance.editBenchmarks')}</SoftPill>
+          </div>
+        </MBlock>
+
+        {filled.length > 0 && (
+          <MBlock title={t('performance.filledBenchmarks')} style={{ padding: '16px 16px 6px' }}>
+            {filled.map((f, i) => (
+              <MRow key={f.key} first={i === 0}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)' }}>{f.label}</span>
+                <span style={{ ...NUM, fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                  {params[f.key]}{f.unit ? <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 3 }}>{f.unit}</span> : null}
+                </span>
+              </MRow>
+            ))}
+          </MBlock>
+        )}
+      </>
+    )
   }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 0', fontFamily: FB, fontSize: 13, fontWeight: active ? 600 : 500, color: active ? 'var(--text)' : 'var(--text-dim)' })

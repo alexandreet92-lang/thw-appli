@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import { useI18n } from '@/lib/i18n'
+import { SOFT_SHADOW } from '@/app/injuries/components/mobileUi'
 
 // ─── 7-Level system ───────────────────────────────────────────────────────────
 export const TEST_LEVELS = [
@@ -501,7 +502,18 @@ export function computeTestScoreResult(
 }
 
 // ─── ScoreBadge ───────────────────────────────────────────────────────────────
-export function ScoreBadge({ score, level, size = 'md' }: { score: number; level: TestLevel; size?: 'sm' | 'md' | 'lg' }) {
+export function ScoreBadge({ score, level, size = 'md', mobile }: { score: number; level: TestLevel; size?: 'sm' | 'md' | 'lg'; mobile?: boolean }) {
+  // Mobile : pilule teintée sans bordure (point + niveau + score).
+  if (mobile) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 'var(--r-pill)', background: `color-mix(in srgb, ${level.color} 16%, transparent)`,
+        color: 'var(--text)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' as const }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: level.color, flexShrink: 0 }} />
+        {level.label}
+        <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-mid)', fontWeight: 600 }}>{score.toFixed(1)}</span>
+      </span>
+    )
+  }
   const fontSize = size === 'lg' ? 18 : size === 'sm' ? 10 : 13
   const pad = size === 'lg' ? '8px 16px' : size === 'sm' ? '2px 8px' : '4px 12px'
   return (
@@ -531,13 +543,40 @@ interface LevelTableProps {
   gender: 'M' | 'F'
   currentScore: number | null
   accentColor: string
+  /** Rendu mobile natif : liste propre (pas de tableau à bordures). */
+  mobile?: boolean
 }
 
-export function LevelTable({ testId, gender, currentScore, accentColor }: LevelTableProps) {
+const M_NOTE: React.CSSProperties = { fontSize: 13, color: 'var(--text-mid)', margin: 0, lineHeight: 1.5, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', fontFamily: 'var(--font-body)' }
+
+export function LevelTable({ testId, gender, currentScore, accentColor, mobile }: LevelTableProps) {
   const bench = TEST_BENCHMARKS[testId]
   if (!bench) return null
 
   const currentLevel = currentScore !== null ? levelFromScore(currentScore) : null
+
+  if (mobile) {
+    if (bench.type === 'compound') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {bench.subBenchs.map(sub => (
+            <div key={sub.key}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px', fontFamily: 'var(--font-body)' }}>{sub.label}</p>
+              <MobileLevelList rows={sub.rows} gender={gender} currentLevelLabel={null} />
+              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0', lineHeight: 1.5 }}>{sub.annotation}</p>
+            </div>
+          ))}
+          <p style={M_NOTE}>{bench.annotation}</p>
+        </div>
+      )
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <MobileLevelList rows={bench.rows} gender={gender} currentLevelLabel={currentLevel?.label ?? null} />
+        <p style={M_NOTE}>{bench.annotation}</p>
+      </div>
+    )
+  }
 
   if (bench.type === 'compound') {
     // For compound: show individual sub-benchmark tables stacked
@@ -565,6 +604,43 @@ export function LevelTable({ testId, gender, currentScore, accentColor }: LevelT
       <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
         ℹ️ {bench.annotation}
       </p>
+    </div>
+  )
+}
+
+// Liste de niveaux mobile : point + niveau · score · seuils H / F (genre
+// choisi en texte fort), ligne « Vous » sur fond teinté à faible opacité.
+function MobileLevelList({ rows, gender, currentLevelLabel }: { rows: LevelRow[]; gender: 'M' | 'F'; currentLevelLabel: string | null }) {
+  const { t } = useI18n()
+  const NUMS: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
+  const col = (on: boolean): React.CSSProperties => ({ ...NUMS, width: 70, flexShrink: 0, textAlign: 'right' as const, fontSize: 14, fontWeight: on ? 700 : 500, color: on ? 'var(--text)' : 'var(--text-dim)', lineHeight: 1.3 })
+  return (
+    <div style={{ fontFamily: 'var(--font-body)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px 6px', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
+        <span style={{ flex: 1, minWidth: 0 }}>{t('w1c.niveau')}</span>
+        <span style={{ width: 30, flexShrink: 0, textAlign: 'center' as const }}>{t('w1c.score')}</span>
+        <span style={{ width: 70, flexShrink: 0, textAlign: 'right' as const, color: gender === 'M' ? 'var(--text)' : 'var(--text-mid)' }}>{t('w1c.homme')}</span>
+        <span style={{ width: 70, flexShrink: 0, textAlign: 'right' as const, color: gender === 'F' ? 'var(--text)' : 'var(--text-mid)' }}>{t('w1c.femme')}</span>
+      </div>
+      {rows.map((row, i) => {
+        const hi = currentLevelLabel === row.label
+        return (
+          <div key={row.label} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minHeight: 46, padding: '8px 10px', borderRadius: hi ? 'var(--r-md)' : 0,
+            background: hi ? `color-mix(in srgb, ${row.color} 14%, transparent)` : 'transparent' }}>
+            {i > 0 && !hi && currentLevelLabel !== rows[i - 1]?.label && <span aria-hidden style={{ position: 'absolute', top: 0, left: 10, right: 10, height: 1, background: 'var(--border)' }} />}
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: row.color, flexShrink: 0 }} />
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 15, fontWeight: hi ? 800 : 600, color: 'var(--text)', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</span>
+                {hi && <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>{t('w1c.vous')}</span>}
+              </span>
+            </span>
+            <span style={{ ...NUMS, width: 30, flexShrink: 0, textAlign: 'center' as const, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{row.score === 3 ? '0-4' : row.score}</span>
+            <span style={col(gender === 'M')}>{row.hDisplay}</span>
+            <span style={col(gender === 'F')}>{row.fDisplay}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -635,8 +711,44 @@ function BenchmarkTable({ rows, gender, currentLevelLabel, accentColor }: {
 }
 
 // ─── TestScoreDisplay ─────────────────────────────────────────────────────────
-export function TestScoreDisplay({ result, accentColor }: { result: TestScoreResult; accentColor: string }) {
+export function TestScoreDisplay({ result, accentColor, mobile }: { result: TestScoreResult; accentColor: string; mobile?: boolean }) {
   const { t } = useI18n()
+  const percentile = result.level.label === 'Alien' ? '>99%' :
+    result.level.label === 'Élite' ? 'Top 1%' :
+    result.level.label === 'AHN' ? 'Top 5%' :
+    result.level.label === 'TBA' ? 'Top 15%' :
+    result.level.label === 'BA' ? 'Top 30%' :
+    result.level.label === 'Amateur' ? 'Top 50%' : 'Débutant'
+  // Mobile : carte blanche — gros score, pilule de niveau, percentile, sous-scores en liste.
+  if (mobile) {
+    return (
+      <section style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16, fontFamily: 'var(--font-body)', boxShadow: SOFT_SHADOW }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 4px' }}>{t('w1c.score_calcule')}</p>
+            <p style={{ fontVariantNumeric: 'tabular-nums', fontSize: 40, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>
+              {result.overall.toFixed(1)}<span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 4 }}>/ 10</span>
+            </p>
+            <div style={{ marginTop: 10 }}><ScoreBadge mobile score={result.overall} level={result.level} /></div>
+          </div>
+          <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 2px' }}>{t('w1c.percentile')}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: 0 }}>{percentile}</p>
+          </div>
+        </div>
+        {result.subScores && result.subScores.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            {result.subScores.map((sub, i) => (
+              <div key={sub.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 48, borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span style={{ fontSize: 15, color: 'var(--text)', fontWeight: 600, minWidth: 0 }}>{sub.label}</span>
+                <ScoreBadge mobile score={sub.score} level={sub.level} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )
+  }
   return (
     <div style={{
       padding: '14px 16px',

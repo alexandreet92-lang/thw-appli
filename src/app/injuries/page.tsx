@@ -15,6 +15,7 @@ import { useI18n } from '@/lib/i18n'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { MobileInjuries } from './components/MobileInjuries'
+import { MBlock, MSkeleton, PillButton, SKELETON_CSS } from './components/mobileUi'
 
 type Tab = 'apercu' | 'historique' | 'analyse'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -44,7 +45,36 @@ export default function InjuriesPage() {
       {trackInj && <TrackSheet injury={trackInj} logs={logs} onClose={() => setTrackId(null)} onUpdate={update} onAddLog={addLog} onResolve={resolve} />}
     </>
   )
-  if (isMobile && !loading && !errorCode) {
+  // Mobile : chargement en squelette, erreur en carte blanche + pilule cyan.
+  if (isMobile && (loading || errorCode)) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: FB }}>
+        <style>{SKELETON_CSS}</style>
+        {loading ? (
+          <>
+            <MSkeleton height={50} />
+            <MSkeleton height={168} />
+            <MSkeleton height={120} />
+            <MSkeleton height={96} />
+          </>
+        ) : (
+          <MBlock title={t('injuries.errUnavailableTitle')}>
+            <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              {errorCode === 'PGRST205'
+                ? t('injuries.errReloadSchema')
+                : errorCode === '42703'
+                  ? <>{t('injuries.err42703A')}<strong>{t('injuries.err42703Incompatible')}</strong>{t('injuries.err42703B')}<span className="tnum">42703</span>{t('injuries.err42703C')}</>
+                  : errorCode === '42P01'
+                    ? t('injuries.err42P01')
+                    : <>{t('injuries.errGenericA')}<span className="tnum">{errorCode}</span>{t('injuries.errGenericB')}</>}
+            </p>
+            <PillButton onClick={() => void reload()}>{t('injuries.retry')}</PillButton>
+          </MBlock>
+        )}
+      </div>
+    )
+  }
+  if (isMobile) {
     return (
       <>
         <MobileInjuries injuries={injuries} logs={logs} onReport={() => setReport(true)} onOpen={i => setTrackId(i.id)}

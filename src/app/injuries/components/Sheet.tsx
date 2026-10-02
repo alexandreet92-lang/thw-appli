@@ -2,21 +2,38 @@
 // Feuille coulissante (bottom sheet) via createPortal sur document.body.
 // RÈGLE : animation slide-up à l'ouverture ET slide-down à la fermeture (voile flou
 // en fondu). Toute fermeture (voile, croix, glissement) passe par requestClose.
+// MOBILE (≤ 767 px) : feuille façon Strava / Claude (MSheetFrame) — poignée,
+// titre centré + rond ×, fond gris chaud, contenu en cartes blanches, pied en
+// pilule. Le contenu mobile est fourni par la feuille appelante (`mobile`).
 import { useCallback, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { MSheetFrame, useIsMobile } from './mobileUi'
 
 const FD = 'var(--font-display)'
 
-export function Sheet({ title, onClose, children, footer }: {
+type Slot = React.ReactNode | ((close: () => void) => React.ReactNode)
+
+export function Sheet({ title, onClose, children, footer, mobile, mobileFooter, mobileSubtitle }: {
   title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode
+  /** Contenu mobile (cartes blanches). Absent → `children` est réutilisé. */
+  mobile?: Slot; mobileFooter?: Slot; mobileSubtitle?: React.ReactNode
 }) {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const [closing, setClosing] = useState(false)
   const startY = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const atTop = useRef(true)   // le geste ne ferme la feuille QUE si le contenu est en haut
   const requestClose = useCallback(() => { setClosing(true); setTimeout(onClose, 260) }, [onClose])
+
+  if (isMobile) {
+    return (
+      <MSheetFrame title={title} subtitle={mobileSubtitle} onClose={onClose} closeLabel={t('injuries.close')} footer={mobileFooter ?? footer}>
+        {mobile ?? children}
+      </MSheetFrame>
+    )
+  }
 
   return createPortal(
     <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>

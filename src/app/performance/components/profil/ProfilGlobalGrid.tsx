@@ -11,7 +11,30 @@ export interface Metric {
   selected?: boolean; onSelect: () => void
 }
 
-export function ProfilGlobalGrid({ metrics, isMobile }: { metrics: Metric[]; isMobile: boolean }) {
+export function ProfilGlobalGrid({ metrics, isMobile, mobile }: { metrics: Metric[]; isMobile: boolean; mobile?: boolean }) {
+  // Mobile natif : 2 colonnes, libellé gris 13 (casse de phrase), gros chiffre 26/800.
+  if (mobile) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4 }}>
+        {metrics.map(m => {
+          const isInt = typeof m.value === 'number' && Number.isInteger(m.value)
+          return (
+            <button key={m.label} type="button" onClick={m.onSelect} aria-pressed={!!m.selected}
+              style={{ textAlign: 'left', border: 'none', cursor: 'pointer', fontFamily: FB, minHeight: 64, padding: '10px 12px', borderRadius: 'var(--r-md)', background: m.selected ? 'var(--surface-chip)' : 'transparent', minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 4 }}>{m.label}</span>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0 }}>
+                <span className="tnum" style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', lineHeight: 1.05, letterSpacing: '-0.01em' }}>
+                  {isInt ? <CountUp value={m.value as number} /> : m.value}
+                </span>
+                {m.unit && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{m.unit}</span>}
+              </span>
+              {m.sub && <span className="tnum" style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 3 }}>{m.sub}</span>}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 'var(--space-4)' }}>
       {metrics.map(m => {

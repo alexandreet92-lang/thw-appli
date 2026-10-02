@@ -7,6 +7,7 @@ import { SEV, STRUCTURES, SIDES, type Severity, type Side, type Structure, type 
 import type { NewInjury } from '../useInjuries'
 import { daysSince } from '../lib'
 import { useI18n } from '@/lib/i18n'
+import { MBlock, MField, MPills, SegTrack, SliderRow, SoftInput, SoftTextarea, PillButton } from './mobileUi'
 
 const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '9px 11px', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }
@@ -75,8 +76,67 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
     if (id) onClose()
   }
 
+  // ── Mobile : cartes blanches, champs doux, pilules, jauges ─────
+  const canSave = !!zone.trim() && !saving
+  const mobile = (
+    <>
+      <MBlock>
+        <MField label={t('injuries.fieldSeverity')} last>
+          <SegTrack value={severity} onChange={v => setSeverity(v)}
+            options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, l: <><span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: SEV[v].varc }} />{SEV[v].label}</> }))} />
+        </MField>
+      </MBlock>
+      <MBlock>
+        <MField label={t('injuries.fieldZone')}>
+          <div style={{ marginBottom: 10 }}>
+            <MPills value={COMMON_ZONES.find(z => z.toLowerCase() === zone.trim().toLowerCase()) ?? null} onChange={setZone}
+              options={COMMON_ZONES.map(z => ({ v: z, l: z }))} />
+          </div>
+          <SoftInput value={zone} onChange={setZone} placeholder={t('injuries.zonePlaceholder')} ariaLabel={t('injuries.fieldZone')} />
+        </MField>
+        <MField label={t('injuries.fieldSide')}>
+          <SegTrack value={side} onChange={v => setSide(v)} options={SIDES.map(v => ({ v, l: cap(v) }))} />
+        </MField>
+        <MField label={t('injuries.fieldStructure')}>
+          <MPills value={structure} onChange={v => setStructure(v)} options={STRUCTURES.map(v => ({ v, l: cap(v) }))} />
+        </MField>
+        <MField label={t('injuries.fieldPrecision')} last>
+          <SoftInput value={precision} onChange={setPrecision} placeholder={t('injuries.precisionPlaceholder')} ariaLabel={t('injuries.fieldPrecision')} />
+        </MField>
+      </MBlock>
+      <MBlock>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <SliderRow label={t('injuries.sliderRest')} value={ir} onChange={setIr} color="var(--text-mid)" />
+          <SliderRow label={t('injuries.sliderEffort')} value={ie} onChange={setIe} color="var(--charge-hard)" />
+        </div>
+      </MBlock>
+      <MBlock>
+        <MField label={t('injuries.fieldOnsetDate', { days: daysSince(date) })}>
+          <SoftInput type="date" value={date} onChange={setDate} ariaLabel={t('injuries.fieldOnsetDate', { days: daysSince(date) })} />
+        </MField>
+        <MField label={t('injuries.fieldMechanism')}>
+          <SegTrack value={mechanism} onChange={v => setMechanism(v)} options={[{ v: 'soudaine' as Mechanism, l: t('injuries.mechSudden') }, { v: 'progressive' as Mechanism, l: t('injuries.mechProgressive') }]} />
+        </MField>
+        <MField label={t('injuries.fieldActivity')}>
+          <SoftInput value={activity} onChange={setActivity} placeholder={t('injuries.activityPlaceholder')} ariaLabel={t('injuries.fieldActivity')} />
+        </MField>
+        <MField label={t('injuries.fieldEvolution')} last>
+          <SegTrack value={evolution} onChange={v => setEvolution(v)} options={[{ v: 'aggrave' as Evolution, l: t('injuries.evoWorse') }, { v: 'stable' as Evolution, l: t('injuries.evoStable') }, { v: 'ameliore' as Evolution, l: t('injuries.evoBetter') }]} />
+        </MField>
+      </MBlock>
+      <MBlock>
+        <MField label={t('injuries.fieldDescription')} last>
+          <SoftTextarea value={description} onChange={setDescription} placeholder={t('injuries.descriptionPlaceholder')} ariaLabel={t('injuries.fieldDescription')} />
+        </MField>
+      </MBlock>
+    </>
+  )
+  const mobileFooter = (
+    <PillButton onClick={() => void save()} disabled={!canSave}>{saving ? t('injuries.saving') : t('injuries.saveReport')}</PillButton>
+  )
+
   return (
-    <Sheet title={t('injuries.reportTitle')} onClose={onClose}
+    <Sheet title={t('injuries.reportTitle')} onClose={onClose} mobile={mobile} mobileFooter={mobileFooter}
       footer={<button onClick={() => void save()} disabled={!zone.trim() || saving} style={{ ...primaryBtn, opacity: zone.trim() && !saving ? 1 : 0.5 }}>{saving ? t('injuries.saving') : t('injuries.saveReport')}</button>}>
       <Field label={t('injuries.fieldSeverity')}><Seg value={severity} onChange={v => setSeverity(v as Severity)} options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, label: SEV[v].label, color: SEV[v].varc }))} /></Field>
       <Field label={t('injuries.fieldZone')}>

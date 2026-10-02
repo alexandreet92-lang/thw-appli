@@ -32,12 +32,13 @@ import { TestCard } from '@/app/performance/components/tests/TestCard'
 import { CustomTests } from '@/app/performance/components/tests/CustomTests'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 import { useGuideTabDemo } from '@/components/guide/guideDemo'
-import { User, Database, FlaskConical } from 'lucide-react'
+import { User, Database, FlaskConical, Target as LTarget, AlertTriangle as LWarn, ListChecks as LList, Flame as LFlame, BookOpen as LBook, Clock as LClock, FileText as LFile, CalendarPlus as LCalPlus, Plus as LPlus, X as LX, ChevronDown as LChevDown } from 'lucide-react'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
 import { analyzeYear, saveSnapshot, loadSnapshots, type Snapshots, type AnalyzeResult, type SportKey } from '@/lib/performance/analyzeProfile'
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
 import { currentLocale } from '@/lib/i18n'
+import { MBlock, MRow, MRowText, MField, MPills, MTag, MSheetFrame, MSkeleton, SKELETON_CSS, MTextBtn, PillButton, SegTrack, SoftInput, SoftPill, SoftSelect, Ico, ICON, NUM as MNUM, SOFT_SHADOW } from '@/app/injuries/components/mobileUi'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -142,13 +143,40 @@ function useWindowWidth(): number {
 }
 
 // ── Floating bubble ──────────────────────────────────────────────
-function SelectedDatumBubble({ datum, onClear, onAsk }: {
-  datum: SelectedDatum; onClear: () => void; onAsk: () => void
+function SelectedDatumBubble({ datum, onClear, onAsk, mobile }: {
+  datum: SelectedDatum; onClear: () => void; onAsk: () => void; mobile?: boolean
 }) {
   const [mounted, setMounted] = useState(false)
   const { t } = useI18n()
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
+
+  // Mobile : capsule flottante blanche (libellé gris, valeur forte), pilule
+  // cyan « Demander au Coach IA » et rond × — au-dessus de la barre d'onglets.
+  if (mobile) {
+    return createPortal(
+      <div role="status" style={{
+        position: 'fixed', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom) + 84px)', zIndex: 1100,
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px 8px 18px', borderRadius: 'var(--r-pill)',
+        background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)', fontFamily: 'var(--font-body)',
+        animation: 'cardEnter 0.22s cubic-bezier(0.4,0,0.2,1) both',
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{datum.label}</p>
+          <p className="tnum" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{datum.value}</p>
+        </div>
+        <button type="button" onClick={onAsk}
+          style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}>
+          {t('performance.askAICoach')}
+        </button>
+        <button type="button" onClick={onClear} aria-label={t('perf.close')}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
+          <Ico d={ICON.close} size={18} sw={2.4} />
+        </button>
+      </div>,
+      document.body
+    )
+  }
 
   return createPortal(
     <div style={{
@@ -242,12 +270,14 @@ const SPORT_SPEC_TABS: { id: SportSpecId; label: string; color: string }[] = [
 ]
 
 // ── Premium stat card ────────────────────────────────────────────
-function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAnalyzeProfile }: {
+function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAnalyzeProfile, mobile }: {
   onSelect: (label: string, value: string) => void
   selectedDatum: SelectedDatum | null
   profile: typeof INIT_PROFILE
   setProfile: React.Dispatch<React.SetStateAction<typeof INIT_PROFILE>>
   onAnalyzeProfile?: () => Promise<void>
+  /** Rendu mobile natif (cartes blanches, champs doux). */
+  mobile?: boolean
 }) {
   const [editing,      setEditing]      = useState(false)
   const [saving,       setSaving]       = useState(false)
@@ -454,6 +484,121 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       ? { label, value: val, unit, selected: selectedDatum?.label === label, onSelect: () => onSelect(label, `${val}${unit}`) }
       : { label, value: '—', selected: false, onSelect: () => {} }
 
+  // Données partagées desktop / mobile (mêmes 8 métriques, mêmes niveaux).
+  const globalMetrics: Metric[] = [
+    { ...mNum('FTP', p.ftp, 'W'), sub: (p.ftp > 0 && p.weight > 0) ? `${wkg} W/kg` : undefined },
+    mTxt('Allure seuil', p.thresholdPace, '/km'),
+    mNum('VMA', p.vma, 'km/h'),
+    mTxt('CSS', p.css, '/100m'),
+    mNum('FC max', p.hrMax, 'bpm'),
+    mNum('FC repos', p.hrRest, 'bpm'),
+    mNum('LTHR', p.lthr, 'bpm'),
+    mNum('VO2max', p.vo2max, 'ml/kg/min'),
+  ]
+  const levelMetrics = [
+    wkg !== '—'
+      ? { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? t('performance.levelExpert') : parseFloat(wkg) >= 3.5 ? t('performance.levelAdvanced') : parseFloat(wkg) >= 2.5 ? t('performance.levelIntermediate') : t('performance.levelBeginner'), selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) }
+      : { label: 'W/kg', display: '—', pct: 0, qualifier: '' },
+    p.vo2max > 0
+      ? { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? t('performance.levelElite') : p.vo2max >= 55 ? t('performance.levelHigh') : p.vo2max >= 45 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) }
+      : { label: 'VO2max', display: '—', pct: 0, qualifier: '' },
+    p.hrRest > 0
+      ? { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? t('performance.levelElite') : p.hrRest <= 50 ? t('performance.levelHigh') : p.hrRest <= 60 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) }
+      : { label: 'FC repos', display: '—', pct: 0, qualifier: '' },
+  ]
+  const benchSheet = benchOpen && (
+    <BenchmarkSheet
+      title={SPORT_SPEC_TABS.find(t => t.id === specSport)!.label}
+      fields={SPORT_SPEC_FIELDS[specSport]}
+      values={specParams[specSport]}
+      onChange={(k, v) => setSpecField(k, v)}
+      onSave={async () => { await handleSaveSpec(); setBenchOpen(false) }}
+      saving={specSaving}
+      onClose={() => setBenchOpen(false)}
+    />
+  )
+
+  // ══ MOBILE natif : cartes blanches sur page grise ══════════════
+  if (mobile) {
+    if (profLoading) {
+      return (
+        <div aria-busy="true" aria-label={t('performance.loadingProfile')} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <style>{SKELETON_CSS}</style>
+          <MSkeleton height={260} />
+          <MSkeleton height={44} />
+          <MSkeleton height={320} />
+        </div>
+      )
+    }
+    // Mêmes 8 champs que la grille (sans Poids ni Âge), mêmes règles de saisie.
+    const num = (v: number) => (v === 0 ? '' : String(v))
+    const editRows: { label: string; unit?: string; value: string; onChange: (v: string) => void; text?: boolean; placeholder?: string; step?: number }[] = [
+      { label: 'FTP', unit: 'W', value: num(p.ftp), onChange: v => setP({ ...p, ftp: parseFloat(v) || 0 }) },
+      { label: t('performance.thresholdPace'), unit: '/km', value: p.thresholdPace, onChange: v => setP({ ...p, thresholdPace: v }), text: true, placeholder: '4:08' },
+      { label: 'VMA', unit: 'km/h', value: num(p.vma), onChange: v => setP({ ...p, vma: parseFloat(v) || 0 }), step: 0.5 },
+      { label: 'CSS', unit: '/100m', value: p.css, onChange: v => setP({ ...p, css: v }), text: true, placeholder: '1:28' },
+      { label: t('performance.hrMax'), unit: 'bpm', value: num(p.hrMax), onChange: v => setP({ ...p, hrMax: parseFloat(v) || 0 }) },
+      { label: t('performance.hrRest'), unit: 'bpm', value: num(p.hrRest), onChange: v => setP({ ...p, hrRest: parseFloat(v) || 0 }) },
+      { label: 'LTHR', unit: 'bpm', value: num(p.lthr), onChange: v => setP({ ...p, lthr: parseFloat(v) || 0 }) },
+      { label: 'VO2max', value: num(p.vo2max), onChange: v => setP({ ...p, vo2max: parseFloat(v) || 0 }) },
+    ]
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontFamily: 'var(--font-body)' }}>
+        {profileEmpty && !editing && (
+          <MBlock title={t('performance.profileNotConfigured')} sub={t('performance.profileNotConfiguredDesc')}>
+            <PillButton onClick={() => setEditing(true)}>{t('performance.complete')}</PillButton>
+          </MBlock>
+        )}
+
+        <MBlock title={<span data-guide="perf-profil-global">{t('performance.globalProfile')}</span>} sub={t('performance.globalProfileSubtitle')}
+          right={editing
+            ? <MTextBtn color="var(--text-mid)" onClick={() => setEditing(false)}>{t('performance.cancel')}</MTextBtn>
+            : <MTextBtn onClick={() => setEditing(true)}>{t('performance.edit')}</MTextBtn>}>
+          {editing ? (
+            <>
+              {editRows.map((r, i) => (
+                <MRow key={r.label} first={i === 0}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{r.label}</span>
+                  <SoftInput width={150} align="right" type={r.text ? 'text' : 'number'} inputMode={r.text ? 'text' : 'decimal'} step={r.step}
+                    value={r.value} onChange={r.onChange} unit={r.unit} placeholder={r.placeholder ?? '—'} ariaLabel={r.label} />
+                </MRow>
+              ))}
+              <div style={{ marginTop: 14 }}>
+                <PillButton onClick={() => { void handleSaveGlobal() }} disabled={saving}>
+                  {saving ? t('performance.saving') : <><Ico d={<path d="M20 6 9 17l-5-5" />} size={20} sw={2.6} />{t('performance.save')}</>}
+                </PillButton>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ margin: '0 -12px' }}>
+                <ProfilGlobalGrid mobile isMobile metrics={globalMetrics} />
+              </div>
+              {savedOk && <p style={{ margin: '10px 0 0', fontSize: 14, fontWeight: 700, color: 'var(--success)' }}>✓ {t('performance.saved')}</p>}
+              {onAnalyzeProfile && (
+                <div data-guide="perf-analyze" style={{ marginTop: 12 }}>
+                  <SoftPill onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing}>
+                    <Ico d={ICON.bolt} size={18} />{analyzing ? t('performance.analyzing') : t('performance.analyze')}
+                  </SoftPill>
+                </div>
+              )}
+            </>
+          )}
+        </MBlock>
+
+        <ProfilSpecific mobile p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} fields={SPORT_SPEC_FIELDS[specSport]} onEditBenchmarks={() => setBenchOpen(true)}
+          snapshot={curSnapshot} year={profileYear} years={profileYears} onYear={setProfileYear}
+          onAnalyze={() => void runSpecAnalyze(profileYear)} analyzing={specAnalyzing} notEnough={specNotEnough} />
+
+        <MBlock title={t('performance.estimatedLevel')}>
+          <LevelBars mobile metrics={levelMetrics} />
+        </MBlock>
+
+        {benchSheet}
+      </div>
+    )
+  }
+
   if (profLoading) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
@@ -510,16 +655,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
             <NInput label="VO2max" value={p.vo2max} onChange={v => setP({ ...p, vo2max: v })} />
           </div>
         ) : (
-          <ProfilGlobalGrid isMobile={isMobile} metrics={[
-            { ...mNum('FTP', p.ftp, 'W'), sub: (p.ftp > 0 && p.weight > 0) ? `${wkg} W/kg` : undefined },
-            mTxt('Allure seuil', p.thresholdPace, '/km'),
-            mNum('VMA', p.vma, 'km/h'),
-            mTxt('CSS', p.css, '/100m'),
-            mNum('FC max', p.hrMax, 'bpm'),
-            mNum('FC repos', p.hrRest, 'bpm'),
-            mNum('LTHR', p.lthr, 'bpm'),
-            mNum('VO2max', p.vo2max, 'ml/kg/min'),
-          ]} />
+          <ProfilGlobalGrid isMobile={isMobile} metrics={globalMetrics} />
         )}
       </div>
 
@@ -535,30 +671,10 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       {/* Niveau estimé */}
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>{t('performance.estimatedLevel')}</h2>
-        <LevelBars metrics={[
-          wkg !== '—'
-            ? { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? t('performance.levelExpert') : parseFloat(wkg) >= 3.5 ? t('performance.levelAdvanced') : parseFloat(wkg) >= 2.5 ? t('performance.levelIntermediate') : t('performance.levelBeginner'), selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) }
-            : { label: 'W/kg', display: '—', pct: 0, qualifier: '' },
-          p.vo2max > 0
-            ? { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? t('performance.levelElite') : p.vo2max >= 55 ? t('performance.levelHigh') : p.vo2max >= 45 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) }
-            : { label: 'VO2max', display: '—', pct: 0, qualifier: '' },
-          p.hrRest > 0
-            ? { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? t('performance.levelElite') : p.hrRest <= 50 ? t('performance.levelHigh') : p.hrRest <= 60 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) }
-            : { label: 'FC repos', display: '—', pct: 0, qualifier: '' },
-        ]} />
+        <LevelBars metrics={levelMetrics} />
       </div>
 
-      {benchOpen && (
-        <BenchmarkSheet
-          title={SPORT_SPEC_TABS.find(t => t.id === specSport)!.label}
-          fields={SPORT_SPEC_FIELDS[specSport]}
-          values={specParams[specSport]}
-          onChange={(k, v) => setSpecField(k, v)}
-          onSave={async () => { await handleSaveSpec(); setBenchOpen(false) }}
-          saving={specSaving}
-          onClose={() => setBenchOpen(false)}
-        />
-      )}
+      {benchSheet}
     </div>
   )
 }
@@ -593,6 +709,12 @@ const TEST_SPORT_TABS: { id: TestSport; label: string; short: string; color: str
   },
 ]
 
+// Mobile : point sport (palette sanctionnée, tokens).
+const TEST_SPORT_DOT: Record<TestSport, string> = {
+  running: 'var(--sport-run)', cycling: 'var(--sport-bike)', natation: 'var(--sport-swim)', aviron: 'var(--sport-rowing)', hyrox: 'var(--sport-hyrox)',
+}
+const TEST_INTENSITY: Record<string, string> = { 'Modéré': 'var(--charge-low)', 'Intense': 'var(--charge-mid)', 'Maximal': 'var(--charge-hard)' }
+
 // Sport du test → codes activities.sport_type (pour proposer les activités à lier).
 const TEST_SPORT_TO_ACTIVITY: Record<TestSport, string[]> = {
   running: ['run', 'trail_run'],
@@ -616,7 +738,7 @@ function IcoSave()   { return <svg width="14" height="14" viewBox="0 0 24 24" fi
 
 interface TestHistoryEntry { id: string; date: string; valeurs: Record<string, string>; documents?: { name: string; path: string; size: number; type: string }[] }
 
-function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest | null; onClose: () => void; onFtpUpdate?: (ftp: number) => void }) {
+function TestProtocolPanel({ open: ot, onClose, onFtpUpdate, mobile }: { open: OpenTest | null; onClose: () => void; onFtpUpdate?: (ftp: number) => void; mobile?: boolean }) {
   const [vals, setVals]               = useState<Record<string, string>>({})
   const [saving, setSaving]           = useState(false)
   const [saved, setSaved]             = useState(false)
@@ -886,6 +1008,235 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
     } finally {
       setPlanSaving(false)
     }
+  }
+
+  // ══ MOBILE natif : feuille grise, une carte blanche par section ══
+  if (mobile) {
+    const ic = (node: React.ReactNode, color = 'var(--text-mid)') => <span style={{ color, display: 'flex' }}>{node}</span>
+    const bullets = (items: string[]) => items.map((c, i) => (
+      <MRow key={i} first={i === 0} align="flex-start" style={{ minHeight: 44 }}>
+        <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0, marginTop: 8 }} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.45 }}>{c}</span>
+      </MRow>
+    ))
+    const genderLabel = t('performance.gender').replace(/\s*:\s*$/, '')
+    return (
+      <MSheetFrame zIndex={1050} title={ot.test.name} subtitle={`${cfg.label} · ${ot.test.duration}`} onClose={onClose} closeLabel={t('perf.close')}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: -2 }}>
+          <MTag color={TEST_SPORT_DOT[ot.sport]}>{cfg.label}</MTag>
+          <MTag color={TEST_INTENSITY[ot.test.difficulty] ?? 'var(--text-mid)'}>{ot.test.difficulty}</MTag>
+        </div>
+
+        {!proto ? (
+          <MBlock><p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', textAlign: 'center' as const }}>{t('performance.protocolInProgress')}</p></MBlock>
+        ) : (
+          <>
+            <MBlock title={t('performance.objective')} icon={ic(<LTarget size={20} />, 'var(--primary)')}>
+              <p style={{ fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.55 }}>{proto.objectif}</p>
+            </MBlock>
+
+            {proto.avertissement && (
+              <MBlock title={t('performance.warning')} icon={ic(<LWarn size={20} />, 'var(--charge-mid)')}>
+                <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0, lineHeight: 1.55 }}>{proto.avertissement}</p>
+              </MBlock>
+            )}
+
+            <MBlock title={t('performance.conditions')} icon={ic(<LList size={20} />)}>{bullets(proto.conditions)}</MBlock>
+            <MBlock title={t('performance.warmup')} icon={ic(<LFlame size={20} />)}>{bullets(proto.echauffement)}</MBlock>
+
+            <MBlock title={t('performance.protocolSteps')} icon={ic(<LList size={20} />)}>
+              {proto.etapes.map((e, i) => (
+                <MRow key={i} first={i === 0} align="flex-start">
+                  <span style={{ ...MNUM, width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.5, paddingTop: 3 }}>{e}</span>
+                </MRow>
+              ))}
+            </MBlock>
+
+            <MBlock title={t('performance.resultsInterpretation')} icon={ic(<LBook size={20} />)}>
+              {proto.interpretation.map((r, i) => (
+                <MRow key={i} first={i === 0} align="flex-start" style={{ minHeight: 44 }}>
+                  <span aria-hidden style={{ color: 'var(--charge-low)', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>→</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.5 }}>{t(r)}</span>
+                </MRow>
+              ))}
+            </MBlock>
+
+            <MBlock title={t('performance.commonMistakes')} icon={ic(<LWarn size={20} />, 'var(--charge-hard)')}>{bullets(proto.erreurs)}</MBlock>
+            <MBlock title={t('performance.frequency')} icon={ic(<LClock size={20} />)}>
+              <p style={{ fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.55 }}>{proto.frequence}</p>
+            </MBlock>
+
+            {/* Saisie des résultats */}
+            {inputFields.length > 0 && (() => {
+              const scoreResult = computeTestScoreResult(ot.test.id, buildSaveVals(), gender)
+              const hasBench = ot.test.id in TEST_BENCHMARKS
+              const derived = computeDerived(ot.test.id, vals, weightKg, gender)
+              return (
+                <>
+                  <MBlock title={t('performance.enterMyResults')}>
+                    {hasBench && (
+                      <MField label={genderLabel}>
+                        <SegTrack<'M' | 'F'> value={gender} onChange={setGender} options={[{ v: 'M', l: t('w1c.homme') }, { v: 'F', l: t('w1c.femme') }]} />
+                      </MField>
+                    )}
+                    {inputFields.map(f => (
+                      <MField key={f.cle} label={<>{f.label}{f.required && <span style={{ color: 'var(--primary)' }}> *</span>}</>}>
+                        <SoftInput value={vals[f.cle] ?? ''} onChange={v => setVal(f.cle, v)} unit={f.unite} ariaLabel={f.label}
+                          placeholder={f.placeholder ?? (f.unite ? t('performance.inUnit', { unit: f.unite }) : '—')} />
+                        {f.helper && <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '6px 0 0', lineHeight: 1.4 }}>{f.helper}</p>}
+                      </MField>
+                    ))}
+
+                    {/* Poids au moment du test (éditable → W/kg exacts). */}
+                    <MRow first style={{ marginBottom: 8 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                        {t('performance.weightAtTest')}{weightSaving && <span style={{ color: 'var(--text-mid)' }}> …</span>}
+                      </span>
+                      <SoftInput width={128} align="right" type="number" inputMode="decimal" value={weightKg > 0 ? weightKg : ''} placeholder="—" unit="kg"
+                        ariaLabel={t('performance.weightAtTest')} onChange={v => setWeightKg(parseFloat(v) || 0)} onBlur={() => { void saveWeight(weightKg) }} />
+                    </MRow>
+
+                    {/* Résultats calculés — W doublés d'un W/kg. */}
+                    {derived.length > 0 && (
+                      <div style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', marginBottom: 16 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 8px' }}>{t('performance.computedResults')}</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 12px' }}>
+                          {derived.filter(d => !d.hidden).map(d => (
+                            <div key={d.key} style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{d.label}</span>
+                              <span style={{ ...MNUM, display: 'block', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
+                                {d.display ?? d.value}{d.unit && !d.display ? <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 3 }}>{d.unit}</span> : null}
+                              </span>
+                              {d.wkg && weightKg > 0 && <span style={{ ...MNUM, display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{(d.value / weightKg).toFixed(2)} W/kg</span>}
+                            </div>
+                          ))}
+                        </div>
+                        {derived.some(d => d.wkg) && weightKg <= 0 && (
+                          <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0' }}>{t('performance.setWeightForWkg')}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lier une activité (même sport, récentes d'abord). */}
+                    {activities.length > 0 && (
+                      <MField label={t('performance.linkActivity')}>
+                        <SoftSelect value={activityId} onChange={setActivityId} ariaLabel={t('performance.linkActivity')}>
+                          <option value="">{t('performance.noActivityLinked')}</option>
+                          {activities.map(a => (
+                            <option key={a.id} value={a.id}>
+                              {new Date(a.started_at).toLocaleDateString('fr-FR')} · {a.title || t('performance.activity')}{a.distance_m ? ` · ${(a.distance_m/1000).toFixed(1)} km` : ''}
+                            </option>
+                          ))}
+                        </SoftSelect>
+                      </MField>
+                    )}
+
+                    <PillButton onClick={() => { void handleSave() }} disabled={saving}
+                      style={saved ? { background: 'var(--surface-chip)', color: 'var(--success)', opacity: 1 } : undefined}>
+                      {saved ? t('performance.resultsSaved') : saving ? t('performance.saving') : t('performance.saveThisTest')}
+                    </PillButton>
+
+                    {/* Ajouter ce test au planning à une date choisie. */}
+                    <div style={{ marginTop: 10 }}>
+                      {!planOpen ? (
+                        <SoftPill onClick={() => setPlanOpen(true)}><LCalPlus size={18} />{t('performance.addToPlanning')}</SoftPill>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <SoftInput type="date" value={planDate} onChange={setPlanDate} ariaLabel={t('performance.addToPlanning')} />
+                          </div>
+                          <PillButton onClick={() => { void addToPlanning() }} disabled={!planDate || planSaving}
+                            style={{ width: 'auto', minHeight: 48, padding: '0 18px', flexShrink: 0, ...(planDone ? { background: 'var(--surface-chip)', color: 'var(--success)', opacity: 1 } : null) }}>
+                            {planDone ? t('performance.added') : planSaving ? t('performance.saving') : t('performance.confirm')}
+                          </PillButton>
+                        </div>
+                      )}
+                    </div>
+                  </MBlock>
+
+                  {scoreResult && <TestScoreDisplay mobile result={scoreResult} accentColor={cfg.color} />}
+
+                  {hasBench && (
+                    <MBlock title={t('performance.referenceLevels')} right={scoreResult ? <ScoreBadge mobile score={scoreResult.overall} level={scoreResult.level} /> : undefined}>
+                      <div style={{ margin: '0 -10px' }}>
+                        <LevelTable mobile testId={ot.test.id} gender={gender} currentScore={scoreResult?.overall ?? null} accentColor={cfg.color} />
+                      </div>
+                    </MBlock>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* Documents */}
+            <MBlock title={t('performance.documents')} icon={ic(<LFile size={20} />)}>
+              <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.txt" style={{ display: 'none' }}
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? [])
+                  setPendingDocs(prev => [...prev, ...files.map(f => ({ file: f, name: f.name }))])
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }} />
+              {pendingDocs.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  {pendingDocs.map((doc, i) => (
+                    <MRow key={i} first={i === 0}>
+                      <MRowText title={<span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</span>} sub={<span style={MNUM}>{(doc.file.size / 1024).toFixed(0)} KB</span>} />
+                      <button type="button" onClick={() => setPendingDocs(p => p.filter((_, j) => j !== i))} aria-label={t('perf.delete')}
+                        style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--surface-chip)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <LX size={18} />
+                      </button>
+                    </MRow>
+                  ))}
+                </div>
+              )}
+              <SoftPill onClick={() => fileInputRef.current?.click()}><LPlus size={18} />{t('performance.addFile')}</SoftPill>
+              {pendingDocs.length > 0 && <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0', textAlign: 'center' as const }}>{t('performance.filesWillUpload', { n: pendingDocs.length })}</p>}
+            </MBlock>
+
+            {/* Historique des résultats */}
+            {(history.length > 0 || histLoading) && (
+              <MBlock>
+                <button type="button" onClick={() => setShowHistory(h => !h)} aria-expanded={showHistory}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const }}>
+                  <span style={{ color: 'var(--text-mid)', display: 'flex' }}><LClock size={20} /></span>
+                  <span style={{ flex: 1, fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{t('performance.history')} <span style={{ ...MNUM, color: 'var(--text-mid)', fontWeight: 600 }}>({history.length})</span></span>
+                  <span style={{ color: 'var(--text-dim)', display: 'flex', transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><LChevDown size={20} /></span>
+                </button>
+                {showHistory && (histLoading ? (
+                  <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '8px 0 0' }}>{t('performance.loading')}</p>
+                ) : (
+                  <div style={{ marginTop: 6 }}>
+                    {history.map((entry, i) => (
+                      <MRow key={entry.id} first={i === 0} align="flex-start">
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ ...MNUM, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{entry.date}</span>
+                            {entry.documents && entry.documents.length > 0 && (
+                              <span style={{ fontSize: 13, color: 'var(--text-mid)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><LFile size={13} />{entry.documents.length} doc{entry.documents.length > 1 ? 's' : ''}</span>
+                            )}
+                          </span>
+                          <span style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '2px 12px', marginTop: 4 }}>
+                            {Object.entries(entry.valeurs).filter(([k]) => !k.startsWith('__')).map(([k, v]) => {
+                              if (!v) return null
+                              const fieldDef = proto?.fields.find(f => f.cle === k)
+                              return (
+                                <span key={k} style={{ fontSize: 13, color: 'var(--text-mid)' }}>
+                                  {fieldDef?.label ?? k} : <span style={{ ...MNUM, fontWeight: 700, color: 'var(--text)' }}>{v}{fieldDef?.unite ? ` ${fieldDef.unite}` : ''}</span>
+                                </span>
+                              )
+                            })}
+                          </span>
+                        </span>
+                      </MRow>
+                    ))}
+                  </div>
+                ))}
+              </MBlock>
+            )}
+          </>
+        )}
+      </MSheetFrame>
+    )
   }
 
   const SH = ({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) => (
@@ -1276,7 +1627,7 @@ interface GlobalTestResult {
   sport?: string
 }
 
-function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
+function HistoriqueTestsPanel({ onClose, mobile }: { onClose: () => void; mobile?: boolean }) {
   const [results,  setResults]  = useState<GlobalTestResult[]>([])
   const [loading,  setLoading]  = useState(true)
   const { t } = useI18n()
@@ -1316,6 +1667,58 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
   if (typeof document === 'undefined') return null
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString(currentLocale(), { day:'2-digit', month:'short', year:'numeric' })
+
+  // ══ MOBILE natif : liste groupée dans une feuille grise ══════════
+  if (mobile) {
+    return (
+      <MSheetFrame zIndex={1050} title={t('performance.testsHistory')} subtitle={t('performance.allDisciplinesSortedByDate')} onClose={onClose} closeLabel={t('perf.close')}>
+        {loading ? (
+          <>
+            <MSkeleton height={84} />
+            <MSkeleton height={84} />
+            <MSkeleton height={84} />
+          </>
+        ) : results.length === 0 ? (
+          <MBlock title={t('performance.noTestSaved')}>
+            <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0, lineHeight: 1.45 }}>{t('performance.noTestSavedDesc')}</p>
+          </MBlock>
+        ) : (
+          <MBlock style={{ padding: '4px 16px' }}>
+            {results.map((r, i) => {
+              const sportCfg = r.sport ? TEST_SPORT_TABS.find(t => t.id === r.sport) : undefined
+              const vals = Object.entries(r.valeurs).filter(([,v]) => v && String(v).trim())
+              return (
+                <MRow key={r.id} first={i === 0} align="flex-start" style={{ padding: '12px 0' }}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      {sportCfg && <span aria-hidden title={sportCfg.label} style={{ width: 8, height: 8, borderRadius: '50%', background: TEST_SPORT_DOT[sportCfg.id], flexShrink: 0 }} />}
+                      <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.nom}</span>
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, fontSize: 13, color: 'var(--text-mid)' }}>
+                      {sportCfg && <span>{sportCfg.label}</span>}
+                      <span style={MNUM}>{fmtDate(r.date)}</span>
+                      {r.documents && r.documents.length > 0 && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><LFile size={13} />{r.documents.length} doc{r.documents.length > 1 ? 's' : ''}</span>
+                      )}
+                    </span>
+                    {vals.length > 0 && (
+                      <span style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 8 }}>
+                        {vals.slice(0, 6).map(([k, v]) => (
+                          <span key={k} style={{ padding: '4px 10px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 13, color: 'var(--text-mid)' }}>
+                            {k} : <span style={{ ...MNUM, fontWeight: 700, color: 'var(--text)' }}>{v}</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                </MRow>
+              )
+            })}
+          </MBlock>
+        )}
+      </MSheetFrame>
+    )
+  }
 
   return createPortal(
     <>
@@ -1391,12 +1794,14 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
 // ════════════════════════════════════════════════
 // ONGLET TESTS
 // ════════════════════════════════════════════════
-function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUpdate }: {
+function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUpdate, mobile }: {
   profile: typeof INIT_PROFILE
   onAnalyzeTest?: (test: TestDef) => Promise<void>
   initialSport?: TestSport
   initialTestId?: string
   onFtpUpdate?: (ftp: number) => void
+  /** Rendu mobile natif (puces sport, liste groupée, feuilles mobiles). */
+  mobile?: boolean
 }) {
   const [testSport,      setTestSport]      = useState<TestSport>(initialSport ?? 'running')
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
@@ -1419,6 +1824,40 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
 
   const cfg   = TEST_SPORT_TABS.find(t => t.id === testSport)!
   const tests = TESTS[testSport]
+
+  // ══ MOBILE natif : puces sport, historique, liste groupée de tests ══
+  if (mobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontFamily: 'var(--font-body)' }}>
+        <MPills scroll onCard={false} value={testSport} onChange={setTestSport}
+          options={TEST_SPORT_TABS.map(s => ({ v: s.id, l: s.label, dot: TEST_SPORT_DOT[s.id], count: TESTS[s.id].length }))} />
+
+        <MBlock pad={0}>
+          <button type="button" onClick={() => setShowHistorique(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 60, padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit' }}>
+            <span aria-hidden style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><LClock size={20} /></span>
+            <MRowText title={t('performance.testsHistory')} sub={t('performance.allDisciplinesSortedByDate')} />
+            <span aria-hidden style={{ color: 'var(--text-dim)', display: 'flex' }}><Ico d={ICON.chev} size={18} /></span>
+          </button>
+        </MBlock>
+
+        <section style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '14px 0 4px', boxShadow: SOFT_SHADOW }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '0 16px 4px' }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{cfg.label}</h3>
+            <span style={{ ...MNUM, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{tests.length} test{tests.length > 1 ? 's' : ''}</span>
+          </div>
+          {tests.map((test, i) => (
+            <TestCard key={test.id} mobile first={i === 0} test={test} onOpen={() => setOpenTest({ sport: testSport, test })} />
+          ))}
+        </section>
+
+        <CustomTests mobile sport={testSport} color={cfg.color} />
+
+        {openTest && <TestProtocolPanel mobile open={openTest} onClose={() => setOpenTest(null)} onFtpUpdate={onFtpUpdate} />}
+        {showHistorique && <HistoriqueTestsPanel mobile onClose={() => setShowHistorique(false)} />}
+      </div>
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -1601,7 +2040,7 @@ export default function PerformancePage() {
 
   const overlays = (
     <>
-      {selectedDatum && <SelectedDatumBubble datum={selectedDatum} onClear={() => setSelectedDatum(null)} onAsk={handleAsk} />}
+      {selectedDatum && <SelectedDatumBubble mobile datum={selectedDatum} onClear={() => setSelectedDatum(null)} onAsk={handleAsk} />}
       <AIPanel
         open={aiOpen}
         onClose={() => { setAiOpen(false); setAiPrefill(''); setAiInitMsg(undefined); setAiInitLabel(undefined) }}
@@ -1622,8 +2061,8 @@ export default function PerformancePage() {
           profile={profile}
           setProfile={setProfile}
           initialView={tab === 'tests' || mobileTestsKey > 0 ? 'tests' : null}
-          profileNode={<ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />}
-          testsNode={<TestsTab profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />}
+          profileNode={<ProfilTab mobile onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />}
+          testsNode={<TestsTab mobile profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />}
           yearNode={<YearDatasSubTab mobile />}
           renderSport={(sp, section, nav) => <RecordsSubTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} fixedSport={sp} mobile section={section} onNavigate={nav} onNavigateToTests={() => setMobileTestsKey(k => k + 1)} />}
         />

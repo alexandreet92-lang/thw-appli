@@ -2,7 +2,7 @@
 // Radar « en un coup d'œil » — SVG brut, neutre + accent var(--primary).
 const FB = 'var(--font-body)'
 
-export function Radar({ scores, labels }: { scores: number[]; labels: string[] }) {
+export function Radar({ scores, labels, size = 140, labelSize = 8 }: { scores: number[]; labels: string[]; size?: number; labelSize?: number }) {
   const n = scores.length, R = 44, cx = 60, cy = 56
   const pt = (i: number, r: number): [number, number] => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / n
@@ -10,12 +10,12 @@ export function Radar({ scores, labels }: { scores: number[]; labels: string[] }
   }
   const poly = scores.map((s, i) => { const [x, y] = pt(i, (Math.max(0, Math.min(100, s)) / 100) * R); return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')
   return (
-    <svg width={140} height={120} viewBox="-10 -4 140 120" style={{ display: 'block', overflow: 'visible' }}>
+    <svg width={size} height={Math.round(size * 120 / 140)} viewBox="-10 -4 140 120" style={{ display: 'block', overflow: 'visible' }}>
       {[0.34, 0.67, 1].map(f => (
         <polygon key={f} points={labels.map((_, i) => { const [x, y] = pt(i, R * f); return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')} fill="none" stroke="var(--border)" strokeWidth={1} />
       ))}
       <polygon points={poly} fill="var(--primary)" fillOpacity={0.15} stroke="var(--primary)" strokeWidth={1.5} strokeLinejoin="round" />
-      {labels.map((l, i) => { const [x, y] = pt(i, R + 11); return <text key={l} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontFamily={FB} fontSize={8} fill="var(--text-dim)">{l}</text> })}
+      {labels.map((l, i) => { const [x, y] = pt(i, R + 11); return <text key={l} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontFamily={FB} fontSize={labelSize} fill="var(--text-dim)">{l}</text> })}
     </svg>
   )
 }

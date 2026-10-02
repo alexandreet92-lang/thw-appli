@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { Sheet, primaryBtn } from '@/app/injuries/components/Sheet'
+import { MBlock, MRow, SoftInput, PillButton } from '@/app/injuries/components/mobileUi'
 
 const FB = 'var(--font-body)'
 export interface BenchField { key: string; label: string; unit?: string | null; placeholder?: string }
@@ -30,8 +31,20 @@ export function BenchmarkSheet({ title, fields, values, onChange, onSave, saving
   onChange: (key: string, val: string) => void; onSave: () => void; saving: boolean; onClose: () => void
 }) {
   const { t } = useI18n()
+  // Mobile : liste groupée « libellé | champ doux + unité », pilule Enregistrer.
+  const mobile = (
+    <MBlock style={{ padding: '4px 16px' }}>
+      {fields.map((f, i) => (
+        <MRow key={f.key} first={i === 0}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{f.label}</span>
+          <SoftInput width={138} align="right" value={values[f.key] ?? ''} unit={f.unit} placeholder={f.placeholder ?? '—'} ariaLabel={f.label} onChange={v => onChange(f.key, v)} />
+        </MRow>
+      ))}
+    </MBlock>
+  )
   return (
-    <Sheet title={t('performance.benchmarksTitle', { sport: title })} onClose={onClose}
+    <Sheet title={t('performance.benchmarksTitle', { sport: title })} onClose={onClose} mobile={mobile}
+      mobileFooter={<PillButton onClick={onSave} disabled={saving}>{saving ? t('performance.saving') : t('performance.save')}</PillButton>}
       footer={<button onClick={onSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? t('performance.saving') : t('performance.save')}</button>}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3) var(--space-3)' }}>
         {fields.map(f => (

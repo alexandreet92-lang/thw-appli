@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { DashCard } from '@/components/dashboard/primitives'
-import { Segmented } from '@/components/ui/Segmented'
+import { SegTrack } from './mobileUi'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
 import { SEV, type Injury, type Severity } from '../types'
 import { durationDays, isRecidive, zonesRanking, sportsRanking } from '../lib'
@@ -180,9 +180,9 @@ export function MobileInjuryHistory({ injuries, onOpen, onReport }: {
 
       <DashCard icon={IC.list} title={t('injuries.tabHistorySub')} meta={String(shown.length)}>
         {hasActive && hasResolved && (
-          <div style={{ marginBottom: 14 }}>
-            <Segmented<Filter> size="sm" value={eff} onChange={setFilter} ariaLabel={t('injuries.tabHistorySub')}
-              options={[{ id: 'all', label: t('injm.filterAll') }, { id: 'active', label: t('injuries.ongoing') }, { id: 'resolved', label: t('injm.filterResolved') }]} />
+          <div style={{ marginBottom: 14 }} role="group" aria-label={t('injuries.tabHistorySub')}>
+            <SegTrack<Filter> value={eff} onChange={setFilter}
+              options={[{ v: 'all', l: t('injm.filterAll') }, { v: 'active', l: t('injuries.ongoing') }, { v: 'resolved', l: t('injm.filterResolved') }]} />
           </div>
         )}
         {groups.map((g, gi) => (

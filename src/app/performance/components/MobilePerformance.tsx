@@ -167,14 +167,13 @@ export function MobilePerformance({ profile, setProfile, profileNode, testsNode,
     const backLabel = !spId ? 'Performance' : section === 'compare' ? t('perf.m.powerCurve') : sportLabel
     const body = view === 'profil' ? profileNode : view === 'year' ? yearNode : view === 'tests' ? testsNode
       : spId ? renderSport(spId, section, (sec: string) => open(`sport:${spId}:${sec}`)) : null
-    // Profil & Tests réutilisent les anciens onglets (habillage .thw-mdetail) ;
-    // les pages sport & Évolution ont leur propre rendu mobile en cartes.
-    const legacy = view === 'profil' || view === 'tests'
+    // Profil, Tests, pages sport & Évolution ont tous leur rendu mobile natif
+    // en cartes (plus d'habillage .thw-mdetail des anciens onglets).
     return (
       <div style={{ padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
         <DetailSlide backLabel={backLabel} onBack={close}>
           <h2 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{label}</h2>
-          {legacy ? <div className="thw-mdetail">{body}</div> : body}
+          {body}
         </DetailSlide>
       </div>
     )

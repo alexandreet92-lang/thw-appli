@@ -5,9 +5,10 @@
 import { useRef, useState } from 'react'
 import { Sheet, primaryBtn } from './Sheet'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
-import { PHASES, type Injury, type InjuryLog } from '../types'
+import { PHASES, SEV, type Injury, type InjuryLog } from '../types'
 import { returnProgress, painTrend, rehabAdherence, sortedLogs, type TrendDir } from '../lib'
 import { useI18n } from '@/lib/i18n'
+import { MBlock, MPills, MRow, MRowText, MTag, RoundCheck, SliderRow, SoftInput, PillButton, SoftPill, NUM, Ico } from './mobileUi'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const sec: React.CSSProperties = { fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }
@@ -17,25 +18,27 @@ const C_EFFORT = 'var(--charge-hard)'  // douleur à l'effort (plus critique)
 const TREND_COLOR: Record<TrendDir, string> = { down: 'var(--charge-low)', flat: 'var(--text-mid)', up: 'var(--charge-hard)' }
 const TREND_KEY: Record<TrendDir, string> = { down: 'injuries.trendDown', flat: 'injuries.trendFlat', up: 'injuries.trendUp' }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ color, label, mobile }: { color: string; label: string; mobile?: boolean }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ width: 9, height: 3, borderRadius: 2, background: color, display: 'inline-block' }} />
-      <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>{label}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: mobile ? 6 : 5 }}>
+      <span style={{ width: mobile ? 12 : 9, height: 3, borderRadius: 2, background: color, display: 'inline-block' }} />
+      <span style={{ fontFamily: FB, fontSize: mobile ? 13 : 11, color: 'var(--text-mid)' }}>{label}</span>
     </span>
   )
 }
 
 function fmtDay(d: string): string { const p2 = d.slice(5); return `${p2.slice(3)}/${p2.slice(0, 2)}` }
 
-function Curve({ pts }: { pts: InjuryLog[] }) {
+function Curve({ pts, mobile }: { pts: InjuryLog[]; mobile?: boolean }) {
   const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const [hi, setHi] = useState<number | null>(null)
-  if (pts.length < 1) return <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('injuries.curveNotEnough')}</p>
+  if (pts.length < 1) return <p style={{ fontFamily: FB, fontSize: mobile ? 15 : 12, color: mobile ? 'var(--text-mid)' : 'var(--text-dim)', margin: 0 }}>{t('injuries.curveNotEnough')}</p>
 
-  // viewBox ≈ largeur de rendu (feuille 600 − 2×24) → aucun scaling grotesque.
-  const W = 552, H = 172, pl = 26, pr = 12, pt = 12, pb = 26, n = pts.length
+  // viewBox ≈ largeur de rendu (feuille 600 − 2×24 ; mobile : carte ≈ 311 px)
+  // → aucun scaling grotesque, libellés lisibles.
+  const W = mobile ? 320 : 552, H = mobile ? 170 : 172, pl = 26, pr = 12, pt = 12, pb = 26, n = pts.length
+  const fs = mobile ? 11 : 9
   const x = (i: number) => pl + (n === 1 ? (W - pl - pr) / 2 : (i / (n - 1)) * (W - pl - pr))
   const y = (v: number) => pt + (1 - v / 10) * (H - pt - pb)
   const line = (key: 'intensity_rest' | 'intensity_effort') =>
@@ -44,7 +47,7 @@ function Curve({ pts }: { pts: InjuryLog[] }) {
     pts.map((l, i) => `L${x(i).toFixed(1)},${y(l.intensity_effort ?? 0).toFixed(1)}`).join(' ') +
     ` L${x(n - 1).toFixed(1)},${(H - pb).toFixed(1)} Z`
 
-  function onMove(e: React.MouseEvent) {
+  function onMove(e: { clientX: number }) {
     const r = wrapRef.current?.getBoundingClientRect()
     if (!r) return
     const frac = (e.clientX - r.left) / r.width
@@ -55,16 +58,19 @@ function Curve({ pts }: { pts: InjuryLog[] }) {
   const cur = hi != null ? pts[hi] : null
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }} onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
+    <div ref={wrapRef} style={{ position: 'relative', touchAction: mobile ? 'pan-y' : undefined }}
+      {...(mobile
+        ? { onPointerDown: onMove, onPointerMove: onMove }
+        : { onMouseMove: onMove, onMouseLeave: () => setHi(null) })}>
       <div style={{ display: 'flex', gap: 14, marginBottom: 6 }}>
-        <LegendDot color={C_EFFORT} label="À l'effort" />
-        <LegendDot color={C_REST} label="Au repos" />
+        <LegendDot color={C_EFFORT} label={mobile ? t('injuries.effort') : "À l'effort"} mobile={mobile} />
+        <LegendDot color={C_REST} label={mobile ? t('injuries.rest') : 'Au repos'} mobile={mobile} />
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
         {[0, 5, 10].map(v => (
           <g key={v}>
             <line x1={pl} y1={y(v)} x2={W - pr} y2={y(v)} stroke="var(--border)" strokeWidth={1} opacity={0.6} />
-            <text x={pl - 5} y={y(v) + 3.5} fontFamily={FB} fontSize={9} fill="var(--text-dim)" textAnchor="end">{v}</text>
+            <text x={pl - 5} y={y(v) + 3.5} fontFamily={FB} fontSize={fs} fill="var(--text-dim)" textAnchor="end">{v}</text>
           </g>
         ))}
         {n > 1 && <path d={areaEffort} fill={C_EFFORT} opacity={0.1} />}
@@ -78,14 +84,14 @@ function Curve({ pts }: { pts: InjuryLog[] }) {
             {l.intensity_effort != null && <circle cx={x(i)} cy={y(l.intensity_effort)} r={hi === i ? 3.5 : 2.5} fill={C_EFFORT} />}
           </g>
         ))}
-        <text x={pl} y={H - 7} fontFamily={FB} fontSize={9} fill="var(--text-dim)" textAnchor="start">{fmtDay(pts[0].log_date)}</text>
-        {n > 1 && <text x={W - pr} y={H - 7} fontFamily={FB} fontSize={9} fill="var(--text-dim)" textAnchor="end">{fmtDay(pts[n - 1].log_date)}</text>}
+        <text x={pl} y={H - 7} fontFamily={FB} fontSize={fs} fill="var(--text-dim)" textAnchor="start">{fmtDay(pts[0].log_date)}</text>
+        {n > 1 && <text x={W - pr} y={H - 7} fontFamily={FB} fontSize={fs} fill="var(--text-dim)" textAnchor="end">{fmtDay(pts[n - 1].log_date)}</text>}
       </svg>
       {/* Bulle de survol */}
       {cur && (
-        <div style={{ position: 'absolute', top: 22, left: `${(x(hi as number) / W) * 100}%`, transform: 'translateX(-50%)', pointerEvents: 'none', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: '6px 9px', whiteSpace: 'nowrap', boxShadow: 'var(--shadow-card)' }}>
-          <p className="tnum" style={{ margin: 0, fontFamily: FB, fontSize: 10.5, fontWeight: 600, color: 'var(--text)' }}>{cur.log_date}</p>
-          <p className="tnum" style={{ margin: '2px 0 0', fontFamily: FB, fontSize: 10.5, color: 'var(--text-mid)' }}>
+        <div style={{ position: 'absolute', top: 22, left: `${Math.max(mobile ? 22 : 0, Math.min(mobile ? 78 : 100, (x(hi as number) / W) * 100))}%`, transform: 'translateX(-50%)', pointerEvents: 'none', background: mobile ? 'var(--float-bg)' : 'var(--bg-card2)', borderRadius: mobile ? 'var(--r-md)' : 'var(--r-sm)', padding: mobile ? '8px 12px' : '6px 9px', whiteSpace: 'nowrap', boxShadow: mobile ? 'var(--shadow-capsule)' : 'var(--shadow-card)' }}>
+          <p className="tnum" style={{ margin: 0, fontFamily: FB, fontSize: mobile ? 13 : 10.5, fontWeight: mobile ? 700 : 600, color: 'var(--text)' }}>{cur.log_date}</p>
+          <p className="tnum" style={{ margin: '2px 0 0', fontFamily: FB, fontSize: mobile ? 13 : 10.5, color: 'var(--text-mid)' }}>
             <span style={{ color: C_EFFORT }}>●</span> {t('injuries.effort')} {cur.intensity_effort ?? '—'} · <span style={{ color: C_REST }}>●</span> {t('injuries.rest')} {cur.intensity_rest ?? '—'}
           </p>
         </div>
@@ -118,6 +124,24 @@ function QuickCheckin({ inj, onAddLog }: { inj: Injury; onAddLog: (l: Omit<Injur
   )
 }
 
+// Mobile : relevé du jour par jauges (piste + pouce blanc) + pilule cyan.
+function MobileCheckin({ inj, onAddLog }: { inj: Injury; onAddLog: (l: Omit<InjuryLog, 'id'>) => void }) {
+  const { t } = useI18n()
+  const [r, setR] = useState(inj.intensity_rest ?? 0)
+  const [e, setE] = useState(inj.intensity_effort ?? 0)
+  const [done, setDone] = useState(false)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SliderRow label={t('injuries.rest')} value={r} onChange={v => { setR(v); setDone(false) }} color={C_REST} />
+      <SliderRow label={t('injuries.effort')} value={e} onChange={v => { setE(v); setDone(false) }} color={C_EFFORT} />
+      <PillButton style={{ marginTop: 6, ...(done ? { background: 'var(--surface-chip)', color: 'var(--success)' } : null) }}
+        onClick={() => { onAddLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e }); setDone(true) }}>
+        {done ? `✓ ${t('injuries.m.saved')}` : t('injuries.save')}
+      </PillButton>
+    </div>
+  )
+}
+
 export function TrackSheet({ injury, logs, onClose, onUpdate, onAddLog, onResolve }: {
   injury: Injury; logs: InjuryLog[]
   onClose: () => void
@@ -134,8 +158,99 @@ export function TrackSheet({ injury, logs, onClose, onUpdate, onAddLog, onResolv
   const adh = rehabAdherence(injury)
   const toggleExo = (idx: number) => onUpdate(injury.id, { rehab: injury.rehab.map((x, i) => i === idx ? { ...x, done: !x.done } : x) })
 
+  // ── Mobile : une carte blanche par sujet ──────────────────────
+  const ret = returnProgress(injury)
+  const sideTxt = injury.side && injury.side !== 'central' ? ` · ${injury.side}` : ''
+  const addNote = () => { if (note.trim()) { onAddLog({ injury_id: injury.id, log_date: new Date().toISOString().slice(0, 10), note: note.trim(), intensity_rest: null, intensity_effort: null }); setNote('') } }
+  const mobile = (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: -2 }}>
+        <MTag color={SEV[injury.severity].varc}>{SEV[injury.severity].label}</MTag>
+      </div>
+
+      <MBlock title={t('injuries.quickCheckin')}>
+        <MobileCheckin inj={injury} onAddLog={onAddLog} />
+      </MBlock>
+
+      <MBlock title={t('injuries.phaseLabel')}>
+        <MPills value={injury.phase} onChange={v => onUpdate(injury.id, { phase: v })}
+          options={PHASES.map((p, i) => ({ v: p.id, l: p.label, dot: i <= curIdx ? 'var(--primary)' : 'var(--border-mid)' }))} />
+        {ret && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('pe2.returnToSport')}</span>
+              <span style={{ ...NUM, fontSize: 15, fontWeight: 700, color: ret.overdue ? 'var(--charge-hard)' : 'var(--text)' }}>{ret.overdue ? t('injuries.m.overdue', { n: ret.daysLeft }) : t('injuries.m.returnIn', { n: ret.daysLeft })}</span>
+            </div>
+            <AnimatedBar pct={ret.pct * 100} color={ret.overdue ? 'var(--charge-hard)' : 'var(--primary)'} height={6} />
+          </div>
+        )}
+      </MBlock>
+
+      <MBlock title={t('injuries.painCurve')}
+        right={trend ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <MTag color={TREND_COLOR[trend.dir]}>{t(TREND_KEY[trend.dir])}</MTag>
+            {trend.delta !== 0 && <span style={{ ...NUM, fontSize: 13, color: 'var(--text-mid)', fontWeight: 600 }}>{trend.delta > 0 ? `+${trend.delta}` : trend.delta}</span>}
+          </span>
+        ) : undefined}>
+        <Curve pts={curvePts} mobile />
+      </MBlock>
+
+      {(injury.impact.avoid.length > 0 || injury.impact.ok.length > 0) && (
+        <MBlock title={t('injuries.impactTitle')}>
+          {injury.impact.avoid.length > 0 && <MRow first><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--charge-hard)', flexShrink: 0 }} /><MRowText title={t('injuries.availAvoid', { list: injury.impact.avoid.join(', ') })} /></MRow>}
+          {injury.impact.ok.length > 0 && <MRow first={injury.impact.avoid.length === 0}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--charge-low)', flexShrink: 0 }} /><MRowText title={t('injuries.impactOk', { list: injury.impact.ok.join(', ') })} /></MRow>}
+        </MBlock>
+      )}
+
+      {injury.rehab.length > 0 && (
+        <MBlock title={t('injuries.rehabTitle')}
+          right={adh ? <span style={{ ...NUM, fontSize: 15, fontWeight: 700, color: adh.done === adh.total ? 'var(--charge-low)' : 'var(--text-mid)' }}>{t('injuries.rehabAdherence', { done: adh.done, total: adh.total })}</span> : undefined}>
+          {adh && <div style={{ marginBottom: 6 }}><AnimatedBar pct={(adh.done / adh.total) * 100} color={adh.done === adh.total ? 'var(--charge-low)' : 'var(--primary)'} height={6} /></div>}
+          {injury.rehab.map((x, i) => (
+            <MRow key={i} first={i === 0} onClick={() => toggleExo(i)} label={x.nom}>
+              <RoundCheck on={x.done} />
+              <MRowText title={<span style={{ textDecoration: x.done ? 'line-through' : 'none' }}>{x.nom}</span>} sub={x.detail ?? undefined} dim={x.done} />
+            </MRow>
+          ))}
+        </MBlock>
+      )}
+
+      {(injury.practitioner || injury.next_appointment) && (
+        <MBlock title={t('injuries.medicalTitle')}>
+          {injury.practitioner && <MRow first><MRowText title={t('injuries.practitioner', { name: injury.practitioner })} /></MRow>}
+          {injury.next_appointment && <MRow first={!injury.practitioner}><MRowText title={t('injuries.nextAppointment', { date: injury.next_appointment })} /></MRow>}
+        </MBlock>
+      )}
+
+      <MBlock title={t('injuries.journalTitle')}>
+        {mine.length === 0 && <p style={{ margin: '0 0 12px', fontSize: 15, color: 'var(--text-mid)' }}>{t('injuries.journalEmpty')}</p>}
+        {mine.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {mine.slice().reverse().map((l, i) => (
+              <MRow key={l.id} first={i === 0} align="flex-start">
+                <MRowText title={l.note ?? t('injuries.logFallback', { rest: l.intensity_rest ?? '—', effort: l.intensity_effort ?? '—' })} sub={<span style={NUM}>{l.log_date}</span>} />
+              </MRow>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 0 }}><SoftInput value={note} onChange={setNote} placeholder={t('injuries.addNotePlaceholder')} ariaLabel={t('injuries.addNotePlaceholder')} /></div>
+          <SoftPill full={false} onClick={addNote} disabled={!note.trim()} color="var(--primary)">{t('injuries.addBtn')}</SoftPill>
+        </div>
+      </MBlock>
+    </>
+  )
+  const mobileFooter = (
+    <PillButton variant="white" onClick={() => { onResolve(injury.id); onClose() }}>
+      <span style={{ color: 'var(--success)', display: 'flex' }}><Ico d={<path d="M20 6 9 17l-5-5" />} size={20} sw={2.6} /></span>
+      {t('injuries.markResolved')}
+    </PillButton>
+  )
+
   return (
-    <Sheet title={injury.zone} onClose={onClose}
+    <Sheet title={injury.zone} onClose={onClose} mobile={mobile} mobileFooter={mobileFooter}
+      mobileSubtitle={`${PHASES[curIdx]?.label ?? injury.phase}${sideTxt}`}
       footer={<button onClick={() => { onResolve(injury.id); onClose() }} style={{ ...primaryBtn, background: 'var(--bg-card2)', color: 'var(--text)' }}>{t('injuries.markResolved')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
         {/* Relevé du jour */}

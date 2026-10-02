@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { Plus, FlaskConical, Trash2, X, Target, ListChecks, Flame, BookOpen, AlertTriangle, Clock, Save } from 'lucide-react'
+import { MBlock, MField, MRow, MRowText, MSheetFrame, PillButton, SoftInput, SoftPill, SoftTextarea, NUM, SOFT_SHADOW } from '@/app/injuries/components/mobileUi'
 
 interface Result { date: string; value: string; note?: string }
 // Protocole saisi par l'athlète — même structure qu'un test du catalogue.
@@ -30,7 +31,7 @@ interface CustomTest { id: string; nom: string; sport: string; description: stri
 const emptyProtocol = (): Protocol => ({ objectif: '', conditions: [''], echauffement: [''], etapes: [''], interpretation: [''], erreurs: [''], frequence: '' })
 const cleanList = (l: string[]) => l.map(s => s.trim()).filter(Boolean)
 
-export function CustomTests({ sport, color }: { sport: string; color: string }) {
+export function CustomTests({ sport, color, mobile }: { sport: string; color: string; mobile?: boolean }) {
   const { t } = useI18n()
   const [tests, setTests] = useState<CustomTest[] | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -55,6 +56,43 @@ export function CustomTests({ sport, color }: { sport: string; color: string }) 
   }
 
   if (!tests) return null
+
+  // ══ MOBILE natif : carte blanche, lignes groupées, feuilles mobiles ══
+  if (mobile) {
+    return (
+      <section style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '10px 0 4px', fontFamily: 'var(--font-body)', boxShadow: SOFT_SHADOW }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 2px 16px' }}>
+          <h3 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>
+            {t('perf.customTests')}{tests.length > 0 && <span style={{ ...NUM, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 8 }}>{tests.length}</span>}
+          </h3>
+          <button type="button" onClick={() => setCreateOpen(true)}
+            style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'transparent', color: 'var(--primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+            <Plus size={18} /> {t('perf.createTest')}
+          </button>
+        </div>
+        {tests.length === 0 && <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: 0, padding: '0 16px 12px', lineHeight: 1.45 }}>{t('perf.noCustomTest')}</p>}
+        {tests.map((ct, i) => {
+          const last = ct.results?.[ct.results.length - 1]
+          const sub = last ? `${t('perf.lastValue')} : ${last.value}${ct.unite ? ` ${ct.unite}` : ''}`
+            : (ct.protocol?.objectif || ct.description || t('perf.tapToLog'))
+          return (
+            <div key={ct.id} role="button" tabIndex={0} onClick={() => setOpenTest(ct)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenTest(ct) } }}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '8px 8px 8px 16px', cursor: 'pointer' }}>
+              {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+              <span aria-hidden style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', color: 'var(--text)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><FlaskConical size={18} /></span>
+              <MRowText title={ct.nom} sub={<span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>} />
+              <button type="button" onClick={e => { e.stopPropagation(); void remove(ct.id) }} aria-label={t('perf.delete')}
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Trash2 size={18} /></button>
+            </div>
+          )
+        })}
+
+        {createOpen && <CustomTestForm mobile sport={sport} color={color} onClose={() => setCreateOpen(false)} onSaved={() => { setCreateOpen(false); void load() }} />}
+        {openTest && <CustomTestDetail mobile test={openTest} color={color} onClose={() => setOpenTest(null)} onSaved={() => { void load() }} />}
+      </section>
+    )
+  }
 
   return (
     <div style={{ marginTop: 6 }}>
@@ -96,12 +134,29 @@ export function CustomTests({ sport, color }: { sport: string; color: string }) 
 }
 
 // ── Éditeur de liste (ajouter / retirer des lignes) ─────────────────
-function ListField({ label, icon, accent, items, onChange, placeholder }: {
-  label: string; icon: React.ReactNode; accent: string; items: string[]; onChange: (v: string[]) => void; placeholder: string
+function ListField({ label, icon, accent, items, onChange, placeholder, mobile }: {
+  label: string; icon: React.ReactNode; accent: string; items: string[]; onChange: (v: string[]) => void; placeholder: string; mobile?: boolean
 }) {
   const set = (i: number, v: string) => onChange(items.map((x, j) => (j === i ? v : x)))
   const add = () => onChange([...items, ''])
   const del = (i: number) => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [''])
+  // Mobile : carte blanche — une ligne = champ doux + rond « retirer », pilule « + ».
+  if (mobile) {
+    return (
+      <MBlock title={label} icon={icon}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {items.map((v, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: 0 }}><SoftInput value={v} onChange={x => set(i, x)} placeholder={placeholder} ariaLabel={label} /></div>
+              <button type="button" onClick={() => del(i)} aria-label="—"
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--surface-chip)', color: 'var(--text-mid)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}><X size={18} /></button>
+            </div>
+          ))}
+          <SoftPill full={false} onClick={add} color="var(--primary)" style={{ alignSelf: 'flex-start' }}><Plus size={18} /> {label}</SoftPill>
+        </div>
+      </MBlock>
+    )
+  }
   const inp: React.CSSProperties = { flex: 1, boxSizing: 'border-box', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none' }
   return (
     <div>
@@ -123,7 +178,7 @@ function ListField({ label, icon, accent, items, onChange, placeholder }: {
 }
 
 // ── Formulaire de création : protocole complet ─────────────────────
-function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; color: string; onClose: () => void; onSaved: () => void }) {
+function CustomTestForm({ sport, color, onClose, onSaved, mobile }: { sport: string; color: string; onClose: () => void; onSaved: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -157,6 +212,32 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
       })
       onSaved()
     } finally { setBusy(false) }
+  }
+
+  // ══ MOBILE natif : feuille grise, protocole en cartes, pilule « Créer » ══
+  if (mobile) {
+    return (
+      <MSheetFrame zIndex={9999} title={t('perf.createTest')} subtitle={t('perf.customTestFormHint')} onClose={onClose} closeLabel={t('perf.close')}
+        footer={<PillButton onClick={() => void save()} disabled={!nom.trim() || busy}>{busy ? t('perf.saving') : t('perf.create')}</PillButton>}>
+        <MBlock>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <SoftInput value={nom} onChange={setNom} placeholder={t('perf.testNamePlaceholder')} ariaLabel={t('perf.testNamePlaceholder')} />
+            <SoftInput value={unite} onChange={setUnite} placeholder={t('perf.testUnitPlaceholder')} ariaLabel={t('perf.testUnitPlaceholder')} />
+          </div>
+        </MBlock>
+        <MBlock title={t('performance.objective')} icon={<span style={{ color: 'var(--primary)', display: 'flex' }}><Target size={20} /></span>}>
+          <SoftTextarea value={p.objectif} onChange={v => upd({ objectif: v })} placeholder={t('perf.customTestObjectivePlaceholder')} ariaLabel={t('performance.objective')} />
+        </MBlock>
+        <ListField mobile label={t('performance.conditions')} icon={<ListChecks size={20} />} accent="var(--text-mid)" items={p.conditions} onChange={v => upd({ conditions: v })} placeholder={t('perf.customTestConditionPlaceholder')} />
+        <ListField mobile label={t('performance.warmup')} icon={<Flame size={20} />} accent="var(--text-mid)" items={p.echauffement} onChange={v => upd({ echauffement: v })} placeholder={t('perf.customTestWarmupPlaceholder')} />
+        <ListField mobile label={t('performance.protocolSteps')} icon={<ListChecks size={20} />} accent="var(--text-mid)" items={p.etapes} onChange={v => upd({ etapes: v })} placeholder={t('perf.customTestStepPlaceholder')} />
+        <ListField mobile label={t('performance.resultsInterpretation')} icon={<BookOpen size={20} />} accent="var(--text-mid)" items={p.interpretation} onChange={v => upd({ interpretation: v })} placeholder={t('perf.customTestInterpretPlaceholder')} />
+        <ListField mobile label={t('performance.commonMistakes')} icon={<span style={{ color: 'var(--charge-hard)', display: 'flex' }}><AlertTriangle size={20} /></span>} accent="var(--text-mid)" items={p.erreurs} onChange={v => upd({ erreurs: v })} placeholder={t('perf.customTestMistakePlaceholder')} />
+        <MBlock title={t('performance.frequency')} icon={<Clock size={20} />}>
+          <SoftInput value={p.frequence} onChange={v => upd({ frequence: v })} placeholder={t('perf.customTestFrequencyPlaceholder')} ariaLabel={t('performance.frequency')} />
+        </MBlock>
+      </MSheetFrame>
+    )
   }
 
   return createPortal(
@@ -217,7 +298,7 @@ function CustomTestForm({ sport, color, onClose, onSaved }: { sport: string; col
 }
 
 // ── Fiche de test : affiche le protocole (comme le catalogue) + saisie ──
-function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest; color: string; onClose: () => void; onSaved: () => void }) {
+function CustomTestDetail({ test, color, onClose, onSaved, mobile }: { test: CustomTest; color: string; onClose: () => void; onSaved: () => void; mobile?: boolean }) {
   const { t } = useI18n()
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -230,14 +311,14 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
   const [busy, setBusy] = useState(false)
   const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
 
-  const save = async () => {
+  const save = async (close: () => void = requestClose) => {
     if (!value.trim() || busy) return
     setBusy(true)
     try {
       const sb = createClient()
       const next: Result[] = [...(test.results ?? []), { date, value: value.trim(), note: note.trim() || undefined }]
       await sb.from('custom_tests').update({ results: next }).eq('id', test.id)
-      onSaved(); requestClose()
+      onSaved(); close()
     } finally { setBusy(false) }
   }
   const hist = [...(test.results ?? [])].reverse()
@@ -256,6 +337,75 @@ function CustomTestDetail({ test, color, onClose, onSaved }: { test: CustomTest;
       {items.map((c, i) => <li key={i} style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.55 }}>{c}</li>)}
     </ul>
   )
+
+  // ══ MOBILE natif : protocole en cartes, saisie en champs doux, historique groupé ══
+  if (mobile) {
+    const ic = (node: React.ReactNode, c = 'var(--text-mid)') => <span style={{ color: c, display: 'flex' }}>{node}</span>
+    const mBullets = (items: string[]) => items.map((c, i) => (
+      <MRow key={i} first={i === 0} align="flex-start" style={{ minHeight: 44 }}>
+        <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-dim)', flexShrink: 0, marginTop: 8 }} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.45 }}>{c}</span>
+      </MRow>
+    ))
+    return (
+      <MSheetFrame zIndex={9999} title={test.nom} subtitle={t('perf.customTestBadge')} onClose={onClose} closeLabel={t('perf.close')}>
+        {close => (
+          <>
+            {p?.objectif && <MBlock title={t('performance.objective')} icon={ic(<Target size={20} />, 'var(--primary)')}><p style={{ fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.55 }}>{p.objectif}</p></MBlock>}
+            {p?.conditions?.length ? <MBlock title={t('performance.conditions')} icon={ic(<ListChecks size={20} />)}>{mBullets(p.conditions)}</MBlock> : null}
+            {p?.echauffement?.length ? <MBlock title={t('performance.warmup')} icon={ic(<Flame size={20} />)}>{mBullets(p.echauffement)}</MBlock> : null}
+            {p?.etapes?.length ? (
+              <MBlock title={t('performance.protocolSteps')} icon={ic(<ListChecks size={20} />)}>
+                {p.etapes.map((e, i) => (
+                  <MRow key={i} first={i === 0} align="flex-start">
+                    <span style={{ ...NUM, width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.5, paddingTop: 3 }}>{e}</span>
+                  </MRow>
+                ))}
+              </MBlock>
+            ) : null}
+            {p?.interpretation?.length ? (
+              <MBlock title={t('performance.resultsInterpretation')} icon={ic(<BookOpen size={20} />)}>
+                {p.interpretation.map((r, i) => (
+                  <MRow key={i} first={i === 0} align="flex-start" style={{ minHeight: 44 }}>
+                    <span aria-hidden style={{ color: 'var(--charge-low)', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>→</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', lineHeight: 1.5 }}>{r}</span>
+                  </MRow>
+                ))}
+              </MBlock>
+            ) : null}
+            {p?.erreurs?.length ? <MBlock title={t('performance.commonMistakes')} icon={ic(<AlertTriangle size={20} />, 'var(--charge-hard)')}>{mBullets(p.erreurs)}</MBlock> : null}
+            {p?.frequence ? <MBlock title={t('performance.frequency')} icon={ic(<Clock size={20} />)}><p style={{ fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.55 }}>{p.frequence}</p></MBlock> : null}
+
+            <MBlock title={t('perf.enterMyResult')} icon={ic(<Save size={20} />)}>
+              <MField label={t('perf.value')}>
+                <SoftInput value={value} onChange={setValue} unit={test.unite} placeholder="—" ariaLabel={t('perf.value')} />
+              </MField>
+              <MField label={t('performance.date')}>
+                <SoftInput type="date" value={date} onChange={setDate} ariaLabel={t('performance.date')} />
+              </MField>
+              <MField label={t('perf.noteOptional')}>
+                <SoftInput value={note} onChange={setNote} placeholder={t('perf.noteOptional')} ariaLabel={t('perf.noteOptional')} />
+              </MField>
+              <PillButton onClick={() => void save(close)} disabled={!value.trim() || busy}>{busy ? t('perf.saving') : t('perf.saveValue')}</PillButton>
+            </MBlock>
+
+            {hist.length > 0 && (
+              <MBlock title={t('perf.history')}>
+                {hist.map((r, i) => (
+                  <MRow key={i} first={i === 0}>
+                    <span style={{ ...NUM, fontSize: 13, color: 'var(--text-mid)', minWidth: 84 }}>{r.date}</span>
+                    <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{r.value}{test.unite ? ` ${test.unite}` : ''}</span>
+                    {r.note && <span style={{ fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '40%' }}>{r.note}</span>}
+                  </MRow>
+                ))}
+              </MBlock>
+            )}
+          </>
+        )}
+      </MSheetFrame>
+    )
+  }
 
   return createPortal(
     <>

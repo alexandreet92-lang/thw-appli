@@ -72,7 +72,7 @@ export function CoachChatBubble() {
       {/* Bouton flottant */}
       {!open && (
         <button onClick={() => setOpen(true)} aria-label={t('w4c.coach_messages_aria')}
-          style={{ position: 'fixed', right: 16, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 1200, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', boxShadow: '0 6px 22px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          style={{ position: 'fixed', right: 16, bottom: 'var(--fab-bottom)', zIndex: 1200, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', cursor: 'pointer', boxShadow: '0 6px 22px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           {unread > 0 && <span style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--r-sm)', background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px var(--bg)' }}>{unread > 9 ? '9+' : unread}</span>}
         </button>
@@ -82,7 +82,7 @@ export function CoachChatBubble() {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.25)' }} />
-          <div style={{ position: 'fixed', zIndex: 1201, right: 16, bottom: 'calc(84px + env(safe-area-inset-bottom))', width: 'min(380px, calc(100vw - 32px))', height: 'min(560px, calc(100vh - 160px))', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 18px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ position: 'fixed', zIndex: 1201, right: 16, bottom: 'var(--fab-bottom)', width: 'min(380px, calc(100vw - 32px))', height: 'min(560px, calc(100vh - 160px))', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 18px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* En-tête */}
             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--border)' }}>
               {sel && !single && (

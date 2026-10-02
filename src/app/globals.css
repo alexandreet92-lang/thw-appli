@@ -334,10 +334,8 @@ html.dark .comp-input-wrap:focus-within {
    tabbar masquée) qui laissait apparaître une bande grise en bas. */
 main:has(.competences-mobile-root) { padding-bottom: 0 !important; }
 
-/* Tiroir mobile ouvert (MobileShell) : la barre d'onglets s'efface pour ne pas
-   flotter au-dessus de la sidebar révélée. */
+/* Barre d'onglets mobile : fondu à l'apparition / disparition. */
 .mobile-tab-bar { transition: opacity 0.2s ease; }
-body.drawer-open .mobile-tab-bar { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .mobile-tab-bar { transition: none; }
 }
@@ -1123,6 +1121,85 @@ html.thw-glass-blur .thw-glass-bubble {
 @keyframes thwCapsuleIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
 .thw-capsule-items { animation: thwCapsuleIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 @media (prefers-reduced-motion: reduce) { .thw-capsule-items { animation: none; } }
+
+/* ── Barre d'onglets mobile (TabCapsule) — géométrie partagée ────────────────
+   --tabbar-top    : distance bas de l'écran → haut de la barre (hauteur + décalage,
+                     le décalage inclut déjà la safe-area : 20 px sur iPhone à encoche).
+   --tabbar-clearance : espace réservé en bas de CHAQUE page mobile (spacer de
+                     PageTransition) = haut de la barre + 28 px d'air. Actif seulement
+                     sous [data-tabbar-space] (posé par MobileShell quand la barre est
+                     affichée sur la route) ; 0 sinon (pages sans barre).
+   --fab-bottom    : bas des boutons flottants (bulle « Mon coach »…) — au-dessus de
+                     la barre sur mobile, inchangé sur desktop. */
+:root {
+  --tabbar-h: 62px;
+  --tabbar-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px));
+  --tabbar-top: calc(var(--tabbar-h) + var(--tabbar-bottom));
+  --fab-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 767px) {
+  :root { --fab-bottom: calc(var(--tabbar-top) + 16px); }
+}
+[data-tabbar-space] { --tabbar-clearance: calc(var(--tabbar-top) + 28px); }
+/* Barre masquée par CSS (fiche activité plein écran, header masqué) → pas d'espace. */
+body:has([data-fullscreen-activity]) [data-tabbar-space],
+body.hide-app-header [data-tabbar-space] { --tabbar-clearance: 0px; }
+/* Dernier enfant de la page (PageTransition mobile) : un VRAI élément dans le flux
+   (padding-bottom d'un conteneur défilant est rogné par WebKit) → le dernier
+   contenu défile toujours AU-DESSUS de la barre. */
+.thw-tabbar-spacer { flex: 0 0 auto; height: var(--tabbar-clearance, 0px); pointer-events: none; }
+
+/* Verre façon Strava : flou sur la barre SEULE (jamais animé), liseré 0,5 px, ombre douce. */
+.thw-tabbar {
+  position: fixed; z-index: 100; left: 20px; right: 20px;
+  bottom: var(--tabbar-bottom); height: var(--tabbar-h);
+  padding: 4px; box-sizing: border-box; border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--float-bg, var(--bg)) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--text) 14%, transparent), var(--shadow-capsule);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .thw-tabbar { background: var(--float-bg, var(--bg)); }
+}
+.thw-tabbar-inner { position: relative; display: flex; width: 100%; height: 100%; }
+.thw-tabbar-items { position: relative; z-index: 1; display: flex; width: 100%; height: 100%; }
+/* Pilule : largeur = 1 onglet, déplacée en transform seul (compositeur, 60 fps). */
+.thw-tabbar-ind {
+  position: absolute; top: 0; bottom: 0; left: 0; z-index: 0; pointer-events: none;
+  will-change: transform;
+  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease;
+}
+.thw-tabbar-ind::before {
+  content: ''; position: absolute; inset: 0 2px; border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  transition: background-color 160ms ease, transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.thw-tabbar-ind[data-lens]::before { background: color-mix(in srgb, var(--text) 13%, transparent); transform: scale(1.04); }
+.thw-tabbar-ind[data-hidden] { opacity: 0; }
+.thw-tab {
+  flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0 2px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+.thw-tabbar .thw-tab:active { transform: none; }
+.thw-tab-content {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 100%;
+  pointer-events: none; transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.thw-tab[data-pressed] .thw-tab-content { transform: scale(1.1); }
+.thw-tab-icon { display: flex; }
+/* Libellés : 11 → 12,5 px selon la largeur d'écran, poids FIXE (pas de reflow à
+   l'activation), jamais de chevauchement (ellipsis en dernier recours). */
+.thw-tab-label {
+  font-family: var(--font-body); font-size: clamp(11px, 3vw, 12.5px); font-weight: 700;
+  line-height: 1.1; letter-spacing: -0.015em;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thw-tabbar-ind, .thw-tabbar-ind::before, .thw-tab-content { transition: none; }
+}
 
 /* Appui façon Claude/iOS : le bouton grossit ET se remplit d'un gris clair OPAQUE
    avec un fin anneau clair (plus de fond translucide au toucher). */

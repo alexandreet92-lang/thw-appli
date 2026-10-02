@@ -51,6 +51,8 @@ export default function DashboardMobile({ roster, pending, loading }: { roster: 
     { href: '/coach/studio', label: t('w3d.nav_studio'), sub: tt('co.nav_studio_sub', 'Lance un système sur tes athlètes'), color: TILE.violet, icon: <Ico d={<><circle cx="5" cy="6" r="2.2" /><circle cx="19" cy="6" r="2.2" /><circle cx="12" cy="18" r="2.2" /><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4" /></>} size={20} /> },
     { href: '/coach/vitrine', label: tt('co.nav_vitrine', 'Ma vitrine'), sub: tt('co.nav_vitrine_sub', 'Ta page publique de coach'), color: TILE.cyan, icon: <Ico d={ICON.star} size={20} /> },
     { href: '/coach/subscription', label: tt('co.nav_subscription', 'Abonnement coach'), sub: tt('co.nav_subscription_sub', 'Pack, capacité et facturation'), color: TILE.green, icon: <Ico d={ICON.card} size={20} /> },
+    // Plus de sidebar coach sur mobile : la Communauté (ex-entrée de la sidebar) reste accessible ici.
+    { href: '/community', label: t('nav.community'), sub: tt('co.nav_community_sub', 'Salons, groupes et événements'), color: TILE.indigo, icon: <Ico d={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>} size={20} /> },
   ]
 
   return (

@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { useI18n } from '@/lib/i18n'
 import type { LucideIcon } from 'lucide-react'
 import { Home, CalendarDays, HeartPulse, Activity, Grid3x3, ClipboardList, MessageCircle, Users } from 'lucide-react'
 import { mobileTabFor, MOBILE_PREFETCH, type MobileTabKey } from '@/lib/nav/mobileSections'
 
 import { TabCapsule, type CapsuleItem } from '@/components/nav/TabCapsule'
+import { tabBarShownOn } from '@/components/nav/tabBarRoutes'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 // ── Types & constants ──────────────────────────────────────────
 
-const ACCENT = '#06B6D4'
+const ACCENT = 'var(--primary)'
 // Onglets inactifs à plein contraste (comme Strava), plus gris clair.
 const DIM    = 'var(--text)'
 
@@ -51,10 +51,13 @@ function anyOverpageOpen(): boolean {
 }
 
 // ── Onglets rapides côté COACH ─────────────────────────────────
-const COACH_TABS: { href: string; labelKey: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
+// shortKey : libellé court affiché SOUS l'icône (5 onglets dans ~65 px chacun —
+// « Programmes » débordait sur ses voisins) ; labelKey reste le nom complet
+// (aria-label). Clé courte absente du dictionnaire → repli sur labelKey.
+const COACH_TABS: { href: string; labelKey: string; shortKey?: string; Icon: LucideIcon; match: (p: string) => boolean }[] = [
   { href: '/coach',          labelKey: 'nav.coachHome',     Icon: Grid3x3,       match: p => p === '/coach' },
   { href: '/coach/athletes', labelKey: 'nav.coachAthletes', Icon: Users,         match: p => p.startsWith('/coach/athlete') },
-  { href: '/coach/programs', labelKey: 'nav.coachPrograms', Icon: ClipboardList, match: p => p.startsWith('/coach/programs') || p.startsWith('/coach/library') },
+  { href: '/coach/programs', labelKey: 'nav.coachPrograms', shortKey: 'nav.coachProgramsShort', Icon: ClipboardList, match: p => p.startsWith('/coach/programs') || p.startsWith('/coach/library') },
   { href: '/coach/messages', labelKey: 'nav.coachMessages', Icon: MessageCircle, match: p => p.startsWith('/coach/messages') },
 ]
 
@@ -120,19 +123,19 @@ export default function MobileTabBar() {
   // sinon l'AIPanel (enfant) se démonte quand le clavier s'ouvre → il se referme,
   // le clavier disparaît, il se remonte/rouvre… boucle infinie. On masque
   // uniquement la barre <nav> plus bas, en gardant l'AIPanel monté.
-  // Page /record : compteur immersif, on cache la navbar
-  if (pathname === '/record') return null
+  // Routes sans barre (/record, plein écran, /competences, /topup, /profile) :
+  // règle partagée avec MobileShell (espace réservé en bas de page).
+  if (!tabBarShownOn(pathname)) return null
+  const tt = (key: string, fallback: string) => { const v = t(key); return v === key ? t(fallback) : v }
   // Espace coach : barre de nav rapide dédiée (mêmes bulles que côté athlète).
-  if (pathname?.startsWith('/coach')) {
-    if (isFullscreenRoute(pathname)) return null
+  if (pathname.startsWith('/coach')) {
     const coachItems: CapsuleItem[] = [
       ...COACH_TABS.map(tab => ({
-        key: tab.href, label: t(tab.labelKey), ariaLabel: t(tab.labelKey),
+        key: tab.href, label: tab.shortKey ? tt(tab.shortKey, tab.labelKey) : t(tab.labelKey), ariaLabel: t(tab.labelKey),
         icon: (c: string, on?: boolean) => <tab.Icon size={26} color={c} strokeWidth={on ? 2.4 : 2} />,
-        onSelect: () => router.push(tab.href),
+        onSelect: () => { if (pathname !== tab.href) router.push(tab.href) },
       })),
-      // 5ᵉ onglet libellé comme les 4 autres → capsule identique à celle de l'athlète
-      // (5 onglets icône 26 + libellé, même pilule glissante).
+      // 5ᵉ onglet libellé comme les 4 autres → capsule identique à celle de l'athlète.
       { key: 'ai', label: t('nav.coachAI'), ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o),
         icon: () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={26} height={26} style={{ objectFit: 'contain', display: 'block' }} />) },
     ]
@@ -146,14 +149,6 @@ export default function MobileTabBar() {
       </>
     )
   }
-  // Page /competences : header + champ dédiés, on masque la tabbar
-  if (pathname?.startsWith('/competences')) return null
-  // Page /topup : standalone (lien email)
-  if (pathname?.startsWith('/topup')) return null
-  // Page /profile : réglages plein écran, on masque la barre d'onglets
-  if (pathname === '/profile') return null
-  // Pages d'entrée (connexion, onboarding…) : pas de barre d'onglets
-  if (isFullscreenRoute(pathname)) return null
 
   // 5 onglets façon Strava. Le Coach IA reste dans le bouton en haut à droite (MobileShell).
   const go = (href: string) => () => { if (pathname !== href) router.push(href) }

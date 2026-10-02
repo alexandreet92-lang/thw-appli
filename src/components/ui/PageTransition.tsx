@@ -26,6 +26,7 @@ type Mode =
  *    Desktop : fondu + 14 px (inchangé).
  * `mode="popLayout"` : la page sortante est retirée du flux et animée par-dessus.
  * Uniquement transform / opacity (60 fps) ; reduced-motion → aucun mouvement.
+ * `mobile` ajoute aussi l'espaceur de bas de page (.thw-tabbar-spacer).
  */
 export function PageTransition({ children, mobile = false }: { children: React.ReactNode; mobile?: boolean }) {
   const pathname = usePathname()
@@ -101,6 +102,11 @@ export function PageTransition({ children, mobile = false }: { children: React.R
         }}
       >
         {children}
+        {/* Mobile : espace réservé à la barre d'onglets flottante, DANS la page
+            (dernier enfant du flux) — un espaceur placé après ce conteneur
+            (height 100 %) ne repoussait rien quand le contenu débordait.
+            Hauteur = --tabbar-clearance (0 hors [data-tabbar-space]). */}
+        {mobile && <div aria-hidden className="thw-tabbar-spacer" />}
       </motion.div>
     </AnimatePresence>
   )

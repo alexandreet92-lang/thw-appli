@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { rkScope, RkScreenIn, RkFab, RkIco, RK_ICON, RkCta } from './kit/RecordKit'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
@@ -57,16 +58,17 @@ export default function RowingForm({ onClose, prefill }: Props) {
   const split500 = calcSplit500(effectiveDur, effectiveDist)
   const watts = calcWatts(split500)
 
-  const bg     = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text   = isDark ? '#FFFFFF' : '#0A0A0A'
-  const muted  = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
-  const border = isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB'
-  const surface = isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB'
-  const btnBg  = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
-  const ACCENT = '#06B6D4'
+  // Tokens (clair/sombre via rkScope) — langage RecordKit.
+  const bg     = 'var(--surface-page)'
+  const text   = 'var(--text)'
+  const muted  = 'var(--text-dim)'
+  const border = 'var(--border)'
+  const surface = 'var(--surface-card)'
+  const btnBg  = 'var(--surface-chip)'
+  const ACCENT = 'var(--primary)'
 
-  const LABEL: React.CSSProperties = { fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:muted, margin:'0 0 10px', display:'block' }
-  const INPUT: React.CSSProperties = { width:'100%', boxSizing:'border-box', background:surface, border:`1px solid ${border}`, borderRadius: 'var(--r-md)', padding:'12px 16px', fontSize:15, color:text, outline:'none', fontFamily: 'var(--font-body)' }
+  const LABEL: React.CSSProperties = { fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:muted, margin:'0 4px 8px', display:'block' }
+  const INPUT: React.CSSProperties = { width:'100%', boxSizing:'border-box', background:surface, border:`1px solid ${border}`, borderRadius: 'var(--r-md)', minHeight:48, padding:'12px 16px', fontSize:16, color:text, outline:'none', fontFamily: 'var(--font-body)' }
   const NUM_SM: React.CSSProperties = { ...INPUT, width:72, padding:'12px 8px', textAlign:'center' }
 
   const handleSave = async () => {
@@ -111,13 +113,11 @@ export default function RowingForm({ onClose, prefill }: Props) {
   if (saved) return <RowingSummary session={saved} onClose={onClose} />
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10004, background:bg, color:text, display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
-      <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:`1px solid ${border}`, position:'relative' }}>
-        <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, border:'none', color:text, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
-        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:15, fontWeight:600 }}>{t('record.rowingNewSession')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft:'auto', padding:'7px 14px', borderRadius: 'var(--r-sm)', background:'none', border:'none', color:ACCENT, fontSize:15, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.5:1 }}>
+    <RkScreenIn className={rkScope(isDark)} style={{ position:'fixed', inset:0, zIndex:10004, background:bg, color:text, display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)' }}>
+      <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap: 8, padding:'calc(env(safe-area-inset-top) + 7px) 14px 8px', position:'relative' }}>
+        <RkFab label="×" onClick={onClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:19, fontWeight:800 }}>{t('record.rowingNewSession')}</span>
+        <button onClick={handleSave} disabled={saving} className="rk-press" style={{ marginLeft:'auto', minHeight: 44, padding:'0 14px', borderRadius: 'var(--r-pill)', background:'none', border:'none', color:ACCENT, fontSize:16, fontWeight:800, cursor:saving?'default':'pointer', opacity:saving?0.5:1 }}>
           {saving ? '…' : t('record.rowingSave')}
         </button>
       </div>
@@ -196,11 +196,11 @@ export default function RowingForm({ onClose, prefill }: Props) {
         </div>
       </div>
 
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'16px 20px', paddingBottom:'max(env(safe-area-inset-bottom),20px)', background: isDark?'linear-gradient(transparent,#0A0A0A 40%)':'linear-gradient(transparent,#FFFFFF 40%)' }}>
-        <button onClick={handleSave} disabled={saving} style={{ width:'100%', height:52, borderRadius: 'var(--r-md)', background:`linear-gradient(135deg,${ACCENT},#2563EB)`, border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.7:1, boxShadow:`0 4px 20px rgba(6,182,212,0.35)` }}>
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'16px 16px', paddingBottom:'max(env(safe-area-inset-bottom),20px)', background:'linear-gradient(transparent, var(--surface-page) 40%)' }}>
+        <RkCta variant="primary" onClick={() => { void handleSave() }} disabled={saving} progress={saving ? 66 : null} style={{ opacity: 1 }}>
           {saving ? t('record.rowingSaving') : t('record.rowingSaveActivity')}
-        </button>
+        </RkCta>
       </div>
-    </div>
+    </RkScreenIn>
   )
 }

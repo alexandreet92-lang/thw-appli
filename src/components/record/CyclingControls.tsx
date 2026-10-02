@@ -1,7 +1,22 @@
 'use client'
+// ════════════════════════════════════════════════════════════════════
+// CyclingControls — contrôles du direct des écrans GPS historiques
+// (Running, Trail, Randonnée, VTT, Ski, Eau libre). Même langage que le live
+// Vélo (maquettes mock8 r2) :
+//   prêt      → pilule GPS + gros bouton Démarrer (ondulation + haptique)
+//   en cours  → verrou · gros bouton pause sombre · Lap
+//   en pause  → « Reprendre » (cyan) + « Terminer » (blanche)
+//   verrouillé→ voile anti-toucher + double tap pour déverrouiller
+// Transitions ressort entre états. Les callbacks restent ceux de l'écran.
+// ════════════════════════════════════════════════════════════════════
+import { useEffect, useState } from 'react'
 import { GPSStatus } from '@/hooks/useGPSTracking'
 import { useI18n } from '@/lib/i18n'
-import GPSIndicator from './GPSIndicator'
+import {
+  RkControlDock, RkControlRow, RkBigButton, RkFab, RkIco, RK_ICON, RkPausePills, RkUnlock, RkStartButton, RkBanner,
+  PauseGlyph,
+} from './kit/RecordKit'
+import { gpsInfo } from './kit/LiveFrame'
 
 export type CyclingPhase = 'ready' | 'running' | 'paused' | 'confirming_stop'
 
@@ -13,196 +28,64 @@ interface Props {
   onPause: () => void
   onResume: () => void
   onLap: () => void
+  /** Historique : passage en confirmation d'arrêt (la pause propose désormais
+   *  « Terminer » directement → onConfirmFinish). */
   onFinish: () => void
   onConfirmFinish: () => void
   isDark?: boolean
-}
-
-function getTheme(isDark: boolean) {
-  return {
-    bg:        isDark ? 'rgba(10,10,10,0.95)' : 'rgba(255,255,255,0.95)',
-    text:      isDark ? '#FFFFFF' : '#0A0A0A',
-    label:     isDark ? 'rgba(255,255,255,0.55)' : '#666',
-    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
-    btnBg:     isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
-    pauseBg:   isDark ? '#FFFFFF' : '#0A0A0A',
-    pauseText: isDark ? '#0A0A0A' : '#FFFFFF',
-  }
+  /** Masque le bouton Lap (sports sans tours : ski, eau libre). */
+  noLap?: boolean
 }
 
 export default function CyclingControls({
-  phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onFinish, onConfirmFinish, isDark = false,
+  phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onConfirmFinish, noLap,
 }: Props) {
-  const { t: tr } = useI18n()
-  const t = getTheme(isDark)
-  const canStart   = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
-  const gpsLoading = gpsStatus === GPSStatus.requesting || gpsStatus === GPSStatus.acquiring
+  const { t } = useI18n()
+  const [locked, setLocked] = useState(false)
+  // Le verrou ne survit pas à une sortie de l'état « en cours ».
+  useEffect(() => { if (phase !== 'running') setLocked(false) }, [phase])
+
+  const canStart = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
+  const g = gpsInfo(gpsStatus, gpsAccuracy, t)
+  const stateKey = phase === 'ready' ? 'ready' : phase === 'running' ? (locked ? 'locked' : 'running') : 'paused'
 
   return (
-    <div style={{
-      position: 'fixed', left: 0, right: 0, bottom: 0,
-      zIndex: 9999,
-      background: t.bg,
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      borderTop: `1px solid ${t.separator}`,
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '10px 24px',
-      paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-    }}>
-      {/* État pressé commun — enfoncement doux sur tous les boutons de contrôle */}
-      <style>{`
-        .cyc-ctl-btn { transition: transform 0.12s ease, box-shadow 0.18s ease, opacity 0.2s ease; }
-        .cyc-ctl-btn:active { transform: scale(0.93); }
-        @media (prefers-reduced-motion: reduce) { .cyc-ctl-btn, .cyc-ctl-btn:active { transition: none; transform: none; } }
-      `}</style>
-      {phase === 'ready' && (
-        <>
-          <GPSIndicator status={gpsStatus} accuracy={gpsAccuracy} isDark={isDark} />
-          <div style={{ height: 8 }} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={canStart ? onStart : undefined}
-              disabled={!canStart && !gpsLoading}
-              aria-label={tr('record.commonStart')}
-              className="cyc-ctl-btn"
-              style={{
-                width: 72, height: 72, borderRadius: '50%',
-                border: 'none', cursor: canStart ? 'pointer' : 'not-allowed',
-                background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-                boxShadow: canStart ? '0 6px 24px rgba(6,182,212,0.35), 0 2px 6px rgba(6,182,212,0.25)' : 'none', // design-allow-color
-                opacity: canStart || gpsLoading ? 1 : 0.5,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {gpsLoading ? (
-                <div style={{
-                  width: 24, height: 24, borderRadius: '50%',
-                  border: '3px solid rgba(255,255,255,0.3)',
-                  borderTopColor: '#fff',
-                  animation: 'spin 0.7s linear infinite',
-                }} />
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
+    <>
+      {/* Voile anti-toucher (écran verrouillé) : seul le bouton de
+          déverrouillage reste actif. */}
+      {locked && (
+        <div aria-hidden onPointerDown={e => e.stopPropagation()}
+          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'color-mix(in srgb, var(--surface-page) 18%, transparent)', touchAction: 'none' }} />
+      )}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 0, zIndex: 9999 }}>
+        <RkControlDock stateKey={stateKey}>
+          {stateKey === 'ready' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <RkBanner dot={g.dot} live={g.searching} style={{ animation: 'none' }}>
+                <span className="rk-num" style={{ letterSpacing: 0 }}>{canStart || g.searching ? g.text : t('record.cyclingControlsGpsRequired')}</span>
+              </RkBanner>
+              <RkStartButton label={t('record.commonStart')} onClick={onStart} disabled={!canStart} size={96} />
+            </div>
+          )}
+          {stateKey === 'running' && (
+            <RkControlRow
+              left={<RkFab label={t('w2c.lockAction')} onClick={() => setLocked(true)} size={56}><RkIco d={RK_ICON.lock} size={22} /></RkFab>}
+              center={<RkBigButton label={t('record.commonPause')} onClick={onPause}><PauseGlyph /></RkBigButton>}
+              right={noLap ? undefined : (
+                <RkFab label={t('record.cyclingControlsLap')} onClick={onLap} size={56}>
+                  <span style={{ fontSize: 14, fontWeight: 800 }}>{t('record.cyclingControlsLap')}</span>
+                </RkFab>
               )}
-            </button>
-            <p style={{
-              margin: 0, fontSize: 11, fontWeight: 700,
-              color: canStart ? '#06B6D4' : t.label, letterSpacing: '0.06em',
-            }}>
-              {canStart ? tr('record.cyclingControlsStartCap') : gpsLoading ? tr('record.cyclingControlsAcquiring') : tr('record.cyclingControlsGpsRequired')}
-            </p>
-          </div>
-        </>
-      )}
-
-      {phase === 'running' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onLap} aria-label={tr('record.cyclingControlsLap')} className="cyc-ctl-btn" style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.10)', // design-allow-color
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M3 12h18M14 5l7 7-7 7"/>
-              </svg>
-            </button>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: t.label, letterSpacing: '0.09em' }}>{tr('record.cyclingControlsLapCap')}</p>
-          </div>
-          <button onClick={onPause} aria-label={tr('record.commonPause')} className="cyc-ctl-btn" style={{
-            width: 68, height: 68, borderRadius: '50%',
-            background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
-            boxShadow: '0 6px 22px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14)', // design-allow-color
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor">
-              <rect x="5" y="3" width="4" height="16" rx="1"/>
-              <rect x="13" y="3" width="4" height="16" rx="1"/>
-            </svg>
-          </button>
-          <div style={{ width: 52 }} />
-        </div>
-      )}
-
-      {phase === 'paused' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onFinish} aria-label={tr('record.cyclingControlsStop')} className="cyc-ctl-btn" style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.15)', color: 'var(--danger)',
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
-              </svg>
-            </button>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: t.label, letterSpacing: '0.09em' }}>{tr('record.cyclingControlsStopCap')}</p>
-          </div>
-          <button onClick={onResume} aria-label={tr('record.commonResume')} className="cyc-ctl-btn" style={{
-            width: 68, height: 68, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-            color: '#fff', border: 'none', cursor: 'pointer',
-            boxShadow: '0 6px 24px rgba(6,182,212,0.35), 0 2px 6px rgba(6,182,212,0.25)', // design-allow-color
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </button>
-          <div style={{ width: 52 }} />
-        </div>
-      )}
-
-      {phase === 'confirming_stop' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={onResume}
-              className="cyc-ctl-btn"
-              style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: 'rgba(6,182,212,0.15)',
-                border: '2px solid rgba(6,182,212,0.4)',
-                color: '#06B6D4', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M6 4l13 8-13 8V4z" fill="var(--primary)"/>
-              </svg>
-            </button>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', letterSpacing: 0.5 }}>
-              {tr('record.cyclingControlsResumeCap')}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={onConfirmFinish}
-              className="cyc-ctl-btn"
-              style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: 'rgba(239,68,68,0.15)',
-                border: '2px solid rgba(239,68,68,0.4)',
-                color: '#EF4444', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="4" y="4" width="14" height="14" rx="2" fill="var(--danger)"/>
-              </svg>
-            </button>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', letterSpacing: 0.5 }}>
-              {tr('record.cyclingControlsFinishCap')}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+            />
+          )}
+          {stateKey === 'paused' && (
+            <RkPausePills resumeLabel={t('record.commonResume')} finishLabel={t('rec.finish')} onResume={onResume} onFinish={onConfirmFinish} />
+          )}
+          {stateKey === 'locked' && (
+            <RkUnlock hint={t('w2c.doubleTapUnlock')} label={t('w2c.unlockAction')} onUnlock={() => setLocked(false)} />
+          )}
+        </RkControlDock>
+      </div>
+    </>
   )
 }

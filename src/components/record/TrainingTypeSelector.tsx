@@ -45,7 +45,7 @@ interface Props {
   types?: TrainingType[]
 }
 
-export default function TrainingTypeSelector({ selected, onChange, isDark = false, types = CYCLING_TYPES }: Props) {
+export default function TrainingTypeSelector({ selected, onChange, types = CYCLING_TYPES }: Props) {
   const { t: tr } = useI18n()
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
@@ -60,19 +60,19 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
         return (
           <button
             key={type.id}
+            type="button"
             onClick={() => toggle(type.id)}
             title={descText}
+            aria-pressed={active}
+            className="rk-press"
             style={{
-              padding: '10px 16px', borderRadius: 'var(--r-pill)',
-              fontSize: 14, fontWeight: 500,
-              border: active ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB'}`,
-              background: active
-                ? 'linear-gradient(135deg, #06B6D4, #2563EB)'
-                : (isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB'),
-              color: active ? '#fff' : (isDark ? '#fff' : '#374151'),
+              minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-pill)',
+              fontSize: 15, fontWeight: 700, border: 'none',
+              background: active ? 'var(--text)' : 'var(--surface-card)',
+              color: active ? 'var(--bg)' : 'var(--text)',
               cursor: 'pointer',
               fontFamily: 'var(--font-body)',
-              transition: 'all 150ms',
+              transition: 'background-color 200ms ease, color 200ms ease',
             }}
           >
             {labelText}

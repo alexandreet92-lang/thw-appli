@@ -1,6 +1,10 @@
 'use client'
+// Écran d'explication AVANT la demande d'autorisation GPS (iOS / web).
+// Langage RecordKit : page gris chaud, carte blanche, gros bouton cyan.
 import { useI18n } from '@/lib/i18n'
 import { getCurrentPosition } from '@/lib/native/geo'
+import { haptic } from '@/lib/haptics'
+import { rkScope, useAppDark, RkScreenIn, RkCta, RkIco, RK_ICON } from './kit/RecordKit'
 
 interface Props {
   onAuthorize: () => void
@@ -13,104 +17,49 @@ const FEATURE_KEYS = [
   'record.gpsPrePermFeature3',
 ]
 
-function CheckIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-      <circle cx="8" cy="8" r="8" fill="rgba(6,182,212,0.15)"/>
-      <path d="M5 8l2 2 4-4" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
-
 export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props) {
   const { t } = useI18n()
+  const dark = useAppDark()
   const FEATURES = FEATURE_KEYS.map(k => t(k))
   const handleAuthorize = () => {
+    haptic('medium')
     // Déclenche la demande d'autorisation iOS (plugin natif) ou le prompt web.
     try { getCurrentPosition(() => {}, () => {}, { timeout: 5000 }) } catch { /* ignore */ }
     onAuthorize()
   }
 
   return (
-    <div style={{
+    <RkScreenIn className={rkScope(dark)} style={{
       position: 'fixed', inset: 0, zIndex: 10010,
-      background: '#FFFFFF', color: '#0A0A0A',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '32px 24px', textAlign: 'center',
-      fontFamily: 'var(--font-body)',
+      background: 'var(--surface-page)', color: 'var(--text)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '32px 16px calc(env(safe-area-inset-bottom) + 24px)', textAlign: 'center', overflowY: 'auto',
     }}>
-      {/* Icon */}
-      <div style={{
-        width: 80, height: 80, borderRadius: '50%',
-        background: 'rgba(6,182,212,0.10)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 24,
-      }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
-          <path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" strokeWidth="0" fill="rgba(6,182,212,0.2)"/>
-        </svg>
+      {/* Pictogramme GPS avec halo */}
+      <div style={{ position: 'relative', width: 96, height: 96, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span className="rk-start" aria-hidden style={{ position: 'absolute', inset: 8, cursor: 'default', boxShadow: 'none', background: 'var(--primary-dim)' }} />
+        <span style={{ position: 'relative', color: 'var(--primary)', display: 'flex' }}><RkIco d={RK_ICON.gps} size={38} sw={1.8} /></span>
       </div>
 
-      {/* Title */}
-      <h2 style={{
-        margin: '0 0 12px', fontSize: 24, fontWeight: 700,
-        fontFamily: 'var(--font-body)', color: '#0A0A0A',
-      }}>
-        {t('record.gpsPrePermTitle')}
-      </h2>
+      <h2 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em' }}>{t('record.gpsPrePermTitle')}</h2>
+      <p style={{ margin: '0 0 24px', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, maxWidth: 340 }}>{t('record.gpsPrePermDesc')}</p>
 
-      {/* Description */}
-      <p style={{
-        margin: '0 0 28px', fontSize: 14, color: '#666',
-        lineHeight: 1.6, maxWidth: 320,
-      }}>
-        {t('record.gpsPrePermDesc')}
-      </p>
-
-      {/* Feature list */}
-      <div style={{
-        display: 'flex', flexDirection: 'column', gap: 12,
-        marginBottom: 36, width: '100%', maxWidth: 300, textAlign: 'left',
-      }}>
-        {FEATURES.map(f => (
-          <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <CheckIcon />
-            <span style={{ fontSize: 14, color: '#333', lineHeight: 1.4 }}>{f}</span>
+      {/* Ce que le GPS permet */}
+      <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '6px 16px', textAlign: 'left', marginBottom: 28 }}>
+        {FEATURES.map((f, i) => (
+          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+            <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <RkIco d={RK_ICON.check} size={15} sw={2.6} />
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}>{f}</span>
           </div>
         ))}
       </div>
 
-      {/* Primary button */}
-      <button
-        onClick={handleAuthorize}
-        style={{
-          width: '100%', maxWidth: 340, height: 52, borderRadius: 'var(--r-md)', border: 'none',
-          background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-          color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'var(--font-body)',
-          boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
-          transition: 'transform 0.12s',
-        }}
-        onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.98)' }}
-        onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
-      >
-        {t('record.gpsPrePermTitle')}
-      </button>
-
-      {/* Secondary button */}
-      <button
-        onClick={onDismiss}
-        style={{
-          marginTop: 14, background: 'none', border: 'none',
-          fontSize: 14, color: '#8C8C8C', cursor: 'pointer',
-          fontFamily: 'var(--font-body)', padding: '6px 16px',
-        }}
-      >
-        {t('record.gpsPrePermNotNow')}
-      </button>
-    </div>
+      <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <RkCta variant="primary" onClick={handleAuthorize}>{t('record.gpsPrePermTitle')}</RkCta>
+        <RkCta variant="text" onClick={onDismiss}>{t('record.gpsPrePermNotNow')}</RkCta>
+      </div>
+    </RkScreenIn>
   )
 }

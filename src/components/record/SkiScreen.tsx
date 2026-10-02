@@ -11,7 +11,7 @@ import SkiPage1 from './SkiPage1'
 import SkiPage2 from './SkiPage2'
 import SkiPage3 from './SkiPage3'
 import SkiSettings from './SkiSettings'
-import AutoPauseBadge from './AutoPauseBadge'
+import LiveFrame from './kit/LiveFrame'
 import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
 import { primeLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
@@ -103,23 +103,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
     skiUpdate(gps.currentSpeed, gps.gradient ?? 0, gps.distance, gps.currentAltitude ?? 0)
   }, [gps.currentSpeed, gps.gradient, gps.distance, gps.currentAltitude, phase, skiUpdate])
 
-  const touchRef = useRef<{ y: number; t: number } | null>(null)
-  const swipeFromMap = useRef(false)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    swipeFromMap.current = !!(e.target as HTMLElement)?.closest?.('.leaflet-container')
-    if (swipeFromMap.current) return
-    touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
-  }
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (swipeFromMap.current) { swipeFromMap.current = false; return }
-    if (!touchRef.current) return
-    const dy = e.changedTouches[0].clientY - touchRef.current.y
-    const dt = Date.now() - touchRef.current.t
-    touchRef.current = null
-    if (dt > 600) return
-    if (dy < -50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i + 1) % n })
-    else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
-  }
+
 
   // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS).
   const handleStart = () => { primeLapBeep(); resetTracking(); skiReset(); gpsWasOkRef.current = true; speedArmedRef.current = true; setStartedAt(Date.now()); setPhase('running') }
@@ -174,67 +158,64 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   const isDark = settings.display.theme === 'dark' ? true
     : settings.display.theme === 'light' ? false
     : systemDark
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
-  const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
   const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
   const currentPosition: [number, number] | null = gps.currentLat != null && gps.currentLng != null ? [gps.currentLat, gps.currentLng] : null
   const startedAtISO = startedAt ? new Date(startedAt).toISOString() : new Date().toISOString()
   const dotCount = Math.max(PAGE_COUNT, pages.length)
 
   return createPortal(
-    <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
-      {/* Header */}
-      <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', gap:8 }}>
-        <button onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }} aria-label={t('record.skiExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
-        <div style={{ display:'flex', gap:6, flex:1, justifyContent:'center' }}>
-          {(['ski', 'snowboard'] as const).map(type => (
-            <button key={type} onClick={() => setSkiType(type)} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background: skiType===type ? 'rgba(6,182,212,0.15)' : btnBg, border:`1.5px solid ${skiType===type ? '#06B6D4' : 'transparent'}`, color: skiType===type ? '#06B6D4' : labelColor, fontSize:13, fontWeight:500, cursor:'pointer' }}>
-              {type === 'ski' ? 'Ski' : 'Snowboard'}
-            </button>
-          ))}
+    <LiveFrame
+      isDark={isDark}
+      title={skiType === 'ski' ? 'Ski' : 'Snowboard'}
+      phase={phase}
+      autoPaused={autoPaused}
+      gpsStatus={gps.status}
+      gpsAccuracy={gps.accuracy}
+      onClose={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }}
+      closeLabel={t('record.skiExit')}
+      onSettings={() => setSettingsOpen(true)}
+      settingsLabel={t('record.skiSettingsAria')}
+      pageCount={dotCount}
+      pageIndex={pageIndex}
+      onPageChange={setPageIndex}
+      below={phase === 'ready' ? (
+        // Ski / Snowboard : segment iOS sous l'en-tête (avant le départ).
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '0 16px 8px' }}>
+          <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
+            {(['ski', 'snowboard'] as const).map(type => (
+              <button key={type} type="button" onClick={() => setSkiType(type)} className="rk-press"
+                style={{ minHeight: 40, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: skiType === type ? 800 : 600,
+                  background: skiType === type ? 'var(--surface-card)' : 'transparent', color: skiType === type ? 'var(--text)' : 'var(--text-mid)',
+                  boxShadow: skiType === type ? 'var(--shadow-capsule)' : 'none', transition: 'background-color 200ms ease, color 200ms ease' }}>
+                {type === 'ski' ? 'Ski' : 'Snowboard'}
+              </button>
+            ))}
+          </div>
         </div>
-        <button onClick={() => setSettingsOpen(true)} aria-label={t('record.skiSettingsAria')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-      </div>
+      ) : undefined}
+      banners={<LiveNoticeBanner noticeKey={noticeKey} />}
+      overlays={<>
+        {(phase === 'running' || phase === 'paused') && (
+          <div style={{ position: 'absolute', bottom: 'calc(150px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
+            <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
+          </div>
+        )}
+        {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
+        <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={() => {}} noLap onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
+        <SkiSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
-      {/* Pages */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', paddingBottom:'calc(120px + env(safe-area-inset-bottom))' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        <div key={pageIndex} style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, overflowY:'auto' }}>
-          {pageIndex === 0 && <SkiPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} maxSpeedKmh={gps.maxSpeed} distanceM={gps.distance} elevationLossM={ski.elevationLossM} altitudeM={gps.currentAltitude ?? 0} runCount={ski.runCount} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
-          {pageIndex === 1 && <SkiPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} />}
-          {pageIndex === 2 && <SkiPage3 isDark={isDark} maxSpeedKmh={ski.maxSpeedRunKmh} avgSpeedRunKmh={ski.avgSpeedRunKmh} runCount={ski.runCount} totalRunDistanceM={ski.totalRunDistanceM} elevationLossM={ski.elevationLossM} phase={ski.phase} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
-        </div>
-        <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:8 }}>
-          {Array.from({ length: dotCount }).map((_, i) => <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i === pageIndex ? '#06B6D4' : labelColor, transition:'background 0.2s' }} />)}
-        </div>
-      </div>
+        <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
 
-      {/* Badge auto-pause — visible quelle que soit la page active */}
-      <AutoPauseBadge active={autoPaused} isDark={isDark} />
-
-      {/* Bandeau transitoire : perte GPS, alerte vitesse max */}
-      <LiveNoticeBanner noticeKey={noticeKey} />
-
-      {(phase === 'running' || phase === 'paused') && (
-        <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>
-          <PhotoButton ref={photoRef} onPreview={url => setPreviewUrl(url)} currentLat={gps.currentLat ?? undefined} currentLng={gps.currentLng ?? undefined} />
-        </div>
-      )}
-      {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
-      <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={() => {}} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <SkiSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
-
-      <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
-
-      {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
-      {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}
-      {showSaveForm && <SessionSaveForm sport="ski" startedAt={startedAtISO} onBack={() => setShowSaveForm(false)} onSave={handleSaveSession} isDark={isDark} />}
-      {finishedSnap && <SkiSummary snap={finishedSnap} isDark={isDark} onClose={onFinished} />}
-    </div>,
+        {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
+        {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}
+        {showSaveForm && <SessionSaveForm sport="ski" startedAt={startedAtISO} onBack={() => setShowSaveForm(false)} onSave={handleSaveSession} isDark={isDark} onDiscard={() => { setShowSaveForm(false); onExit() }} />}
+        {finishedSnap && <SkiSummary snap={finishedSnap} isDark={isDark} onClose={onFinished} />}
+      </>}
+    >
+      {pageIndex === 0 && <SkiPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} maxSpeedKmh={gps.maxSpeed} distanceM={gps.distance} elevationLossM={ski.elevationLossM} altitudeM={gps.currentAltitude ?? 0} runCount={ski.runCount} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
+      {pageIndex === 1 && <SkiPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} />}
+      {pageIndex === 2 && <SkiPage3 isDark={isDark} maxSpeedKmh={ski.maxSpeedRunKmh} avgSpeedRunKmh={ski.avgSpeedRunKmh} runCount={ski.runCount} totalRunDistanceM={ski.totalRunDistanceM} elevationLossM={ski.elevationLossM} phase={ski.phase} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
+    </LiveFrame>,
     document.body
   )
 }

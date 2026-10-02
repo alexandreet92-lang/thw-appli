@@ -13,6 +13,7 @@
 //  Fond blanc frosté translucide (voir la carte au travers).
 // ════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { haptic } from '@/lib/haptics'
 import { useI18n } from '@/lib/i18n'
 
 const ACCENT = '#06B6D4'   // design-allow-color
@@ -162,9 +163,8 @@ export default function RouteSheet(p: Props) {
         position: 'absolute', left: 10, right: 10, bottom: 'calc(env(safe-area-inset-bottom) + 8px)',
         maxHeight: 'calc(100% - env(safe-area-inset-top) - 150px)',
         borderRadius: 28, zIndex: 45, overflow: 'hidden',
-        background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
-        backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-        boxShadow: '0 12px 44px rgba(0,0,0,0.26)',
+        background: 'var(--float-bg)',
+        boxShadow: 'var(--shadow-float)',
         transform, transition: dragging ? 'none' : `transform 0.4s ${EASE}`,
         display: 'flex', flexDirection: 'column',
       }}
@@ -178,7 +178,7 @@ export default function RouteSheet(p: Props) {
           style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none', padding: '9px 14px 14px' }}
         >
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-            <span style={{ width: 40, height: 5, borderRadius: 3, background: 'var(--live-hairline-2)' }} />
+            <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
           </div>
           {/* Watts + FC (en haut de la bulle) */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginBottom: 12 }}>
@@ -221,16 +221,16 @@ export default function RouteSheet(p: Props) {
           </div>
           {p.started && (
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button onClick={p.onPauseToggle} style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: 15, borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 15.5, fontWeight: 800, fontFamily: 'var(--font-body)' }}>
+              <button onClick={() => { haptic('medium'); p.onPauseToggle() }} className="rk-press" style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, minHeight: 54, padding: '0 15px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: p.showPlayIcon ? 'var(--primary)' : 'var(--text)', color: p.showPlayIcon ? 'var(--on-primary)' : 'var(--bg)', fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-body)' }}>
                 {p.showPlayIcon
                   ? <svg width="17" height="19" viewBox="0 0 26 30"><path d="M3 3 L23 15 L3 27 Z" fill="currentColor" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" /></svg>
                   : <svg width="15" height="15" viewBox="0 0 22 22"><rect x="3" y="3" width="6" height="16" rx="2" fill="currentColor" /><rect x="13" y="3" width="6" height="16" rx="2" fill="currentColor" /></svg>}
                 {p.showPlayIcon ? t('w2c.resume') : t('w2c.pause')}
               </button>
               {p.canLap && (
-                <button onClick={p.onLap} style={{ flex: 1, padding: 15, borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--live-surface)', color: 'var(--live-text)', fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', fontFamily: 'var(--font-body)' }}>LAP</button>
+                <button onClick={() => { haptic('light'); p.onLap() }} className="rk-press" style={{ flex: 1, minHeight: 54, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{t('w2c.lap')}</button>
               )}
-              <button onClick={p.onFinish} style={{ flex: 1, padding: 15, borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--live-danger, #ef4444)', color: '#fff', fontSize: 15.5, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{t('w2c.finish')}</button>
+              <button onClick={() => { haptic('medium'); p.onFinish() }} className="rk-press" style={{ flex: 1, minHeight: 54, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', background: 'var(--surface-chip)', color: 'var(--danger)', fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{t('w2c.finish')}</button>
             </div>
           )}
         </div>

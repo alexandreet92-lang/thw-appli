@@ -7,7 +7,7 @@ export const NUM: CSSProperties = { fontFamily: 'var(--font-body)', fontWeight: 
 
 export function Lbl({ children }: { children: ReactNode }) {
   return (
-    <span style={{ fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 800 }}>
+    <span style={{ fontSize: 13, letterSpacing: '0.01em', color: 'var(--text-mid)', fontWeight: 700 }}>
       {children}
     </span>
   )
@@ -15,7 +15,7 @@ export function Lbl({ children }: { children: ReactNode }) {
 
 export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '11px 13px', ...style }}>
+    <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '12px 14px', ...style }}>
       {children}
     </div>
   )

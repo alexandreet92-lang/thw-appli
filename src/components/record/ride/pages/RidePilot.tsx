@@ -14,7 +14,7 @@ export default function RidePilot({ v, d, onStopTest }: { v: RideView; d: Derive
     <>
       <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, padding: '2px 2px 8px' }}>{t('w3b.piloting')}</div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '9px 13px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '9px 13px' }}>
         <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{v.current?.name ?? t('w3b.free_ride')}</span>
         <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 800, letterSpacing: '0.06em' }}>{d.repLabel}</span>
       </div>
@@ -41,7 +41,7 @@ export default function RidePilot({ v, d, onStopTest }: { v: RideView; d: Derive
       {/* Bouton « Stop test » — rampe uniquement : arrête le test à l'épuisement
           et bascule directement sur la récupération. */}
       {d.isRampBlock && onStopTest && (
-        <button onClick={onStopTest} style={{ marginTop: 14, padding: '13px 16px', borderRadius: 'var(--r-md)', background: 'var(--danger, #ef4444)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', width: '100%' }}>
+        <button onClick={onStopTest} style={{ marginTop: 14, padding: '13px 16px', minHeight: 52, borderRadius: 'var(--r-pill)', background: 'var(--danger)', border: 'none', color: 'var(--on-primary)', fontSize: 14, fontWeight: 800, cursor: 'pointer', width: '100%' }}>
           {t('w3b.stop_test')}
         </button>
       )}
@@ -57,7 +57,7 @@ export default function RidePilot({ v, d, onStopTest }: { v: RideView; d: Derive
         </Card>
       </div>
 
-      <div style={{ marginTop: 14, height: 54, borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ marginTop: 14, height: 54, borderRadius: 'var(--r-md)', background: 'var(--surface-card)', overflow: 'hidden' }}>
         <MiniChart samples={v.samples} ftp={v.ftp} t={v.t} />
       </div>
     </>

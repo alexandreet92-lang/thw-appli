@@ -8,14 +8,20 @@
 // géré par le parent). Suit le thème de l'app (clair/sombre) — jamais de fond
 // noir forcé qui rendait certaines données invisibles.
 // ══════════════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { sportLabel } from '@/components/recovery/helpers'
 import { useI18n } from '@/lib/i18n'
+import type { FinishedSession } from '@/types/session'
+import type { CompletedEffortLocal } from '@/types/segment'
+import SessionSummaryPage1 from './SessionSummaryPage1'
+import SessionSummaryPage2 from './SessionSummaryPage2'
+import { rkScope, RkFab, RkFabSpacer, RkIco, RK_ICON, RkStatusPill, RkGrid, RkCell, RkCta, RK_SPRING } from './kit/RecordKit'
 
 export interface TargetSeries { pts: { t: number; v: number }[]; unit: string; kind: string }
 export interface SummaryHr { avg: number | null; max: number | null; min: number | null; samples: number[] }
 
-interface Props {
+interface WorkoutProps {
   sportType: string
   startedAt: string
   durationSec: number
@@ -34,29 +40,28 @@ interface Props {
   onClose?: () => void
 }
 
-// Bleu CTA de l'app (identique au bouton « Enregistrer »).
-const APP_BLUE = 'linear-gradient(135deg, #06B6D4, #2563EB)'
-const HR_COLOR = '#ef4444'
+/** Récap d'une sortie GPS déjà enregistrée (Running, Trail, Rando, VTT). */
+interface GpsProps {
+  session: FinishedSession
+  isDark: boolean
+  onClose: () => void
+  completedEfforts?: CompletedEffortLocal[]
+}
 
-function theme(isDark: boolean) {
+type Props = WorkoutProps | GpsProps
+
+const HR_COLOR = 'var(--danger)'
+
+// Thème : tokens (clair/sombre via rkScope sur le conteneur).
+function theme() {
   return {
-    bg:         isDark ? '#0A0A0A' : '#F4F7F9',
-    text:       isDark ? '#FFFFFF' : '#0A0A0A',
-    muted:      isDark ? 'rgba(255,255,255,0.52)' : '#7A828B',
-    faint:      isDark ? 'rgba(255,255,255,0.4)'  : '#A6ACB3',
-    tileBg:     isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF',
-    tileBorder: isDark ? 'rgba(255,255,255,0.09)' : '#E7ECF0',
-    grid:       isDark ? 'rgba(255,255,255,0.08)' : 'rgba(16,24,40,0.07)',
-    listBorder: isDark ? 'rgba(255,255,255,0.07)' : '#EEF1F4',
-    shadow:     isDark ? 'none' : '0 1px 3px rgba(16,24,40,0.05)',
-    fadeTo:     isDark ? '#0A0A0A' : '#F4F7F9',
-    accentSoft: isDark ? 'rgba(37,99,235,0.16)' : 'rgba(37,99,235,0.10)',
-    blue:       '#2563EB',
+    text: 'var(--text)', muted: 'var(--text-mid)', faint: 'var(--text-dim)',
+    tileBg: 'var(--surface-card)', grid: 'var(--border)', listBorder: 'var(--border)',
   }
 }
 
 function fmtClock(s: number): string {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60)
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
 }
 
@@ -102,8 +107,8 @@ function SessionChart({ target, hr, accent, T, t }: { target: TargetSeries | nul
         </svg>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-        <span style={{ fontSize: 10, color: T.faint }}>0:00</span>
-        <span style={{ fontSize: 10, color: T.faint }}>{hasTarget ? fmtClock(totalT) : ''}</span>
+        <span style={{ fontSize: 11, color: T.faint }}>0:00</span>
+        <span style={{ fontSize: 11, color: T.faint }}>{hasTarget ? fmtClock(totalT) : ''}</span>
       </div>
     </div>
   )
@@ -112,92 +117,146 @@ function Legend({ c, label, T }: { c: string; label: string; T: ReturnType<typeo
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: T.muted }}><span style={{ width: 9, height: 3, borderRadius: 2, background: c }} />{label}</span>
 }
 
-export default function SessionSummary({ sportType, startedAt, durationSec, doneList, sets, volumeKg, caloriesEst, doneCount, totalCount, unitLabel, hr, target, accent, isDark, onNext, onClose }: Props) {
+export default function SessionSummary(props: Props) {
+  if ('session' in props) return <GpsRecap {...props} />
+  return <WorkoutRecap {...props} />
+}
+
+// ── Récap séance guidée (muscu / Hyrox / boxe) ───────────────────────
+function WorkoutRecap({ sportType, startedAt, durationSec, doneList, sets, volumeKg, caloriesEst, doneCount, totalCount, unitLabel, hr, target, accent, isDark, onNext, onClose }: WorkoutProps) {
   const { t } = useI18n()
-  const T = theme(isDark)
-  const [shown, setShown] = useState(false)
+  const T = theme()
+  const reduce = useReducedMotion()
   const [closing, setClosing] = useState(false)
-  useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
-  const requestClose = () => { if (!onClose) return; setClosing(true); setShown(false); setTimeout(onClose, 320) }
+  const requestClose = () => { if (!onClose) return; setClosing(true); setTimeout(onClose, 300) }
   const date = new Date(startedAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-  const kpis: { label: string; value: string; accent?: boolean }[] = [
-    { label: t('w3a.kpi_temps'), value: fmtClock(durationSec), accent: true },
+  const kpis: { label: string; value: string; unit?: string }[] = [
     { label: unitLabel, value: `${doneCount}/${totalCount}` },
   ]
   if (sets > 0) kpis.push({ label: t('w3a.kpi_series'), value: String(sets) })
-  if (volumeKg > 0) kpis.push({ label: t('w3a.kpi_volume'), value: `${Math.round(volumeKg)} kg` })
-  if (caloriesEst > 0) kpis.push({ label: t('w3a.kpi_calories'), value: `${caloriesEst} kcal` })
-  if (hr.avg != null) kpis.push({ label: t('w3a.kpi_hr_avg'), value: `${hr.avg}` })
-  if (hr.max != null) kpis.push({ label: t('w3a.kpi_hr_max'), value: `${hr.max}` })
+  if (volumeKg > 0) kpis.push({ label: t('w3a.kpi_volume'), value: String(Math.round(volumeKg)), unit: 'kg' })
+  if (caloriesEst > 0) kpis.push({ label: t('w3a.kpi_calories'), value: String(caloriesEst), unit: 'kcal' })
+  if (hr.avg != null) kpis.push({ label: t('w3a.kpi_hr_avg'), value: `${hr.avg}`, unit: 'bpm' })
+  if (hr.max != null) kpis.push({ label: t('w3a.kpi_hr_max'), value: `${hr.max}`, unit: 'bpm' })
 
-  const tile: React.CSSProperties = { background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 'var(--r-md)', padding: '14px 16px', boxShadow: T.shadow }
-  const label: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted, margin: 0 }
+  const card: React.CSSProperties = { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: T.bg, color: T.text, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 320ms cubic-bezier(0.16,1,0.3,1)', paddingTop: 'env(safe-area-inset-top)' }}>
-      {onClose && (
-        <button onClick={requestClose} aria-label={t('w3a.close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', left: 14, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${T.tileBorder}`, background: T.tileBg, color: T.text, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: T.shadow }}>×</button>
-      )}
+    <motion.div className={rkScope(isDark)}
+      initial={{ y: reduce ? 0 : '100%', opacity: reduce ? 0 : 1 }}
+      animate={closing ? { y: reduce ? 0 : '100%', opacity: reduce ? 0 : 1 } : { y: 0, opacity: 1 }}
+      transition={reduce ? { duration: 0.15 } : RK_SPRING}
+      style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px', maxWidth: 760, width: '100%', margin: '0 auto' }}>
+        {onClose ? <RkFab label={t('w3a.close')} onClick={requestClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab> : <RkFabSpacer />}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+          <RkStatusPill dot={accent}>{sportLabel(sportType)}</RkStatusPill>
+        </div>
+        <RkFabSpacer />
+      </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '30px 20px 130px', maxWidth: 760, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-        {/* Hero */}
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 13px', borderRadius: 'var(--r-pill)', background: T.accentSoft, border: `1px solid ${T.blue}44`, marginBottom: 14 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.blue }} />
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: T.blue }}>{sportLabel(sportType)}</span>
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em', color: T.text }}>{t('w3a.session_done')}</h1>
-          <p style={{ fontSize: 13.5, color: T.muted, margin: 0, textTransform: 'capitalize' }}>{date}</p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(52px, 16vw, 84px)', fontWeight: 800, margin: '10px 0 0', lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtClock(durationSec)}</p>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 24px', maxWidth: 760, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Héro : séance terminée + durée */}
+        <div style={{ ...card, textAlign: 'center', padding: '20px 16px 18px' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em' }}>{t('w3a.session_done')}</div>
+          <div style={{ fontSize: 14, color: T.muted, marginTop: 2, textTransform: 'capitalize' }}>{date}</div>
+          <div className="rk-num" style={{ fontSize: 64, fontWeight: 800, lineHeight: 1.05, marginTop: 12 }}>{fmtClock(durationSec)}</div>
+          <div className="rk-label" style={{ marginTop: 2 }}>{t('w3a.kpi_temps')}</div>
         </div>
 
-        {/* KPI grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 10, marginBottom: 22 }}>
-          {kpis.map(k => (
-            <div key={k.label} style={{ ...tile, textAlign: 'center' }}>
-              <p className="tnum" style={{ fontSize: 22, fontWeight: 800, margin: 0, color: k.accent ? T.blue : T.text, fontVariantNumeric: 'tabular-nums' }}>{k.value}</p>
-              <p style={{ ...label, marginTop: 4 }}>{k.label}</p>
-            </div>
-          ))}
+        {/* Indicateurs */}
+        <div className="rk-card">
+          <RkGrid>
+            {kpis.map(k => <RkCell key={k.label} label={k.label} value={k.value} unit={k.unit} size={30} />)}
+          </RkGrid>
         </div>
 
         {/* Graphique cible + FC */}
         {(target || hr.samples.length > 1) && (
-          <div style={{ ...tile, marginBottom: 22 }}>
-            <p style={{ ...label, marginBottom: 12 }}>{t('w3a.intensity')}</p>
+          <div style={{ ...card, padding: 16 }}>
+            <div className="rk-label" style={{ marginBottom: 12 }}>{t('w3a.intensity')}</div>
             <SessionChart target={target} hr={hr} accent={accent} T={T} t={t} />
             {!hr.samples.length && (
-              <p style={{ fontSize: 11.5, color: T.faint, margin: '10px 0 0' }}>{t('w3a.targets_note')}</p>
+              <p style={{ fontSize: 13, color: T.faint, margin: '10px 0 0' }}>{t('w3a.targets_note')}</p>
             )}
           </div>
         )}
 
         {/* Exos réalisés */}
         {doneList.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            <p style={{ ...label, marginBottom: 10 }}>{t('w3a.what_done')}</p>
-            <div style={{ background: T.tileBg, border: `1px solid ${T.tileBorder}`, borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: T.shadow }}>
-              {doneList.map((d, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 15px', borderTop: i === 0 ? 'none' : `1px solid ${T.listBorder}` }}>
-                  <span className="tnum" style={{ width: 22, fontSize: 12, fontWeight: 800, color: T.faint }}>{i + 1}</span>
-                  <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: T.text }}>{d.label}</span>
-                  {d.detail && <span className="tnum" style={{ fontSize: 12.5, fontWeight: 700, color: T.blue, flexShrink: 0 }}>{d.detail}</span>}
-                </div>
-              ))}
-            </div>
+          <div style={{ ...card, padding: '16px 16px 6px' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6 }}>{t('w3a.what_done')}</div>
+            {doneList.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i === 0 ? 'none' : `1px solid ${T.listBorder}` }}>
+                <span className="rk-num" style={{ width: 22, fontSize: 13, fontWeight: 800, color: T.faint, letterSpacing: 0 }}>{i + 1}</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</span>
+                {d.detail && <span className="rk-num" style={{ fontSize: 13, fontWeight: 700, color: T.muted, flexShrink: 0, letterSpacing: 0 }}>{d.detail}</span>}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Bouton Suivant (bleu app) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: `linear-gradient(transparent, ${T.fadeTo} 45%)` }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <button onClick={onNext} style={{ width: '100%', height: 54, borderRadius: 'var(--r-md)', border: 'none', background: APP_BLUE, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 20px rgba(37,99,235,0.32)' }}>
-            {t('w3a.next')}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-        </div>
+      <div style={{ flexShrink: 0, padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', maxWidth: 760, width: '100%', margin: '0 auto' }}>
+        <RkCta variant="primary" onClick={onNext}>
+          {t('w3a.next')}
+          <RkIco d={<path d="M5 12h14M13 6l6 6-6 6" />} size={18} sw={2.4} />
+        </RkCta>
       </div>
-    </div>
+    </motion.div>
+  )
+}
+
+// ── Récap sortie GPS (après enregistrement) ──────────────────────────
+function GpsRecap({ session, isDark, onClose, completedEfforts = [] }: GpsProps) {
+  const { t } = useI18n()
+  const reduce = useReducedMotion()
+  const tokens = { bg: 'var(--surface-card)', text: 'var(--text)', dim: 'var(--text-mid)', separator: 'var(--border)' }
+  const date = new Date(session.started_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return (
+    <motion.div className={rkScope(isDark)}
+      initial={{ y: reduce ? 0 : '100%', opacity: reduce ? 0 : 1 }} animate={{ y: 0, opacity: 1 }}
+      transition={reduce ? { duration: 0.15 } : RK_SPRING}
+      style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+        <RkFab label={t('w3a.close')} onClick={onClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: 19, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title || t('w3a.session_done')}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', textTransform: 'capitalize' }}>{date}</div>
+        </div>
+        <RkFabSpacer />
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 12 }}>
+        <SessionSummaryPage1 session={session} theme={tokens} isDark={isDark} dataFontFamily="var(--font-body)" />
+        <SessionSummaryPage2 session={session} theme={tokens} dataFontFamily="var(--font-body)" />
+        {session.laps.length > 0 && (
+          <div style={{ margin: '12px 16px 0', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '14px 16px 4px' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{t('w2c.lap')}</div>
+            {session.laps.map((l, i) => (
+              <div key={l.number} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span className="rk-num" style={{ width: 24, fontSize: 13, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: 0 }}>{l.number}</span>
+                <span className="rk-num" style={{ flex: 1, fontSize: 15, fontWeight: 700, letterSpacing: 0 }}>{(l.distance / 1000).toFixed(2)} km</span>
+                <span className="rk-num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', letterSpacing: 0 }}>{fmtClock(l.duration)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {completedEfforts.length > 0 && (
+          <div style={{ margin: '12px 16px 0', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '14px 16px 4px' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{t('rec.segments')}</div>
+            {completedEfforts.map((e, i) => (
+              <div key={`${e.segmentId}-${e.startedAt}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span className="rk-dot" style={{ background: 'var(--primary)' }} />
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.segmentName}</span>
+                <span className="rk-num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', letterSpacing: 0 }}>{fmtClock(e.durationSeconds)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ flexShrink: 0, padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)' }}>
+        <RkCta variant="primary" onClick={onClose}>{t('rec.done')}</RkCta>
+      </div>
+    </motion.div>
   )
 }

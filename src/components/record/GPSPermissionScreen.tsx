@@ -1,5 +1,8 @@
 'use client'
+// Écran affiché quand l'accès GPS a été REFUSÉ : étapes pour le réactiver
+// (iOS), puis « J'ai activé » recharge l'écran. Langage RecordKit.
 import { useI18n } from '@/lib/i18n'
+import { rkScope, RkScreenIn, RkCta } from './kit/RecordKit'
 
 interface Props {
   isDark?: boolean
@@ -16,77 +19,48 @@ const IOS_STEP_KEYS = [
 export default function GPSPermissionScreen({ isDark = false }: Props) {
   const { t } = useI18n()
   const IOS_STEPS = IOS_STEP_KEYS.map(k => t(k))
-  const bg   = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim  = isDark ? 'rgba(255,255,255,0.55)' : '#666'
-  const card = isDark ? 'rgba(255,255,255,0.06)' : '#F5F5F5'
 
   return (
-    <div style={{
+    <RkScreenIn className={rkScope(isDark)} style={{
       position: 'fixed', inset: 0, zIndex: 10010,
-      background: bg, color: text,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '32px 24px', textAlign: 'center',
-      fontFamily: 'var(--font-body)',
-      overflowY: 'auto',
+      background: 'var(--surface-page)', color: 'var(--text)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '32px 16px calc(env(safe-area-inset-bottom) + 24px)', textAlign: 'center', overflowY: 'auto',
     }}>
       <div style={{
-        width: 72, height: 72, borderRadius: '50%',
-        background: 'rgba(239,68,68,0.12)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 24, flexShrink: 0,
+        width: 80, height: 80, borderRadius: '50%', background: 'var(--danger-soft)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22, flexShrink: 0,
       }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <line x1="1" y1="1" x2="23" y2="23"/>
           <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
           <path d="M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
         </svg>
       </div>
 
-      <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-        {t('record.gpsPermTitle')}
-      </h2>
-      <p style={{ margin: '0 0 24px', fontSize: 14, color: dim, lineHeight: 1.5, maxWidth: 300 }}>
-        {t('record.gpsPermIntro')}
-      </p>
+      <h2 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em' }}>{t('record.gpsPermTitle')}</h2>
+      <p style={{ margin: '0 0 22px', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, maxWidth: 340 }}>{t('record.gpsPermIntro')}</p>
 
-      <div style={{
-        background: card, borderRadius: 'var(--r-md)', padding: '16px 20px',
-        marginBottom: 28, maxWidth: 340, width: '100%', textAlign: 'left',
-      }}>
+      <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '6px 16px', marginBottom: 26, maxWidth: 380, width: '100%', textAlign: 'left' }}>
         {IOS_STEPS.map((step, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < IOS_STEPS.length - 1 ? 10 : 0 }}>
-            <span style={{
-              width: 20, height: 20, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.15)', color: 'var(--danger)',
-              fontSize: 11, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, marginTop: 1,
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+            <span className="rk-num" style={{
+              width: 26, height: 26, borderRadius: '50%', background: 'var(--surface-chip)',
+              fontSize: 13, fontWeight: 800, letterSpacing: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               {i + 1}
             </span>
-            <span style={{ fontSize: 13, color: dim, lineHeight: 1.45 }}>{step}</span>
+            <span style={{ fontSize: 15, lineHeight: 1.45 }}>{step}</span>
           </div>
         ))}
       </div>
 
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          width: '100%', maxWidth: 340, height: 52, borderRadius: 40, border: 'none',
-          background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-          color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'var(--font-body)',
-          boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
-        }}
-      >
-        {t('record.gpsPermActivated')}
-      </button>
+      <div style={{ width: '100%', maxWidth: 380 }}>
+        <RkCta variant="primary" onClick={() => window.location.reload()}>{t('record.gpsPermActivated')}</RkCta>
+      </div>
 
-      <p style={{ marginTop: 14, fontSize: 12, color: dim, maxWidth: 300, lineHeight: 1.5 }}>
-        {t('record.gpsPermAndroid')}
-      </p>
-    </div>
+      <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-mid)', maxWidth: 320, lineHeight: 1.5 }}>{t('record.gpsPermAndroid')}</p>
+    </RkScreenIn>
   )
 }

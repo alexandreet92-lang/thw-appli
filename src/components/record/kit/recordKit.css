@@ -1,0 +1,418 @@
+/* ════════════════════════════════════════════════════════════════════
+   recordKit.css — langage visuel unique du flux d'enregistrement
+   (/record → live → pause → résumé). Maquettes validées mock8/r1–r4 :
+   page gris chaud, cartes blanches radius 20–24, boutons ronds flottants,
+   pilules d'état, grille de données à filets, gros chiffres tabulaires.
+   Tokens globaux uniquement (clair/sombre via .light/.dark posés sur le
+   conteneur de l'écran). Mouvement : transform/opacity, reduced-motion.
+   ════════════════════════════════════════════════════════════════════ */
+
+.rk-scope {
+  font-family: var(--font-body);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+.rk-scope *, .rk-scope *::before, .rk-scope *::after { box-sizing: border-box; }
+.rk-scope button { font-family: inherit; }
+
+/* Chiffres : Inter tabulaire, zéro non barré, aucune gigue de largeur. */
+.rk-num {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 0;
+  letter-spacing: -0.03em;
+}
+
+/* ── Pression / micro-animations ─────────────────────────────────────── */
+.rk-press {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease, background-color 200ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.rk-press:active { transform: scale(0.94); }
+.rk-press:disabled { cursor: default; }
+
+/* ── Bouton rond flottant ───────────────────────────────────────────── */
+.rk-fab {
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--float-bg);
+  color: var(--text);
+  box-shadow: var(--shadow-capsule);
+}
+.rk-fab[data-variant="dark"] { background: var(--text); color: var(--bg); }
+.rk-fab[data-variant="primary"] { background: var(--primary); color: var(--on-primary); }
+.rk-fab[data-variant="ghost"] { background: var(--surface-chip); box-shadow: none; }
+
+/* ── Pilule d'état (en-tête) ─────────────────────────────────────────── */
+.rk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--float-bg);
+  box-shadow: var(--shadow-capsule);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rk-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.rk-dot[data-live="1"] { animation: rkDotPulse 1.6s ease-in-out infinite; }
+
+/* ── Carte de données (héro + grille à filets) ───────────────────────── */
+.rk-card {
+  background: var(--surface-card);
+  border-radius: calc(var(--r-lg) + 4px);
+  overflow: hidden;
+}
+.rk-hero { padding: 14px 8px 16px; text-align: center; }
+.rk-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-mid);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.rk-hero-v {
+  font-weight: 800;
+  line-height: 1.04;
+  color: var(--text);
+  margin-top: 2px;
+}
+.rk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+.rk-grid:first-child { border-top: none; }
+.rk-cell {
+  background: var(--surface-card);
+  padding: 14px 8px 16px;
+  text-align: center;
+  min-width: 0;
+}
+.rk-cell[data-span="2"] { grid-column: 1 / -1; }
+.rk-cell-v {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
+}
+.rk-cell-n { font-weight: 800; line-height: 1.05; color: var(--text); white-space: nowrap; }
+.rk-cell-u { font-size: 15px; font-weight: 700; color: var(--text-mid); white-space: nowrap; }
+.rk-dim .rk-cell-n, .rk-dim .rk-hero-v { color: var(--text-dim); }
+
+/* Valeur qui change : léger fondu-glissé (le chiffre reste tabulaire). */
+.rk-tick { display: inline-block; animation: rkTick 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ── Pagination ──────────────────────────────────────────────────────── */
+.rk-dots { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.rk-dots i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-bar);
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms ease;
+}
+.rk-dots i[data-on="1"] { width: 18px; background: var(--text); }
+
+/* ── Bandeaux (auto-pause, GPS, rappels) : pilules ───────────────────── */
+.rk-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  background: var(--float-bg);
+  box-shadow: var(--shadow-capsule);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  animation: rkBannerIn 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Bouton Démarrer : halo + ondulation au toucher ──────────────────── */
+.rk-start {
+  position: relative;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--primary) 45%, transparent);
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease, box-shadow 300ms ease;
+  touch-action: manipulation;
+}
+.rk-start:active { transform: scale(0.94); }
+.rk-start:disabled { opacity: 0.45; box-shadow: none; cursor: default; }
+.rk-start::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  animation: rkBreath 2.8s ease-in-out infinite;
+  z-index: -1;
+}
+.rk-start:disabled::before { animation: none; opacity: 0; }
+.rk-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
+  pointer-events: none;
+  animation: rkRipple 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── Listes groupées (iOS) ───────────────────────────────────────────── */
+.rk-group { background: var(--surface-card); border-radius: var(--r-lg); overflow: hidden; }
+.rk-group[data-tone="chip"] { background: var(--surface-soft); }
+.rk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-family: var(--font-body);
+  position: relative;
+}
+.rk-row + .rk-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+.rk-row[data-icon="1"] + .rk-row::before, .rk-row + .rk-row[data-icon="1"]::before { left: 64px; }
+button.rk-row { cursor: pointer; transition: background-color 160ms ease; }
+button.rk-row:active { background: var(--surface-chip); }
+.rk-row-t { flex: 1; min-width: 0; }
+.rk-row-t b { display: block; font-size: 16px; font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-row-t span { display: block; font-size: 13px; color: var(--text-mid); margin-top: 2px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-row-v { font-size: 15px; font-weight: 600; color: var(--text-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
+.rk-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Interrupteur iOS ───────────────────────────────────────────────── */
+.rk-toggle {
+  position: relative;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--r-pill);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: var(--toggle-off);
+  transition: background-color 240ms ease;
+}
+.rk-toggle[aria-checked="true"] { background: var(--success); }
+.rk-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--surface-card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22); /* design-allow-color — ombre du curseur */
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.rk-toggle[aria-checked="true"]::after { transform: translateX(20px); }
+
+/* ── Puces d'état (cardio, capteur, auto-pause…) ─────────────────────── */
+.rk-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.rk-chips::-webkit-scrollbar { display: none; }
+.rk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--surface-chip);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rk-chip[data-off="1"] { color: var(--text-mid); }
+
+/* ── Pilules pleine largeur ─────────────────────────────────────────── */
+.rk-cta {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: var(--r-pill);
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.rk-cta[data-variant="primary"] { background: var(--primary); color: var(--on-primary); }
+.rk-cta[data-variant="white"] { background: var(--float-bg); color: var(--text); box-shadow: var(--shadow-capsule); }
+.rk-cta[data-variant="dark"] { background: var(--text); color: var(--bg); }
+.rk-cta[data-variant="danger"] { background: var(--danger); color: var(--on-primary); }
+.rk-cta[data-variant="text"] { background: transparent; color: var(--text-mid); min-height: 44px; font-size: 16px; font-weight: 700; }
+.rk-cta[data-variant="text-danger"] { background: transparent; color: var(--danger); min-height: 44px; font-size: 16px; font-weight: 700; }
+.rk-cta:disabled { opacity: 0.55; cursor: default; }
+.rk-cta-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: color-mix(in srgb, var(--on-primary) 22%, transparent);
+  transition: transform 240ms linear;
+}
+
+/* ── Champs ─────────────────────────────────────────────────────────── */
+.rk-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+.rk-input::placeholder { color: var(--text-dim); }
+.rk-field {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.rk-field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+
+/* ── Curseur d'échelle (RPE / ressenti) ─────────────────────────────── */
+.rk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  border-radius: var(--r-pill);
+  outline: none;
+  background: linear-gradient(90deg, var(--rk-color, var(--primary)) var(--rk-fill, 0%), var(--surface-chip) var(--rk-fill, 0%));
+}
+.rk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); /* design-allow-color — ombre du curseur */
+  cursor: pointer;
+}
+.rk-range::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); /* design-allow-color — ombre du curseur */
+  cursor: pointer;
+}
+
+/* ── Feuille du bas ─────────────────────────────────────────────────── */
+.rk-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px);
+  display: flex;
+  flex-direction: column;
+  border-radius: calc(var(--r-lg) + 8px) calc(var(--r-lg) + 8px) 0 0;
+  background: var(--surface-page);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+  will-change: transform;
+}
+.rk-sheet[data-surface="card"] { background: var(--surface-card); }
+.rk-grab { width: 38px; height: 5px; border-radius: var(--r-pill); background: var(--surface-bar); margin: 8px auto 4px; }
+
+/* ── Panneau de phase (lecteur muscu / Hyrox / boxe) ─────────────────── */
+.rk-phase {
+  border-radius: calc(var(--r-lg) + 8px);
+  padding: 20px 20px 22px;
+  color: var(--on-primary);
+  position: relative;
+  overflow: hidden;
+  transition: background-color 420ms ease;
+}
+.rk-phase-bar { height: 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--on-primary) 30%, transparent); overflow: hidden; }
+.rk-phase-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--on-primary); transform-origin: left center; transition: transform 1s linear; }
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+@keyframes rkDotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes rkTick { from { opacity: 0.35; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes rkBannerIn { from { opacity: 0; transform: translateY(-8px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes rkBreath { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 0.45; } }
+@keyframes rkRipple { from { transform: scale(1); opacity: 0.8; } to { transform: scale(2.4); opacity: 0; } }
+@keyframes rkFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes rkLockPulse { 50% { transform: scale(1.1); } }
+.rk-fade-up { animation: rkFadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rk-lock-pulse { animation: rkLockPulse 260ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rk-press, .rk-press:active, .rk-start, .rk-start:active { transition: none; transform: none; }
+  .rk-start::before, .rk-ripple, .rk-dot[data-live="1"], .rk-tick, .rk-banner, .rk-fade-up, .rk-lock-pulse { animation: none; }
+  .rk-dots i, .rk-toggle, .rk-toggle::after, .rk-phase, .rk-phase-bar i, .rk-cta-fill { transition: none; }
+}

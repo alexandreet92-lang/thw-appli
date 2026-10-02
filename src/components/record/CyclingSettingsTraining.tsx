@@ -56,7 +56,7 @@ export default function CyclingSettingsTraining({ theme }: Props) {
         {linked && (
           <div style={{ padding: '12px 16px', background: 'rgba(6,182,212,0.08)', borderBottom: `1px solid ${theme.separator}` }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>{linked.name}</p>
-            <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>{linked.day} · {linked.duration}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '3px 0 0' }}>{linked.day} · {linked.duration}</p>
             <button onClick={() => setLinked(null)}
               style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer' }}>
               {t('record.cyclingTrainingUnlink')}
@@ -96,10 +96,10 @@ export default function CyclingSettingsTraining({ theme }: Props) {
                     style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 20px', background: 'none', border: 'none', borderBottom: `1px solid ${theme.separator}`, cursor: 'pointer', textAlign: 'left', gap: 12, fontFamily: 'var(--font-body)' }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 15, color: theme.text, margin: 0, fontWeight: 500 }}>{s.title}</p>
-                      <p style={{ fontSize: 12, color: '#8C8C8C', margin: '2px 0 0' }}>{DAYS[s.day_index]} · {s.duration_min} min · {s.sport}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>{DAYS[s.day_index]} · {s.duration_min} min · {s.sport}</p>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
+                      <path d="M5 3l4 4-4 4" stroke="var(--text-dim)" strokeWidth="1.4" strokeLinecap="round"/>
                     </svg>
                   </button>
                 ))

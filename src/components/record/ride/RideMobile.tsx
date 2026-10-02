@@ -2,14 +2,13 @@
 // Écran mobile : 4 pages en défilement horizontal (scroll-snap) + points de
 // pagination, barres haute/basse persistantes. Les pages consomment la vue-modèle.
 import { useRef, useState } from 'react'
-import { IconPlayerPauseFilled } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
 import RidePilot from './pages/RidePilot'
 import RideFlux from './pages/RideFlux'
 import RideProfile from './pages/RideProfile'
 import RideData from './pages/RideData'
 import SensorDots from './ui/SensorDots'
-import { Lbl } from './ui/atoms'
+import { RkFabSpacer, RkStatusPill, RK_DOT, RkPageDots, RkControlRow, RkBigButton, RkFab, RkIco, RK_ICON, PauseGlyph } from '../kit/RecordKit'
 import { fmtClock } from './format'
 import type { RideView, Derived } from './viewModel'
 import type { SensorStatus } from './useSensors'
@@ -32,20 +31,19 @@ export default function RideMobile({ v, d, status, soloProfile = false, onToggle
     const el = pagesRef.current; if (!el) return
     setPage(Math.round(el.scrollLeft / el.clientWidth))
   }
-  const pageStyle: React.CSSProperties = { minWidth: '100%', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', padding: '0 16px', minHeight: 0 }
+  const pageStyle: React.CSSProperties = { minWidth: '100%', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', padding: '0 16px', minHeight: 0, overflowY: 'auto' }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', paddingTop: 'env(safe-area-inset-top)' }}>
-      {/* Barre haute */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-        <button onClick={onTogglePause} aria-label={t('w3b.pause')} style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--text)' }}>
-          <IconPlayerPauseFilled size={16} />
-        </button>
-        <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.plan?.title ?? t('w3b.free_ride')}</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{fmtClock(v.t)}</div>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface-page)' }}>
+      {/* En-tête : pilule d'état (séance + chrono) · capteurs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+        <RkFabSpacer />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+          <RkStatusPill dot={RK_DOT.rec} live>
+            {v.plan?.title ?? t('w3b.free_ride')} · <span className="rk-num" style={{ letterSpacing: 0 }}>{fmtClock(v.t)}</span>
+          </RkStatusPill>
         </div>
-        <SensorDots status={status} />
+        <span className="rk-fab" style={{ width: 44, height: 44, cursor: 'default' }} aria-hidden><SensorDots status={status} /></span>
       </div>
 
       {/* Pages — sans capteur de puissance : uniquement le profil de séance
@@ -53,7 +51,7 @@ export default function RideMobile({ v, d, status, soloProfile = false, onToggle
       {soloProfile ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', minHeight: 0 }}><RideProfile v={v} /></div>
       ) : (
-        <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', minHeight: 0 }}>
+        <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', minHeight: 0, scrollbarWidth: 'none' }}>
           <div style={pageStyle}><RidePilot v={v} d={d} onStopTest={onStopTest} /></div>
           <div style={pageStyle}><RideFlux v={v} d={d} /></div>
           <div style={pageStyle}><RideProfile v={v} /></div>
@@ -61,21 +59,30 @@ export default function RideMobile({ v, d, status, soloProfile = false, onToggle
         </div>
       )}
 
-      {/* Points de pagination (masqués en mode profil seul) */}
+      {/* Pagination (masquée en mode profil seul) */}
       {!soloProfile && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '8px 0 4px' }}>
-          {[0, 1, 2, 3].map(i => (
-            <span key={i} style={{ height: 6, width: i === page ? 18 : 6, borderRadius: 3, background: i === page ? 'var(--primary)' : 'var(--bg-elev)', transition: '.2s' }} />
-          ))}
-        </div>
+        <RkPageDots count={4} index={page} style={{ padding: '8px 0 2px' }}
+          onSelect={i => { const el = pagesRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }) }} />
       )}
 
-      {/* Barre basse */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 16px 20px' }}>
-        <div style={{ flex: 1 }}><Lbl>{t('w3b.elapsed')}</Lbl><div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{fmtClock(v.t)}</div></div>
-        <div style={{ flex: 1 }}><Lbl>{t('w3b.work')}</Lbl><div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{v.metrics.kj}<small style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 700, marginLeft: 1 }}>kJ</small></div></div>
-        <div style={{ flex: 1 }}><Lbl>{t('w3b.sm_est')}</Lbl><div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{d.smEst}</div></div>
-        <button onClick={onFinish} style={{ padding: '11px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w3b.finish')}</button>
+      {/* Bandeau chiffres + contrôles ronds */}
+      <div style={{ padding: '6px 16px calc(env(safe-area-inset-bottom) + 18px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="rk-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: 'var(--border)' }}>
+          {[
+            { l: t('w3b.elapsed'), v: fmtClock(v.t) },
+            { l: t('w3b.work'), v: String(v.metrics.kj), u: 'kJ' },
+            { l: t('w3b.sm_est'), v: String(d.smEst) },
+          ].map(c => (
+            <div key={c.l} className="rk-cell" style={{ padding: '10px 6px 12px' }}>
+              <div className="rk-label" style={{ fontSize: 12 }}>{c.l}</div>
+              <div className="rk-cell-v"><span className="rk-cell-n rk-num" style={{ fontSize: 22 }}>{c.v}</span>{c.u && <span className="rk-cell-u" style={{ fontSize: 13 }}>{c.u}</span>}</div>
+            </div>
+          ))}
+        </div>
+        <RkControlRow
+          center={<RkBigButton label={t('w3b.pause')} onClick={onTogglePause}><PauseGlyph /></RkBigButton>}
+          right={<RkFab label={t('w3b.finish')} onClick={onFinish} size={56}><RkIco d={RK_ICON.flag} size={22} /></RkFab>}
+        />
       </div>
     </div>
   )

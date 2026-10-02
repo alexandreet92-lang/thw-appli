@@ -2,6 +2,7 @@
 import { ALL_RUNNING_FIELDS, formatPace, speedToMinKm, calculateVAP } from '@/types/running'
 import type { DataPage } from '@/types/cycling'
 import { useI18n } from '@/lib/i18n'
+import { LegacyCell, LegacyGrid } from './kit/LiveFrame'
 import { distFactor, altFactor, paceFactor, getUnitLabel, SIZE_SCALE, type LiveUnits, type PaceUnit, type DataSize } from './units'
 
 interface Props {
@@ -70,10 +71,7 @@ function getLiveValue(fieldId: string, p: Props): string {
 
 export default function RunningPageData({ page, isDark, dataFontFamily, ...liveProps }: Props) {
   const { t } = useI18n()
-  const text      = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim       = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
-  const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
-  const font      = dataFontFamily ?? '-apple-system, BlinkMacSystemFont, sans-serif'
+  const font      = dataFontFamily
 
   const bigFieldId  = page.bigFieldId ?? page.fields[0]
   const otherFields = page.fields.filter(f => f !== bigFieldId)
@@ -83,52 +81,23 @@ export default function RunningPageData({ page, isDark, dataFontFamily, ...liveP
   // Réglage « Taille des données » appliqué aux tuiles.
   const sizes       = SIZE_SCALE[liveProps.dataSize ?? 'normal']
 
-  const renderBigCell = (fieldId: string) => {
+  const cell = (fieldId: string, big?: boolean) => {
     const field = ALL_RUNNING_FIELDS.find(f => f.id === fieldId)
     return (
-      <div key={fieldId} style={{
-        gridColumn: '1 / -1', padding: '20px 12px',
-        borderBottom: `1px solid ${separator}`, textAlign: 'center',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-        minHeight: 100,
-      }}>
-        <p style={{ fontSize: 11, color: dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>
-          {field?.labelKey ? t(field.labelKey) : field?.label}
-        </p>
-        <p style={{ fontSize: sizes.big, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily: font }}>
-          {getLiveValue(fieldId, allProps)}
-        </p>
-        {field?.unit && <p style={{ fontSize: 14, color: dim, margin: 0 }}>{getUnitLabel(field.unit, liveProps.units, liveProps.paceUnit)}</p>}
-      </div>
-    )
-  }
-
-  const renderSmallCell = (fieldId: string) => {
-    const field = ALL_RUNNING_FIELDS.find(f => f.id === fieldId)
-    return (
-      <div key={fieldId} style={{
-        padding: '14px 8px', textAlign: 'center',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-        borderRight: `1px solid ${separator}`, borderBottom: `1px solid ${separator}`, minHeight: 80,
-      }}>
-        <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
-          {field?.labelKey ? t(field.labelKey) : field?.label}
-        </p>
-        <p style={{ fontSize: sizes.small, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily: font }}>
-          {getLiveValue(fieldId, allProps)}
-        </p>
-        {field?.unit && <p style={{ fontSize: 12, color: dim, margin: 0 }}>{getUnitLabel(field.unit, liveProps.units, liveProps.paceUnit)}</p>}
-      </div>
+      <LegacyCell key={fieldId} big={big} font={font} sizes={sizes}
+        label={(field?.labelKey ? t(field.labelKey) : field?.label) ?? fieldId}
+        value={getLiveValue(fieldId, allProps)}
+        unit={field?.unit ? getUnitLabel(field.unit, liveProps.units, liveProps.paceUnit) : undefined} />
     )
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, alignContent: 'start' }}>
-      {bigOnTop && renderBigCell(bigFieldId)}
-      {bigOnTop && otherFields.map(renderSmallCell)}
-      {!bigOnTop && otherFields.slice(0, midIndex).map(renderSmallCell)}
-      {!bigOnTop && renderBigCell(bigFieldId)}
-      {!bigOnTop && otherFields.slice(midIndex).map(renderSmallCell)}
-    </div>
+    <LegacyGrid>
+      {bigOnTop && cell(bigFieldId, true)}
+      {bigOnTop && otherFields.map(f => cell(f))}
+      {!bigOnTop && otherFields.slice(0, midIndex).map(f => cell(f))}
+      {!bigOnTop && cell(bigFieldId, true)}
+      {!bigOnTop && otherFields.slice(midIndex).map(f => cell(f))}
+    </LegacyGrid>
   )
 }

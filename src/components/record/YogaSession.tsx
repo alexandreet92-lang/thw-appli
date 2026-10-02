@@ -12,6 +12,10 @@ import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import YogaSettings from './YogaSettings'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import {
+  rkScope, RkFab, RkIco, RK_ICON, RkStartButton, RkControlRow, RkBigButton, RkSheet, RkCta, RK_SPRING, PauseGlyph, PlayGlyph,
+} from './kit/RecordKit'
 
 interface Props {
   exercises: YogaSessionExercise[]
@@ -34,6 +38,7 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
   const [showSave, setShowSave]     = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const session = useYogaSession(exercises)
+  const reduce = useReducedMotion()
   useWakeLock(session.phase === 'exercise' || session.phase === 'rest')
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { if (session.phase === 'finished') setShowSave(true) }, [session.phase])
@@ -49,15 +54,12 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
   }, [session.phase])
 
   if (!mounted) return null
-  const bg   = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim  = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
-  const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
 
   const cur  = exercises[session.currentIdx]
   const next = exercises[session.currentIdx + 1]
   const progress = Math.max(0, Math.min(1, (session.currentDuration - session.remaining) / (session.currentDuration || 1)))
   const isRunning = session.phase === 'exercise' || session.phase === 'rest'
+  const R = 92, C = 2 * Math.PI * R
 
   const handleSave = async (formData: SessionFormData) => {
     const sb = createClient()
@@ -74,94 +76,92 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
   }
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8 }}>
-        <button onClick={() => { if (isRunning) { session.pause(); setConfirmClose(true) } else setConfirmClose(true) }} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
-        <p style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 600, color: text, margin: 0 }}>{title}</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(session.elapsed)}</span>
-          <button onClick={() => setSettingsOpen(true)} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: dim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>
-          </button>
+      {/* En-tête : × · titre + chrono · réglages */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+        <RkFab label={t('record.yogaQuit')} onClick={() => { if (isRunning) session.pause(); setConfirmClose(true) }}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: 19, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+          <div className="rk-num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)', letterSpacing: 0 }}>{fmt(session.elapsed)}</div>
         </div>
+        <RkFab label={t('record.commonSettings')} onClick={() => setSettingsOpen(true)}><RkIco d={RK_ICON.sliders} size={19} /></RkFab>
       </div>
 
-      {/* Main */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 20px', gap: 20, overflowY: 'auto' }}>
-
-        {session.phase === 'rest' ? (
-          /* Rest screen */
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>{t('record.yogaRest')}</p>
-            <p style={{ fontSize: 80, fontWeight: 700, color: text, margin: '0 0 12px', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{session.restRemaining}</p>
-            {next && <p style={{ fontSize: 16, color: 'var(--primary)', fontWeight: 600, margin: 0 }}>{t('record.yogaNext', { name: next.name })}</p>}
-          </div>
-        ) : (
-          <>
-            <p style={{ fontSize: 12, color: dim, margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-              {t('record.yogaExerciseProgress', { current: session.currentIdx + 1, total: exercises.length })}
-            </p>
-            <h2 style={{ fontSize: 28, fontWeight: 700, color: text, textAlign: 'center', margin: 0 }}>{cur?.name}</h2>
-
-            {/* Ring */}
-            <div style={{ width: 160, height: 160, borderRadius: '50%', border: '4px solid rgba(6,182,212,0.15)', background: `conic-gradient(#06B6D4 ${progress}turn, rgba(6,182,212,0.10) 0turn)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <div style={{ width: 136, height: 136, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 52, fontWeight: 700, color: text, margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{session.remaining}</p>
+      {/* Principal */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="rk-card" style={{ padding: '22px 16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+          {session.phase === 'rest' ? (
+            <>
+              <span className="rk-banner" style={{ animation: 'none', boxShadow: 'none', background: 'color-mix(in srgb, var(--success) 14%, transparent)' }}>
+                <span className="rk-dot" style={{ background: 'var(--success)' }} />{t('record.yogaRest')}
+              </span>
+              <div className="rk-num" style={{ fontSize: 88, fontWeight: 800, lineHeight: 1 }}>{session.restRemaining}</div>
+              {next && <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-mid)' }}>{t('record.yogaNext', { name: next.name })}</div>}
+            </>
+          ) : (
+            <>
+              <div className="rk-label">{t('record.yogaExerciseProgress', { current: session.currentIdx + 1, total: exercises.length })}</div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.h2 key={session.currentIdx}
+                  initial={{ opacity: 0, y: reduce ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduce ? 0 : -10 }}
+                  transition={reduce ? { duration: 0.1 } : RK_SPRING}
+                  style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em', margin: 0 }}>{cur?.name}</motion.h2>
+              </AnimatePresence>
+              {/* Anneau de progression (SVG brut) */}
+              <div style={{ position: 'relative', width: 210, height: 210 }}>
+                <svg width="210" height="210" viewBox="0 0 210 210" style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+                  <circle cx="105" cy="105" r={R} fill="none" stroke="var(--surface-chip)" strokeWidth="12" />
+                  <circle cx="105" cy="105" r={R} fill="none" stroke="var(--sport-rowing)" strokeWidth="12" strokeLinecap="round"
+                    strokeDasharray={C} strokeDashoffset={C * (1 - progress)} style={{ transition: reduce ? 'none' : 'stroke-dashoffset 1s linear' }} />
+                </svg>
+                <div className="rk-num" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, fontWeight: 800 }}>{session.remaining}</div>
               </div>
-            </div>
+            </>
+          )}
+        </div>
 
-            {session.phase === 'idle' && (
-              <button onClick={session.start} style={{ padding: '14px 40px', borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaStart')}</button>
-            )}
+        {session.phase !== 'rest' && cur && <AICoachingTip exercise={cur} enabled={aiEnabled && session.phase === 'exercise'} isDark={isDark} />}
 
-            {cur && <AICoachingTip exercise={cur} enabled={aiEnabled && session.phase === 'exercise'} isDark={isDark} />}
-
-            {next && session.phase === 'exercise' && session.remaining <= 5 && (
-              <p style={{ fontSize: 13, color: '#8C8C8C', textAlign: 'center', margin: 0, animation: 'fadein 300ms' }}>
-                {t('record.yogaUpNext', { name: next.name, s: next.duration_seconds })}
-              </p>
-            )}
-            {next && session.phase !== 'idle' && session.remaining > 5 && (
-              <p style={{ fontSize: 13, color: dim, textAlign: 'center', margin: 0 }}>{t('record.yogaUpNext', { name: next.name, s: next.duration_seconds })}</p>
-            )}
-          </>
+        {next && session.phase !== 'idle' && session.phase !== 'rest' && (
+          <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className="rk-dot" style={{ width: 10, height: 10, background: 'var(--sport-rowing)' }} />
+            <span style={{ flex: 1, fontSize: 15, fontWeight: 700 }}>{t('record.yogaUpNext', { name: next.name, s: next.duration_seconds })}</span>
+          </div>
         )}
       </div>
 
-      {/* Controls */}
-      {session.phase !== 'idle' && session.phase !== 'finished' && (
-        <div style={{ padding: '12px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)', display: 'flex', gap: 10, flexShrink: 0 }}>
-          <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaSkip')}</button>
-          <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 'var(--r-md)', background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? 'var(--primary)' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-            {isRunning ? t('record.yogaPause') : t('record.yogaResume')}
-          </button>
-          {session.phase === 'exercise' && (
-            <button onClick={() => session.addTime(30)} style={{ flex: 1, height: 48, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+30s</button>
-          )}
-        </div>
-      )}
+      {/* Contrôles */}
+      <div style={{ flexShrink: 0, padding: '8px 0 calc(env(safe-area-inset-bottom) + 22px)', display: 'flex', justifyContent: 'center', minHeight: 120 }}>
+        {session.phase === 'idle' ? (
+          <RkStartButton label={t('record.yogaStart')} onClick={session.start} size={96} />
+        ) : session.phase !== 'finished' && (
+          <RkControlRow
+            left={<RkFab label={t('record.yogaSkip')} size={56} onClick={session.skip}><RkIco d={RK_ICON.skip} size={22} /></RkFab>}
+            center={<RkBigButton label={isRunning ? t('record.yogaPause') : t('record.yogaResume')} onClick={isRunning ? session.pause : session.resume}>
+              {isRunning ? <PauseGlyph /> : <PlayGlyph />}
+            </RkBigButton>}
+            right={session.phase === 'exercise'
+              ? <RkFab label="+30s" size={56} onClick={() => session.addTime(30)}><span style={{ fontSize: 14, fontWeight: 800 }}>+30s</span></RkFab>
+              : undefined}
+          />
+        )}
+      </div>
 
-      {/* Confirm close */}
-      {confirmClose && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ background: isDark ? '#1A1A1A' : '#FFF', borderRadius: 'var(--r-lg)', padding: 24, width: '100%', maxWidth: 320 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 8px' }}>{t('record.yogaQuitConfirm')}</p>
-            <p style={{ fontSize: 14, color: dim, margin: '0 0 20px' }}>{t('record.yogaQuitWarning')}</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCancel')}</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 'var(--r-md)', background: 'var(--danger)', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
-            </div>
+      {/* Confirmation de sortie */}
+      <RkSheet open={confirmClose} onClose={() => { setConfirmClose(false); session.resume() }} isDark={isDark} zIndex={10070} label={t('record.yogaQuitConfirm')}>
+        <div style={{ textAlign: 'center', padding: '6px 4px 4px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('record.yogaQuitConfirm')}</h2>
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '8px 0 22px' }}>{t('record.yogaQuitWarning')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <RkCta variant="primary" onClick={() => { setConfirmClose(false); session.resume() }}>{t('record.yogaCancel')}</RkCta>
+            <RkCta variant="text-danger" onClick={onClose}>{t('record.yogaQuit')}</RkCta>
           </div>
         </div>
-      )}
+      </RkSheet>
 
       <YogaSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} aiTipsEnabled={aiEnabled} onToggleAI={setAiEnabled} />
       {showSave && <SessionSaveForm sport="yoga" startedAt={startedAt} onBack={() => { setShowSave(false); onClose() }} onSave={handleSave} isDark={isDark} />}
-      <style>{`@keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }`}</style>
     </div>
   )
 

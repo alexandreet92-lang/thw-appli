@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { rkScope } from './kit/RecordKit'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -156,14 +157,14 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     setTimeout(() => setNotice(null), 4000)
   }
 
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
-  const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB'
-  const border = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
-  const mapBg = isDark ? 'rgba(120,180,140,0.10)' : '#EAF1E6'
-  const popover = isDark ? '#101317' : '#FFFFFF'
+  const bg = 'var(--surface-page)'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const separator = 'var(--border)'
+  const surface = 'var(--surface-card)'
+  const border = 'var(--border)'
+  const mapBg = 'var(--surface-soft)'
+  const popover = 'var(--surface-card)'
 
   useEffect(() => {
     const load = async () => {
@@ -267,7 +268,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
 
   // ── Disposition MOBILE (façon Strava/plein écran) ──────────────────────────
   if (isNarrow) return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       {/* En-tête : cercle croix · titre · cercle crayon+ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 8px' }}>
         <button onClick={requestClose} aria-label={t('record.routeLibraryCancel')} style={circleBtn}>
@@ -331,7 +332,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       {/* En-tête épuré : retour + titre */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${separator}`, flexShrink: 0 }}>
         <button onClick={requestClose} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0, zIndex: 1 }}>

@@ -12,6 +12,7 @@ import { GPSStatus } from '@/hooks/useGPSTracking'
 import { fieldById, type DataPage } from '@/types/cycling'
 import { formatHMS, frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
+import { RkGrid, RkCell } from '../kit/RecordKit'
 
 export interface FieldCtx {
   started: boolean
@@ -90,33 +91,21 @@ function fieldDisplay(id: string, ctx: FieldCtx): { value: string; unit?: string
 
 const SIZE_FACTOR: Record<'small' | 'normal' | 'large', number> = { small: 0.88, normal: 1, large: 1.12 }
 
-function Cell({ label, value, unit, dim, tileSize }: {
-  label: string; value: string; unit?: string; dim: boolean; tileSize: number
-}) {
-  return (
-    <div className={dim ? 'lv2-cell lv2-dim' : 'lv2-cell'}>
-      <div className="lv2-eyebrow">{label}</div>
-      <div className="lv2-v">
-        <span className="lv2-n lv2-num" style={{ fontSize: tileSize }}>{value}</span>
-        {unit && <span className="lv2-u">{unit}</span>}
-      </div>
-    </div>
-  )
-}
-
 interface Props {
   page: DataPage
   ctx: FieldCtx
   dataSize: 'small' | 'normal' | 'large'
   gpsStatus: GPSStatus
   gpsAccuracy: number | null
+  /** Capteurs BLE appairés (puces d'état avant départ). */
+  hrDevice?: string | null
+  powerDevice?: string | null
   onSensorChipTap: () => void
 }
 
-export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccuracy, onSensorChipTap }: Props) {
+export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccuracy, hrDevice, powerDevice, onSensorChipTap }: Props) {
   const { t } = useI18n()
   const f = SIZE_FACTOR[dataSize]
-  const tileSize = Math.round(40 * f)
   const { started, dim } = ctx
 
   const gpsOk = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
@@ -127,66 +116,57 @@ export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccu
   const heroField = heroId ? fieldById(heroId) : undefined
   const heroLabel = heroField?.labelKey ? t(heroField.labelKey) : heroField?.label ?? ''
   const hero = heroId ? fieldDisplay(heroId, ctx) : { value: '—' }
+  // Héro plus compact quand la valeur est longue (h:mm:ss) pour tenir sur une ligne.
+  const heroLen = (!started && heroId === 'duration' ? '00:00:00' : hero.value).length
+  const heroSize = Math.round((heroLen >= 7 ? 64 : heroLen >= 5 ? 76 : 88) * f)
+  const cellSize = Math.round((gridIds.length > 6 ? 32 : 38) * f)
 
   const labelOf = (id: string) => { const ff = fieldById(id); return ff?.labelKey ? t(ff.labelKey) : ff?.label ?? id }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingTop: 'calc(env(safe-area-inset-top) + 64px)' }}>
-      {/* Chips capteurs — avant démarrage */}
+    <div style={{
+      position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+      padding: 'calc(env(safe-area-inset-top) + 64px) 16px calc(env(safe-area-inset-bottom) + 200px)',
+    }}>
+      {/* Puces capteurs — avant démarrage */}
       {!started && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 6 }}>
-          <div style={{
-            height: 28, padding: '0 13px', borderRadius: 'var(--r-md)',
-            background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-            display: 'flex', alignItems: 'center', gap: 7,
-            fontSize: 12, fontWeight: 600, color: gpsOk ? 'var(--live-text-2)' : 'var(--live-label)',
-          }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: gpsOk ? 'var(--live-success)' : 'transparent', border: gpsOk ? 'none' : '1.5px solid var(--live-dim)' }} />
-            <span className="lv2-num">{gpsChipLabel}</span>
-          </div>
-          {([['FC', 'w4a.hr'], ['Puissance', 'w4a.power']] as const).map(([id, k]) => (
+        <div className="rk-chips" style={{ justifyContent: 'center', marginBottom: 12 }}>
+          <span className="rk-chip" data-off={gpsOk ? undefined : '1'} style={{ cursor: 'default', background: 'var(--surface-card)' }}>
+            <span className="rk-dot" style={{ background: gpsOk ? 'var(--success)' : 'var(--text-dim)' }} />
+            <span className="rk-num" style={{ letterSpacing: 0 }}>{gpsChipLabel}</span>
+          </span>
+          {([['hr', 'w4a.hr', hrDevice], ['power', 'w4a.power', powerDevice]] as const).map(([id, k, dev]) => (
             <button
-              key={id} onClick={onSensorChipTap}
-              style={{
-                height: 28, padding: '0 13px', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-                display: 'flex', alignItems: 'center', gap: 7,
-                fontSize: 12, fontWeight: 600, color: 'var(--live-label)',
-              }}
-              aria-label={t('w4a.sensor_unpaired', { name: t(k) })}
+              key={id} type="button" onClick={onSensorChipTap} className="rk-chip rk-press" data-off={dev ? undefined : '1'}
+              style={{ background: 'var(--surface-card)' }}
+              aria-label={dev ? t(k) : t('w4a.sensor_unpaired', { name: t(k) })}
             >
-              <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px solid var(--live-dim)' }} />
+              <span className="rk-dot" style={{ background: dev ? 'var(--success)' : 'var(--text-dim)' }} />
               {t(k)}
             </button>
           ))}
         </div>
       )}
 
-      {/* Héro (bigFieldId) */}
-      {heroId && (
-        <div style={{ textAlign: 'center', marginTop: started ? 42 : 40 }}>
-          <div className="lv2-eyebrow">{heroLabel}</div>
-          <div className="lv2-num" style={{
-            fontSize: Math.round((heroId === 'duration' ? 76 : 104) * f), fontWeight: 800, lineHeight: 1,
-            letterSpacing: '-0.01em', marginTop: 18,
-            color: (dim || !started) ? 'var(--live-dim)' : 'var(--live-text)',
-          }}>
-            {!started && heroId === 'duration' ? '00:00:00' : hero.value}
+      {/* Carte : héro (bigFieldId) + grille à filets des autres champs */}
+      <div className={dim || !started ? 'rk-card rk-dim' : 'rk-card'} style={{ transition: 'opacity 300ms ease' }}>
+        {heroId && (
+          <div className="rk-hero">
+            <div className="rk-label">{heroLabel}</div>
+            <div className="rk-hero-v rk-num" style={{ fontSize: heroSize }}>
+              {!started && heroId === 'duration' ? '00:00:00' : hero.value}
+              {hero.unit && <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-mid)', marginLeft: 6, letterSpacing: 0 }}>{hero.unit}</span>}
+            </div>
           </div>
-          {hero.unit && <div className="lv2-num" style={{ fontSize: 13, fontWeight: 600, marginTop: 8, color: 'var(--live-text-2)' }}>{hero.unit}</div>}
-        </div>
-      )}
-
-      {/* Grille des autres champs (2 colonnes) */}
-      <div className="lv2-grid" style={{ marginTop: started ? 34 : 42 }}>
-        {Array.from({ length: Math.ceil(gridIds.length / 2) }).map((_, r) => (
-          <div className="lv2-row" key={r}>
-            {gridIds.slice(r * 2, r * 2 + 2).map(id => {
+        )}
+        {gridIds.length > 0 && (
+          <RkGrid>
+            {gridIds.map(id => {
               const d = fieldDisplay(id, ctx)
-              return <Cell key={id} label={labelOf(id)} value={started ? d.value : (d.unit ? '—' : d.value)} unit={d.unit} dim={dim || !started} tileSize={tileSize} />
+              return <RkCell key={id} label={labelOf(id)} value={started ? d.value : (d.unit ? '—' : d.value)} unit={d.unit} size={cellSize} />
             })}
-          </div>
-        ))}
+          </RkGrid>
+        )}
       </div>
     </div>
   )

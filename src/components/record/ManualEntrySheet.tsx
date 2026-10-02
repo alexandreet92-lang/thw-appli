@@ -34,6 +34,7 @@ import { buildTreadmillStreams, summarizeIntervals, resampleHr, type TreadInterv
 import { TreadmillProfilePreview } from './treadmill/TreadmillProfilePreview'
 import { EnduranceStats } from './treadmill/EnduranceStats'
 import { FeelingDifficultyInput } from './FeelingDifficultyInput'
+import { RkCta } from './kit/RecordKit'
 
 interface Props { onClose: () => void; onSaved?: () => void }
 
@@ -66,13 +67,14 @@ const SPORTS: SportDef[] = [
 
 const FB = 'var(--font-body)'
 const FD = 'var(--font-display)'
+// Champs : carte blanche, coins --r-md, unité intégrée, focus cyan (rk-field).
 const input: React.CSSProperties = {
-  width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
-  padding: '9px 11px', fontSize: 14, color: 'var(--text)', fontFamily: FB, boxSizing: 'border-box', outline: 'none',
+  width: '100%', background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+  minHeight: 48, padding: '12px 14px', fontSize: 16, color: 'var(--text)', fontFamily: FB, boxSizing: 'border-box', outline: 'none',
 }
 const lab: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-  color: 'var(--text-mid)', marginBottom: 6, display: 'block',
+  fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+  color: 'var(--text-dim)', margin: '0 4px 8px', display: 'block',
 }
 const NO_REFS: AthleteRefs = { ftp: null, runThresholdPaceSec: null, cssSecPer100m: null }
 const intv = (v: string) => { const n = parseInt(v); return isFinite(n) ? n : 0 }
@@ -263,12 +265,12 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         {isTreadmill && (
           <div style={{ marginTop: 12 }}>
             <label style={lab}>{t('w2c.hrLinkFile')}</label>
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <label className="rk-press" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', color: 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
               {importing ? t('w2c.reading') : t('w2c.importFitGpx')}
               <input type="file" accept=".fit,.gpx" onChange={handleImportHr} style={{ display: 'none' }} />
             </label>
-            {importInfo && <div style={{ fontSize: 12, color: importedHr ? 'var(--zone-2, #22c55e)' : 'var(--text-mid)', fontWeight: 600, marginTop: 6 }}>{importInfo}</div>}
+            {importInfo && <div style={{ fontSize: 12, color: importedHr ? 'var(--success)' : 'var(--text-mid)', fontWeight: 600, marginTop: 6 }}>{importInfo}</div>}
           </div>
         )}
       </>
@@ -309,33 +311,35 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         @keyframes me-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
         @keyframes me-slide-down{from{transform:translateY(0)}to{transform:translateY(100%)}}
       `}</style>
-      <div onClick={doClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: closing ? 'me-fade-out 0.24s ease forwards' : 'me-fade-in 0.24s ease' }} />
+      <div onClick={doClose} style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', animation: closing ? 'me-fade-out 0.24s ease forwards' : 'me-fade-in 0.24s ease' }} />
 
       {/* BASE — grille des sports (« Créer une activité ») */}
       <div style={{
         position: 'relative', width: '100%', maxWidth: 560, margin: '0 auto', maxHeight: '94vh',
-        display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB,
-        borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', background: 'var(--surface-page)', color: 'var(--text)', fontFamily: FB,
+        borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', boxShadow: 'var(--shadow-float)',
         animation: closing ? 'me-slide-down 0.26s cubic-bezier(0.4,0,1,1) forwards' : 'me-slide-up 0.30s cubic-bezier(0.16,1,0.3,1)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flexShrink: 0 }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
+          <div style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 16px 6px 20px', flexShrink: 0 }}>
           <div style={{ minWidth: 0 }}>
             <h2 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, margin: 0 }}>{t('w2c.createActivity')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w2c.chooseSport')}</p>
           </div>
-          <PressPop onClick={doClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          <PressPop onClick={doClose} aria-label="Fermer" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-chip)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </PressPop>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {SPORTS.map(sp => (
-            <button key={sp.id} onClick={() => pickSport(sp)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', cursor: 'pointer', color: 'var(--text)', fontFamily: FB }}>
-              <SportIcon sport={sp.builderSport ?? sp.id} size={30} circle={false} />
-              <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
+          {SPORTS.map((sp, i) => (
+            <button key={sp.id} onClick={() => pickSport(sp)} className="rk-press rk-fade-up"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '16px 8px', background: 'var(--surface-card)', border: 'none', borderRadius: 'var(--r-lg)', cursor: 'pointer', color: 'var(--text)', fontFamily: FB, animationDelay: `${Math.min(i, 12) * 22}ms` }}>
+              <span style={{ width: 48, height: 48, borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${sportColor(sp.builderSport ?? sp.id)} 13%, transparent)` }}>
+                <SportIcon sport={sp.builderSport ?? sp.id} size={28} circle={false} />
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, textAlign: 'center' }}>{t('w2c.sport_' + sp.id)}</span>
             </button>
           ))}
         </div>
@@ -344,33 +348,33 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       {/* SUR-PAGE — construction de la séance : slide bas→haut par-dessus la grille */}
       {step === 'form' && (
         <>
-          <div onClick={backToSport} style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'rgba(0,0,0,0.4)', opacity: formShown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
+          <div onClick={backToSport} style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'var(--scrim)', opacity: formShown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
           <div style={{
             position: 'absolute', left: 0, right: 0, bottom: 0, margin: '0 auto', zIndex: 2, width: '100%', maxWidth: 560, maxHeight: '94vh',
-            display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB,
-            borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', boxShadow: '0 -10px 44px rgba(0,0,0,0.30)',
+            display: 'flex', flexDirection: 'column', background: 'var(--surface-page)', color: 'var(--text)', fontFamily: FB,
+            borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', boxShadow: 'var(--shadow-float)',
             transform: formShown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flexShrink: 0 }}>
-              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
+              <div style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px 6px', flexShrink: 0 }}>
-              <PressPop onClick={backToSport} aria-label={t('w2c.back')} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <PressPop onClick={backToSport} aria-label={t('w2c.back')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-chip)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </PressPop>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <SportIcon sport={builderSport} size={22} circle={false} />
                 <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def ? t('w2c.sport_' + def.id) : ''}</h2>
               </span>
-              <PressPop onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <PressPop onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-chip)', border: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </PressPop>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {def?.id === 'running' && (
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
                   {(['outdoor', 'treadmill'] as RunningSub[]).map(sfc => (
-                    <button key={sfc} onClick={() => setRunSurface(sfc)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-md)', border: `1px solid ${runSurface === sfc ? accent : 'var(--border)'}`, background: runSurface === sfc ? accent : 'var(--bg-card2)', color: runSurface === sfc ? '#fff' : 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                    <button key={sfc} onClick={() => setRunSurface(sfc)} style={{ flex: 1, minHeight: 44, padding: '0 10px', borderRadius: 'var(--r-pill)', border: 'none', background: runSurface === sfc ? 'var(--surface-card)' : 'transparent', boxShadow: runSurface === sfc ? 'var(--shadow-capsule)' : 'none', color: runSurface === sfc ? 'var(--text)' : 'var(--text-mid)', fontSize: 15, fontWeight: runSurface === sfc ? 800 : 600, cursor: 'pointer', fontFamily: FB, transition: 'background-color 200ms ease' }}>
                       {sfc === 'outdoor' ? t('w2c.outdoor') : t('w2c.treadmill')}
                     </button>
                   ))}
@@ -414,12 +418,12 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               </div>
               <div style={{ padding: '0 2px' }}><label style={lab}>{t('w2c.description')}</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder={t('w2c.descriptionPlaceholder')} style={{ ...input, resize: 'vertical' }} /></div>
 
-              {error && <div style={{ fontSize: 13, color: 'var(--zone-5, #ef4444)', fontWeight: 600, padding: '0 2px' }}>{error}</div>}
+              {error && <div role="alert" style={{ fontSize: 14, color: 'var(--danger)', fontWeight: 600, padding: '0 4px' }}>{error}</div>}
             </div>
-            <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
-              <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: FB }}>
+            <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', flexShrink: 0 }}>
+              <RkCta variant="primary" onClick={() => { void handleSave() }} disabled={saving} progress={saving ? 66 : null} style={{ opacity: 1 }}>
                 {saving ? t('w2c.saving') : t('w2c.saveActivity')}
-              </button>
+              </RkCta>
             </div>
           </div>
         </>

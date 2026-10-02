@@ -13,7 +13,7 @@ export default function RideProfile({ v }: { v: RideView }) {
     <>
       <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, padding: '2px 2px 8px' }}>{t('ride.sessionProfile')}</div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 10, height: 150, flexShrink: 0 }}>
+      <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 10, height: 150, flexShrink: 0 }}>
         <ProfileChart plan={v.plan} samples={v.samples} ftp={v.ftp} t={v.t} />
       </div>
 

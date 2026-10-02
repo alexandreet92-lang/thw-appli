@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis, IconKarate, IconBolt } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { RkSheet, RkCta, RkIco, RK_ICON, RkSectionLabel, RkGroup, RkRow, RkTile } from './kit/RecordKit'
 
 const SPORT_LABEL_KEY: Record<SportId, string> = {
   cycling: 'record.sportLabelCycling', mtb: 'record.sportLabelMtb', running: 'record.sportLabelRunning',
@@ -137,6 +139,19 @@ export function getSportIcon(id: SportId): React.ReactNode {
 export function getSportLabel(id: SportId): string {
   return ALL_SPORTS.find(s => s.id === id)?.label ?? id
 }
+/** Couleur fonctionnelle du sport (palette immuable --sport-*), portée par
+ *  une tuile teintée / un point — jamais par une surface pleine. */
+export function getSportColor(id: SportId): string {
+  switch (id) {
+    case 'cycling': case 'mtb': case 'hometrainer': return 'var(--sport-bike)'
+    case 'running': case 'trail': case 'hiking': case 'padel': return 'var(--sport-run)'
+    case 'strength': case 'boxe': return 'var(--sport-gym)'
+    case 'hyrox': case 'hybrid': return 'var(--sport-hyrox)'
+    case 'swim': case 'openwater': case 'ski': return 'var(--sport-swim)'
+    case 'rowing': case 'yoga': return 'var(--sport-rowing)'
+    default: return 'var(--primary)'
+  }
+}
 
 // ── Component ─────────────────────────────────────────────────
 interface Props {
@@ -157,23 +172,16 @@ const DESKTOP_ALLOWED: SportId[] = ['hometrainer', 'running', 'strength', 'hyrox
 
 export default function SportSelector({ open, onClose, selectedSport, onSelect, onManual }: Props) {
   const { t } = useI18n()
-  const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
   const [isDesktop, setIsDesktop] = useState(false)
-  useEffect(() => {
-    if (open) setClosing(false)
-    else setSearch('')
-  }, [open])
+  useEffect(() => { if (!open) setSearch('') }, [open])
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)')
     const upd = () => setIsDesktop(mq.matches); upd()
     mq.addEventListener('change', upd)
     return () => mq.removeEventListener('change', upd)
   }, [])
-  if (!open) return null
 
-  const ACCENT = '#06B6D4'
-  const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
   const sportLabelText = (s: Sport) => t(SPORT_LABEL_KEY[s.id] ?? '') || s.label
   const catNameText = (name: string) => t(SPORT_CAT_KEY[name] ?? '') || name
   const filteredCats = SPORT_CATEGORIES.map(c => ({
@@ -182,204 +190,71 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
       sportLabelText(s).toLowerCase().includes(search.toLowerCase())
       && (!isDesktop || DESKTOP_ALLOWED.includes(s.id))),
   })).filter(c => c.sports.length > 0)
+  const pick = (id: SportId) => { haptic('light'); onSelect(id) }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-    }}>
-      <div
-        onClick={handleClose}
-        style={{
-          position: 'absolute', inset: 0,
-          background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)',
-          animation: closing ? 'sportsel-fade-out 200ms ease-in forwards'
-                             : 'sportsel-fade-in  200ms ease-out forwards',
-        }}
-      />
-      <div
-        className={closing ? 'sheet-close' : 'sheet-open'}
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0,
-          // Ne jamais atteindre le tout en haut : on laisse la barre d'état /
-          // l'encoche (safe-area) + une marge, pour que le header reste visible.
-          height: '85dvh',
-          maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 16px)',
-          background: 'var(--bg-card)',
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          willChange: 'transform',
-          color: 'var(--text)',
-          fontFamily: 'var(--font-body)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
-        }}
-      >
-        {/* Drag indicator */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
-        </div>
+    <RkSheet open={open} onClose={onClose} title={t('record.sportSelectorTitle')} full zIndex={10050}
+      footer={onManual ? (
+        <RkCta variant="white" onClick={() => { onClose(); onManual() }}>
+          <RkIco d={RK_ICON.plus} size={18} />
+          {t('record.sportSelectorManual') || 'Créer une activité manuellement'}
+        </RkCta>
+      ) : undefined}>
+      {/* Recherche */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 46, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-card)', color: 'var(--text-dim)' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <input className="rk-input" placeholder={t('record.sportSelectorSearch')} value={search} onChange={e => setSearch(e.target.value)}
+          style={{ fontSize: 16, flex: 1, minHeight: 44 }} />
+      </label>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)' }}>
-            {t('record.sportSelectorTitle')}
-          </h2>
-          <button
-            onClick={handleClose}
-            aria-label={t('record.sportSelectorClose')}
-            style={{
-              color: 'var(--text-dim)', background: 'none', border: 'none',
-              fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px',
-            }}
-          >
-            ×
-          </button>
+      {/* Récents : tuiles rondes teintées du sport */}
+      {!search && (
+        <div className="rk-chips" style={{ gap: 14, margin: '16px -16px 4px', padding: '2px 16px' }}>
+          {RECENT_SPORTS.filter(s => !isDesktop || DESKTOP_ALLOWED.includes(s.id)).map(sport => {
+            const active = selectedSport === sport.id
+            const col = getSportColor(sport.id)
+            return (
+              <button key={sport.id} type="button" onClick={() => pick(sport.id)} className="rk-press"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 64, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <span style={{
+                  width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: col, background: `color-mix(in srgb, ${col} ${active ? 24 : 13}%, var(--surface-card))`,
+                  boxShadow: active ? `0 0 0 2px ${col}` : 'none', transition: 'box-shadow 200ms ease, background-color 200ms ease',
+                }}>
+                  {sport.icon}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: active ? 'var(--text)' : 'var(--text-mid)' }}>
+                  {sportLabelText(sport)}
+                </span>
+              </button>
+            )
+          })}
         </div>
+      )}
 
-        {/* Search */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <div style={{
-            background: 'var(--bg-card2)', borderRadius: 'var(--r-md)',
-            padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
-            border: '1px solid var(--border)',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5" stroke="#8C8C8C" strokeWidth="1.5"/>
-              <path d="M11 11l3 3" stroke="#8C8C8C" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <input
-              placeholder={t('record.sportSelectorSearch')}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                background: 'none', border: 'none', outline: 'none',
-                color: 'var(--text)', fontSize: 15, flex: 1,
-                fontFamily: 'var(--font-body)',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Recents */}
-        {!search && (
-          <div style={{
-            padding: '0 16px 12px', overflowX: 'auto',
-            display: 'flex', gap: 12, flexShrink: 0,
-          }}>
-            {RECENT_SPORTS.filter(s => !isDesktop || DESKTOP_ALLOWED.includes(s.id)).map(sport => {
+      {/* Liste par catégories (listes groupées) */}
+      {filteredCats.map(category => (
+        <div key={category.name}>
+          <RkSectionLabel>{catNameText(category.name)}</RkSectionLabel>
+          <RkGroup>
+            {category.sports.map(sport => {
               const active = selectedSport === sport.id
               return (
-                <button
-                  key={sport.id}
-                  onClick={() => onSelect(sport.id)}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    minWidth: 64, background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                >
-                  <span style={{
-                    width: 52, height: 52, borderRadius: '50%',
-                    background: active ? ACCENT : 'var(--bg-card2)',
-                    border: active ? 'none' : '1px solid var(--border)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: active ? '#fff' : 'var(--text)',
-                  }}>
-                    {sport.icon}
-                  </span>
-                  <span style={{
-                    fontSize: 11, lineHeight: 1.2, textAlign: 'center',
-                    color: active ? ACCENT : 'var(--text-mid)',
-                  }}>
-                    {sportLabelText(sport)}
-                  </span>
-                </button>
+                <RkRow key={sport.id}
+                  icon={<RkTile color={getSportColor(sport.id)}>{sport.icon}</RkTile>}
+                  label={sportLabelText(sport)}
+                  onClick={() => pick(sport.id)} chevron={false}
+                  right={active ? <span style={{ color: 'var(--primary)', display: 'flex' }}><RkIco d={RK_ICON.check} size={20} sw={2.6} /></span> : undefined} />
               )
             })}
-          </div>
-        )}
-
-        {/* Liste par catégories */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 16px' }}>
-          {filteredCats.map(category => (
-            <div key={category.name}>
-              <p style={{
-                fontSize: 12, fontWeight: 700, color: '#8C8C8C',
-                padding: '10px 12px 4px', margin: 0,
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-              }}>
-                {catNameText(category.name)}
-              </p>
-              {category.sports.map(sport => {
-                const active = selectedSport === sport.id
-                return (
-                  <button
-                    key={sport.id}
-                    onClick={() => onSelect(sport.id)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '14px 12px',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      borderRadius: 'var(--r-sm)',
-                      color: 'var(--text)',
-                      textAlign: 'left',
-                      transition: 'background-color 100ms',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
-                  >
-                    <span style={{
-                      width: 36, height: 36, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--text)', opacity: 0.85,
-                    }}>
-                      {sport.icon}
-                    </span>
-                    <span style={{ fontSize: 16, color: 'var(--text)', fontWeight: 400, fontFamily: 'var(--font-body)' }}>
-                      {sportLabelText(sport)}
-                    </span>
-                    {active && (
-                      <svg style={{ marginLeft: 'auto' }} width="18" height="18" viewBox="0 0 18 18" fill="none">
-                        <path d="M3 9l4 4 8-8" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-          {filteredCats.length === 0 && (
-            <p style={{
-              textAlign: 'center', color: '#8C8C8C',
-              padding: '24px 16px', fontSize: 14,
-            }}>
-              {t('record.sportSelectorEmpty')}
-            </p>
-          )}
+          </RkGroup>
         </div>
-
-        {/* Créer une activité manuellement (tous sports) */}
-        {onManual && (
-          <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-            <button
-              onClick={() => { handleClose(); onManual() }}
-              style={{
-                width: '100%', height: 46, borderRadius: 'var(--r-md)',
-                background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              {t('record.sportSelectorManual') || 'Créer une activité manuellement'}
-            </button>
-          </div>
-        )}
-      </div>
-      <style>{`
-        @keyframes sportsel-fade-in  { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes sportsel-fade-out { from { opacity: 1 } to { opacity: 0 } }
-      `}</style>
-    </div>
+      ))}
+      {filteredCats.length === 0 && (
+        <p style={{ textAlign: 'center', color: 'var(--text-mid)', padding: '28px 16px', fontSize: 14 }}>
+          {t('record.sportSelectorEmpty')}
+        </p>
+      )}
+    </RkSheet>
   )
 }

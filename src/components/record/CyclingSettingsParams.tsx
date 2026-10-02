@@ -103,10 +103,10 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         <div key={s.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderBottom: i < arr.length-1 ? `1px solid ${theme.separator}` : 'none' }}>
           <div style={{ flex:1 }}>
             <p style={{ fontSize:15, color:theme.text, margin:0 }}>{s.label}</p>
-            <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{s.desc}</p>
+            <p style={{ fontSize:12, color:'var(--text-mid)', margin:'2px 0 0' }}>{s.desc}</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.cyclingParamsNotConnected')}</span>
+            <span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('record.cyclingParamsNotConnected')}</span>
             <span style={{ fontSize:10, color:'var(--primary)', border:'1px solid rgba(6,182,212,0.4)', borderRadius: 'var(--r-lg)', padding:'2px 8px' }}>{t('record.cyclingParamsSoon')}</span>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
   const renderAthlete = () => (
     <SettingsSection title={t('record.sectionAthleteUpper')} theme={theme}>
       <div style={{ padding: '8px 16px 4px' }}>
-        <p style={{ fontSize: 12, color: '#8C8C8C', margin: 0 }}>{t('record.cyclingParamsAthleteIntro')}</p>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{t('record.cyclingParamsAthleteIntro')}</p>
       </div>
       <SettingsRow theme={theme} label="FTP" description={t('record.cyclingParamsFtpDesc')}
         right={<NumberInput theme={theme} value={at.ftp} min={50} max={600} step={5} unit="w" onChange={v => updateSetting('athlete.ftp', v)} />} />
@@ -137,7 +137,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
       <SettingsRow theme={theme} label={t('record.cyclingParamsRestHr')}
         right={<NumberInput theme={theme} value={at.restHr} min={30} max={100} step={1} unit="bpm" onChange={v => updateSetting('athlete.restHr', v)} />} />
       <SettingsRow theme={theme} label={t('record.cyclingParamsWeight')} description={t('record.cyclingParamsWeightDesc')} last
-        right={<span style={{ fontSize: 14, color: '#8C8C8C' }}>{profile?.weight_kg ?? '—'} kg</span>} />
+        right={<span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{profile?.weight_kg ?? '—'} kg</span>} />
 
       {/* Zones de puissance cyclisme */}
       <div style={{ padding: '12px 16px 4px', marginTop: 4 }}>
@@ -152,7 +152,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
               <div key={z} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', borderBottom:`1px solid ${theme.separator}` }}>
                 <div style={{ width:28, height:28, borderRadius: 'var(--r-sm)', background: ZONE_COLORS[z], display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'white', flexShrink:0 }}>Z{z}</div>
                 <span style={{ flex:1, fontSize:14, color:theme.text }}>{t(ZONE_LABEL_KEYS[z])}</span>
-                <span style={{ fontSize:13, color:'#8C8C8C' }}>{val} w</span>
+                <span style={{ fontSize:13, color:'var(--text-mid)' }}>{val} w</span>
               </div>
             )
           })}
@@ -165,7 +165,7 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         </div>
       ) : (
         <div style={{ padding:'12px 16px 16px' }}>
-          <p style={{ fontSize:13, color:'#8C8C8C', fontStyle:'italic', margin:0 }}>
+          <p style={{ fontSize:13, color:'var(--text-mid)', fontStyle:'italic', margin:0 }}>
             {t('record.cyclingParamsNoZones')}{' '}
             <a href="/performance" style={{ color:'var(--primary)', textDecoration:'none' }}>{t('record.cyclingParamsConfigureInPerf')}</a>
           </p>
@@ -213,10 +213,10 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
       {stravaConnected ? (
         <div style={{ padding: '4px 16px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
-          <span style={{ fontSize: 12, color: '#10B981' }}>{t('record.cyclingParamsStravaConnected')}</span>
+          <span style={{ fontSize: 12, color: 'var(--sport-run)' }}>{t('record.cyclingParamsStravaConnected')}</span>
         </div>
       ) : (
-        <p style={{ fontSize: 12, color: '#8C8C8C', padding: '4px 16px 8px', margin: 0 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', padding: '4px 16px 8px', margin: 0 }}>
           <a href="/connections" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{t('record.cyclingParamsConnectStrava')}</a> {t('record.cyclingParamsConnectStravaSuffix')}
         </p>
       )}

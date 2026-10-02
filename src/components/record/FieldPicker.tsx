@@ -48,12 +48,12 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
               <p style={{ fontSize: 16, color: theme.text, margin: 0, fontWeight: 500 }}>
                 {catLabel}
               </p>
-              <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '3px 0 0' }}>
                 {t('record.fieldPickerAvailable', { n: available.length })}
               </p>
             </div>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
+              <path d="M5 3l4 4-4 4" stroke="var(--text-dim)" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
           </button>
         )
@@ -101,7 +101,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
         onClick={handleClose}
         style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+          background: 'var(--scrim)',
           opacity: closing ? 0 : 1, transition: 'opacity 200ms',
         }}
       />
@@ -115,7 +115,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
           fontFamily: 'var(--font-body)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
+          boxShadow: 'var(--shadow-float)',
         }}
       >
         {/* Drag handle */}
@@ -140,7 +140,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
             {selectedCategory ? t(FIELD_CATEGORY_KEYS[selectedCategory]) : t('record.fieldPickerTitle')}
           </h2>
           <button onClick={handleClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C8C8C', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>
             ×
           </button>
         </div>
@@ -192,7 +192,7 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         {categoryLabel && (
-          <p style={{ fontSize: 10, color: '#8C8C8C', margin: '0 0 2px',
+          <p style={{ fontSize: 10, color: 'var(--text-mid)', margin: '0 0 2px',
                       textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {categoryLabel}
           </p>
@@ -201,10 +201,10 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
           <span style={{ fontSize: 15, color: theme.text, fontWeight: 400 }}>
             {field.labelKey ? t(field.labelKey) : field.label}
           </span>
-          {field.unit && <span style={{ fontSize: 12, color: '#8C8C8C' }}>{field.unit}</span>}
+          {field.unit && <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>{field.unit}</span>}
           {field.type === 'chart' && (
             <span style={{ fontSize: 10, color: 'var(--primary)',
-                           border: '1px solid rgba(6,182,212,0.4)',
+                           border: '1px solid var(--primary)',
                            borderRadius: 4, padding: '1px 5px' }}>{t('record.fieldPickerBadgeChart')}</span>
           )}
           {field.type === 'climb_profile' && (
@@ -227,7 +227,7 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
         )}
       </div>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M5 3l4 4-4 4" stroke="var(--text-dim)" strokeWidth="1.4" strokeLinecap="round"/>
       </svg>
     </button>
   )

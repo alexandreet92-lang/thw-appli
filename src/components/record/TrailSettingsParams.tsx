@@ -71,10 +71,10 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
         <div key={s.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderBottom: i < arr.length-1 ? `1px solid ${theme.separator}` : 'none' }}>
           <div style={{ flex:1 }}>
             <p style={{ fontSize:15, color:theme.text, margin:0 }}>{s.label}</p>
-            <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{s.desc}</p>
+            <p style={{ fontSize:12, color:'var(--text-mid)', margin:'2px 0 0' }}>{s.desc}</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:12, color:'#8C8C8C' }}>{t('record.trailSensorNotConnected')}</span>
+            <span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('record.trailSensorNotConnected')}</span>
             <span style={{ fontSize:10, color:'#F59E0B', border:'1px solid rgba(245,158,11,0.4)', borderRadius: 'var(--r-lg)', padding:'2px 8px' }}>{t('record.trailSensorSoon')}</span>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
   const renderAthlete = () => (
     <SettingsSection title={t('record.settingsSec_athlete')} theme={theme}>
       <div style={{ padding:'8px 16px 4px' }}>
-        <p style={{ fontSize:12, color:'#8C8C8C', margin:0 }}>{t('record.trailAthleteInfo')}</p>
+        <p style={{ fontSize:12, color:'var(--text-mid)', margin:0 }}>{t('record.trailAthleteInfo')}</p>
       </div>
       <SettingsRow theme={theme} label={t('record.trailAthleteVma')} description={t('record.trailAthleteVmaDesc')}
         right={<NumberInput theme={theme} value={at.vma} min={6} max={30} step={0.5} unit="km/h" onChange={v => updateSetting('athlete.vma', v)} />} />
@@ -109,7 +109,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
       <SettingsRow theme={theme} label={t('record.trailAthleteAscentSpeed')} description={t('record.trailAthleteAscentSpeedDesc')}
         right={<NumberInput theme={theme} value={at.ascentSpeedMh} min={100} max={2000} step={50} unit="m/h" onChange={v => updateSetting('athlete.ascentSpeedMh', v)} />} />
       <SettingsRow theme={theme} label={t('record.trailAthleteWeight')} last
-        right={<span style={{ fontSize:14, color:'#8C8C8C' }}>{profile?.weight_kg ?? '—'} kg</span>} />
+        right={<span style={{ fontSize:14, color:'var(--text-mid)' }}>{profile?.weight_kg ?? '—'} kg</span>} />
       <div style={{ padding:'12px 16px 4px', marginTop:4 }}>
         <p style={{ fontSize:11, fontWeight:700, color:theme.dim, letterSpacing:'0.08em', textTransform:'uppercase', margin:0 }}>{t('record.trailAthleteTargetPaces')}</p>
       </div>
@@ -123,7 +123,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
           <span style={{ flex:1, fontSize:14, color:theme.text }}>{label}</span>
           <input key={val} defaultValue={val} placeholder="4:30" onBlur={e => updateSetting(path, e.target.value.trim() || val)}
             style={{ width:70, textAlign:'right', background:'none', border:'none', borderBottom:`1px solid ${theme.separator}`, color:theme.text, fontSize:14, outline:'none', fontFamily: 'var(--font-body)' }} />
-          <span style={{ fontSize:12, color:'#8C8C8C' }}>min/km</span>
+          <span style={{ fontSize:12, color:'var(--text-mid)' }}>min/km</span>
         </div>
       ))}
     </SettingsSection>
@@ -159,7 +159,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
         right={<Toggle theme={theme} value={po.autoStrava} onChange={v => updateSetting('postRun.autoStrava', v)} disabled={!stravaConnected} />} />
       {stravaConnected
         ? <div style={{ padding:'4px 16px 8px', display:'flex', alignItems:'center', gap:6 }}><div style={{ width:6, height:6, borderRadius:'50%', background:'#10B981' }} /><span style={{ fontSize:12, color:'#10B981' }}>{t('record.trailStravaConnected')}</span></div>
-        : <p style={{ fontSize:12, color:'#8C8C8C', padding:'4px 16px 8px', margin:0 }}><a href="/connections" style={{ color:'#F59E0B', textDecoration:'none' }}>{t('record.trailConnectStrava')}</a>{t('record.trailConnectStravaSuffix')}</p>
+        : <p style={{ fontSize:12, color:'var(--text-mid)', padding:'4px 16px 8px', margin:0 }}><a href="/connections" style={{ color:'#F59E0B', textDecoration:'none' }}>{t('record.trailConnectStrava')}</a>{t('record.trailConnectStravaSuffix')}</p>
       }
       <SettingsRow theme={theme} label={t('record.trailPostShowSummary')} last
         right={<Toggle theme={theme} value={po.showSummary} onChange={v => updateSetting('postRun.showSummary', v)} />} />

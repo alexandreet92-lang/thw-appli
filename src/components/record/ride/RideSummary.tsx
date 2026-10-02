@@ -7,17 +7,9 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { fmtClock } from './format'
 import type { RideMetrics } from './types'
-
-function Stat({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
-  return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}>
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>
-        {value}{unit && <small style={{ fontSize: 12, color: 'var(--text-mid)', fontWeight: 700, marginLeft: 2 }}>{unit}</small>}
-      </div>
-    </div>
-  )
-}
+import { motion, useReducedMotion } from 'motion/react'
+import { haptic } from '@/lib/haptics'
+import { RkHero, RkGrid, RkCell, RkGroup, RkRow, RkCta, RkRangeSheet, RK_DOT, RK_SPRING } from '../kit/RecordKit'
 
 export default function RideSummary({ metrics, elapsedS, smEst, defaultTitle, saving, onSave }: {
   metrics: RideMetrics
@@ -28,52 +20,58 @@ export default function RideSummary({ metrics, elapsedS, smEst, defaultTitle, sa
   onSave: (title: string, rpe: number, comment: string) => void
 }) {
   const { t } = useI18n()
+  const reduce = useReducedMotion()
   const [title, setTitle] = useState(defaultTitle)
   const [rpe, setRpe] = useState(5)
   const [comment, setComment] = useState('')
-  const accent = 'var(--primary)'
+  const [rpeOpen, setRpeOpen] = useState(false)
+  const rpeColor = rpe <= 3 ? 'var(--success)' : rpe <= 6 ? RK_DOT.warn : rpe <= 8 ? 'var(--sport-gym)' : 'var(--danger)'
+  const card: React.CSSProperties = { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', paddingTop: 'env(safe-area-inset-top)', overflowY: 'auto' }}>
-      <div style={{ padding: '20px 18px 40px', maxWidth: 560, width: '100%', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-mid)', fontWeight: 800 }}>{t('w2c.sessionComplete')}</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: accent, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{fmtClock(elapsedS)}</div>
-        </div>
-
-        {/* Récap chiffré */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 22 }}>
-          <Stat label={t('w2c.avgPower')} value={metrics.avgW || 0} unit="W" />
-          <Stat label="NP" value={metrics.np || 0} unit="W" />
-          <Stat label={t('w2c.work')} value={metrics.kj || 0} unit="kJ" />
-          <Stat label={t('w2c.avgHr')} value={metrics.hrAvg || '—'} unit={metrics.hrAvg ? 'bpm' : ''} />
-          <Stat label={t('w2c.smEst')} value={smEst} />
-          <Stat label={t('w2c.duration')} value={fmtClock(elapsedS)} />
-        </div>
-
-        {/* Titre */}
-        <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 7 }}>{t('w2c.sessionTitle')}</label>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2c.sessionTitlePlaceholder')}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 15, outline: 'none', marginBottom: 20 }} />
-
-        {/* RPE */}
-        <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-          <span>{t('w2c.perceivedEffort')}</span>
-          <span style={{ color: accent }}>{rpe}/10 · {t('w2c.rpe_' + rpe)}</span>
-        </label>
-        <input type="range" min={1} max={10} value={rpe} onChange={e => setRpe(+e.target.value)}
-          style={{ width: '100%', accentColor: accent, marginBottom: 20 }} />
-
-        {/* Sensations */}
-        <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 7 }}>{t('w2c.sensations')}</label>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder={t('w2c.sensationsPlaceholder')}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5, marginBottom: 24 }} />
-
-        <button onClick={() => onSave(title.trim() || defaultTitle, rpe, comment)} disabled={saving}
-          style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: accent, color: 'var(--on-primary)', fontSize: 15.5, fontWeight: 800, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-          {saving ? t('w2c.saving') : t('w2c.save')}
-        </button>
+    <motion.div initial={{ y: reduce ? 0 : '100%', opacity: reduce ? 0 : 1 }} animate={{ y: 0, opacity: 1 }} transition={reduce ? { duration: 0.15 } : RK_SPRING}
+      style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface-page)' }}>
+      <div style={{ flexShrink: 0, textAlign: 'center', padding: 'calc(env(safe-area-inset-top) + 14px) 16px 8px' }}>
+        <div style={{ fontSize: 19, fontWeight: 800 }}>{t('rec.saveTitle')}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('w2c.sessionComplete')}</div>
       </div>
-    </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ padding: '6px 16px 24px', maxWidth: 600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Titre + sensations */}
+          <div style={{ ...card, padding: '16px 16px 12px' }}>
+            <input className="rk-input" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('w2c.sessionTitlePlaceholder')}
+              aria-label={t('w2c.sessionTitle')} style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', minHeight: 36 }} />
+            <textarea className="rk-input" value={comment} onChange={e => setComment(e.target.value)} rows={2} placeholder={t('w2c.sensationsPlaceholder')}
+              aria-label={t('w2c.sensations')} style={{ fontSize: 16, marginTop: 6, resize: 'none', lineHeight: 1.4 }} />
+          </div>
+
+          {/* Héro durée + récap chiffré */}
+          <div className="rk-card">
+            <RkHero label={t('w2c.duration')} value={fmtClock(elapsedS)} size={56} />
+            <RkGrid>
+              <RkCell label={t('w2c.avgPower')} value={String(metrics.avgW || 0)} unit="W" size={30} />
+              <RkCell label="NP" value={String(metrics.np || 0)} unit="W" size={30} />
+              <RkCell label={t('w2c.work')} value={String(metrics.kj || 0)} unit="kJ" size={30} />
+              <RkCell label={t('w2c.avgHr')} value={metrics.hrAvg ? String(metrics.hrAvg) : '—'} unit={metrics.hrAvg ? 'bpm' : undefined} size={30} />
+              <RkCell label={t('w2c.smEst')} value={String(smEst)} size={30} span={2} />
+            </RkGrid>
+          </div>
+
+          {/* Effort perçu */}
+          <RkGroup>
+            <RkRow label={t('w2c.perceivedEffort')} onClick={() => setRpeOpen(true)}
+              value={<span className="rk-num" style={{ letterSpacing: 0, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span className="rk-dot" style={{ background: rpeColor }} />{rpe}/10 · {t('w2c.rpe_' + rpe)}</span>} />
+          </RkGroup>
+        </div>
+      </div>
+      <div style={{ flexShrink: 0, padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', maxWidth: 600, width: '100%', margin: '0 auto' }}>
+        <RkCta variant="primary" disabled={saving} progress={saving ? 66 : null} style={{ opacity: 1 }}
+          onClick={() => { haptic('medium'); onSave(title.trim() || defaultTitle, rpe, comment) }}>
+          {saving ? t('w2c.saving') : t('rec.saveActivity')}
+        </RkCta>
+      </div>
+      <RkRangeSheet open={rpeOpen} onClose={() => setRpeOpen(false)} title={t('w2c.perceivedEffort')}
+        value={rpe} min={1} max={10} step={1} color={rpeColor} caption={t('w2c.rpe_' + rpe)} onChange={setRpe} zIndex={10080} />
+    </motion.div>
   )
 }

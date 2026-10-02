@@ -22,7 +22,7 @@ export default function RideFlux({ v, d }: { v: RideView; d: Derived }) {
     <>
       <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, padding: '2px 2px 8px' }}>{t('w4a.flux_last5')}</div>
 
-      <div style={{ flex: 1, minHeight: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 10, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 10, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, minHeight: 0 }}>
           <LiveChart samples={v.samples} ftp={v.ftp} fcMax={v.fcMax} windowS={300} t={v.t} />
         </div>

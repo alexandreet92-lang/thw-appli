@@ -1,10 +1,13 @@
 'use client'
 // ──────────────────────────────────────────────────────────────────────────
 // ExitConfirmOverlay — confirmation avant de quitter un écran d'enregistrement
-// live pendant qu'une séance est en cours ou en pause. Mini-overlay maison
-// (pas de confirm() natif), cohérent avec les sheets des écrans record.
+// live pendant qu'une séance est en cours ou en pause. Feuille du bas premium
+// (RecordKit) : « Rester » (cyan) / « Quitter » (rouge, texte). Glisser vers le
+// bas ou toucher le voile = rester. Pas de confirm() natif.
 // ──────────────────────────────────────────────────────────────────────────
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { RkSheet, RkCta } from './kit/RecordKit'
 
 interface Props {
   open: boolean
@@ -15,54 +18,16 @@ interface Props {
 
 export default function ExitConfirmOverlay({ open, isDark, onQuit, onStay }: Props) {
   const { t } = useI18n()
-  if (!open) return null
-
-  const bg        = isDark ? '#161616' : '#FFFFFF' // design-allow-color
-  const text      = isDark ? '#FFFFFF' : '#0A0A0A' // design-allow-color
-  const dim       = isDark ? 'rgba(255,255,255,0.55)' : '#666666' // design-allow-color
-  const separator = isDark ? 'rgba(255,255,255,0.10)' : '#E8E8E8' // design-allow-color
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10020, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div
-        onClick={onStay}
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} // design-allow-color
-      />
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        style={{
-          position: 'relative', width: '100%', maxWidth: 320,
-          borderRadius: 'var(--r-lg)', background: bg, color: text,
-          padding: '24px 20px 12px', textAlign: 'center',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.35)', // design-allow-color
-          fontFamily: 'var(--font-body)',
-        }}
-      >
-        <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{t('record.exitConfirmTitle')}</p>
-        <p style={{ fontSize: 13, color: dim, margin: '8px 0 20px', lineHeight: 1.5 }}>{t('record.exitConfirmBody')}</p>
-        <button
-          onClick={onStay}
-          style={{
-            width: '100%', padding: '13px 16px', borderRadius: 'var(--r-md)', border: 'none',
-            background: 'var(--primary)', color: '#FFFFFF', // design-allow-color
-            fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
-        >
-          {t('record.exitConfirmStay')}
-        </button>
-        <button
-          onClick={onQuit}
-          style={{
-            width: '100%', padding: '13px 16px', marginTop: 6,
-            background: 'none', border: 'none', borderTop: `1px solid ${separator}`,
-            color: '#EF4444', // design-allow-color
-            fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
-        >
-          {t('record.exitConfirmQuit')}
-        </button>
+    <RkSheet open={open} onClose={onStay} isDark={isDark} zIndex={10020} label={t('record.exitConfirmTitle')}>
+      <div style={{ textAlign: 'center', padding: '6px 4px 4px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>{t('record.exitConfirmTitle')}</h2>
+        <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '8px 0 22px', lineHeight: 1.5 }}>{t('record.exitConfirmBody')}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <RkCta variant="primary" onClick={onStay}>{t('record.exitConfirmStay')}</RkCta>
+          <RkCta variant="text-danger" onClick={() => { haptic('heavy'); onQuit() }}>{t('record.exitConfirmQuit')}</RkCta>
+        </div>
       </div>
-    </div>
+    </RkSheet>
   )
 }

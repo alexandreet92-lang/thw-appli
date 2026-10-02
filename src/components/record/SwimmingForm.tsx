@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { rkScope, RkFab, RkIco, RK_ICON, RkCta } from './kit/RecordKit'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
@@ -23,15 +24,15 @@ function autoTitle(): string {
 }
 
 const LABEL = {
-  fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const,
-  letterSpacing: '0.1em', color: 'var(--text-dim)' as const, margin: '0 0 10px', display: 'block',
+  fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const,
+  letterSpacing: '0.06em', color: 'var(--text-dim)' as const, margin: '0 4px 8px', display: 'block',
 }
 
 const INPUT = {
   width: '100%', boxSizing: 'border-box' as const,
-  background: 'var(--bg-card2)', border: '1px solid var(--border)',
-  borderRadius: 'var(--r-md)', padding: '12px 16px',
-  fontSize: 15, color: 'var(--text)', outline: 'none',
+  background: 'var(--surface-card)', border: '1px solid var(--border)',
+  borderRadius: 'var(--r-md)', minHeight: 48, padding: '12px 16px',
+  fontSize: 16, color: 'var(--text)', outline: 'none',
   fontFamily: 'var(--font-body)',
 }
 
@@ -121,13 +122,13 @@ export default function SwimmingForm({ onClose }: Props) {
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 300ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 380ms cubic-bezier(0.22,1,0.36,1)' }}>
 
-      {/* Header */}
-      <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
-        <button onClick={requestClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.swimFormTitle')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
+      {/* En-tête : × · titre · enregistrer */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px', position: 'relative' }}>
+        <RkFab label="×" onClick={requestClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 19, fontWeight: 800 }}>{t('record.swimFormTitle')}</span>
+        <button onClick={handleSave} disabled={saving} className="rk-press" style={{ marginLeft: 'auto', minHeight: 44, padding: '0 14px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
           {saving ? '…' : t('record.swimSave')}
         </button>
       </div>
@@ -153,7 +154,7 @@ export default function SwimmingForm({ onClose }: Props) {
             <NumInput val={mins}  set={setMins}  max={59} label="min" />
             <NumInput val={secs}  set={setSecs}  max={59} label="sec" />
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: 'var(--primary)', textAlign: 'center' as const }}>{fmtDur}</p>
+          <p className="rk-num" style={{ margin: '10px 0 0', fontSize: 28, fontWeight: 800, color: 'var(--text)', textAlign: 'center' as const }}>{fmtDur}</p>
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={LABEL}>{t('record.swimLabelDistance')}</label>
@@ -166,7 +167,7 @@ export default function SwimmingForm({ onClose }: Props) {
             />
             <div style={{ display: 'flex', gap: 4 }}>
               {(['m', 'yd'] as const).map(u => (
-                <button key={u} onClick={() => setDistUnit(u)} style={{ padding: '10px 14px', borderRadius: 'var(--r-sm)', border: distUnit === u ? 'none' : '1px solid var(--border)', background: distUnit === u ? 'var(--primary)' : 'transparent', color: distUnit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font-body)' }}>{u}</button>
+                <button key={u} onClick={() => setDistUnit(u)} style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: distUnit === u ? 'var(--text)' : 'var(--surface-chip)', color: distUnit === u ? 'var(--bg)' : 'var(--text)', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-body)' }}>{u}</button>
               ))}
             </div>
           </div>
@@ -193,13 +194,10 @@ export default function SwimmingForm({ onClose }: Props) {
       </div>
 
       {/* Sticky save button */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: 'linear-gradient(transparent, var(--bg) 40%)' }}>
-        <button
-          onClick={handleSave} disabled={saving}
-          style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--font-body)', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}
-        >
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 16px', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: 'linear-gradient(transparent, var(--surface-page) 40%)' }}>
+        <RkCta variant="primary" onClick={() => { void handleSave() }} disabled={saving} progress={saving ? 66 : null} style={{ opacity: 1 }}>
           {saving ? t('record.swimSaving') : t('record.swimSaveActivity')}
-        </button>
+        </RkCta>
       </div>
     </div>
   )

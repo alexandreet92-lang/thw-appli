@@ -23,9 +23,10 @@ export function Select({ value, options, onChange, disabled, theme }: Props) {
 
   return (
     <div style={{
-      borderRadius: 'var(--r-sm)',
-      border: `1px solid ${justChanged ? '#10B981' : theme.separator}`,
-      transition: 'border-color 300ms',
+      borderRadius: 'var(--r-pill)',
+      background: 'var(--surface-chip)',
+      boxShadow: justChanged ? '0 0 0 2px var(--success)' : 'none',
+      transition: 'box-shadow 300ms ease',
       overflow: 'hidden',
       flexShrink: 0,
     }}>
@@ -34,13 +35,14 @@ export function Select({ value, options, onChange, disabled, theme }: Props) {
         onChange={e => handleChange(e.target.value)}
         disabled={disabled}
         style={{
-          background: theme.bg,
+          background: 'transparent',
           border: 'none',
-          padding: '6px 10px',
-          fontSize: 13, color: theme.text,
+          minHeight: 36,
+          padding: '0 14px',
+          fontSize: 14, fontWeight: 700, color: theme.text,
           cursor: disabled ? 'default' : 'pointer',
           outline: 'none',
-          opacity: disabled ? 0.4 : 1,
+          opacity: disabled ? 0.45 : 1,
           fontFamily: 'var(--font-body)',
         }}
       >

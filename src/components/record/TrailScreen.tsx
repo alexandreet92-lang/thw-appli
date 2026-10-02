@@ -13,7 +13,7 @@ import TrailPage2 from './TrailPage2'
 import TrailPage3 from './TrailPage3'
 import TrailPage4 from './TrailPage4'
 import TrailSettings from './TrailSettings'
-import AutoPauseBadge from './AutoPauseBadge'
+import LiveFrame from './kit/LiveFrame'
 import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
 import { primeLapBeep, playLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
@@ -113,23 +113,7 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
     lapPrevAltRef.current = alt
   }, [gps.currentAltitude, phase])
 
-  const touchRef = useRef<{ y: number; t: number } | null>(null)
-  const swipeFromMap = useRef(false)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    swipeFromMap.current = !!(e.target as HTMLElement)?.closest?.('.leaflet-container')
-    if (swipeFromMap.current) return
-    touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
-  }
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (swipeFromMap.current) { swipeFromMap.current = false; return }
-    if (!touchRef.current) return
-    const dy = e.changedTouches[0].clientY - touchRef.current.y
-    const dt = Date.now() - touchRef.current.t
-    touchRef.current = null
-    if (dt > 600) return
-    if (dy < -50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i + 1) % n })
-    else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
-  }
+
 
   // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS).
   const handleStart = () => { primeLapBeep(); resetTracking(); setElevationLossM(0); prevAltRef.current = null; lapPrevAltRef.current = null; lastHydrationRef.current = 0; lastNutritionRef.current = 0; gpsWasOkRef.current = true; slopeArmedRef.current = true; setStartedAt(Date.now()); setPhase('running') }
@@ -240,59 +224,50 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
   const isDark = settings.display.theme === 'dark' ? true
     : settings.display.theme === 'light' ? false
     : systemDark
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
-  const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
   const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
   const currentPosition: [number, number] | null = gps.currentLat != null && gps.currentLng != null ? [gps.currentLat, gps.currentLng] : null
   const startedAtISO = startedAt ? new Date(startedAt).toISOString() : new Date().toISOString()
   const dotCount = Math.max(PAGE_COUNT, pages.length)
 
   return createPortal(
-    <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
-      <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', position:'relative' }}>
-        <button onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }} aria-label={t('record.trailExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
-        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:13, color:labelColor, fontFamily: 'var(--font-body)' }}>Trail</span>
-        <button onClick={() => setSettingsOpen(true)} aria-label={t('record.trailSettingsAria')} style={{ marginLeft:'auto', width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-      </div>
+    <LiveFrame
+      isDark={isDark}
+      title={'Trail'}
+      phase={phase}
+      autoPaused={autoPaused}
+      gpsStatus={gps.status}
+      gpsAccuracy={gps.accuracy}
+      onClose={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }}
+      closeLabel={t('record.trailExit')}
+      onSettings={() => setSettingsOpen(true)}
+      settingsLabel={t('record.trailSettingsAria')}
+      pageCount={dotCount}
+      pageIndex={pageIndex}
+      onPageChange={setPageIndex}
+      banners={<LiveNoticeBanner noticeKey={noticeKey} />}
+      overlays={<>
 
-      <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', paddingBottom:'calc(120px + env(safe-area-inset-bottom))' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        <div key={pageIndex} style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, overflowY:'auto' }}>
-          {pageIndex === 0 && <TrailPage1 isDark={isDark} durationSec={stopwatch.seconds} distanceM={gps.distance} speedKmh={gps.currentSpeed} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} dataFontFamily={dataFontFamily} units={settings.units} paceUnit={settings.display.paceUnit} dataSize={settings.display.dataSize} />}
-          {pageIndex === 1 && <TrailPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} onExpand={() => setNavOpen(true)} paused={autoPaused} />}
-          {pageIndex === 2 && <TrailPage3 isDark={isDark} gradientPercent={gps.gradient ?? 0} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} altitudeM={gps.currentAltitude ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
-          {pageIndex === 3 && <TrailPage4 isDark={isDark} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} gradientPercent={gps.gradient ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} units={settings.units} paceUnit={settings.display.paceUnit} dataSize={settings.display.dataSize} />}
-        </div>
-        <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:8 }}>
-          {Array.from({ length: dotCount }).map((_, i) => <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i === pageIndex ? '#F59E0B' : labelColor, transition:'background 0.2s' }} />)}
-        </div>
-      </div>
+          {/* Navigation plein écran (dispo même sans parcours ; guidage si parcours) */}
+          {navOpen && (
+            <RouteNavScreen route={route ?? null} sport="trail" showWatts={false} isDark={isDark} hr={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
+          )}
 
-      {/* Badge auto-pause — visible quelle que soit la page active */}
-      <AutoPauseBadge active={autoPaused} isDark={isDark} />
+          <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
+          <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
 
-      {/* Bandeau transitoire : rappels hydratation/nutrition, perte GPS, pente */}
-      <LiveNoticeBanner noticeKey={noticeKey} />
+          <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
 
-      {/* Navigation plein écran (dispo même sans parcours ; guidage si parcours) */}
-      {navOpen && (
-        <RouteNavScreen route={route ?? null} sport="trail" showWatts={false} isDark={isDark} hr={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
-      )}
-
-      <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
-      <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
-
-      <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
-
-      {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
-      {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}
-      {showSaveForm && <SessionSaveForm sport="trail" startedAt={startedAtISO} onBack={() => setShowSaveForm(false)} onSave={handleSaveSession} isDark={isDark} />}
-      {finishedSession && <SessionSummary session={finishedSession} isDark={isDark} onClose={onFinished} />}
-    </div>,
+          {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
+          {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}
+          {showSaveForm && <SessionSaveForm sport="trail" startedAt={startedAtISO} onBack={() => setShowSaveForm(false)} onSave={handleSaveSession} isDark={isDark} onDiscard={() => { setShowSaveForm(false); onExit() }} />}
+          {finishedSession && <SessionSummary session={finishedSession} isDark={isDark} onClose={onFinished} />}
+      </>}
+    >
+        {pageIndex === 0 && <TrailPage1 isDark={isDark} durationSec={stopwatch.seconds} distanceM={gps.distance} speedKmh={gps.currentSpeed} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} dataFontFamily={dataFontFamily} units={settings.units} paceUnit={settings.display.paceUnit} dataSize={settings.display.dataSize} />}
+        {pageIndex === 1 && <TrailPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} onExpand={() => setNavOpen(true)} paused={autoPaused} />}
+        {pageIndex === 2 && <TrailPage3 isDark={isDark} gradientPercent={gps.gradient ?? 0} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} altitudeM={gps.currentAltitude ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
+        {pageIndex === 3 && <TrailPage4 isDark={isDark} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} gradientPercent={gps.gradient ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} units={settings.units} paceUnit={settings.display.paceUnit} dataSize={settings.display.dataSize} />}
+    </LiveFrame>,
     document.body
   )
 }

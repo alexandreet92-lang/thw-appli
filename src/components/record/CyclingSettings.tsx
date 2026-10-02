@@ -1,5 +1,6 @@
 'use client'
 import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
+import { rkScope } from './kit/RecordKit'
 import type { CyclingSettings as CyclingSettingsData } from '@/hooks/useCyclingSettings'
 import { fieldById, type DataPage } from '@/types/cycling'
 import PageEditor from './PageEditor'
@@ -88,14 +89,12 @@ const SECTION_ICONS: Record<string, ReactElement> = {
   ),
 }
 
-function getTheme(isDark: boolean) {
+function getTheme(_isDark: boolean) {
+  // Tokens (clair/sombre via rkScope sur la racine) — feuille blanche, listes
+  // groupées grises façon iOS (maquette r1, feuille dépliée).
   return {
-    bg:        isDark ? '#0A0A0A' : '#FFFFFF',
-    text:      isDark ? '#FFFFFF' : '#0A0A0A',
-    label:     isDark ? 'rgba(255,255,255,0.55)' : '#666',
-    dim:       isDark ? 'rgba(255,255,255,0.35)' : '#8C8C8C',
-    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
-    cardBg:    isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA',
+    bg: 'var(--surface-card)', text: 'var(--text)', label: 'var(--text-mid)', dim: 'var(--text-mid)',
+    separator: 'var(--border)', cardBg: 'var(--surface-soft)',
   }
 }
 
@@ -207,14 +206,14 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 5l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             </div>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{idx + 1}</div>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{idx + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {renamingId === page.id ? (
                 <input autoFocus defaultValue={page.name}
                   onBlur={e => finishRename(page.id, e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') finishRename(page.id, e.currentTarget.value); if (e.key === 'Escape') setRenamingId(null) }}
                   onClick={e => e.stopPropagation()}
-                  style={{ fontSize: 15, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid #06B6D4', color: t.text, outline: 'none', flex: 1, padding: '2px 4px', width: '100%' }} />
+                  style={{ fontSize: 15, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--primary)', color: t.text, outline: 'none', flex: 1, padding: '2px 4px', width: '100%' }} />
               ) : (
                 <p style={{ fontSize: 15, fontWeight: 600, color: t.text, margin: 0 }}>{page.name}</p>
               )}
@@ -224,11 +223,11 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
               </p>
             </div>
             <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev === page.id ? null : page.id) }}
-              style={{ background: 'none', border: 'none', padding: '8px', color: '#8C8C8C', cursor: 'pointer', fontSize: 20, lineHeight: 1, flexShrink: 0 }}>⋯</button>
+              style={{ background: 'none', border: 'none', padding: '8px', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 20, lineHeight: 1, flexShrink: 0 }}>⋯</button>
           </div>
 
           {menuOpenId === page.id && (
-            <div ref={menuRef} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: t.bg, border: `1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', minWidth: 150 }}>
+            <div ref={menuRef} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: t.bg, border: `1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow: 'hidden', boxShadow: 'var(--shadow-float)', minWidth: 150 }}>
               <button onClick={e => { e.stopPropagation(); startRename(page); setMenuOpenId(null) }}
                 style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: t.text, cursor: 'pointer' }}>{tr('record.commonRename')}</button>
               <div style={{ height: 1, background: t.separator }} />
@@ -238,11 +237,11 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           )}
 
           {confirmDeleteId === page.id && (
-            <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
+            <div style={{ padding: '10px 16px', background: 'var(--danger-soft)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: 'var(--danger)' }}>{tr('record.commonDeletePageConfirm')}</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }}
-                  style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: 'var(--danger)', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
+                  style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: 'var(--danger)', border: 'none', color: 'var(--on-primary)', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)}
                   style={{ padding: '5px 14px', borderRadius: 'var(--r-sm)', background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>{tr('record.commonNo')}</button>
               </div>
@@ -261,10 +260,10 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={handleClose} style={{
         position: 'absolute', inset: 0,
-        background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)',
+        background: 'var(--scrim)',
         animation: closing ? 'fade-out 200ms ease-in forwards' : 'fade-in 200ms ease-out forwards',
       }} />
       <div
@@ -276,7 +275,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           fontFamily: 'var(--font-body)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
+          boxShadow: 'var(--shadow-float)',
         }}
       >
         {/* Handle */}
@@ -288,7 +287,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', flexShrink: 0 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'var(--font-display)' }}>{tr('record.cyclingSettingsTitle')}</h2>
           <button onClick={handleClose} aria-label={tr('record.commonClose')}
-            style={{ color: t.dim, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
+            className="rk-fab rk-press" data-variant="ghost" style={{ width: 36, height: 36 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
 
         {/* Section tiles + sub-page (relative container) */}
@@ -308,8 +307,8 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
               >
                 <div style={{
                   width: 36, height: 36, borderRadius: 'var(--r-sm)',
-                  background: 'rgba(6,182,212,0.10)',
-                  color: '#06B6D4',
+                  background: 'var(--primary-dim)',
+                  color: 'var(--primary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
@@ -317,10 +316,10 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 15, fontWeight: 500, color: t.text, margin: 0 }}>{tr(sec.labelKey)}</p>
-                  <p style={{ fontSize: 12, color: '#8C8C8C', margin: '2px 0 0' }}>{tr(sec.descKey)}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>{tr(sec.descKey)}</p>
                 </div>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
+                  <path d="M5 3l4 4-4 4" stroke="var(--text-dim)" strokeWidth="1.4" strokeLinecap="round"/>
                 </svg>
               </button>
             ))}

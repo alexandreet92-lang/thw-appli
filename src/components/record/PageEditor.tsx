@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { rkScope } from './kit/RecordKit'
 import { MAX_FIELDS, type DataPage } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -17,13 +18,11 @@ interface Props {
   isDark: boolean
 }
 
-function getTheme(isDark: boolean) {
+function getTheme(_isDark: boolean) {
+  // Tokens (clair/sombre portés par le conteneur rkScope de l'écran).
   return {
-    bg:        isDark ? '#0A0A0A' : '#FFFFFF',
-    text:      isDark ? '#FFFFFF' : '#0A0A0A',
-    dim:       isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C',
-    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
-    cardBg:    isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA',
+    bg: 'var(--surface-card)', text: 'var(--text)', label: 'var(--text-mid)', dim: 'var(--text-mid)',
+    separator: 'var(--border)', cardBg: 'var(--surface-soft)',
   }
 }
 
@@ -141,7 +140,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
 
   return (
     <div
-      className={closing ? 'editor-slide-out' : 'editor-slide-in'}
+      className={`${closing ? 'editor-slide-out' : 'editor-slide-in'} ${rkScope(isDark)}`}
       style={{
         position: 'fixed', inset: 0, zIndex: 10004,
         background: t.bg, color: t.text,
@@ -153,11 +152,8 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${t.separator}`, flexShrink: 0 }}>
-        <button onClick={handleClose} aria-label={tr('record.pageEditorBack')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.text, padding: 4, flexShrink: 0 }}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-          </svg>
+        <button onClick={handleClose} aria-label={tr('record.pageEditorBack')} className="rk-fab rk-press" style={{ width: 40, height: 40 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <input
           value={page.name}
@@ -173,7 +169,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
           {saving && (
             <div style={{
               width: 12, height: 12, borderRadius: '50%',
-              border: '2px solid rgba(6,182,212,0.25)',
+              border: '2px solid var(--primary-dim)',
               borderTopColor: 'var(--primary)',
               animation: 'spin 0.7s linear infinite',
             }} />
@@ -183,9 +179,9 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             disabled={page.fields.length <= 1}
             style={{
               width: 32, height: 32, borderRadius: 'var(--r-sm)', padding: 0,
-              background: page.fields.length <= 1 ? t.cardBg : 'rgba(239,68,68,0.12)',
-              border: `1.5px solid ${page.fields.length <= 1 ? t.separator : 'rgba(239,68,68,0.3)'}`,
-              color: page.fields.length <= 1 ? t.dim : '#EF4444',
+              background: page.fields.length <= 1 ? t.cardBg : 'var(--danger-soft)',
+              border: `1.5px solid ${page.fields.length <= 1 ? t.separator : 'var(--danger-soft)'}`,
+              color: page.fields.length <= 1 ? t.dim : 'var(--danger)',
               cursor: page.fields.length <= 1 ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 150ms',
@@ -203,9 +199,9 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
             disabled={page.fields.length >= maxForPage}
             style={{
               width: 32, height: 32, borderRadius: 'var(--r-sm)', padding: 0,
-              background: page.fields.length >= maxForPage ? t.cardBg : 'rgba(6,182,212,0.12)',
-              border: `1.5px solid ${page.fields.length >= maxForPage ? t.separator : 'rgba(6,182,212,0.35)'}`,
-              color: page.fields.length >= maxForPage ? t.dim : '#06B6D4',
+              background: page.fields.length >= maxForPage ? t.cardBg : 'var(--primary-dim)',
+              border: `1.5px solid ${page.fields.length >= maxForPage ? t.separator : 'var(--primary)'}`,
+              color: page.fields.length >= maxForPage ? t.dim : 'var(--primary)',
               cursor: page.fields.length >= maxForPage ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 150ms',
@@ -227,9 +223,9 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
               <button key={pos} onClick={() => setBigPosition(pos)}
                 style={{
                   padding: '6px 14px', borderRadius: 'var(--r-lg)', fontSize: 12, fontWeight: 500,
-                  background: active ? 'rgba(6,182,212,0.20)' : 'transparent',
-                  border: `1px solid ${active ? '#06B6D4' : t.separator}`,
-                  color: active ? '#06B6D4' : t.dim, cursor: 'pointer',
+                  background: active ? 'var(--primary-dim)' : 'transparent',
+                  border: `1px solid ${active ? 'var(--primary)' : t.separator}`,
+                  color: active ? 'var(--primary)' : t.dim, cursor: 'pointer',
                   fontFamily: 'var(--font-body)',
                 }}>
                 {pos === 'top' ? tr('record.pageEditorBigFieldTop') : tr('record.pageEditorBigFieldMiddle')}

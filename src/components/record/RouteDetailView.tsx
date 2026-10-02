@@ -8,6 +8,7 @@
 // Fichier chargé en dynamic(ssr:false) → Leaflet uniquement côté client.
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { rkScope } from './kit/RecordKit'
 import { MapContainer, TileLayer, Polyline, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { createClient } from '@/lib/supabase/client'
@@ -140,12 +141,12 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
   }, [samples])
 
   // Palette (record flow = hors design-system enforced → couleurs directes ok).
-  const bg = isDark ? '#0A0A0A' : '#FFFFFF'
-  const panel = isDark ? '#101317' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.45)' : '#6B7280'
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F4F6F8'
-  const border = isDark ? 'rgba(255,255,255,0.09)' : '#E5E7EB'
+  const bg = 'var(--surface-page)'
+  const panel = 'var(--surface-card)'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const surface = 'var(--surface-card)'
+  const border = 'var(--border)'
 
   // Profil altimétrique — chemins SVG.
   const PW = 800, PH = 200, PB = 26
@@ -183,7 +184,7 @@ export default function RouteDetailView({ route, isDark, sportLabel, onClose, on
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
         <button onClick={requestClose} aria-label="Retour" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}>

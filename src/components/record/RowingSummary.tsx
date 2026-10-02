@@ -1,5 +1,6 @@
 'use client'
 import { formatSplit, calcSplit500, calcWatts, type RowingPiece } from '@/types/rowing'
+import { rkScope, useAppDark, RkScreenIn, RkFab, RkFabSpacer, RkIco, RK_ICON, RkStatusPill, RkGrid, RkCell, RkSectionLabel, RkGroup, RkCta } from './kit/RecordKit'
 import { useI18n } from '@/lib/i18n'
 
 interface RowingSavedData {
@@ -26,6 +27,7 @@ function fmt(sec: number): string {
 
 export default function RowingSummary({ session, onClose }: Props) {
   const { t } = useI18n()
+  const dark = useAppDark()
   const stats = [
     { label: t('record.rowingSummaryDistance'),       value: session.distanceM >= 1000 ? `${(session.distanceM/1000).toFixed(2)}` : `${session.distanceM}`, unit: session.distanceM >= 1000 ? 'km' : 'm' },
     { label: t('record.rowingSummaryDuration'),          value: fmt(session.durationSec), unit: '' },
@@ -36,56 +38,47 @@ export default function RowingSummary({ session, onClose }: Props) {
   ]
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10005, background:'#0A0A0A', color:'#FFF', display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)', paddingTop:'env(safe-area-inset-top)' }}>
-      <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-        <span style={{ flex:1, textAlign:'center', fontSize:16, fontWeight:700, fontFamily: 'var(--font-body)' }}>{t('record.rowingSummaryTitle')}</span>
-        <button onClick={onClose} style={{ position:'absolute', right:16, background:'none', border:'none', color:'rgba(255,255,255,0.55)', fontSize:22, cursor:'pointer', lineHeight:1 }}>×</button>
+    <RkScreenIn className={rkScope(dark)} style={{ position:'fixed', inset:0, zIndex:10005, background:'var(--surface-page)', color:'var(--text)', display:'flex', flexDirection:'column', fontFamily: 'var(--font-body)' }}>
+      <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap: 8, padding:'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+        <RkFab label="×" onClick={onClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <RkStatusPill dot="var(--sport-rowing)">{t('record.rowingSummaryTitle')}</RkStatusPill>
+        </div>
+        <RkFabSpacer />
       </div>
 
-      <div style={{ flex:1, overflowY:'auto', padding:'20px 16px' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, marginBottom:24 }}>
-          <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(6,182,212,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 17c3-3 7-3 9 0s7 3 9 0"/><path d="M12 17V7"/><path d="M9 7h6"/>
-            </svg>
-          </div>
-          <p style={{ fontSize:20, fontWeight:700, color:'#FFF', margin:0, fontFamily: 'var(--font-display)' }}>{t('record.rowingSummarySport')}</p>
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(255,255,255,0.06)', borderRadius: 'var(--r-md)', overflow:'hidden', marginBottom:20 }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ padding:'16px 12px', background:'#0A0A0A', textAlign:'center' }}>
-              <p style={{ fontSize:10, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'1.5px', margin:'0 0 4px' }}>{s.label}</p>
-              <p style={{ fontSize:28, fontWeight:700, color:'#FFF', margin:0, lineHeight:1 }}>{s.value}</p>
-              {s.unit && <p style={{ fontSize:11, color:'rgba(255,255,255,0.40)', margin:'2px 0 0' }}>{s.unit}</p>}
-            </div>
-          ))}
+      <div style={{ flex:1, overflowY:'auto', padding:'6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', margin: '4px 4px 0' }}>{t('record.rowingSummarySport')}</h2>
+        <div className="rk-card">
+          <RkGrid>
+            {stats.map(s => <RkCell key={s.label} label={s.label} value={s.value} unit={s.unit || undefined} size={30} />)}
+          </RkGrid>
         </div>
 
         {session.pieces.length > 0 && (
-          <div>
-            <p style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.40)', letterSpacing:'0.08em', textTransform:'uppercase', margin:'0 0 10px' }}>{t('record.rowingSummarySets')}</p>
-            {session.pieces.map((p, i) => {
-              const split = calcSplit500(p.durationSec, p.distanceM)
-              const watts = calcWatts(split)
-              return (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius: 'var(--r-sm)', marginBottom:8 }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:'var(--primary)', minWidth:20 }}>#{i+1}</span>
-                  <span style={{ fontSize:14, color:'#FFF', flex:1 }}>{p.distanceM >= 1000 ? `${p.distanceM/1000}km` : `${p.distanceM}m`}</span>
-                  <span style={{ fontSize:13, color:'var(--primary)', fontWeight:600 }}>{formatSplit(split)}</span>
-                  {watts > 0 && <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)' }}>{watts}w</span>}
-                </div>
-              )
-            })}
-          </div>
+          <>
+            <RkSectionLabel>{t('record.rowingSummarySets')}</RkSectionLabel>
+            <RkGroup>
+              {session.pieces.map((p, i) => {
+                const split = calcSplit500(p.durationSec, p.distanceM)
+                const watts = calcWatts(split)
+                return (
+                  <div key={p.id} className="rk-row">
+                    <span className="rk-num" style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-dim)', minWidth: 24, letterSpacing: 0 }}>{i + 1}</span>
+                    <span className="rk-row-t"><b>{p.distanceM >= 1000 ? `${p.distanceM / 1000} km` : `${p.distanceM} m`}</b></span>
+                    <span className="rk-num" style={{ fontSize: 15, fontWeight: 800, letterSpacing: 0 }}>{formatSplit(split)}</span>
+                    {watts > 0 && <span className="rk-num" style={{ fontSize: 14, color: 'var(--text-mid)', letterSpacing: 0 }}>{watts} W</span>}
+                  </div>
+                )
+              })}
+            </RkGroup>
+          </>
         )}
       </div>
 
-      <div style={{ padding:'16px', paddingBottom:'max(env(safe-area-inset-bottom),16px)', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-        <button onClick={onClose} style={{ width:'100%', height:52, borderRadius: 'var(--r-md)', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:'pointer' }}>
-          {t('record.rowingSummaryFinish')}
-        </button>
+      <div style={{ padding:'10px 16px', paddingBottom:'max(env(safe-area-inset-bottom),16px)' }}>
+        <RkCta variant="primary" onClick={onClose}>{t('record.rowingSummaryFinish')}</RkCta>
       </div>
-    </div>
+    </RkScreenIn>
   )
 }

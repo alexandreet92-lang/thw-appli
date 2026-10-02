@@ -114,18 +114,17 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
         gap: 1, background: theme.separator,
-        border: `1px solid ${theme.separator}`,
-        borderRadius: 'var(--r-md)', overflow: 'hidden', margin: '16px 16px 0',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden', margin: '12px 16px 0',
       }}>
         {stats.map((s, i) => (
           <div key={i} style={{
             padding: '12px 8px', background: theme.bg, textAlign: 'center',
             opacity: s.dim ? 0.45 : 1,
           }}>
-            <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: '0 0 4px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: theme.dim, margin: '0 0 4px' }}>
               {s.label}
             </p>
-            <p style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily: dataFontFamily }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: theme.text, margin: 0, lineHeight: 1, fontFamily: dataFontFamily, fontVariantNumeric: 'tabular-nums' }}>
               {s.value}
             </p>
             {s.unit && (

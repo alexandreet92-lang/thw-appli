@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { rkScope, useAppDark, RkScreenIn, RkFab, RkIco, RK_ICON, RkCta } from './kit/RecordKit'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
@@ -18,15 +19,15 @@ function autoTitle(sport: string) {
   return `${label} · ${day.charAt(0).toUpperCase() + day.slice(1)}`
 }
 
-const LABEL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 10px', display: 'block' }
-const INPUT: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '12px 16px', fontSize: 15, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)' }
+const LABEL: React.CSSProperties = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 4px 8px', display: 'block' }
+const INPUT: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', minHeight: 48, padding: '12px 16px', fontSize: 16, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-body)' }
 const NUM_SM: React.CSSProperties = { ...INPUT, width: 72, padding: '12px 8px', textAlign: 'center' }
 function Chips<T extends string>({ items, value, onChange }: { items: { id: T; label: string; labelKey?: string }[]; value: T; onChange: (v: T) => void }) {
   const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {items.map(it => (
-        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 'var(--r-lg)', border: 'none', background: value === it.id ? 'var(--primary)' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
+        <button key={it.id} onClick={() => onChange(it.id)} className="rk-press" style={{ minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: value === it.id ? 'var(--text)' : 'var(--surface-card)', color: value === it.id ? 'var(--bg)' : 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'background-color 200ms ease' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
       ))}
     </div>
   )
@@ -36,6 +37,7 @@ type Result = 'win' | 'loss' | 'draw'
 type SavedData = { sport: string; result: Result; sets: MatchSet[]; durationSec: number; opponent: string; surface: string; rpe: number }
 
 export default function PadelForm({ onClose }: Props) {
+  const isDarkApp = useAppDark()
   const { t } = useI18n()
   const [sport, setSport]         = useState<string>('padel')
   const [isDouble, setIsDouble]   = useState(false)
@@ -94,36 +96,36 @@ export default function PadelForm({ onClose }: Props) {
   if (saved) {
     const setsWonMe  = saved.sets.filter(s => s.me  > s.opp).length
     const setsWonOpp = saved.sets.filter(s => s.opp > s.me ).length
-    const resultColors: Record<Result, string> = { win: '#22C55E', loss: '#EF4444', draw: '#8C8C8C' }
+    const resultColors: Record<Result, string> = { win: 'var(--success)', loss: 'var(--danger)', draw: 'var(--text-mid)' }
     const resultLabels: Record<Result, string> = { win: t('record.padelResultWin'), loss: t('record.padelResultLoss'), draw: t('record.padelResultDraw') }
     const fmtDur = `${String(Math.floor(saved.durationSec/3600)).padStart(2,'0')}:${String(Math.floor((saved.durationSec%3600)/60)).padStart(2,'0')}:${String(saved.durationSec%60).padStart(2,'0')}`
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <span style={{ fontSize: 48 }}>🎾</span>
-        <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{t('record.padelSessionSaved')}</p>
-        <div style={{ display: 'inline-block', padding: '6px 20px', borderRadius: 'var(--r-lg)', background: resultColors[saved.result], color: '#FFF', fontWeight: 700, fontSize: 15 }}>{resultLabels[saved.result]}</div>
-        {saved.sets.length > 0 && <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>{setsWonMe} — {setsWonOpp}</p>}
+      <RkScreenIn className={rkScope(isDarkApp)} style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 16px' }}>
+        <span style={{ width: 56, height: 56, borderRadius: '50%', background: 'color-mix(in srgb, var(--success) 16%, transparent)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RkIco d={RK_ICON.check} size={28} sw={3} /></span>
+        <p style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('record.padelSessionSaved')}</p>
+        <span className="rk-banner" style={{ animation: 'none' }}><span className="rk-dot" style={{ background: resultColors[saved.result] }} />{resultLabels[saved.result]}</span>
+        {saved.sets.length > 0 && <p className="rk-num" style={{ fontSize: 40, fontWeight: 800, margin: 0 }}>{setsWonMe} — {setsWonOpp}</p>}
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, lineHeight: 2 }}>
           <p style={{ margin: 0 }}>{t('record.padelSummaryDuration')} {fmtDur}</p>
           {saved.opponent && <p style={{ margin: 0 }}>{t('record.padelSummaryOpponent')} {saved.opponent}</p>}
           <p style={{ margin: 0 }}>{t('record.padelSummarySurface')} {(() => { const s = PADEL_SURFACES.find(s => s.id === saved.surface); return s?.labelKey ? t(s.labelKey) : s?.label })()}</p>
           <p style={{ margin: 0 }}>{t('record.padelSummaryRpe')} {saved.rpe}/10</p>
         </div>
-        <button onClick={onClose} style={{ padding: '14px 40px', borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.padelFinish')}</button>
-      </div>
+        <div style={{ width: '100%', maxWidth: 380 }}><RkCta variant="primary" onClick={onClose}>{t('record.padelFinish')}</RkCta></div>
+      </RkScreenIn>
     )
   }
 
   const fmtDur = `${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`
-  const resultColors: Record<Result, string> = { win: '#22C55E', loss: '#EF4444', draw: '#94A3B8' }
+  const resultColors: Record<Result, string> = { win: 'var(--success)', loss: 'var(--danger)', draw: 'var(--text-mid)' }
   const resultLabels: Record<Result, string> = { win: t('record.padelResultWin'), loss: t('record.padelResultLoss'), draw: t('record.padelResultDraw') }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
-      <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.padelNewSession')}</span>
-        <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? '…' : t('record.padelSave')}</button>
+    <RkScreenIn className={rkScope(isDarkApp)} style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px', position: 'relative' }}>
+        <RkFab label="×" onClick={onClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 19, fontWeight: 800 }}>{t('record.padelNewSession')}</span>
+        <button onClick={handleSave} disabled={saving} className="rk-press" style={{ marginLeft: 'auto', minHeight: 44, padding: '0 14px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: 16, fontWeight: 800, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? '…' : t('record.padelSave')}</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', paddingBottom: 120 }}>
@@ -132,7 +134,7 @@ export default function PadelForm({ onClose }: Props) {
           <label style={LABEL}>{t('record.padelOpponent')}</label>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {([{ id: 'solo', label: t('record.padelSolo') }, { id: 'double', label: t('record.padelDoubleMode') }] as const).map(m => (
-              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} style={{ padding: '8px 20px', borderRadius: 'var(--r-lg)', border: 'none', background: (m.id === 'double') === isDouble ? 'var(--primary)' : 'var(--bg-card2)', color: (m.id === 'double') === isDouble ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{m.label}</button>
+              <button key={m.id} onClick={() => setIsDouble(m.id === 'double')} className="rk-press" style={{ minHeight: 44, padding: '0 20px', borderRadius: 'var(--r-pill)', border: 'none', background: (m.id === 'double') === isDouble ? 'var(--text)' : 'var(--surface-card)', color: (m.id === 'double') === isDouble ? 'var(--bg)' : 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>{m.label}</button>
             ))}
           </div>
           <input value={opponent} onChange={e => setOpponent(e.target.value)} placeholder={t('record.padelOpponentPlaceholder')} style={{ ...INPUT, marginBottom: isDouble ? 8 : 0 }} />
@@ -147,7 +149,7 @@ export default function PadelForm({ onClose }: Props) {
           <label style={LABEL}>{t('record.padelResult')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['win','loss','draw'] as Result[]).map(r => (
-              <button key={r} onClick={() => setResult(r)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-md)', border: `2px solid ${result === r ? resultColors[r] : 'transparent'}`, background: result === r ? `${resultColors[r]}20` : 'var(--bg-card2)', color: result === r ? resultColors[r] : 'var(--text-mid)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{resultLabels[r]}</button>
+              <button key={r} onClick={() => setResult(r)} className="rk-press" style={{ flex: 1, minHeight: 48, padding: '0 10px', borderRadius: 'var(--r-pill)', border: 'none', background: result === r ? 'var(--text)' : 'var(--surface-card)', color: result === r ? 'var(--bg)' : 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><span className="rk-dot" style={{ background: resultColors[r] }} />{resultLabels[r]}</button>
             ))}
           </div>
         </div>
@@ -162,17 +164,17 @@ export default function PadelForm({ onClose }: Props) {
               </div>
             ))}
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: 'var(--primary)', textAlign: 'center' }}>{fmtDur}</p>
+          <p className="rk-num" style={{ margin: '10px 0 0', fontSize: 28, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>{fmtDur}</p>
         </div>
         <div style={{ marginBottom: 24 }}><label style={LABEL}>{t('record.padelFeeling')}</label><RPESlider value={rpe} onChange={setRpe} isDark={true} /></div>
         <div style={{ marginBottom: 12 }}><label style={LABEL}>{t('record.padelComment')}</label><textarea value={comment} onChange={e => setComment(e.target.value)} rows={4} placeholder={t('record.padelCommentPlaceholder')} style={{ ...INPUT, resize: 'none' }} /></div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)', background: 'linear-gradient(transparent, var(--bg) 40%)' }}>
-        <button onClick={handleSave} disabled={saving} style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 16px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)', background: 'linear-gradient(transparent, var(--surface-page) 40%)' }}>
+        <RkCta variant="primary" onClick={() => { void handleSave() }} disabled={saving} progress={saving ? 66 : null} style={{ opacity: 1 }}>
           {saving ? t('record.padelSaving') : t('record.padelSaveActivity')}
-        </button>
+        </RkCta>
       </div>
-    </div>
+    </RkScreenIn>
   )
 }

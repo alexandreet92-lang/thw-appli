@@ -52,7 +52,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 10005, background: 'var(--bg)', color: 'var(--text)',
+      position: 'fixed', inset: 0, zIndex: 10005, background: 'var(--surface-page)', color: 'var(--text)',
       display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)',
       paddingTop: 'env(safe-area-inset-top)',
       transform: shown && !closing ? 'translateY(0)' : 'translateY(40px)',
@@ -75,13 +75,13 @@ export default function SwimmingSummary({ session, onClose }: Props) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: 1, background: 'var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden',
-          border: '1px solid var(--border)', marginBottom: 16,
+          gap: 1, background: 'var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden',
+          marginBottom: 16,
         }}>
           {stats.map((s, i) => (
-            <div key={i} style={{ padding: '16px 12px', background: 'var(--bg-card)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '1.5px', margin: '0 0 4px' }}>{s.label}</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0, lineHeight: 1 }}>{s.value}</p>
+            <div key={i} style={{ padding: '16px 12px', background: 'var(--surface-card)', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', margin: '0 0 4px' }}>{s.label}</p>
+              <p className="rk-num" style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1.05 }}>{s.value}</p>
               {s.unit && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{s.unit}</p>}
             </div>
           ))}
@@ -93,7 +93,7 @@ export default function SwimmingSummary({ session, onClose }: Props) {
               {t('record.swimSets')}
             </p>
             {session.intervals.map((iv, idx) => (
-              <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', marginBottom: 6, border: '1px solid var(--border)' }}>
+              <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-card)', borderRadius: 'var(--r-md)', marginBottom: 6 }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t('record.swimSet', { n: idx + 1 })} — {iv.distanceM}m</span>
                 <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{pace100m(iv.distanceM, iv.durationSec)}</span>
               </div>

@@ -5,6 +5,7 @@
 // profil (règle d'interconnexion), sans deviner de valeur.
 import { IconX, IconBike, IconHeartbeat, IconRotateClockwise, IconAlertTriangle, IconArrowRight } from '@tabler/icons-react'
 import { useI18n } from '@/lib/i18n'
+import { RkFab, RkFabSpacer, RkStatusPill, RkGroup, RkRow, RkTile, RkStartButton } from '../kit/RecordKit'
 import { fmtClock } from './format'
 import PowerBlocksProfile from './charts/PowerBlocksProfile'
 import type { RidePlan } from './types'
@@ -28,41 +29,61 @@ function Row({ icon, label, st, onClick }: { icon: React.ReactNode; label: strin
   const { t } = useI18n()
   const on = st === 'connected'
   return (
-    <button onClick={onClick} disabled={st === 'connecting'} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', color: 'var(--text)' }}>
-      <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center', background: 'var(--bg-card)', color: on ? 'var(--charge-low)' : 'var(--text-mid)' }}>{icon}</span>
-      <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 800, color: on ? 'var(--charge-low)' : 'var(--primary)' }}>{t(STAT[st])}</span>
-    </button>
+    <RkRow
+      icon={<RkTile color={on ? 'var(--success)' : 'var(--sport-bike)'}>{icon}</RkTile>}
+      label={label}
+      disabled={st === 'connecting'}
+      onClick={onClick}
+      chevron={false}
+      right={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 800, color: on ? 'var(--success)' : st === 'error' ? 'var(--danger)' : 'var(--primary)' }}>
+          {on && <span className="rk-dot" style={{ background: 'var(--success)' }} />}
+          {t(STAT[st])}
+        </span>
+      } />
   )
 }
 
 export default function StartGate({ ftp, fcMax, plan, loading, available, status, onConnect, onStart, onExit }: Props) {
   const { t } = useI18n()
   const header = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
-      <button onClick={onExit} aria-label={t('w3b.close')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}><IconX size={16} /></button>
-      <span style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{t('w3b.home_trainer')}</span>
-      <span style={{ width: 36 }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+      <RkFab label={t('w3b.close')} onClick={onExit}><IconX size={20} /></RkFab>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <RkStatusPill dot="var(--sport-bike)">{t('w3b.home_trainer')}</RkStatusPill>
+      </div>
+      <RkFabSpacer />
     </div>
   )
 
-  const wrap = (child: React.ReactNode) => (
-    <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)' }}>{header}<div style={{ flex: 1, overflowY: 'auto', padding: '4px 18px 24px' }}>{child}</div></div>
+  const wrap = (child: React.ReactNode, foot?: React.ReactNode) => (
+    <div style={{ position: 'absolute', inset: 0, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column' }}>
+      {header}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 24px' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>{child}</div>
+      </div>
+      {foot}
+    </div>
   )
 
-  if (loading) return wrap(<p style={{ color: 'var(--text-mid)', fontSize: 14, textAlign: 'center', marginTop: 40 }}>{t('w3b.loading_profile')}</p>)
+  if (loading) return wrap(<>
+    <div aria-hidden style={{ height: 210, borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', animation: 'aioPulse 1.4s ease-in-out infinite' }} />
+    <div aria-hidden style={{ height: 170, borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', animation: 'aioPulse 1.4s ease-in-out infinite' }} />
+    <style>{'@keyframes aioPulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){[style*="aioPulse"]{animation:none!important}}'}</style>
+    <p style={{ color: 'var(--text-mid)', fontSize: 14, textAlign: 'center', margin: 0 }}>{t('w3b.loading_profile')}</p>
+  </>)
 
   return wrap(
     <>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 16, marginTop: 8 }}>
-        <p style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 800, margin: '0 0 6px' }}>{t('w3b.session_today')}</p>
-        <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0 }}>{plan?.title ?? t('w3b.free_ride')}</p>
-        <p style={{ fontSize: 13, color: 'var(--text-mid)', fontWeight: 600, margin: '4px 0 0' }}>
+      <div className="rk-fade-up" style={{ background: 'var(--surface-card)', borderRadius: 'calc(var(--r-lg) + 4px)', padding: 16 }}>
+        <div className="rk-label">{t('w3b.session_today')}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', marginTop: 4 }}>{plan?.title ?? t('w3b.free_ride')}</div>
+        <div style={{ fontSize: 14, color: 'var(--text-mid)', fontWeight: 600, marginTop: 4 }}>
           {plan ? t('w3b.plan_blocks', { n: plan.blocks.length, clock: fmtClock(plan.totalS) }) : t('w3b.no_planned_free')} · {ftp != null ? t('w3b.ftp_val', { ftp }) : t('w3b.ftp_missing')}{fcMax ? ` · ${t('w3b.fc_max', { fc: fcMax })}` : ''}
-        </p>
+        </div>
         {/* Graphique des blocs de puissance (SVG raw) — aperçu de la séance. */}
         {plan && plan.blocks.length > 0 && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 14 }}>
             <PowerBlocksProfile plan={plan} ftp={ftp ?? 0} />
           </div>
         )}
@@ -71,31 +92,32 @@ export default function StartGate({ ftp, fcMax, plan, loading, available, status
       {/* FTP absent : on N'INTERDIT PAS la séance (l'athlète voit et lance son
           plan) ; on prévient juste que les cibles watts seront indisponibles. */}
       {ftp == null && (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12, marginTop: 12, color: 'var(--text-mid)' }}>
-          <IconAlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: 'var(--charge-mid)' }} />
-          <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 14, color: 'var(--text-mid)' }}>
+          <IconAlertTriangle size={20} style={{ flexShrink: 0, marginTop: 1, color: 'var(--charge-mid)' }} />
+          <span style={{ fontSize: 14, lineHeight: 1.5 }}>
             {t('w3b.ftp_warning')}{' '}
-            <a href="/performance" style={{ color: 'var(--primary)', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t('w3b.set_ftp')} <IconArrowRight size={13} style={{ verticalAlign: 'middle' }} /></a>
+            <a href="/performance" style={{ color: 'var(--primary)', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t('w3b.set_ftp')} <IconArrowRight size={14} style={{ verticalAlign: 'middle' }} /></a>
           </span>
         </div>
       )}
 
       {available === false && (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12, marginTop: 12, color: 'var(--text-mid)' }}>
-          <IconAlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>{t('w3b.sensors_unavailable')}</span>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 14, color: 'var(--text-mid)' }}>
+          <IconAlertTriangle size={20} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 14, lineHeight: 1.5 }}>{t('w3b.sensors_unavailable')}</span>
         </div>
       )}
 
       {available !== false && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginTop: 12 }}>
-          <Row icon={<IconBike size={18} />} label={t('w3b.trainer_power_sensor')} st={status.trainer} onClick={() => onConnect('trainer')} />
-          <Row icon={<IconHeartbeat size={18} />} label={t('w3b.hr_belt')} st={status.hr} onClick={() => onConnect('hr')} />
-          <Row icon={<IconRotateClockwise size={18} />} label={t('w3b.cadence_sensor')} st={status.cadence} onClick={() => onConnect('cadence')} />
-        </div>
+        <RkGroup>
+          <Row icon={<IconBike size={20} />} label={t('w3b.trainer_power_sensor')} st={status.trainer} onClick={() => onConnect('trainer')} />
+          <Row icon={<IconHeartbeat size={20} />} label={t('w3b.hr_belt')} st={status.hr} onClick={() => onConnect('hr')} />
+          <Row icon={<IconRotateClockwise size={20} />} label={t('w3b.cadence_sensor')} st={status.cadence} onClick={() => onConnect('cadence')} />
+        </RkGroup>
       )}
-
-      <button onClick={onStart} style={{ width: '100%', height: 54, marginTop: 20, borderRadius: 'var(--r-md)', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>{t('w3b.start')}</button>
-    </>
+    </>,
+    <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '12px 0 calc(env(safe-area-inset-bottom) + 24px)' }}>
+      <RkStartButton label={t('w3b.start')} onClick={onStart} size={96} />
+    </div>,
   )
 }

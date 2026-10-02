@@ -1,5 +1,6 @@
 'use client'
 import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
+import { rkScope } from './kit/RecordKit'
 import { useTrailConfig } from '@/hooks/useTrailConfig'
 import type { TrailSettings as TrailSettingsData } from '@/hooks/useTrailSettings'
 import { trailFieldById } from '@/types/trail'
@@ -25,8 +26,13 @@ const SECTION_ICONS: Record<string, ReactElement> = {
   postrun:    (<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>),
 }
 
-function getTheme(isDark: boolean) {
-  return { bg: isDark?'#0A0A0A':'#FFFFFF', text: isDark?'#FFFFFF':'#0A0A0A', label: isDark?'rgba(255,255,255,0.55)':'#666', dim: isDark?'rgba(255,255,255,0.35)':'#8C8C8C', separator: isDark?'rgba(255,255,255,0.08)':'#E8E8E8', cardBg: isDark?'rgba(255,255,255,0.04)':'#FAFAFA' }
+function getTheme(_isDark: boolean) {
+  // Tokens (clair/sombre via rkScope sur la racine) — feuille blanche, listes
+  // groupées grises façon iOS (maquette r1, feuille dépliée).
+  return {
+    bg: 'var(--surface-card)', text: 'var(--text)', label: 'var(--text-mid)', dim: 'var(--text-mid)',
+    separator: 'var(--border)', cardBg: 'var(--surface-soft)',
+  }
 }
 
 const SECTION_IDS = ['pages', 'navigation', 'training', 'alerts', 'sensors', 'display', 'athlete', 'recording', 'units', 'postrun']
@@ -105,20 +111,20 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
                 {page.type==='map' ? tr('record.settingsMapPrefix') : ''}{page.fields.map((id: string) => { const f = trailFieldById(id); return f?.labelKey ? tr(f.labelKey) : f?.label }).filter(Boolean).join(' · ')}
               </p>
             </div>
-            <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev===page.id ? null : page.id) }} style={{ background:'none', border:'none', padding:'8px', color:'#8C8C8C', cursor:'pointer', fontSize:20, lineHeight:1 }}>⋯</button>
+            <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev===page.id ? null : page.id) }} style={{ background:'none', border:'none', padding:'8px', color:'var(--text-mid)', cursor:'pointer', fontSize:20, lineHeight:1 }}>⋯</button>
           </div>
           {menuOpenId === page.id && (
-            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}>
+            <div ref={menuRef} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', zIndex:100, background:t.bg, border:`1px solid ${t.separator}`, borderRadius: 'var(--r-md)', overflow:'hidden', boxShadow:'var(--shadow-float)', minWidth:150 }}>
               <button onClick={e => { e.stopPropagation(); setRenamingId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:t.text, cursor:'pointer' }}>{tr('record.settingsRename')}</button>
               <div style={{ height:1, background:t.separator }} />
               <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }} style={{ width:'100%', padding:'13px 16px', background:'none', border:'none', textAlign:'left', fontSize:15, color:'var(--danger)', cursor:'pointer' }}>{tr('record.settingsDelete')}</button>
             </div>
           )}
           {confirmDeleteId === page.id && (
-            <div style={{ padding:'10px 16px', background:'rgba(239,68,68,0.08)', borderRadius: 'var(--r-sm)', display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
+            <div style={{ padding:'10px 16px', background:'var(--danger-soft)', borderRadius: 'var(--r-sm)', display:'flex', alignItems:'center', justifyContent:'space-between', margin:'4px 0' }}>
               <span style={{ fontSize:13, color:'var(--danger)' }}>{tr('record.settingsDeletePageConfirm')}</span>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:'var(--danger)', border:'none', color:'white', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
+                <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:'var(--danger)', border:'none', color:'var(--on-primary)', fontSize:13, cursor:'pointer' }}>{tr('record.settingsYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)} style={{ padding:'5px 14px', borderRadius: 'var(--r-sm)', background:t.separator, border:'none', color:t.text, fontSize:13, cursor:'pointer' }}>{tr('record.settingsNo')}</button>
               </div>
             </div>
@@ -136,13 +142,13 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
   }
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-      <div onClick={handleClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.50)', backdropFilter:'blur(4px)', animation: closing?'fade-out 200ms ease-in forwards':'fade-in 200ms ease-out forwards' }} />
-      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily: 'var(--font-body)', boxShadow:'0 -8px 32px rgba(0,0,0,0.18)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      <div onClick={handleClose} style={{ position:'absolute', inset:0, background: 'var(--scrim)', animation: closing?'fade-out 200ms ease-in forwards':'fade-in 200ms ease-out forwards' }} />
+      <div className={closing?'sheet-close':'sheet-open'} style={{ position:'fixed', left:0, right:0, bottom:0, height:'80vh', background:t.bg, color:t.text, borderTopLeftRadius:24, borderTopRightRadius:24, display:'flex', flexDirection:'column', overflow:'hidden', fontFamily: 'var(--font-body)', boxShadow:'var(--shadow-float)' }}>
         <div style={{ display:'flex', justifyContent:'center', paddingTop:10, flexShrink:0 }}><div style={{ width:40, height:4, borderRadius:2, background:t.separator }} /></div>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 12px', flexShrink:0 }}>
           <h2 style={{ fontSize:18, fontWeight:700, color:t.text, margin:0, fontFamily: 'var(--font-display)' }}>{tr('record.trailSettingsTitle')}</h2>
-          <button onClick={handleClose} aria-label={tr('record.settingsClose')} style={{ color:t.dim, background:'none', border:'none', fontSize:22, cursor:'pointer', lineHeight:1, padding:'4px 8px' }}>×</button>
+          <button onClick={handleClose} aria-label={tr('record.settingsClose')} className="rk-fab rk-press" data-variant="ghost" style={{ width: 36, height: 36 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div style={{ flex:1, overflow:'hidden', position:'relative' }}>
           <div style={{ height:'100%', overflowY:'auto', paddingBottom:24 }}>
@@ -151,9 +157,9 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
                 <div style={{ width:36, height:36, borderRadius: 'var(--r-sm)', background:'rgba(245,158,11,0.10)', color:'#F59E0B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{SECTION_ICONS[secId]}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:15, fontWeight:500, color:t.text, margin:0 }}>{sectionLabel(secId)}</p>
-                  <p style={{ fontSize:12, color:'#8C8C8C', margin:'2px 0 0' }}>{sectionDesc(secId)}</p>
+                  <p style={{ fontSize:12, color:'var(--text-mid)', margin:'2px 0 0' }}>{sectionDesc(secId)}</p>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="var(--text-dim)" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </button>
             ))}
           </div>

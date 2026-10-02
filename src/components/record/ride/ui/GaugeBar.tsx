@@ -10,7 +10,7 @@ export default function GaugeBar({ deltaW }: { deltaW: number }) {
   const txt = `${deltaW >= 0 ? '+' : ''}${Math.round(deltaW)} W`
   return (
     <div>
-      <div style={{ position: 'relative', height: 38, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 38, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: '38%', width: '24%', background: 'var(--charge-low)', opacity: 0.16 }} />
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: 'var(--border-mid)' }} />
         <div style={{ position: 'absolute', top: 3, bottom: 3, width: 5, borderRadius: 3, left: `${pos}%`, transform: 'translateX(-50%)', background: col, transition: 'left .25s, background .25s' }} />

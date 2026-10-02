@@ -22,6 +22,7 @@ import RampTestResult, { type RampStop } from './RampTestResult'
 import RideSummary from './RideSummary'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
+import { rkScope, useAppDark } from '../kit/RecordKit'
 
 interface Props { onExit: () => void; onFinished: () => void; plannedIdOverride?: string | null }
 
@@ -37,6 +38,7 @@ function useIsDesktop(): boolean {
 
 export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Props) {
   const { t } = useI18n()
+  const appDark = useAppDark()
   const [mounted, setMounted] = useState(false)
   const [started, setStarted] = useState(false)
   const [startedAt, setStartedAt] = useState('')
@@ -195,7 +197,7 @@ export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Pr
   }
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{body}</div>,
+    <div className={rkScope(appDark)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--surface-page)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{body}</div>,
     document.body,
   )
 }

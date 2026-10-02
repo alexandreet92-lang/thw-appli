@@ -252,8 +252,7 @@ export default function GuidePanel({
         position: 'absolute',
         top: 'calc(env(safe-area-inset-top) + 56px)', left: 16, right: 16, bottom: 150,
         borderRadius: 'var(--r-lg)', zIndex: 40,
-        background: 'var(--live-guide-panel)', border: '1px solid var(--live-hairline-2)',
-        backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
+        background: 'var(--float-bg)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         transform,
         transition: dragging ? 'none' : `transform 0.34s ${SHEET_EASE}`,
@@ -263,7 +262,7 @@ export default function GuidePanel({
       {/* Poignée + en-tête : zone de drag (le reste scrolle librement) */}
       <div {...grabHandlers} style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9, paddingBottom: 3 }}>
-          <span style={{ width: 38, height: 5, borderRadius: 3, background: 'var(--live-hairline-2)' }} />
+          <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14, padding: '9px 22px 15px',

@@ -40,7 +40,7 @@ export default function RideData({ v, d, status }: { v: RideView; d: Derived; st
         <Metric label={t('w3b.time_remaining')} value={v.plan ? fmtClock(d.remainingS) : '—'} />
       </div>
 
-      <div style={{ marginTop: 12, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '4px 12px' }}>
+      <div style={{ marginTop: 12, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '4px 12px' }}>
         <SensorRow name={t('w3b.home_trainer')} st={status.trainer} />
         <SensorRow name={t('w3b.hr_belt')} st={status.hr} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>

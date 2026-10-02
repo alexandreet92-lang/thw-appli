@@ -5,6 +5,7 @@
 // Flow record → couleurs directes (hors design-system enforced).
 // ══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from 'react'
+import { rkScope } from './kit/RecordKit'
 import { createPortal } from 'react-dom'
 
 const ACCENT = '#06B6D4'
@@ -37,11 +38,11 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 260) }
 
-  const bg = isDark ? '#101317' : '#FFFFFF'
-  const text = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim = isDark ? 'rgba(255,255,255,0.5)' : '#6B7280'
-  const track = isDark ? 'rgba(255,255,255,0.14)' : '#E5E7EB'
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F4F6F8'
+  const bg = 'var(--surface-page)'
+  const text = 'var(--text)'
+  const dim = 'var(--text-mid)'
+  const track = 'var(--surface-chip)'
+  const surface = 'var(--surface-card)'
 
   const title = kind === 'dist' ? 'Distance' : kind === 'elev' ? 'Dénivelé' : 'Sport'
   const reset = () => { if (kind === 'dist') setDist([0, DIST_MAX]); else if (kind === 'elev') setElev([0, ELEV_MAX]); else setSport('all') }
@@ -51,7 +52,7 @@ export default function RouteFilterSheet({ kind, value, onApply, onClose, isDark
   }
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10020, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10020, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={requestClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.24s ease' }} />
       <div role="dialog" aria-modal="true" style={{
         position: 'relative', width: '100%', maxWidth: 560, background: bg,

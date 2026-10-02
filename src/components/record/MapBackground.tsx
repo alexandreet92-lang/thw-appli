@@ -70,38 +70,41 @@ function TrackPolyline({ points }: { points: { lat: number; lng: number }[] }) {
   return null
 }
 
-function LayerSelector({ layer, onChange }: {
-  layer: LayerId; onChange: (l: LayerId) => void
+function LayerSelector({ layer, onChange, top }: {
+  layer: LayerId; onChange: (l: LayerId) => void; top?: boolean
 }) {
   const items: { id: LayerId; label: string }[] = [
     { id: 'std', label: 'Std' },
     { id: 'sat', label: 'Sat' },
     { id: 'hyb', label: 'Hyb' },
   ]
+  // Pile de boutons ronds flottants (blancs le jour / sombres la nuit). En
+  // mode « top » (écran de départ), elle se cale sous l'en-tête à droite pour
+  // ne pas être couverte par la feuille du bas.
   return (
     <div style={{
-      position: 'absolute',
-      right: 12,
-      bottom: 140,
-      zIndex: 1000,
-      display: 'flex', flexDirection: 'column', gap: 6,
+      position: 'absolute', right: 12, zIndex: 1000,
+      ...(top ? { top: 'calc(env(safe-area-inset-top) + 64px)' } : { bottom: 140 }),
+      display: 'flex', flexDirection: 'column', gap: 8,
     }}>
       {items.map(it => {
         const active = layer === it.id
         return (
           <button
             key={it.id}
+            type="button"
             onClick={() => onChange(it.id)}
+            aria-pressed={active}
+            className="thw-press"
             style={{
-              width: 42, height: 42,
-              borderRadius: '50%', cursor: 'pointer',
-              // Repos : blanc le jour / noir la nuit (token --bg). Actif : accent.
-              background: active ? 'var(--primary)' : 'var(--bg)',
-              color: active ? 'var(--on-primary)' : 'var(--text)',
-              border: active ? 'none' : '1px solid var(--border)',
+              width: 44, height: 44,
+              borderRadius: '50%', cursor: 'pointer', border: 'none',
+              background: active ? 'var(--text)' : 'var(--float-bg)',
+              color: active ? 'var(--bg)' : 'var(--text)',
               fontFamily: 'var(--font-body)',
-              fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+              fontSize: 11, fontWeight: 800, letterSpacing: '0.02em',
+              boxShadow: 'var(--shadow-capsule)',
+              transition: 'background-color 200ms ease, color 200ms ease',
             }}
           >
             {it.label}
@@ -118,9 +121,11 @@ interface Props {
   activeRoute?: ActiveRoute | null
   /** Point qui suit le survol du profil altimétrique (sync carte ↔ courbe). */
   cursorPoint?: { lat: number; lng: number } | null
+  /** Sélecteur de fond de carte calé en haut à droite (écran de départ). */
+  controlsTop?: boolean
 }
 
-export default function MapBackground({ trackPoints, currentPosition, activeRoute, cursorPoint }: Props) {
+export default function MapBackground({ trackPoints, currentPosition, activeRoute, cursorPoint, controlsTop }: Props) {
   const [internalPosition, setInternalPosition] = useState<[number, number] | null>(null)
   const [layer, setLayer] = useState<LayerId>('std')
 
@@ -183,7 +188,7 @@ export default function MapBackground({ trackPoints, currentPosition, activeRout
           />
         )}
       </MapContainer>
-      <LayerSelector layer={layer} onChange={setLayer} />
+      <LayerSelector layer={layer} onChange={setLayer} top={controlsTop} />
     </div>
   )
 }

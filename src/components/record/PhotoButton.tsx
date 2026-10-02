@@ -4,9 +4,12 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { compressImage } from '@/lib/imageCompression'
 import { useI18n } from '@/lib/i18n'
+import './kit/recordKit.css'
 
 export interface PhotoButtonHandle {
   flushToSession: (sessionId: string, lat?: number, lng?: number) => Promise<void>
+  /** Ouvre le sélecteur / l'appareil photo (ex. depuis le résumé de séance). */
+  pick: () => void
 }
 
 interface Props {
@@ -22,6 +25,7 @@ const PhotoButton = forwardRef<PhotoButtonHandle, Props>(function PhotoButton({ 
   const [uploading, setUploading] = useState(false)
 
   useImperativeHandle(ref, () => ({
+    pick() { inputRef.current?.click() },
     async flushToSession(sessionId: string, lat?: number, lng?: number) {
       if (pendingFiles.current.length === 0) return
       setUploading(true)
@@ -75,18 +79,15 @@ const PhotoButton = forwardRef<PhotoButtonHandle, Props>(function PhotoButton({ 
         onChange={handleFileChange}
       />
       <button
+        type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        style={{
-          width: 52, height: 52, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.12)',
-          border: '1.5px solid rgba(255,255,255,0.22)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', flexShrink: 0,
-        }}
+        className="rk-fab rk-press"
+        style={{ width: 52, height: 52, color: 'var(--text)' }}
         title={t('record.photoButtonTitle')}
+        aria-label={t('record.photoButtonTitle')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>

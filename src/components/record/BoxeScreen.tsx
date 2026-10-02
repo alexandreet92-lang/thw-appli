@@ -24,18 +24,18 @@ import { buildBoxeTimeline, buildWorkoutBoxeTimeline, totalBoxeRounds, type Boxe
 import { sumComposedMinutes, moveDef, composedMoveLabel, type ComposedSport } from '@/components/planning/composedSports'
 import { estimateDurationSec, buildTimeline as buildWorkoutSteps } from './live/buildTimeline'
 import { saveWorkout } from './live/saveWorkout'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import {
+  rkScope, RkFab, RkIco, RK_ICON, RkBigButton, RkControlRow, RkPausePills, RkCta, RkSheet, RkGroup, RkRow,
+  RkSectionLabel, RkPageDots, RkGrid, RkCell, RK_SPRING, PauseGlyph, PlayGlyph,
+} from './kit/RecordKit'
 
 interface Props { session: BoxeSession; onClose: () => void; isDark: boolean }
 
-// Palette monochrome (demande : pas de rouge, tout en noir). Le bloc d'effort
-// est noir ; prépa/repos restent ambre/vert pour distinguer les phases.
-const C_PREP = '#f59e0b', C_WORK = '#161616', C_REST = '#22c55e'
-const ACCENT = 'var(--text)'            // encre : texte, traits, bordures
-const ACCENT_ON = 'var(--bg)'           // texte posé sur un fond ACCENT plein
-const tint = (pct: number) => `color-mix(in srgb, var(--text) ${pct}%, transparent)`
-const phaseColorOf = (p: BoxeStep['phase']) => p === 'prepare' ? C_PREP : p === 'rest' ? C_REST : C_WORK
-// Bouton −/+ blanc (sur bloc de phase coloré) pour la cible cardio.
-const intBtn: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }
+// Panneau de phase (maquette r4) : effort = couleur du sport, préparation =
+// ambre, repos = vert. Couleurs fonctionnelles (phases), texte blanc dessus.
+const C_PREP = '#f59e0b' // design-allow-color — phase « préparation » (ambre)
+const C_REST = 'var(--success)'
 
 function fmt(sec: number) { const m = Math.floor(sec / 60), s = sec % 60; return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` }
 function fmtDur(sec: number) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : fmt(sec) }
@@ -107,6 +107,15 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [runUnit, setRunUnit] = useState<'kmh' | 'minkm'>('minkm')
   const [editInt, setEditInt] = useState(false)
   const hr = useHeartRate()
+  const reduce = useReducedMotion()
+  // « Terminer sans enregistrer » en deux temps (évite une perte accidentelle).
+  const [discardArmed, setDiscardArmed] = useState(false)
+  const discardTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const armDiscard = () => {
+    if (!discardArmed) { haptic('medium'); setDiscardArmed(true); discardTimer.current = setTimeout(() => setDiscardArmed(false), 3000); return }
+    if (discardTimer.current) clearTimeout(discardTimer.current)
+    haptic('heavy'); onClose()
+  }
   // Voix : annonces du décompte + prochain exo (même pipeline que l'IA).
   const [muted, setMuted] = useState<boolean>(() => { try { return localStorage.getItem('thw:workoutMuted') === '1' } catch { return false } })
   const mutedRef = useRef(muted)
@@ -362,225 +371,259 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
               doneList={doneLog} sets={setsDone} volumeKg={volumeKg} caloriesEst={caloriesEst}
               doneCount={doneCount} totalCount={totalCount} unitLabel={unitLabel}
               hr={{ avg: hr.avg, max: hr.max, min: hr.min, samples: hr.samples }} target={targetSeries}
-              accent={ACCENT} isDark={isDark} onNext={() => setSaveStep('form')} onClose={() => { setShowSave(false); setSaveStep('summary') }} />
-          : <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setSaveStep('summary')} onSave={handleSave} isDark={isDark} />}
+              accent={WORK_COLOR(sportType)} isDark={isDark} onNext={() => setSaveStep('form')} onClose={() => { setShowSave(false); setSaveStep('summary') }} />
+          : <SessionSaveForm sport={sportType} startedAt={startedAt} onBack={() => setSaveStep('summary')} onSave={handleSave} isDark={isDark}
+              summary={{ exos: doneLog.length, sets: setsDone, volumeKg, durationSec: elapsed }}
+              hr={{ avg: hr.avg, min: hr.min, max: hr.max }} />}
       </div>,
       document.body,
     )
   }
 
+  const panelColor = phaseColorOf(cur.phase, sportType)
+  const phaseName = cur.phase === 'prepare' ? t('rec.phasePrepare') : cur.phase === 'rest' ? t('rec.phaseRest') : cur.phase === 'done' ? t('rec.phaseDone') : t('rec.phaseWork')
+  const eyebrow = [phaseName, cur.circuitName, cur.tours && cur.tours > 1 ? `${cur.tour}/${cur.tours}` : null].filter(Boolean).join(' · ')
+  const stepProgress = cur.measure === 'time' && cur.durationSec > 0 ? Math.max(0, Math.min(1, 1 - remaining / cur.durationSec)) : 0
+  // « À suivre » : les 3 prochaines étapes (effort / repos), hors fin.
+  const upcoming = timeline.slice(idx + 1).filter(s => s.phase !== 'done' && s.phase !== 'prepare').slice(0, 3)
+  const remainingSteps = timeline.slice(idx + 1).filter(s => s.phase === 'work').length
+  const blockNow = Math.min(timeline.filter(s => s.phase === 'work').length, exosDone + (cur.phase === 'work' ? 1 : 0))
+  const subtitle = useRounds ? `${t('rec.roundLabel')} ${Math.min(totalCount, roundsDone + (cur.isRound ? 1 : 0))} / ${totalCount}` : `${t('rec.blockLabel')} ${blockNow} / ${totalExos}`
+
   // ── Panneau « données » (mobile page 2 + colonne droite desktop) ──
   const dataPanel = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: 16, alignContent: 'start' }}>
-      <Metric label="Temps total" value={fmtDur(elapsed)} />
-      <Metric label={useRounds ? 'Rounds faits' : 'Exos faits'} value={`${doneCount}/${totalCount}`} />
-      <Metric label="Séries" value={String(setsDone)} />
-      <Metric label="Volume" value={volumeKg > 0 ? String(Math.round(volumeKg)) : '—'} unit={volumeKg > 0 ? 'kg' : ''} />
-      <Metric label="Calories (est.)" value={String(caloriesEst)} unit="kcal" />
-      <Metric label="FC moyenne" value={hr.avg ? String(hr.avg) : '—'} unit={hr.avg ? 'bpm' : ''} />
-      <Metric label="FC max" value={hr.max ? String(hr.max) : '—'} unit={hr.max ? 'bpm' : ''} />
-      <Metric label="Circuit" value={cur.circuitName || (cur.circuitIdx >= 0 ? `#${cur.circuitIdx + 1}` : '—')} />
-      <div style={{ gridColumn: '1 / -1' }}><HeartRatePanel hr={hr} accent={ACCENT} /></div>
+    <div style={{ padding: '4px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="rk-card">
+        <RkGrid>
+          <RkCell label="Temps total" value={fmtDur(elapsed)} size={30} />
+          <RkCell label={useRounds ? 'Rounds faits' : 'Exos faits'} value={`${doneCount}/${totalCount}`} size={30} />
+          <RkCell label="Séries" value={String(setsDone)} size={30} />
+          <RkCell label="Volume" value={volumeKg > 0 ? String(Math.round(volumeKg)) : '—'} unit={volumeKg > 0 ? 'kg' : undefined} size={30} />
+          <RkCell label="Calories (est.)" value={String(caloriesEst)} unit="kcal" size={30} />
+          <RkCell label="FC moyenne" value={hr.avg ? String(hr.avg) : '—'} unit={hr.avg ? 'bpm' : undefined} size={30} />
+          <RkCell label="FC max" value={hr.max ? String(hr.max) : '—'} unit={hr.max ? 'bpm' : undefined} size={30} />
+          <RkCell label="Circuit" value={cur.circuitName || (cur.circuitIdx >= 0 ? `#${cur.circuitIdx + 1}` : '—')} size={22} />
+        </RkGrid>
+      </div>
+      <div style={{ margin: '0 -16px' }}><HeartRatePanel hr={hr} accent="var(--danger)" /></div>
     </div>
   )
 
-  // ── Écran chrono (bloc de phase coloré + prochain + contrôles) ──
-  const timerPanel = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      {/* Bloc phase géant */}
-      <div style={{ flex: 1, minHeight: 0, background: phaseColorOf(cur.phase), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'background .3s', padding: 16, textAlign: 'center' }}>
-        <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.02em', textTransform: 'uppercase', textShadow: '0 1px 8px rgba(0,0,0,0.15)' }}>{cur.label}</p>
-        {cur.detail && <p style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: '4px 0 0' }}>{cur.detail}</p>}
-        {cur.label === 'Séance libre' ? (
-          <p style={{ fontSize: 'min(26vw, 120px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
-        ) : cur.measure === 'time' ? (
-          <>
-            <p style={{ fontSize: 'min(24vw, 108px)', fontWeight: 900, color: '#fff', margin: '4px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{isDone ? '00:00' : fmt(remaining)}</p>
-            {/* Cible cardio (watts / vitesse / allure) — affichée SOUS le temps, réglable. */}
-            {!isDone && cur.phase === 'work' && liveInt && (() => {
-              const d = intensityDisplay(liveInt, runUnit)
-              return (
-                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button onClick={() => setLiveInt(v => v ? adjustIntensity(v, -1, runUnit) : v)} style={intBtn}>−</button>
-                    <button onClick={() => setEditInt(true)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                      <span style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, opacity: 0.9 }}>{d.unit}</span>
-                    </button>
-                    <button onClick={() => setLiveInt(v => v ? adjustIntensity(v, 1, runUnit) : v)} style={intBtn}>+</button>
+  // ── Panneau de phase (exercice, cible, décompte, progression) ──
+  const phasePanel = (
+    <motion.div className="rk-phase" layout transition={{ layout: RK_SPRING }}
+      style={{ backgroundColor: panelColor }}>
+      <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.88 }}>{eyebrow}</div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={idx}
+          initial={{ opacity: 0, x: reduce ? 0 : 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reduce ? 0 : -28 }}
+          transition={reduce ? { duration: 0.12 } : { ...RK_SPRING, opacity: { duration: 0.18 } }}>
+          <div style={{ fontSize: cur.label.length > 16 ? 32 : 40, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.08, marginTop: 6 }}>{cur.label}</div>
+          {cur.detail && <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.92, marginTop: 4 }}>{cur.detail}</div>}
+        </motion.div>
+      </AnimatePresence>
+
+      {cur.label === 'Séance libre' ? (
+        <div className="rk-num" style={{ fontSize: 'min(24vw, 96px)', fontWeight: 800, lineHeight: 1, marginTop: 14 }}>{fmtDur(elapsed)}</div>
+      ) : cur.measure === 'time' ? (
+        <>
+          <div className="rk-num" style={{ fontSize: 'min(24vw, 96px)', fontWeight: 800, lineHeight: 1, marginTop: 14 }}>{isDone ? '00:00' : fmt(remaining)}</div>
+          {/* Cible cardio (watts / vitesse / allure) — réglable en direct. */}
+          {!isDone && cur.phase === 'work' && liveInt && (() => {
+            const d = intensityDisplay(liveInt, runUnit)
+            return (
+              <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <PanelBtn label="−" onClick={() => setLiveInt(v => v ? adjustIntensity(v, -1, runUnit) : v)} />
+                <button type="button" onClick={() => setEditInt(true)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: 5, padding: 0 }}>
+                  <span className="rk-num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1 }}>{d.value}</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, opacity: 0.9 }}>{d.unit}</span>
+                </button>
+                <PanelBtn label="+" onClick={() => setLiveInt(v => v ? adjustIntensity(v, 1, runUnit) : v)} />
+                {/* Course : bascule km/h ↔ min/km */}
+                {liveInt.kind === 'speed' && (
+                  <div style={{ display: 'inline-flex', padding: 3, borderRadius: 'var(--r-pill)', background: 'color-mix(in srgb, var(--on-primary) 20%, transparent)' }}>
+                    {(['kmh', 'minkm'] as const).map(u => (
+                      <button key={u} type="button" onClick={() => setRunUnit(u)} style={{ minHeight: 32, padding: '0 12px', fontSize: 13, fontWeight: 800, border: 'none', borderRadius: 'var(--r-pill)', cursor: 'pointer', background: runUnit === u ? 'var(--on-primary)' : 'transparent', color: runUnit === u ? panelColor : 'var(--on-primary)' }}>{u === 'kmh' ? 'km/h' : 'min/km'}</button>
+                    ))}
                   </div>
-                  {/* Course : bascule km/h ↔ min/km */}
-                  {liveInt.kind === 'speed' && (
-                    <div style={{ display: 'inline-flex', border: '1.5px solid rgba(255,255,255,0.8)', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
-                      {(['kmh', 'minkm'] as const).map(u => (
-                        <button key={u} onClick={() => setRunUnit(u)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: runUnit === u ? '#fff' : 'transparent', color: runUnit === u ? '#000' : '#fff' }}>{u === 'kmh' ? 'km/h' : 'min/km'}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-            {/* Réglage live du temps : effort ±10 s, récup ±15 s. */}
-            {!isDone && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                <WhiteChip onClick={() => adjustTime(cur.phase === 'rest' ? -15 : -10)}>{cur.phase === 'rest' ? '−15 s' : '−10 s'}</WhiteChip>
-                <WhiteChip onClick={() => adjustTime(cur.phase === 'rest' ? 15 : 10)}>{cur.phase === 'rest' ? '+15 s' : '+10 s'}</WhiteChip>
+                )}
               </div>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Édition live : reps + charge (comme la muscu). */}
-            <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Stepper label="REPS" value={String(liveReps)} onDec={() => setLiveReps(n => Math.max(0, n - 1))} onInc={() => setLiveReps(n => n + 1)} />
-              <Stepper label="CHARGE (KG)" value={liveKg === 0 ? 'PDC' : String(liveKg)} onDec={() => setLiveKg(n => Math.max(0, +(n - 2.5).toFixed(1)))} onInc={() => setLiveKg(n => +(n + 2.5).toFixed(1))} />
+            )
+          })()}
+          {/* Progression de l'étape */}
+          {!isDone && (
+            <div className="rk-phase-bar" style={{ marginTop: 16 }}>
+              <i style={{ transform: `scaleX(${stepProgress})` }} />
             </div>
-            {!isDone && <button onClick={completeReps} style={{ marginTop: 22, padding: '13px 34px', borderRadius: 'var(--r-pill)', border: '2px solid #fff', background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Valider · Suivant →</button>}
-          </>
-        )}
+          )}
+          {/* Réglage live du temps : effort ±10 s, récup ±15 s · étape précédente. */}
+          {!isDone && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              <PanelChip onClick={() => { haptic('light'); goBack() }} disabled={idx === 0}>‹ {t('rec.previous')}</PanelChip>
+              <PanelChip onClick={() => adjustTime(cur.phase === 'rest' ? -15 : -10)}>{cur.phase === 'rest' ? '−15 s' : '−10 s'}</PanelChip>
+              <PanelChip onClick={() => adjustTime(cur.phase === 'rest' ? 15 : 10)}>{cur.phase === 'rest' ? '+15 s' : '+10 s'}</PanelChip>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Édition live : reps + charge (comme la muscu). */}
+          <div style={{ display: 'flex', gap: 22, marginTop: 16, flexWrap: 'wrap' }}>
+            <Stepper label="REPS" value={String(liveReps)} onDec={() => setLiveReps(n => Math.max(0, n - 1))} onInc={() => setLiveReps(n => n + 1)} />
+            <Stepper label="CHARGE (KG)" value={liveKg === 0 ? 'PDC' : String(liveKg)} onDec={() => setLiveKg(n => Math.max(0, +(n - 2.5).toFixed(1)))} onInc={() => setLiveKg(n => +(n + 2.5).toFixed(1))} />
+          </div>
+          {!isDone && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+              <PanelChip onClick={() => { haptic('light'); goBack() }} disabled={idx === 0}>‹ {t('rec.previous')}</PanelChip>
+              <button type="button" onClick={() => { haptic('medium'); completeReps() }} className="rk-press"
+                style={{ minHeight: 48, padding: '0 24px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--on-primary)', color: panelColor, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
+                {t('rec.validateNext')} →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </motion.div>
+  )
+
+  // ── Écran chrono : panneau + tuiles cardio/temps + « À suivre » ──
+  const timerPanel = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '4px 16px 16px' }}>
+      {phasePanel}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Tile label={t('rec.cardio')} value={hr.status === 'connected' && hr.bpm != null ? String(hr.bpm) : '—'} unit={hr.status === 'connected' && hr.bpm != null ? 'bpm' : undefined} dot={hr.status === 'connected' ? 'var(--danger)' : undefined} />
+        <Tile label={t('rec.totalTime')} value={fmtDur(elapsed)} />
       </div>
-
-      {/* Prochain */}
-      {!isDone && cur.nextLabel && (
-        <div style={{ flexShrink: 0, background: 'var(--bg-card2)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>À suivre</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cur.nextLabel}</span>
+      {!isDone && upcoming.length > 0 && (
+        <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '16px 16px 6px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{t('rec.upNext')}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)' }}>{t('rec.remainingN', { n: remainingSteps })}</span>
+          </div>
+          <AnimatePresence initial={false}>
+            {upcoming.map((s, i) => (
+              <motion.div key={`${idx + 1 + i}-${s.label}`} layout
+                initial={{ opacity: 0, y: reduce ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={reduce ? { duration: 0.1 } : { ...RK_SPRING, opacity: { duration: 0.2 } }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                <span className="rk-dot" style={{ width: 10, height: 10, background: phaseColorOf(s.phase, sportType) }} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 16, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                  {(s.detail || s.measure === 'time') && (
+                    <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[s.detail, s.measure === 'time' && s.durationSec > 0 ? fmt(s.durationSec) : null].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
-
-      {/* Navigation manuelle : précédent / passer (repos ou exo). */}
-      {!isDone && (
-        <div style={{ flexShrink: 0, display: 'flex', gap: 10, padding: '10px 24px 0', justifyContent: 'center' }}>
-          <button onClick={() => { haptic("light"); goBack() }} disabled={idx === 0}
-            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: idx === 0 ? 'var(--text-dim)' : 'var(--text)', fontSize: 13, fontWeight: 800, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Précédent
-          </button>
-          <button onClick={() => { haptic("light"); advance() }}
-            style={{ flex: 1, maxWidth: 200, padding: '9px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {cur.phase === 'rest' ? 'Passer le repos' : 'Passer'}
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
+      {isDone && (
+        <RkCta variant="primary" onClick={() => { setSaveStep('summary'); setShowSave(true) }}>{t('rec.seeSummary')} →</RkCta>
       )}
+    </div>
+  )
 
-      {/* Contrôles */}
-      <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '14px 24px', gap: 12 }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 34, fontWeight: 900, color: ACCENT, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Math.max(0, totalCount - doneCount)}</p>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} RESTANTS</p>
-        </div>
-        {isDone ? (
-          // La voix ouvre automatiquement le résumé ; ce bouton n'est qu'un secours pour le rouvrir.
-          <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ height: 52, padding: '0 22px', borderRadius: 'var(--r-pill)', border: `2px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', fontWeight: 800, fontSize: 13.5, whiteSpace: 'nowrap' }}>Voir le résumé →</button>
-        ) : (
-          <button onClick={() => setRunning(r => !r)} style={{ width: 84, height: 84, borderRadius: '50%', border: `3px solid ${ACCENT}`, background: 'transparent', color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {running ? <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-              : <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
-          </button>
-        )}
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 34, fontWeight: 900, color: 'var(--text)', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{totalCount}</p>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.06em' }}>{unitLabel} TOTAL</p>
-        </div>
+  // ── Contrôles bas : son · pause/lecture · passer ──
+  const paused = !running && !isDone && elapsed > 0
+  const controls = isDone ? null : paused ? (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <RkPausePills resumeLabel={t('w2c.resume')} finishLabel={t('rec.finish')} onResume={() => setRunning(true)} onFinish={() => { setSaveStep('summary'); setShowSave(true) }} />
+      <div style={{ padding: '0 16px' }}>
+        <RkCta variant={discardArmed ? 'danger' : 'text-danger'} onClick={armDiscard}>{discardArmed ? t('rec.confirmDiscard') : t('rec.finishNoSave')}</RkCta>
       </div>
     </div>
+  ) : (
+    <RkControlRow
+      left={<RkFab label={muted ? 'Activer le son' : 'Couper le son'} size={56} onClick={() => { if (muted) voice.unlock(); setMuted(m => !m) }}>
+        <RkIco d={muted ? <><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="m23 9-6 6M17 9l6 6" /></> : RK_ICON.mic} size={22} />
+      </RkFab>}
+      center={<RkBigButton label={running ? t('w2c.pause') : t('w2c.resume')} onClick={() => setRunning(r => !r)}>
+        {running ? <PauseGlyph /> : <PlayGlyph />}
+      </RkBigButton>}
+      right={<RkFab label={cur.phase === 'rest' ? 'Passer le repos' : 'Passer'} size={56} onClick={() => { haptic('light'); advance() }}>
+        <RkIco d={RK_ICON.skip} size={22} />
+      </RkFab>}
+    />
   )
 
   const header = (
-    <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10, borderBottom: '1px solid var(--border)' }}>
-      <button onClick={handleClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </button>
-      <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title || 'Boxe'}</p>
-        {/* FC centrée en haut si un capteur est connecté ; sinon chrono total. */}
-        {hr.status === 'connected' && hr.bpm != null ? (
-          <p style={{ fontSize: 15, fontWeight: 800, color: ACCENT, margin: '1px 0 0', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill={ACCENT}><path d="M12 21s-7.5-4.9-10-9.5C.5 8 2 4.5 5.5 4.5c2 0 3.3 1.1 4.5 2.6 1.2-1.5 2.5-2.6 4.5-2.6C22 4.5 23.5 8 22 11.5 19.5 16.1 12 21 12 21z"/></svg>
-            {hr.bpm} <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 700 }}>bpm</span>
-          </p>
-        ) : (
-          <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(elapsed)}</p>
-        )}
+    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+      <RkFab label={t('w2c.close')} onClick={handleClose}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
+      <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+        <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {[sportLabelOf(sportType), session.title].filter(Boolean).join(' · ')}
+        </div>
+        {started && <div className="rk-num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)', marginTop: 1, letterSpacing: 0 }}>{subtitle}</div>}
       </div>
-      {/* Couper / activer le son (à gauche des trois traits). */}
-      <button onClick={() => { if (muted) voice.unlock(); setMuted(m => !m) }} aria-label={muted ? 'Activer le son' : 'Couper le son'}
-        style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: muted ? 'var(--text-dim)' : 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-        {muted ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-        ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-        )}
-      </button>
-      <button onClick={() => setShowOverview(true)} aria-label="Vue d'ensemble" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
+      <RkFab label="Vue d'ensemble" onClick={() => setShowOverview(true)}><RkIco d={RK_ICON.sliders} size={19} /></RkFab>
     </div>
   )
 
   // ── Résumé pré-séance MUSCU / HYROX (WorkoutExercise[]) ──
   const wBlocks = session.workoutBlocks ?? []
   const preStartWorkout = (
-    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{wBlocks.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Blocs</div></div>
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px 24px' }}>
+      <div className="rk-fade-up" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: '4px 4px 0' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{t('record.readyToStart')}</div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, margin: '4px 0 0' }}>{session.title}</h2>
         </div>
-        {wBlocks.map((b, i) => {
-          const isCircuit = b.mode === 'circuit'
-          const line = isCircuit
-            ? `${b.circuitRounds ?? 1} tour${(b.circuitRounds ?? 1) > 1 ? 's' : ''} · ${(b.circuitExercises ?? []).length} exos`
-            : b.durationSec ? `${b.sets} × ${b.durationSec}s` : `${b.sets} × ${b.reps}${b.weightKg ? ` · ${b.weightKg} kg` : ''}`
-          return (
-            <div key={b.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 15px', marginBottom: 10 }}>
-              <span style={{ color: 'var(--text-dim)', fontWeight: 800, fontSize: 13 }}>{i + 1}</span>
-              <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{isCircuit ? (b.name || `Circuit ${i + 1}`) : b.name}</span>
-              <span style={{ fontSize: 12.5, color: 'var(--text-mid)', fontWeight: 600 }}>{line}</span>
-            </div>
-          )
-        })}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Tile label="Durée est." value={`~${Math.round(estimateDurationSec(buildWorkoutSteps(wBlocks)) / 60)}`} unit="min" />
+          <Tile label="Blocs" value={String(wBlocks.length)} />
+        </div>
+        <RkGroup>
+          {wBlocks.map((b, i) => {
+            const isCircuit = b.mode === 'circuit'
+            const line = isCircuit
+              ? `${b.circuitRounds ?? 1} tour${(b.circuitRounds ?? 1) > 1 ? 's' : ''} · ${(b.circuitExercises ?? []).length} exos`
+              : b.durationSec ? `${b.sets} × ${b.durationSec}s` : `${b.sets} × ${b.reps}${b.weightKg ? ` · ${b.weightKg} kg` : ''}`
+            return (
+              <RkRow key={b.id || i}
+                icon={<span className="rk-tile rk-num" style={{ background: 'var(--surface-chip)', fontSize: 15, fontWeight: 800, letterSpacing: 0 }}>{i + 1}</span>}
+                label={isCircuit ? (b.name || `Circuit ${i + 1}`) : b.name} sub={line} />
+            )
+          })}
+        </RkGroup>
       </div>
     </div>
   )
 
-  // ── Résumé pré-séance (comme la muscu) : titre + durée/tours/exos + détail ──
+  // ── Résumé pré-séance (boxe / hybride) : titre + durée/tours/exos + détail ──
   const preCircuits = session.circuits.length ? session.circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
   const preFirstId = preCircuits[0].id
   const preDurMin = sumComposedMinutes(session.moves, session.circuits)
   const preTours = preCircuits.reduce((s, c) => s + Math.max(1, c.rounds), 0)
   const preStart = (
-    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px 32px' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ACCENT, fontWeight: 800, margin: '4px 0 6px' }}>{t('record.readyToStart')}</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', margin: '0 0 18px' }}>{session.title}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>~{preDurMin} min</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Durée est.</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{preTours}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Tours</div></div>
-          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{session.moves.length}</div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Exos</div></div>
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px 24px' }}>
+      <div className="rk-fade-up" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: '4px 4px 0' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{t('record.readyToStart')}</div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, margin: '4px 0 0' }}>{session.title}</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <Tile label="Durée est." value={`~${preDurMin}`} unit="min" />
+          <Tile label="Tours" value={String(preTours)} />
+          <Tile label="Exos" value={String(session.moves.length)} />
         </div>
         {preCircuits.map((c, ci) => {
           const cm = session.moves.filter(m => (m.circuitId ?? preFirstId) === c.id)
           if (!cm.length) return null
           return (
-            <div key={c.id} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 12 }}>
-              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, margin: '0 0 10px' }}>{c.name || `Circuit ${ci + 1}`} · {Math.max(1, c.rounds)} tour{c.rounds > 1 ? 's' : ''}</p>
-              {cm.map(m => {
-                const def = moveDef(sport as ComposedSport, m.kind)
-                const detail = m.kind === 'round' ? `${m.rounds ?? 1} × ${Math.round((m.timeSec ?? 0) / 60)} min`
-                  : m.measure === 'reps' && !m.timeSec ? `${m.reps ?? ''} reps${m.weightKg ? ` · ${m.weightKg} kg` : ''}`
-                  : m.timeSec ? `${Math.round(m.timeSec / 60)} min` : ''
-                return (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: '1px solid var(--border)' }}>
-                    <span style={{ color: 'var(--text-dim)', fontWeight: 700, fontSize: 13 }}>#</span>
-                    <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{composedMoveLabel(m, def)}</span>
-                    <span style={{ fontSize: 12.5, color: 'var(--text-mid)', fontWeight: 600 }}>{detail}</span>
-                  </div>
-                )
-              })}
+            <div key={c.id}>
+              <RkSectionLabel>{c.name || `Circuit ${ci + 1}`} · {Math.max(1, c.rounds)} tour{c.rounds > 1 ? 's' : ''}</RkSectionLabel>
+              <RkGroup>
+                {cm.map(m => {
+                  const def = moveDef(sport as ComposedSport, m.kind)
+                  const detail = m.kind === 'round' ? `${m.rounds ?? 1} × ${Math.round((m.timeSec ?? 0) / 60)} min`
+                    : m.measure === 'reps' && !m.timeSec ? `${m.reps ?? ''} reps${m.weightKg ? ` · ${m.weightKg} kg` : ''}`
+                    : m.timeSec ? `${Math.round(m.timeSec / 60)} min` : ''
+                  return <RkRow key={m.id} label={composedMoveLabel(m, def)} value={detail} />
+                })}
+              </RkGroup>
             </div>
           )
         })}
@@ -589,113 +632,150 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   )
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'var(--surface-page)', color: 'var(--text)', display: 'flex', flexDirection: 'column' }}>
       {header}
-      {/* Barre de progression globale de la séance. */}
-      {started && (
-        <div style={{ flexShrink: 0, height: 3, background: 'var(--border)' }}>
-          <div style={{ height: '100%', width: `${Math.round((idx / Math.max(1, timeline.length - 1)) * 100)}%`, background: ACCENT, transition: 'width .35s ease' }} />
-        </div>
-      )}
       {!started ? (<>
         {isWorkout ? preStartWorkout : preStart}
-        <div style={{ flexShrink: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => { voice.unlock(); setStarted(true); setRunning(true) }} style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Commencer</button>
+        <div style={{ flexShrink: 0, padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: '100%', maxWidth: 560 }}>
+            <RkCta variant="primary" onClick={() => { haptic('heavy'); voice.unlock(); setStarted(true); setRunning(true) }}>{t('rec.beginSession')}</RkCta>
+          </div>
         </div>
       </>) : isDesktop ? (
         // Desktop : split gauche (séance/chrono) / droite (données)
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1.4fr 1fr' }}>
-          <div style={{ minHeight: 0, borderRight: '1px solid var(--border)' }}>{timerPanel}</div>
+          <div style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{timerPanel}</div>
+            <div style={{ flexShrink: 0, padding: '8px 0 20px', display: 'flex', justifyContent: 'center' }}>{controls}</div>
+          </div>
           <div style={{ minHeight: 0, overflowY: 'auto' }}>{dataPanel}</div>
         </div>
       ) : (
-        // Mobile : pager horizontal (chrono / données) + points
+        // Mobile : pager horizontal à élan (chrono / données) + points + contrôles
         <>
-          <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, minHeight: 0, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory' }}>
-            <div style={{ minWidth: '100%', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', minHeight: 0 }}>{timerPanel}</div>
+          <div ref={pagesRef} onScroll={onScroll} style={{ flex: 1, minHeight: 0, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
+            <div style={{ minWidth: '100%', scrollSnapAlign: 'start', overflowY: 'auto' }}>{timerPanel}</div>
             <div style={{ minWidth: '100%', scrollSnapAlign: 'start', overflowY: 'auto' }}>{dataPanel}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '8px 0 calc(6px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
-            {[0, 1].map(i => <span key={i} style={{ height: 6, width: i === page ? 18 : 6, borderRadius: 3, background: i === page ? ACCENT : 'var(--border-mid)', transition: '.2s' }} />)}
+          <RkPageDots count={2} index={page} onSelect={i => { const el = pagesRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }) }} style={{ padding: '6px 0 2px', flexShrink: 0 }} />
+          <div style={{ flexShrink: 0, padding: '10px 0 calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', minHeight: 116 }}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={paused ? 'p' : 'r'} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
+                initial={{ opacity: 0, y: reduce ? 0 : 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduce ? 0 : 10 }}
+                transition={reduce ? { duration: 0.1 } : { ...RK_SPRING, opacity: { duration: 0.16 } }}>
+                {controls}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </>
       )}
 
       {/* Gros décompte flash « 3 / 2 / 1 / GO / STOP » plein écran. */}
-      {flash && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'rgba(0,0,0,0.4)' }}>
-          <style>{`@keyframes flashPop{0%{transform:scale(.5);opacity:0}30%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}`}</style>
-          <span key={flash} style={{ fontSize: flash.length > 2 ? 'min(34vw, 200px)' : 'min(58vw, 340px)', fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em', textShadow: '0 6px 50px rgba(0,0,0,0.5)', animation: 'flashPop .28s cubic-bezier(.2,.9,.3,1)', fontVariantNumeric: 'tabular-nums' }}>{flash}</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {flash && (
+          <motion.div key="flash-veil" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'var(--scrim)' }}>
+            <motion.span key={flash} className="rk-num"
+              initial={{ scale: reduce ? 1 : 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              transition={reduce ? { duration: 0.1 } : { type: 'spring', stiffness: 520, damping: 22 }}
+              style={{ fontSize: flash.length > 2 ? 'min(34vw, 200px)' : 'min(58vw, 340px)', fontWeight: 800, color: 'var(--on-primary)', lineHeight: 1 }}>
+              {flash}
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showOverview && <OverviewSheet timeline={timeline} idx={idx} onClose={() => setShowOverview(false)} />}
+      <OverviewSheet timeline={timeline} idx={idx} open={showOverview} onClose={() => setShowOverview(false)} isDark={isDark} sportType={sportType} />
 
       {/* Saisie manuelle de la cible cardio (valeur exacte). */}
       {editInt && liveInt && (
-        <IntensityEditor intensity={liveInt} runUnit={runUnit}
+        <IntensityEditor intensity={liveInt} runUnit={runUnit} isDark={isDark}
           onCancel={() => setEditInt(false)}
           onSubmit={(next) => { setLiveInt(next); setEditInt(false) }} />
       )}
 
-      {/* Chrono en pause → 3 choix : Reprendre / Terminer sans enregistrer /
-          Terminer et enregistrer. Carte opaque + texte contrasté (lisible). */}
-      {!running && !isDone && elapsed > 0 && !showOverview && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4, padding: 20 }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 24, width: 'min(360px, 90vw)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
-            <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>{t('record.sessionPaused')}</p>
-            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 20px' }}>Temps écoulé · {fmtDur(elapsed)}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => setRunning(true)} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: '#22c55e', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Reprendre</button>
-              <button onClick={() => { setSaveStep('summary'); setShowSave(true) }} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: 'none', background: ACCENT, color: ACCENT_ON, fontSize: 15.5, fontWeight: 800, cursor: 'pointer' }}>Terminer et enregistrer</button>
-              <button onClick={onClose} style={{ width: '100%', padding: 15, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>Terminer sans enregistrer</button>
-            </div>
+      <RkSheet open={confirmClose} onClose={() => setConfirmClose(false)} isDark={isDark} zIndex={10070} label="Quitter la séance ?">
+        <div style={{ textAlign: 'center', padding: '6px 4px 4px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Quitter la séance ?</h2>
+          <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '8px 0 22px' }}>La séance en cours ne sera pas enregistrée.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <RkCta variant="primary" onClick={() => setConfirmClose(false)}>Annuler</RkCta>
+            <RkCta variant="text-danger" onClick={() => { haptic('heavy'); onClose() }}>Quitter</RkCta>
           </div>
         </div>
-      )}
-
-      {confirmClose && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 20, width: 'min(320px, 86vw)', textAlign: 'center' }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Quitter la séance ?</p>
-            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>La séance en cours ne sera pas enregistrée.</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-pill)', background: ACCENT, border: 'none', color: ACCENT_ON, fontWeight: 700, cursor: 'pointer' }}>Quitter</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </RkSheet>
     </div>
   )
 
   return createPortal(content, document.body)
 }
 
-// Puce blanche (réglage temps) posée sur le bloc de phase coloré.
-function WhiteChip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+// Couleur du panneau selon la phase (maquette r4) : effort = couleur sport,
+// repos = vert, préparation = ambre, fin = encre.
+function WORK_COLOR(sportType: string): string {
+  return sportType === 'hyrox' || sportType === 'hybrid' ? 'var(--sport-hyrox)' : 'var(--sport-gym)'
+}
+function phaseColorOf(p: BoxeStep['phase'], sportType: string): string {
+  if (p === 'prepare') return C_PREP
+  if (p === 'rest') return C_REST
+  if (p === 'done') return 'var(--text)'
+  return WORK_COLOR(sportType)
+}
+function sportLabelOf(s: string): string {
+  return s === 'gym' ? 'Musculation' : s === 'hyrox' ? 'Hyrox' : s === 'hybrid' ? 'Hybrid' : 'Boxe'
+}
+
+// Tuile blanche (cardio / temps total / stats pré-séance).
+function Tile({ label, value, unit, dot }: { label: string; value: string; unit?: string; dot?: string }) {
   return (
-    <button onClick={onClick} style={{ padding: '10px 18px', borderRadius: 'var(--r-pill)', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{children}</button>
+    <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>
+        {dot && <span className="rk-dot" data-live="1" style={{ background: dot }} />}{label}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+        <span className="rk-num" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.05 }}>{value}</span>
+        {unit && <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)' }}>{unit}</span>}
+      </div>
+    </div>
   )
 }
 
-// Stepper reps/charge (blanc sur bloc coloré) — édition live −/+.
-function Stepper({ label, value, onDec, onInc }: { label: string; value: string; onDec: () => void; onInc: () => void }) {
-  const btn: React.CSSProperties = { width: 46, height: 46, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 24, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }
+// Bouton rond −/+ posé sur le panneau de phase coloré.
+function PanelBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{label}</p>
+    <button type="button" aria-label={label} onClick={() => { haptic('light'); onClick() }} className="rk-press"
+      style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--on-primary) 22%, transparent)', color: 'var(--on-primary)', fontSize: 24, fontWeight: 800, cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {label}
+    </button>
+  )
+}
+
+// Puce (réglage temps / précédent) posée sur le panneau de phase coloré.
+function PanelChip({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className="rk-press"
+      style={{ minHeight: 40, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'color-mix(in srgb, var(--on-primary) 22%, transparent)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 800, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1 }}>
+      {children}
+    </button>
+  )
+}
+
+// Stepper reps/charge (sur panneau coloré) — édition live −/+.
+function Stepper({ label, value, onDec, onInc }: { label: string; value: string; onDec: () => void; onInc: () => void }) {
+  return (
+    <div>
+      <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.06em', opacity: 0.88, margin: '0 0 8px' }}>{label}</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onDec} style={btn}>−</button>
-        <span style={{ minWidth: 62, fontSize: 34, fontWeight: 900, color: '#fff', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</span>
-        <button onClick={onInc} style={btn}>+</button>
+        <PanelBtn label="−" onClick={onDec} />
+        <span className="rk-num" style={{ minWidth: 62, textAlign: 'center', fontSize: 34, fontWeight: 800, lineHeight: 1 }}>{value}</span>
+        <PanelBtn label="+" onClick={onInc} />
       </div>
     </div>
   )
 }
 
 // Saisie manuelle de la cible exacte (watts, km/h, allure mm:ss).
-function IntensityEditor({ intensity, runUnit, onCancel, onSubmit }: { intensity: LiveIntensity; runUnit: 'kmh' | 'minkm'; onCancel: () => void; onSubmit: (next: LiveIntensity) => void }) {
+function IntensityEditor({ intensity, runUnit, onCancel, onSubmit, isDark }: { intensity: LiveIntensity; runUnit: 'kmh' | 'minkm'; onCancel: () => void; onSubmit: (next: LiveIntensity) => void; isDark: boolean }) {
   const disp = intensityDisplay(intensity, runUnit)
   const [val, setVal] = useState(disp.value)
   const isPace = intensity.kind === 'pace500' || (intensity.kind === 'speed' && runUnit === 'minkm')
@@ -710,64 +790,37 @@ function IntensityEditor({ intensity, runUnit, onCancel, onSubmit }: { intensity
     }
     onSubmit(next)
   }
-  return createPortal(
-    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 22, width: 'min(320px, 90vw)' }}>
-        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Cible exacte</p>
-        <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 14px' }}>{isPace ? 'Format mm:ss' : `En ${disp.unit}`}</p>
-        <input autoFocus value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
-          inputMode={isPace ? 'text' : 'decimal'} placeholder={disp.value}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 20, fontWeight: 800, textAlign: 'center', outline: 'none' }} />
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
-          <button onClick={submit} style={{ flex: 1, padding: 12, borderRadius: 'var(--r-md)', background: 'var(--text)', border: 'none', color: 'var(--bg)', fontWeight: 800, cursor: 'pointer' }}>Valider</button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
-function Metric({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '13px 14px' }}>
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>
-        {value}{unit && <small style={{ fontSize: 11, color: 'var(--text-mid)', fontWeight: 700, marginLeft: 2 }}>{unit}</small>}
-      </div>
-    </div>
+    <RkSheet open onClose={onCancel} title="Cible exacte" sub={isPace ? 'Format mm:ss' : `En ${disp.unit}`} isDark={isDark} zIndex={10010}
+      footer={<RkCta variant="primary" onClick={submit}>Valider</RkCta>}>
+      <input autoFocus value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
+        inputMode={isPace ? 'text' : 'decimal'} placeholder={disp.value} className="rk-field rk-num"
+        style={{ fontSize: 28, fontWeight: 800, textAlign: 'center', minHeight: 64 }} />
+    </RkSheet>
   )
 }
 
 // Vue d'ensemble : toutes les étapes d'EFFORT groupées Fait / En cours / À venir.
-function OverviewSheet({ timeline, idx, onClose }: { timeline: BoxeStep[]; idx: number; onClose: () => void }) {
+function OverviewSheet({ timeline, idx, open, onClose, isDark, sportType }: { timeline: BoxeStep[]; idx: number; open: boolean; onClose: () => void; isDark: boolean; sportType: string }) {
   const { t } = useI18n()
   const efforts = timeline.map((s, i) => ({ s, i })).filter(x => x.s.phase === 'work')
-  const Row = ({ s, state }: { s: BoxeStep; state: 'done' | 'now' | 'todo' }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r-sm)', marginBottom: 6,
-      background: state === 'now' ? tint(8) : 'var(--bg-card2)', border: state === 'now' ? `1px solid ${tint(40)}` : '1px solid transparent', opacity: state === 'done' ? 0.5 : 1 }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: state === 'done' ? 'var(--text-dim)' : state === 'now' ? ACCENT : 'var(--border-mid)', flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{s.label}{s.tours && s.tours > 1 ? ` · tour ${s.tour}/${s.tours}` : ''}</span>
-        {s.detail && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>{s.detail}</span>}
-      </span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', flexShrink: 0 }}>{s.measure === 'time' ? fmt(s.durationSec) : s.reps ? `×${s.reps}` : ''}</span>
-    </div>
-  )
-  return createPortal(
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10005, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 10006, background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '82dvh', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{t('boxe.fullSession')}</h3>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text-mid)', cursor: 'pointer', fontSize: 15 }}>✕</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 18px 20px' }}>
-          {efforts.map(({ s, i }) => <Row key={i} s={s} state={i < idx ? 'done' : i === idx ? 'now' : 'todo'} />)}
-        </div>
-      </div>
-    </>,
-    document.body,
+  return (
+    <RkSheet open={open} onClose={onClose} title={t('boxe.fullSession')} isDark={isDark} zIndex={10006} full>
+      <RkGroup>
+        {efforts.map(({ s, i }) => {
+          const state = i < idx ? 'done' : i === idx ? 'now' : 'todo'
+          return (
+            <div key={i} className="rk-row" style={{ opacity: state === 'done' ? 0.5 : 1, background: state === 'now' ? 'color-mix(in srgb, var(--text) 6%, transparent)' : undefined }}>
+              <span className="rk-dot" data-live={state === 'now' ? '1' : undefined} style={{ width: 10, height: 10, background: state === 'done' ? 'var(--text-dim)' : state === 'now' ? WORK_COLOR(sportType) : 'var(--surface-bar)' }} />
+              <span className="rk-row-t">
+                <b>{s.label}{s.tours && s.tours > 1 ? ` · tour ${s.tour}/${s.tours}` : ''}</b>
+                {s.detail && <span>{s.detail}</span>}
+              </span>
+              <span className="rk-row-v rk-num" style={{ letterSpacing: 0 }}>{s.measure === 'time' ? fmt(s.durationSec) : s.reps ? `×${s.reps}` : ''}</span>
+            </div>
+          )
+        })}
+      </RkGroup>
+    </RkSheet>
   )
 }

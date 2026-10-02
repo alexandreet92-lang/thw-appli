@@ -15,8 +15,13 @@ import { formatHMS, frNum } from './liveMachine'
 import { uploadLiveSession, type LiveSaveMeta } from './saveLive'
 import { clearLiveBackup, type LiveSnapshot } from './useLocalBackup'
 import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
-import UploadGauge, { type UploadGaugeState } from './UploadGauge'
+import { type UploadGaugeState } from './UploadGauge'
 import { useI18n } from '@/lib/i18n'
+import { motion, useReducedMotion } from 'motion/react'
+import { haptic } from '@/lib/haptics'
+import {
+  RkFab, RkIco, RK_ICON, RkGroup, RkRow, RkCta, RkRangeSheet, RkPickSheet, RK_SPRING, RkFabSpacer,
+} from '../kit/RecordKit'
 
 interface Props {
   snap: LiveSnapshot
@@ -35,6 +40,12 @@ interface Props {
   flushPhotos?: (sessionId: string) => Promise<void>
   /** Callback historique de fin (nettoyage de la page record) — avant navigation. */
   onFinished: () => void
+  /** Thème de l'écran live (feuilles en portail). */
+  isDark?: boolean
+  /** Vignettes des photos prises pendant / après la séance. */
+  photos?: string[]
+  /** Ajouter une photo (ouvre l'appareil / la galerie). */
+  onAddPhoto?: () => void
 }
 
 // ── Sports proposés dans le résumé ───────────────────────────────────
@@ -98,24 +109,23 @@ function paceLabel(kmh: number): string {
 }
 
 function rpeColor(v: number): string {
-  if (v <= 3) return 'var(--live-success)'
+  if (v <= 3) return 'var(--success)'
   if (v <= 6) return 'var(--live-warn)'
-  return 'var(--live-danger)'
+  return 'var(--danger)'
 }
 
 interface GearItem { id: string; label: string }
 
 export default function SummaryScreen({
   snap, units, initialSport, canResume, onUploadStart, onUploadDone, onUploadFail,
-  onDiscard, onBack, flushPhotos, onFinished,
+  onDiscard, onBack, flushPhotos, onFinished, isDark, photos = [], onAddPhoto,
 }: Props) {
   const { t } = useI18n()
   const router = useRouter()
   const df = distFactor(units)
   const af = altFactor(units)
 
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id) }, [])
+  const reduce = useReducedMotion()
 
   const started = new Date(snap.startedAtISO)
   const defaultTitle = t('w3a.default_ride_title')
@@ -128,7 +138,7 @@ export default function SummaryScreen({
   const [gearId, setGearId] = useState<string | null>(null)
   const [bikes, setBikes] = useState<GearItem[]>([])
   const [shoes, setShoes] = useState<GearItem[]>([])
-  const [sheet, setSheet] = useState<'none' | 'rpe' | 'feeling' | 'gear'>('none')
+  const [sheet, setSheet] = useState<'none' | 'rpe' | 'feeling' | 'gear' | 'sport' | 'visibility'>('none')
 
   const [foot, setFoot] = useState<'buttons' | UploadGaugeState>('buttons')
   const [progress, setProgress] = useState(0)
@@ -200,6 +210,7 @@ export default function SummaryScreen({
   ]
 
   const runUpload = async () => {
+    haptic('medium')
     setFoot('uploading')
     setProgress(0)
     onUploadStart()
@@ -221,7 +232,7 @@ export default function SummaryScreen({
         try { await flushPhotos(sessionId) } catch (e) { console.error('[live-v2] photo flush error:', e) }
       }
       clearLiveBackup()
-      setTimeout(() => { setFoot('done'); onUploadDone() }, 350)
+      setTimeout(() => { setFoot('done'); haptic('success'); onUploadDone() }, 350)
     } catch (e) {
       console.error('[live-v2] upload error:', e)
       setFoot('failed')
@@ -231,6 +242,7 @@ export default function SummaryScreen({
 
   const handleDelete = () => {
     if (foot !== 'buttons') return
+    haptic(armed ? 'heavy' : 'medium')
     if (!armed) {
       setArmed(true)
       armTimer.current = setTimeout(() => setArmed(false), 3000)
@@ -262,341 +274,165 @@ export default function SummaryScreen({
     { id: 'public', label: t('w3a.vis_public'), icon: <VisIcon kind="public" /> },
   ]
 
-  const LABEL: React.CSSProperties = { fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--live-label)', marginBottom: 8 }
+  const pct = Math.max(0, Math.min(100, Math.round(progress)))
+  const visLabel = visChips.find(v => v.id === visibility)?.label ?? ''
+  const sportLabel = sportChips.find(c => c.id === sport)?.label ?? ''
+  const card: React.CSSProperties = { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }
 
   return (
-    <div style={{
-      position: 'absolute', inset: 0, zIndex: 66, background: 'var(--live-bg)',
-      display: 'flex', flexDirection: 'column',
-      transform: mounted ? 'translateY(0)' : 'translateY(100%)',
-      transition: 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)',
-    }}>
-      {/* En-tête : retour (reprendre) · titre · date */}
-      <div style={{
-        flexShrink: 0, position: 'relative',
-        paddingTop: 'calc(env(safe-area-inset-top) + 14px)', paddingBottom: 12,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderBottom: '1px solid var(--live-hairline)',
-      }}>
-        {canResume && onBack && (
-          <button
-            onClick={onBack}
-            aria-label={t('w3a.resume_session')}
-            className="lv2-press"
-            style={{
-              position: 'absolute', left: 16, top: 'calc(env(safe-area-inset-top) + 10px)',
-              width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: 'var(--live-surface-2)', color: 'var(--live-text)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="17" height="17" viewBox="0 0 20 20"><path d="M12.5 4 L6 10 L12.5 16" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </button>
-        )}
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t('w3a.summary_title')}</h2>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 3 }}>{dateLine}</div>
+    <motion.div
+      initial={{ y: reduce ? 0 : '100%', opacity: reduce ? 0 : 1 }} animate={{ y: 0, opacity: 1 }}
+      transition={reduce ? { duration: 0.15 } : RK_SPRING}
+      style={{ position: 'absolute', inset: 0, zIndex: 66, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column' }}>
+      {/* En-tête : retour (reprendre) · « Enregistrer » + date */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
+        <div style={{ width: 44 }}>
+          {canResume && onBack && foot === 'buttons' ? (
+            <RkFab label={t('w3a.resume_session')} onClick={onBack}><RkIco d={RK_ICON.back} size={22} sw={2.2} /></RkFab>
+          ) : <RkFabSpacer />}
         </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em' }}>{t('rec.saveTitle')}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 1, textTransform: 'capitalize' }}>{dateLine}</div>
+        </div>
+        <RkFabSpacer />
       </div>
 
       {/* Contenu défilant */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 16px 8px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-        {/* Titre */}
-        <div style={LABEL}>{t('w3a.title_label')}</div>
-        <input
-          value={title} onChange={e => setTitle(e.target.value)} placeholder={defaultTitle}
-          style={{
-            width: '100%', height: 46, borderRadius: 'var(--r-md)', padding: '0 14px', marginBottom: 18,
-            background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-            color: 'var(--live-text)', fontSize: 15, fontWeight: 600, outline: 'none',
-          }}
-        />
-
-        {/* Commentaire */}
-        <div style={LABEL}>{t('w3a.comment_label')}</div>
-        <textarea
-          value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder={t('w3a.comment_placeholder')}
-          style={{
-            width: '100%', borderRadius: 'var(--r-md)', padding: '11px 14px', marginBottom: 18, resize: 'none',
-            background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-            color: 'var(--live-text)', fontSize: 14.5, fontWeight: 500, outline: 'none', lineHeight: 1.4,
-            fontFamily: 'inherit',
-          }}
-        />
-
-        {/* Sport */}
-        <div style={LABEL}>{t('w3a.sport_label')}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-          {sportChips.map(c => {
-            const on = sport === c.id
-            return (
-              <button
-                key={c.id} onClick={() => setSport(c.id)} className="lv2-press"
-                style={{
-                  height: 38, padding: '0 16px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
-                  border: on ? '1px solid var(--live-accent)' : '1px solid var(--live-hairline-2)',
-                  background: on ? 'var(--live-accent-soft)' : 'var(--live-surface)',
-                  color: on ? 'var(--live-accent)' : 'var(--live-text)', fontSize: 13.5, fontWeight: 700,
-                }}
-              >
-                {c.label}
-              </button>
-            )
-          })}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+        {/* Titre + commentaire */}
+        <div style={{ ...card, padding: '16px 16px 12px' }}>
+          <input
+            className="rk-input" value={title} onChange={e => setTitle(e.target.value)} placeholder={defaultTitle}
+            aria-label={t('w3a.title_label')}
+            style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', minHeight: 36 }}
+          />
+          <textarea
+            className="rk-input" value={comment} onChange={e => setComment(e.target.value)} rows={2} placeholder={t('w3a.comment_placeholder')}
+            aria-label={t('w3a.comment_label')}
+            style={{ fontSize: 16, marginTop: 6, resize: 'none', lineHeight: 1.4 }}
+          />
         </div>
 
-        {/* Données principales */}
-        <div style={LABEL}>{t('w3a.main_data')}</div>
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, marginBottom: 18,
-          background: 'var(--live-hairline)', border: '1px solid var(--live-hairline)', borderRadius: 'var(--r-md)', overflow: 'hidden',
-        }}>
-          {dataCells.map(c => (
-            <div key={c.label} style={{ background: 'var(--live-surface)', padding: '13px 8px 15px', textAlign: 'center' }}>
-              <div className="lv2-eyebrow" style={{ fontSize: 10 }}>{c.label}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginTop: 7 }}>
-                <span className="lv2-num" style={{ fontSize: 20, fontWeight: 800 }}>{c.value}</span>
-                {c.unit && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
+        {/* Carte du tracé + données principales */}
+        <div style={card}>
+          <div style={{ height: MAP_H, position: 'relative', background: 'var(--live-map-bg)' }}>
+            {track.length > 1 ? (
+              <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ display: 'block' }}>
+                <motion.polyline points={polyline} fill="none" stroke="var(--primary)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
+                  initial={{ pathLength: reduce ? 1 : 0 }} animate={{ pathLength: 1 }} transition={{ duration: reduce ? 0 : 1.1, ease: [0.22, 1, 0.36, 1] }} />
+                <circle cx={track[0][0]} cy={track[0][1]} r="7" fill="var(--surface-card)" />
+                <circle cx={track[0][0]} cy={track[0][1]} r="4.5" fill="var(--success)" />
+                <circle cx={track[track.length - 1][0]} cy={track[track.length - 1][1]} r="7" fill="var(--surface-card)" />
+                <circle cx={track[track.length - 1][0]} cy={track[track.length - 1][1]} r="4.5" fill="var(--sport-bike)" />
+              </svg>
+            ) : (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-mid)' }}>
+                {t('w3a.no_gps')}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px 10px', padding: '14px 16px 16px' }}>
+            {dataCells.map(c => (
+              <div key={c.label} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{c.label}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
+                  <span className="rk-num" style={{ fontSize: 20, fontWeight: 800 }}>{c.value}</span>
+                  {c.unit && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{c.unit}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Carte du tracé réel */}
-        <div style={LABEL}>{t('w3a.route_map')}</div>
-        <div style={{
-          height: MAP_H, borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', marginBottom: 18,
-          background: 'var(--live-map-bg)', border: '1px solid var(--live-hairline)',
-        }}>
-          {track.length > 1 ? (
-            <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ display: 'block' }}>
-              <polyline points={polyline} fill="none" stroke="var(--live-accent)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx={track[0][0]} cy={track[0][1]} r="6" fill="var(--live-success)" />
-              <circle cx={track[0][0]} cy={track[0][1]} r="2.6" fill="#fff" /> {/* design-allow-color */}
-              <circle cx={track[track.length - 1][0]} cy={track[track.length - 1][1]} r="6" fill="var(--live-danger)" />
-              <circle cx={track[track.length - 1][0]} cy={track[track.length - 1][1]} r="2.6" fill="#fff" /> {/* design-allow-color */}
-            </svg>
-          ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--live-label)' }}>
-              {t('w3a.no_gps')}
-            </div>
-          )}
-        </div>
-
-        {/* Matériel */}
-        {cfg.gear && (
-          <>
-            <div style={LABEL}>{cfg.gear === 'bike' ? t('w3a.gear_bike') : t('w3a.gear_shoes')}</div>
-            <SummaryRow onClick={() => setSheet('gear')} value={gearLabel ?? t('w3a.gear_none')} />
-            <div style={{ height: 18 }} />
-          </>
-        )}
-
-        {/* RPE */}
-        <div style={LABEL}>{t('w3a.rpe_label')}</div>
-        <SummaryRow
-          onClick={() => setSheet('rpe')}
-          value={rpe > 0 ? String(rpe) : t('w3a.tap_to_set')}
-          valueColor={rpe > 0 ? rpeColor(rpe) : undefined}
-          suffix={rpe > 0 ? '/ 10' : undefined}
-        />
-        <div style={{ height: 18 }} />
-
-        {/* Ressenti */}
-        <div style={LABEL}>{t('w3a.feeling_label')}</div>
-        <SummaryRow
-          onClick={() => setSheet('feeling')}
-          value={feeling > 0 ? String(feeling) : t('w3a.tap_to_set')}
-          valueColor={feeling > 0 ? 'var(--live-accent)' : undefined}
-          suffix={feeling > 0 ? '/ 5' : undefined}
-        />
-        <div style={{ height: 18 }} />
-
-        {/* Visibilité */}
-        <div style={LABEL}>{t('w3a.visibility_label')}</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          {visChips.map(o => {
-            const on = visibility === o.id
-            return (
-              <button
-                key={o.id} onClick={() => setVisibility(o.id)} className="lv2-press"
-                style={{
-                  flex: 1, height: 66, borderRadius: 'var(--r-md)', cursor: 'pointer',
-                  border: on ? '1px solid var(--live-accent)' : '1px solid var(--live-hairline-2)',
-                  background: on ? 'var(--live-accent-soft)' : 'var(--live-surface)',
-                  color: on ? 'var(--live-accent)' : 'var(--live-text-2)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}
-              >
-                {o.icon}
-                <span style={{ fontSize: 11.5, fontWeight: 700 }}>{o.label}</span>
+        {/* Photos */}
+        {(onAddPhoto || photos.length > 0) && (
+          <div className="rk-chips" style={{ gap: 8, margin: '0 -16px', padding: '0 16px' }}>
+            {onAddPhoto && (
+              <button type="button" onClick={() => { haptic('light'); onAddPhoto() }} aria-label={t('record.photoButtonTitle')} className="rk-press"
+                style={{ width: 76, height: 76, flexShrink: 0, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--surface-card)', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <RkIco d={RK_ICON.camera} size={24} sw={1.8} />
               </button>
-            )
-          })}
-        </div>
+            )}
+            {photos.map(u => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={u} src={u} alt="" className="rk-fade-up" style={{ width: 76, height: 76, flexShrink: 0, objectFit: 'cover', borderRadius: 'var(--r-md)' }} />
+            ))}
+          </div>
+        )}
+
+        {/* Sport · Effort · Ressenti · Matériel · Visibilité */}
+        <RkGroup>
+          <RkRow label={t('w3a.sport_label')} value={sportLabel} onClick={() => setSheet('sport')} />
+          <RkRow label={t('w3a.rpe_label')} value={rpe > 0 ? <span className="rk-num" style={{ letterSpacing: 0, color: 'var(--text)' }}><span className="rk-dot" style={{ background: rpeColor(rpe), display: 'inline-block', marginRight: 6 }} />{rpe} / 10</span> : t('w3a.tap_to_set')} onClick={() => setSheet('rpe')} />
+          <RkRow label={t('w3a.feeling_label')} value={feeling > 0 ? <span className="rk-num" style={{ letterSpacing: 0, color: 'var(--text)' }}>{feeling} / 5</span> : t('w3a.tap_to_set')} onClick={() => setSheet('feeling')} />
+          {cfg.gear && (
+            <RkRow label={cfg.gear === 'bike' ? t('w3a.gear_bike') : t('w3a.gear_shoes')} value={gearLabel ?? t('w3a.gear_none')} onClick={() => setSheet('gear')} />
+          )}
+          <RkRow label={t('w3a.visibility_label')} value={visLabel} onClick={() => setSheet('visibility')} />
+        </RkGroup>
       </div>
 
-      {/* Pied : boutons / jauge d'envoi / confirmation */}
-      <div style={{ flexShrink: 0, padding: '14px 20px calc(env(safe-area-inset-bottom) + 22px)', textAlign: 'center', borderTop: '1px solid var(--live-hairline)' }}>
-        {foot === 'buttons' ? (
+      {/* Pied : enregistrer (jauge réelle intégrée) · supprimer / voir l'entraînement */}
+      <div style={{ flexShrink: 0, padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--surface-page)' }}>
+        {foot === 'done' ? (
+          <motion.div initial={{ opacity: 0, scale: reduce ? 1 : 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={reduce ? { duration: 0.12 } : RK_SPRING}
+            style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16, fontWeight: 800 }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'color-mix(in srgb, var(--success) 16%, transparent)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RkIco d={RK_ICON.check} size={18} sw={3} />
+              </span>
+              {t('activities.recordedSession')}
+            </div>
+            <RkCta variant="primary" onClick={seeTraining}>{t('rec.seeTraining')}</RkCta>
+          </motion.div>
+        ) : foot === 'failed' ? (
           <>
-            <button className="lv2-pill lv2-pill-primary lv2-press" style={{ marginBottom: 12 }} onClick={runUpload}>
-              {t('w3a.save_session')}
-            </button>
-            <button
-              className={armed ? 'lv2-pill lv2-pill-danger lv2-armed lv2-press' : 'lv2-pill lv2-pill-danger lv2-press'}
-              onClick={handleDelete}
-            >
-              {armed ? t('w3a.confirm_delete', { dist: frNum((snap.distM / 1000) * df, 1), unit: getUnitLabel('km', units) }) : t('w3a.delete_activity')}
-            </button>
+            <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--danger)', padding: '2px 0 4px' }}>{t('rec.uploadFailed')}</div>
+            <RkCta variant="primary" onClick={runUpload}>{t('rec.retry')}</RkCta>
           </>
+        ) : foot === 'uploading' ? (
+          <RkCta variant="primary" disabled progress={pct} style={{ opacity: 1 }}>
+            {t('rec.uploading')} <span className="rk-num" style={{ letterSpacing: 0 }}>{pct} %</span>
+          </RkCta>
         ) : (
-          <UploadGauge state={foot} progress={progress} onRetry={runUpload} onSeeTraining={seeTraining} />
+          <>
+            <RkCta variant="primary" onClick={runUpload}>{t('rec.saveActivity')}</RkCta>
+            <RkCta variant={armed ? 'danger' : 'text-danger'} onClick={handleDelete}>
+              {armed ? t('w3a.confirm_delete', { dist: frNum((snap.distM / 1000) * df, 1), unit: getUnitLabel('km', units) ?? 'km' }) : t('w3a.delete_activity')}
+            </RkCta>
+          </>
         )}
       </div>
 
-      {/* ── Sous-feuilles coulissantes ── */}
-      <GaugeSheet
+      {/* ── Sous-feuilles ── */}
+      <RkRangeSheet
         open={sheet === 'rpe'} title={t('w3a.rpe_label')} subtitle={t('w3a.rpe_hint')}
         value={rpe} max={10} step={1} color={rpeColor(rpe || 1)}
-        onChange={setRpe} onClose={() => setSheet('none')}
+        onChange={setRpe} onClose={() => setSheet('none')} isDark={isDark}
       />
-      <GaugeSheet
+      <RkRangeSheet
         open={sheet === 'feeling'} title={t('w3a.feeling_label')} subtitle={t('w3a.feeling_hint')}
-        value={feeling} max={5} step={1} color="var(--live-accent)"
-        onChange={setFeeling} onClose={() => setSheet('none')}
+        value={feeling} max={5} step={1} color="var(--primary)"
+        onChange={setFeeling} onClose={() => setSheet('none')} isDark={isDark}
       />
-      <PickSheet
+      <RkPickSheet
         open={sheet === 'gear'} title={cfg.gear === 'bike' ? t('w3a.gear_bike') : t('w3a.gear_shoes')}
         items={gearList} selectedId={gearId} emptyLabel={t('w3a.gear_empty')}
-        onPick={id => { setGearId(id); setSheet('none') }} onClose={() => setSheet('none')}
+        onPick={id => { setGearId(id); setSheet('none') }} onClose={() => setSheet('none')} isDark={isDark}
       />
-    </div>
-  )
-}
-
-// ── Ligne cliquable (matériel / RPE / ressenti) ─────────────────────
-function SummaryRow({ onClick, value, valueColor, suffix }: {
-  onClick: () => void; value: string; valueColor?: string; suffix?: string
-}) {
-  return (
-    <button
-      onClick={onClick} className="lv2-press"
-      style={{
-        width: '100%', height: 50, borderRadius: 'var(--r-md)', padding: '0 14px', cursor: 'pointer',
-        background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span className="lv2-num" style={{ fontSize: 16, fontWeight: 700, color: valueColor ?? 'var(--live-text)' }}>{value}</span>
-        {suffix && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{suffix}</span>}
-      </span>
-      <svg width="8" height="14" viewBox="0 0 8 14" style={{ color: 'var(--live-label)' }}><path d="M1 1 L7 7 L1 13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-    </button>
-  )
-}
-
-// ── Feuille jauge (RPE 0-10 / ressenti 0-5) ─────────────────────────
-function GaugeSheet({ open, title, subtitle, value, max, step, color, onChange, onClose }: {
-  open: boolean; title: string; subtitle: string; value: number; max: number; step: number; color: string
-  onChange: (v: number) => void; onClose: () => void
-}) {
-  return (
-    <SlideUp open={open} onClose={onClose}>
-      <div style={{ padding: '4px 22px 8px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 4 }}>{subtitle}</div>
-        <div style={{ textAlign: 'center', margin: '20px 0 8px' }}>
-          <span className="lv2-num" style={{ fontSize: 64, fontWeight: 800, color }}>{value || 0}</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--live-label)' }}> / {max}</span>
-        </div>
-        <input
-          type="range" min={0} max={max} step={step} value={value}
-          onChange={e => onChange(Number(e.target.value))}
-          style={{ width: '100%', accentColor: color as string, height: 30 }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--live-label)', marginTop: 2 }}>
-          <span>0</span><span>{max}</span>
-        </div>
-        <button className="lv2-pill lv2-pill-primary lv2-press" style={{ marginTop: 18 }} onClick={onClose}>
-          OK
-        </button>
-      </div>
-    </SlideUp>
-  )
-}
-
-// ── Feuille de sélection (matériel) ─────────────────────────────────
-function PickSheet({ open, title, items, selectedId, emptyLabel, onPick, onClose }: {
-  open: boolean; title: string; items: GearItem[]; selectedId: string | null; emptyLabel: string
-  onPick: (id: string | null) => void; onClose: () => void
-}) {
-  return (
-    <SlideUp open={open} onClose={onClose}>
-      <div style={{ padding: '4px 22px 8px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>{title}</div>
-        {items.length === 0 ? (
-          <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--live-text-2)', padding: '16px 0' }}>{emptyLabel}</div>
-        ) : (
-          items.map((it, i) => {
-            const on = it.id === selectedId
-            return (
-              <button
-                key={it.id} onClick={() => onPick(it.id)}
-                style={{
-                  width: '100%', padding: '15px 4px', border: 'none', background: 'transparent', cursor: 'pointer',
-                  borderTop: i > 0 ? '1px solid var(--live-hairline)' : 'none', textAlign: 'left',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  fontSize: 15, fontWeight: 700, color: on ? 'var(--live-accent)' : 'var(--live-text)',
-                }}
-              >
-                {it.label}
-                {on && <svg width="16" height="16" viewBox="0 0 24 24"><path d="M4 12.5 L9.5 18 L20 6.5" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-              </button>
-            )
-          })
-        )}
-      </div>
-    </SlideUp>
-  )
-}
-
-// ── Conteneur de feuille coulissante (bas → haut) ───────────────────
-function SlideUp({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  const [render, setRender] = useState(open)
-  const [shown, setShown] = useState(false)
-  useEffect(() => {
-    if (open) {
-      setRender(true)
-      const id = requestAnimationFrame(() => setShown(true))
-      return () => cancelAnimationFrame(id)
-    }
-    setShown(false)
-    const t = setTimeout(() => setRender(false), 300)
-    return () => clearTimeout(t)
-  }, [open])
-  if (!render) return null
-  return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 80 }}>
-      <div
-        onClick={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'var(--live-veil)', opacity: shown ? 1 : 0, transition: 'opacity 0.28s' }}
+      <RkPickSheet
+        open={sheet === 'sport'} title={t('w3a.sport_label')}
+        items={sportChips} selectedId={sport}
+        onPick={id => { setSport(id as SportId); setSheet('none') }} onClose={() => setSheet('none')} isDark={isDark}
       />
-      <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0,
-        background: 'var(--live-bg)', borderRadius: '22px 22px 0 0',
-        borderTop: '1px solid var(--live-hairline-2)',
-        padding: '10px 0 calc(env(safe-area-inset-bottom) + 20px)',
-        transform: shown ? 'translateY(0)' : 'translateY(100%)',
-        transition: 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 8 }}>
-          <span style={{ width: 38, height: 5, borderRadius: 3, background: 'var(--live-hairline-2)' }} />
-        </div>
-        {children}
-      </div>
-    </div>
+      <RkPickSheet
+        open={sheet === 'visibility'} title={t('w3a.visibility_label')}
+        items={visChips.map(v => ({ id: v.id, label: v.label, icon: <span style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{v.icon}</span> }))}
+        selectedId={visibility}
+        onPick={id => { setVisibility(id as Visibility); setSheet('none') }} onClose={() => setSheet('none')} isDark={isDark}
+      />
+    </motion.div>
   )
 }
 

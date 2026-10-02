@@ -29,27 +29,27 @@ export function NumberInput({ value, min, max, step, unit, onChange, disabled, t
       <button
         onClick={() => canDec && handleChange(Math.max(min, value - step))}
         style={{
-          width: 28, height: 28, borderRadius: 'var(--r-sm)',
-          background: theme.separator, border: 'none',
+          width: 36, height: 36, borderRadius: '50%',
+          background: 'var(--surface-chip)', border: 'none',
           color: theme.text, cursor: canDec ? 'pointer' : 'default',
           opacity: canDec ? 1 : 0.3, fontSize: 18, lineHeight: 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >−</button>
       <span style={{
-        fontSize: 14, fontWeight: 600, color: theme.text,
-        minWidth: 52, textAlign: 'center',
+        fontSize: 15, fontWeight: 800, color: theme.text,
+        minWidth: 56, textAlign: 'center', fontVariantNumeric: 'tabular-nums',
         display: 'inline-block',
         transform: bouncing ? 'scale(1.15)' : 'scale(1)',
         transition: 'transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}>
-        {value} <span style={{ fontSize: 11, color: '#8C8C8C' }}>{unit}</span>
+        {value} <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>{unit}</span>
       </span>
       <button
         onClick={() => canInc && handleChange(Math.min(max, value + step))}
         style={{
-          width: 28, height: 28, borderRadius: 'var(--r-sm)',
-          background: theme.separator, border: 'none',
+          width: 36, height: 36, borderRadius: '50%',
+          background: 'var(--surface-chip)', border: 'none',
           color: theme.text, cursor: canInc ? 'pointer' : 'default',
           opacity: canInc ? 1 : 0.3, fontSize: 18, lineHeight: 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',

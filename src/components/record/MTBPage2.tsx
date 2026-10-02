@@ -17,42 +17,34 @@ interface Props {
   units?: LiveUnits
 }
 
-function getTheme(isDark: boolean) {
-  return {
-    text:      isDark ? '#FFFFFF' : '#0A0A0A',
-    label:     isDark ? 'rgba(255,255,255,0.35)' : '#8C8C8C',
-    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
-    cardBg:    isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA',
-  }
-}
-
-export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent, elevationGainM, trackPoints, currentPosition, units }: Props) {
+export default function MTBPage2({ distanceM, speedKmh, gradientPercent, elevationGainM, trackPoints, currentPosition, units }: Props) {
   const { t: tr } = useI18n()
-  const t = getTheme(isDark)
   const terrainType = detectTrailType(speedKmh, gradientPercent, elevationGainM)
   // Réglage Unités appliqué à la tuile distance (km → mi).
   const distanceKm = ((distanceM / 1000) * distFactor(units)).toFixed(2)
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
-      <div style={{ flexBasis:'58%', flexShrink:0, padding:'0 12px 12px', minHeight:0 }}>
-        <div style={{ width:'100%', height:'100%', borderRadius: 'var(--r-md)', overflow:'hidden', border:`1px solid ${t.separator}` }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, gap: 12 }}>
+      <div style={{ flexBasis:'58%', flexShrink:0, minHeight:0 }}>
+        <div style={{ width:'100%', height:'100%', borderRadius: 'calc(var(--r-lg) + 4px)', overflow:'hidden', background: 'var(--surface-card)' }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
         </div>
       </div>
 
-      <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 1fr', borderTop:`1px solid ${t.separator}` }}>
-        <div style={{ padding:'16px 12px', borderRight:`1px solid ${t.separator}` }}>
-          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>{tr('record.commonDistance')}</p>
-          <p style={{ margin:'6px 0 0', fontSize:40, fontWeight:700, lineHeight:1, color:t.text, fontFamily: 'var(--font-body)' }}>{distanceKm}</p>
-          <p style={{ margin:'4px 0 0', fontSize:12, color:t.label }}>{getUnitLabel('km', units)}</p>
-        </div>
-        <div style={{ padding:'12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6 }}>
-          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.12em' }}>{tr('record.mtbPage2EstimatedTerrain')}</p>
-          <div style={{ display:'inline-flex', alignSelf:'flex-start', background:'rgba(249,115,22,0.12)', borderRadius: 'var(--r-lg)', padding:'4px 10px' }}>
-            <span style={{ fontSize:13, fontWeight:600, color:'#F97316' }}>{terrainType}</span>
+      <div className="rk-card" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 1, background: 'var(--border)', flexShrink: 0 }}>
+        <div className="rk-cell">
+          <div className="rk-label">{tr('record.commonDistance')}</div>
+          <div className="rk-cell-v">
+            <span className="rk-cell-n rk-num" style={{ fontSize: 38 }}>{distanceKm}</span>
+            <span className="rk-cell-u">{getUnitLabel('km', units)}</span>
           </div>
-          <p style={{ margin:0, fontSize:10, color:t.label, fontStyle:'italic' }}>{tr('record.mtbPage2TerrainHint')}</p>
+        </div>
+        <div className="rk-cell" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <div className="rk-label">{tr('record.mtbPage2EstimatedTerrain')}</div>
+          <span style={{ display:'inline-flex', alignItems: 'center', gap: 6, background:'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding:'6px 12px', fontSize:14, fontWeight:700 }}>
+            <span className="rk-dot" style={{ background: 'var(--sport-gym)' }} />{terrainType}
+          </span>
+          <span style={{ fontSize:11, color:'var(--text-mid)', fontStyle:'italic' }}>{tr('record.mtbPage2TerrainHint')}</span>
         </div>
       </div>
     </div>

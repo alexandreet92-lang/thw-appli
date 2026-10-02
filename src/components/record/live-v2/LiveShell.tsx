@@ -21,6 +21,10 @@ import { primeLapBeep, playLapBeep, setLapBeepSoundEnabled } from '../lapBeep'
 import PhotoButton, { type PhotoButtonHandle } from '../PhotoButton'
 import PhotoPreviewToast from '../PhotoPreviewToast'
 import {
+  rkScope, RkFab, RkIco, RK_ICON, RkStatusPill, RK_DOT, RkPageDots, RkControlDock, RkControlRow,
+  RkBigButton, RkPausePills, RkUnlock, RkStartButton, RkBanner, RkBannerSlot, RkCta, PauseGlyph, PlayGlyph,
+} from '../kit/RecordKit'
+import {
   LIVE_INIT, liveReducer, isStarted, isTimerRunning, effectivePhase,
   TIMER_INIT, timerStart, timerPause, timerResume, timerElapsedSec,
   smoothWindow, formatHMS, frNum, type TimedSample, type LiveTimer,
@@ -77,13 +81,13 @@ export default function LiveShell({
   const [toast, setToast] = useState<string | null>(null)
   const [hold, setHold] = useState<{ active: boolean; progress: number }>({ active: false, progress: 0 })
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  // Vignettes des photos prises (affichées dans le résumé, envoyées après la séance).
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
   // Clé de remontage du PhotoButton : vide sa file de photos en attente au reset.
   const [photoKey, setPhotoKey] = useState(0)
 
   const pagesRef = useRef<HTMLDivElement>(null)
   const photoRef = useRef<PhotoButtonHandle>(null)
-  const bigLockRef = useRef<HTMLButtonElement>(null)
-  const lastLockTap = useRef(0)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const speedSamples = useRef<TimedSample[]>([])
@@ -306,6 +310,7 @@ export default function LiveShell({
     lastNutritionRef.current = 0
     gpsWasOkRef.current = true
     setPhotoPreviewUrl(null)
+    setPhotoUrls([])
     setPhotoKey(k => k + 1) // vide les photos en attente
     resetTracking()
   }, [resetTracking])
@@ -392,34 +397,6 @@ export default function LiveShell({
     send({ type: 'RESTORE_SUMMARY' })
   }
 
-  // ── Poignée « Réglages » : ouverture des réglages par tap ou glissé-haut ──
-  // (remplace l'engrenage retiré ; spec §1 : on tire vers le haut les données du bas).
-  const settingsSwipeY = useRef<number | null>(null)
-  const onSettingsPointerDown = (e: React.PointerEvent) => { settingsSwipeY.current = e.clientY }
-  const onSettingsPointerUp = (e: React.PointerEvent) => {
-    const start = settingsSwipeY.current
-    settingsSwipeY.current = null
-    if (start == null) return
-    const dy = start - e.clientY // positif = mouvement vers le haut
-    if (Math.abs(dy) < 10 || dy > 18) onOpenSettings()
-  }
-
-  // ── Verrouillage : double tap (400 ms) déverrouille, tap simple pulse ──
-  const handleBigLockTap = () => {
-    const now = Date.now()
-    if (now - lastLockTap.current < 400) {
-      send({ type: 'UNLOCK' })
-    } else {
-      const el = bigLockRef.current
-      if (el) {
-        el.classList.remove('lv2-lock-pulse')
-        void el.offsetWidth
-        el.classList.add('lv2-lock-pulse')
-      }
-    }
-    lastLockTap.current = now
-  }
-
   // ── Lap par appui long 2 s (OPT-IN, désactivé par défaut) ──
   const holdRaf = useRef(0)
   const holdActiveRef = useRef(false)
@@ -461,13 +438,13 @@ export default function LiveShell({
   const swap = settings.recording.swapPauseLap
   const showPlayIcon = pausedLike
 
-  // ── GPS line (avant démarrage) ──
+  // ── Ligne GPS (avant démarrage) ──
   const acc = gps.accuracy != null ? Math.max(1, Math.round(gps.accuracy)) : null
   const gpsLine = gps.status === GPSStatus.good
-    ? { color: 'var(--live-success)', text: t('w2c.gpsGood', { acc: acc ?? 2 }) }
+    ? { color: RK_DOT.ok, text: t('w2c.gpsGood', { acc: acc ?? 2 }) }
     : gps.status === GPSStatus.approximate
-      ? { color: 'var(--live-warn)', text: t('w2c.gpsMedium', { acc: acc ?? 12 }) }
-      : { color: 'var(--live-danger)', text: t('w2c.gpsSearching') }
+      ? { color: RK_DOT.warn, text: t('w2c.gpsMedium', { acc: acc ?? 12 }) }
+      : { color: 'var(--danger)', text: t('w2c.gpsSearching') }
 
   // Garde-fou : au moins une page (repli sur les défauts si config vide).
   const livePages = pages.length > 0 ? pages : DEFAULT_PAGES
@@ -475,86 +452,54 @@ export default function LiveShell({
   const controlsHidden = started && onMapPage
   // Sur la carte en cours d'enregistrement, les commandes vivent dans la console
   // MapPage (bas de carte) : les points de pagination remontent au-dessus.
-  const dotsBottom = controlsHidden ? 306 : 168
+  const dotsBottom = controlsHidden ? 306 : (machine.phase === 'paused' ? 172 : 150)
   const currentPos = gps.currentLat != null && gps.currentLng != null
     ? { lat: gps.currentLat, lng: gps.currentLng }
     : null
 
-  const pauseIcon = (
-    <svg width="22" height="26" viewBox="0 0 22 26">
-      <rect width="7" height="26" rx="3" fill="var(--live-accent-on)" />
-      <rect x="15" width="7" height="26" rx="3" fill="var(--live-accent-on)" />
-    </svg>
-  )
-  const playIcon = (
-    <svg width="26" height="30" viewBox="0 0 26 30">
-      <path d="M3 3 L23 15 L3 27 Z" fill="var(--live-accent-on)" stroke="var(--live-accent-on)" strokeWidth="4" strokeLinejoin="round" />
-    </svg>
-  )
-  const lockOpenIcon = (
-    <svg width="19" height="20" viewBox="0 0 19 20">
-      <rect x="2.5" y="8.5" width="14" height="10" rx="3" fill="currentColor" />
-      <path d="M5.5 8.5 V5.5 a4 4 0 0 1 8 0 V7" stroke="currentColor" strokeWidth="2.3" fill="none" />
-    </svg>
-  )
-  const lockClosedIcon = (
-    <svg width="20" height="21" viewBox="0 0 19 20">
-      <rect x="2.5" y="8.5" width="14" height="10" rx="3" fill="currentColor" />
-      <path d="M5.5 8.5 V5.5 a4 4 0 0 1 8 0 V8.5" stroke="currentColor" strokeWidth="2.3" fill="none" />
-    </svg>
-  )
+  // ── Pilule d'état (en-tête) ──
+  const statusPill = !started
+    ? { dot: gpsLine.color, text: `${sportTitle} · ${t('rec.statusReady')}`, live: false }
+    : eff === 'autopaused'
+      ? { dot: RK_DOT.warn, text: `${sportTitle} · ${t('rec.statusAutoPaused')}`, live: false }
+      : pausedLike
+        ? { dot: RK_DOT.warn, text: `${sportTitle} · ${t('rec.statusPaused')}`, live: false }
+        : { dot: RK_DOT.rec, text: `${sportTitle} · ${t('rec.statusRecording')}`, live: true }
+  // Croix : au départ ou en pause (pas pendant l'effort, ni sur la carte).
+  const showClose = !onMapPage && !locked && (machine.phase === 'idle' || pausedLike)
 
-  const sideBtnStyle: React.CSSProperties = {
-    width: 52, height: 52, borderRadius: '50%',
-    background: 'var(--live-surface)', border: '1px solid var(--live-hairline-2)',
-    color: 'var(--live-text-2)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  }
-
-  const centerIsPause = !swap
-  const centerBtn = (
-    <button
-      onClick={centerIsPause ? handlePauseToggle : doLap}
-      aria-label={centerIsPause ? (showPlayIcon ? t('w2c.resume') : t('w2c.pause')) : t('w2c.lap')}
-      className="lv2-press"
-      style={{
-        width: 84, height: 84, borderRadius: '50%',
-        background: 'var(--live-accent)', border: 'none', cursor: 'pointer',
-        boxShadow: 'var(--live-glow)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      {centerIsPause
-        ? (showPlayIcon ? playIcon : pauseIcon)
-        : <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em', color: 'var(--live-accent-on)' }}>LAP</span>}
-    </button>
+  const lapFab = (
+    <RkFab label={t('w2c.lap')} onClick={doLap} size={56}>
+      <span style={{ fontSize: 14, fontWeight: 800 }}>{t('w2c.lap')}</span>
+    </RkFab>
   )
-  const rightBtn = (
-    <button
-      onClick={swap ? handlePauseToggle : doLap}
-      aria-label={swap ? (showPlayIcon ? t('w2c.resume') : t('w2c.pause')) : t('w2c.lap')}
-      className="lv2-press"
-      style={{ ...sideBtnStyle, color: 'var(--live-text)' }}
-    >
-      {swap
-        ? (
-          <svg width="16" height="18" viewBox="0 0 14 16">
-            {showPlayIcon
-              ? <path d="M2 1.5 L12.5 8 L2 14.5 Z" fill="currentColor" />
-              : <><rect width="4.5" height="16" rx="2" fill="currentColor" /><rect x="9.5" width="4.5" height="16" rx="2" fill="currentColor" /></>}
-          </svg>
-        )
-        : <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.1em' }}>LAP</span>}
-    </button>
+  const pauseCenter = (
+    <RkBigButton label={showPlayIcon ? t('w2c.resume') : t('w2c.pause')} onClick={handlePauseToggle}>
+      {showPlayIcon ? <PlayGlyph /> : <PauseGlyph />}
+    </RkBigButton>
   )
+  const lapCenter = (
+    <RkBigButton label={t('w2c.lap')} onClick={doLap}>
+      <span style={{ fontSize: 17, fontWeight: 800 }}>{t('w2c.lap')}</span>
+    </RkBigButton>
+  )
+  const pauseSide = (
+    <RkFab label={showPlayIcon ? t('w2c.resume') : t('w2c.pause')} onClick={handlePauseToggle} size={56}>
+      {showPlayIcon ? <PlayGlyph s={22} /> : <PauseGlyph s={22} />}
+    </RkFab>
+  )
+  const dockKey = machine.phase === 'idle' ? 'idle'
+    : locked ? 'locked'
+    : machine.phase === 'paused' ? 'paused'
+    : started ? 'rec' : 'none'
 
   return (
-    <div data-live-shell="" data-live-theme={isDark ? undefined : 'light'}>
+    <div data-live-shell="" data-live-theme={isDark ? undefined : 'light'} className={rkScope(isDark)}>
 
       {/* ── Carrousel PILOTÉ PAR LA CONFIG (réglages « Pages de données ») ──
           Chaque page : carte (MapPage) ou grille de champs (ConfigDataPage).
           Ajouter / réordonner / modifier une page dans les réglages se
-          répercute directement ici. ── */}
+          répercute directement ici. Défilement natif à élan (scroll-snap). ── */}
       <div
         ref={pagesRef}
         className={locked ? 'lv2-pages lv2-locked' : 'lv2-pages'}
@@ -602,6 +547,8 @@ export default function LiveShell({
                 dataSize={settings.display.dataSize}
                 gpsStatus={gps.status}
                 gpsAccuracy={gps.accuracy}
+                hrDevice={sensors.hrDevice}
+                powerDevice={sensors.powerDevice}
                 onSensorChipTap={() => showToast(t('w2c.sensorPairingSoon'))}
               />
             )}
@@ -609,258 +556,116 @@ export default function LiveShell({
         ))}
       </div>
 
-      {/* ── Header ── */}
-      <div style={{
-        position: 'absolute', top: 'env(safe-area-inset-top)', left: 0, right: 0, height: 60, zIndex: 55,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 26px',
-        pointerEvents: 'none',
-      }}>
-        {/* Croix de sortie — MASQUÉE sur la carte (spec §3 : rien ne doit gêner
-            la carte ; on quitte via l'arrêt puis le drapeau / le résumé). */}
-        {!onMapPage ? (
-          <button
-            onClick={handleClose}
-            aria-label={t('w2c.close')}
-            className="lv2-press"
-            style={{
-              width: 36, height: 36, borderRadius: '50%', border: 'none',
-              background: 'var(--live-surface-2)',
-              color: 'var(--live-text)', cursor: 'pointer', flex: 'none', pointerEvents: 'auto',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14">
-              <path d="M1 1 L13 13 M13 1 L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        ) : <span style={{ width: 36 }} />}
-        {!onMapPage && (
-          <div style={{
-            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: 9, fontSize: 15, fontWeight: 600,
-          }}>
-            {started && (
-              <span style={{
-                width: 7, height: 7, borderRadius: '50%', background: 'var(--live-danger)',
-                boxShadow: '0 0 0 3px var(--live-danger-halo)',
-              }} />
+      {/* ── En-tête : × · pilule d'état · réglages (masqué sur la carte) ── */}
+      {!onMapPage && (
+        <div style={{
+          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', left: 0, right: 0, zIndex: 55,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', pointerEvents: 'none',
+        }}>
+          <div style={{ width: 44, pointerEvents: 'auto' }}>
+            {showClose && (
+              <RkFab label={t('w2c.close')} onClick={handleClose}>
+                <RkIco d={RK_ICON.close} size={20} sw={2.2} />
+              </RkFab>
             )}
-            {sportTitle}
           </div>
-        )}
-        {/* Engrenage RETIRÉ (spec §1) : les réglages s'ouvrent en tirant vers
-            le haut la poignée « Réglages » en bas de la page données. */}
-        <span style={{ width: 36 }} />
-      </div>
-
-      {/* ── Badge auto-pause — discret, en haut à gauche (plus au milieu). ── */}
-      {autoPausedNow && (
-        <div style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 54px)', left: 12,
-          height: 24, padding: '0 10px', borderRadius: 'var(--r-md)', zIndex: 56,
-          background: 'var(--live-warn-bg)', border: '1px solid var(--live-warn-border)',
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 11, fontWeight: 700, color: 'var(--live-warn)', opacity: 0.92,
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--live-warn)' }} />
-          {t('w2c.autoPaused')}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+            <RkStatusPill dot={statusPill.dot} live={statusPill.live}>{statusPill.text}</RkStatusPill>
+          </div>
+          <div style={{ width: 44, pointerEvents: 'auto' }}>
+            {!locked && (
+              <RkFab label={t('w2c.settings')} onClick={onOpenSettings}>
+                <RkIco d={RK_ICON.sliders} size={19} />
+              </RkFab>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Toast ── */}
-      {toast && (
-        <div style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 126px)', left: '50%', transform: 'translateX(-50%)',
-          height: 36, padding: '0 18px', borderRadius: 'var(--r-lg)', zIndex: 90,
-          background: 'var(--live-toast-bg)', border: '1px solid var(--live-hairline-2)',
-          display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
-          fontSize: 13, fontWeight: 600, color: 'var(--live-text)', pointerEvents: 'none',
-          animation: 'lv2ToastIn 0.25s ease-out',
-        }}>
-          {toast}
-        </div>
-      )}
+      {/* ── Bandeaux : auto-pause + toasts (pilules sous l'en-tête) ── */}
+      <RkBannerSlot top={onMapPage ? 12 : 60}>
+        {autoPausedNow && !onMapPage && <RkBanner dot={RK_DOT.warn}>{t('w2c.autoPaused')}</RkBanner>}
+        {toast && <RkBanner key={toast}>{toast}</RkBanner>}
+      </RkBannerSlot>
 
       {/* ── Séance interrompue : reprise (live) ou reprise d'envoi (terminée) ── */}
       {machine.phase === 'idle' && pendingBackup && (
-        <div style={{
+        <div className="rk-card rk-fade-up" style={{
           position: 'absolute', left: 16, right: 16,
-          bottom: 'calc(env(safe-area-inset-bottom) + 172px)', zIndex: 58,
-          background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-          borderRadius: 'var(--r-lg)', padding: '14px 16px',
-          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          bottom: 'calc(env(safe-area-inset-bottom) + 190px)', zIndex: 58,
+          padding: 16, boxShadow: 'var(--shadow-capsule)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>
                 {pendingBackup.live ? t('w2c.sessionInProgress') : t('w2c.sessionNotSent')}
               </div>
-              <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2 }}>
+              <div className="rk-num" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0 }}>
                 {formatHMS(pendingBackup.snap.durationSec, true)} · {frNum(pendingBackup.snap.distM / 1000, 1)} km
               </div>
             </div>
             <button
+              type="button"
               onClick={() => { clearLiveBackup(); setPendingBackup(null); showToast(t('w2c.activityDeleted')) }}
-              className="lv2-press"
+              className="rk-press"
               style={{
-                height: 32, padding: '0 12px', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                background: 'transparent', border: '1px solid var(--live-hairline-2)',
-                color: 'var(--live-danger)', fontSize: 12.5, fontWeight: 700, flexShrink: 0,
+                minHeight: 36, padding: '0 14px', borderRadius: 'var(--r-pill)', cursor: 'pointer',
+                background: 'var(--danger-soft)', border: 'none',
+                color: 'var(--danger)', fontSize: 13, fontWeight: 800, flexShrink: 0,
               }}
             >
               {t('w2c.deleteShort')}
             </button>
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             {pendingBackup.live && (
-              <button
-                onClick={handleResumeBackup}
-                className="lv2-press"
-                style={{
-                  flex: 1, height: 40, borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer',
-                  background: 'var(--live-accent)', color: 'var(--live-accent-on)', fontSize: 13.5, fontWeight: 800,
-                }}
-              >
+              <RkCta variant="primary" onClick={handleResumeBackup} style={{ minHeight: 46, fontSize: 15 }}>
                 {t('w2c.resumeSession')}
-              </button>
+              </RkCta>
             )}
-            <button
-              onClick={handleRestoreBackup}
-              className="lv2-press"
-              style={{
-                flex: 1, height: 40, borderRadius: 'var(--r-lg)', cursor: 'pointer',
-                background: pendingBackup.live ? 'var(--live-surface-2)' : 'var(--live-accent)',
-                border: 'none',
-                color: pendingBackup.live ? 'var(--live-text)' : 'var(--live-accent-on)',
-                fontSize: 13.5, fontWeight: 800,
-              }}
-            >
+            <RkCta variant={pendingBackup.live ? 'white' : 'primary'} onClick={handleRestoreBackup} style={{ minHeight: 46, fontSize: 15, boxShadow: 'none', background: pendingBackup.live ? 'var(--surface-chip)' : undefined }}>
               {pendingBackup.live ? t('w2c.finishSession') : t('w2c.resumeUpload')}
-            </button>
+            </RkCta>
           </div>
         </div>
       )}
 
-      {/* ── Pagination : 3 points, actif 7⌀ cyan ── */}
-      <div style={{
-        position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-        bottom: `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`,
-        display: 'flex', gap: 11, zIndex: 54, transition: 'bottom 0.2s',
-      }}>
-        {livePages.map((_, i) => (
-          <span key={i} style={{
-            width: i === pageIndex ? 7 : 6, height: i === pageIndex ? 7 : 6,
-            borderRadius: '50%', transition: 'all 0.2s',
-            background: i === pageIndex ? 'var(--live-accent)' : 'var(--live-dim)',
-          }} />
-        ))}
-      </div>
+      {/* ── Pagination : pilule active ── */}
+      <RkPageDots
+        count={livePages.length}
+        index={pageIndex}
+        onSelect={i => { const el = pagesRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }) }}
+        style={{
+          position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 54,
+          bottom: `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`, transition: 'bottom 0.3s cubic-bezier(0.22,1,0.36,1)',
+        }}
+      />
 
-      {/* ── Poignée « Réglages » (tap ou glissé vers le haut) — pages Données/Laps ── */}
-      {!onMapPage && (
-        <button
-          onPointerDown={onSettingsPointerDown}
-          onPointerUp={onSettingsPointerUp}
-          aria-label={t('w2c.settings')}
-          className="lv2-press"
-          style={{
-            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-            bottom: 'calc(env(safe-area-inset-bottom) + 8px)', zIndex: 57,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-            background: 'none', border: 'none', color: 'var(--live-label)',
-            cursor: 'pointer', touchAction: 'none',
-          }}
-        >
-          <svg width="22" height="9" viewBox="0 0 22 9"><path d="M2 7 L11 2 L20 7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em' }}>{t('w2c.settings')}</span>
-        </button>
-      )}
-
-      {/* ── Zone contrôles ── */}
-      {!controlsHidden && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: 'calc(env(safe-area-inset-bottom) + 158px)', zIndex: 54,
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}>
-          {machine.phase === 'idle' && !onMapPage && (
-            <>
-              {/* Ligne GPS */}
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0,
-                display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8,
-                fontSize: 13, fontWeight: 500, color: 'var(--live-text-2)',
-              }}>
-                <span className="lv2-num" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: gpsLine.color }} />
-                  {gpsLine.text}
-                </span>
-              </div>
-              {/* Démarrer 88⌀ + glow 3 anneaux */}
-              <button
-                onClick={handleStart}
-                disabled={!canStart}
-                aria-label={t('w2c.start')}
-                className="lv2-press"
-                style={{
-                  position: 'absolute', left: '50%', top: 30, transform: 'translateX(-50%)',
-                  width: 62, height: 62, borderRadius: '50%',
-                  background: 'var(--live-accent)', border: 'none',
-                  cursor: canStart ? 'pointer' : 'not-allowed',
-                  boxShadow: canStart ? 'var(--live-glow)' : 'none',
-                  opacity: canStart ? 1 : 0.4,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <svg width="22" height="25" viewBox="0 0 30 34">
-                  <path d="M4 3 L27 17 L4 31 Z" fill="var(--live-accent-on)" stroke="var(--live-accent-on)" strokeWidth="4" strokeLinejoin="round" />
-                </svg>
-              </button>
-              <div style={{
-                position: 'absolute', left: 0, right: 0, top: 100, textAlign: 'center',
-                fontSize: 13, fontWeight: 800, letterSpacing: '0.19em',
-                color: canStart ? 'var(--live-accent)' : 'var(--live-label)',
-              }}>
-                {t('w2c.startCaps')}
-              </div>
-            </>
-          )}
-
-          {started && !locked && (
-            <div style={{
-              position: 'absolute', top: 42, left: 0, right: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 44,
-            }}>
-              <button onClick={() => send({ type: 'LOCK' })} aria-label={t('w2c.lockAction')} className="lv2-press" style={sideBtnStyle}>
-                {lockOpenIcon}
-              </button>
-              <div style={{ marginTop: -16 }}>{centerBtn}</div>
-              {rightBtn}
+      {/* ── Zone contrôles (transitions ressort entre états) ── */}
+      {!controlsHidden && !(machine.phase === 'idle' && onMapPage) && (
+        <RkControlDock stateKey={dockKey}>
+          {dockKey === 'idle' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <RkBanner dot={gpsLine.color} live={!canStart} style={{ animation: 'none' }}>
+                <span className="rk-num" style={{ letterSpacing: 0 }}>{gpsLine.text}</span>
+              </RkBanner>
+              <RkStartButton label={t('w2c.start')} onClick={handleStart} disabled={!canStart} size={96} />
             </div>
           )}
-
-          {locked && (
-            <>
-              <div style={{ position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center', fontSize: 12.5, color: 'var(--live-label)' }}>
-                {t('w2c.doubleTapUnlock')}
-              </div>
-              <button
-                ref={bigLockRef}
-                onClick={handleBigLockTap}
-                aria-label={t('w2c.unlockAction')}
-                style={{
-                  position: 'absolute', left: '50%', top: 38, transform: 'translateX(-50%)',
-                  width: 56, height: 56, borderRadius: '50%', cursor: 'pointer',
-                  background: 'var(--live-accent-dim)', border: '1.5px solid var(--live-accent)',
-                  color: 'var(--live-accent)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                {lockClosedIcon}
-              </button>
-            </>
+          {dockKey === 'rec' && (
+            <RkControlRow
+              left={<RkFab label={t('w2c.lockAction')} onClick={() => send({ type: 'LOCK' })} size={56}><RkIco d={RK_ICON.lock} size={22} /></RkFab>}
+              center={swap ? lapCenter : pauseCenter}
+              right={swap ? pauseSide : lapFab}
+            />
           )}
-        </div>
+          {dockKey === 'paused' && (
+            <RkPausePills resumeLabel={t('w2c.resume')} finishLabel={t('rec.finish')} onResume={handlePauseToggle} onFinish={handleFlagFinish} />
+          )}
+          {dockKey === 'locked' && (
+            <RkUnlock hint={t('w2c.doubleTapUnlock')} label={t('w2c.unlockAction')} onUnlock={() => send({ type: 'UNLOCK' })} />
+          )}
+        </RkControlDock>
       )}
 
       {/* ── Overlay lap appui long (anneau de progression 132⌀) ── */}
@@ -907,7 +712,7 @@ export default function LiveShell({
         <PhotoButton
           key={photoKey}
           ref={photoRef}
-          onPreview={setPhotoPreviewUrl}
+          onPreview={url => { setPhotoUrls(u => [...u, url]); if (!inSummaryFlow) setPhotoPreviewUrl(url) }}
           currentLat={gps.currentLat ?? undefined}
           currentLng={gps.currentLng ?? undefined}
         />
@@ -922,6 +727,7 @@ export default function LiveShell({
         onResume={() => send({ type: 'CANCEL_STOP' })}
         onFinish={handleFinish}
         onDelete={handleDeleteRecording}
+        isDark={isDark}
       />
 
       {/* ── Résumé → envoi → confirmation ── */}
@@ -931,6 +737,9 @@ export default function LiveShell({
           units={settings.units}
           initialSport={route?.sport ?? null}
           canResume={summaryFromLiveRef.current}
+          isDark={isDark}
+          photos={photoUrls}
+          onAddPhoto={() => photoRef.current?.pick()}
           onBack={() => send({ type: 'REOPEN_SESSION' })}
           onUploadStart={() => send({ type: 'UPLOAD' })}
           onUploadDone={() => send({ type: 'UPLOAD_DONE' })}

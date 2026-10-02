@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { rkScope } from './kit/RecordKit'
 import { useI18n } from '@/lib/i18n'
 
 export type RouteType = 'training' | 'race'
 
-const SAVE_BLUE = '#2563EB'
+const SAVE_BLUE = 'var(--primary)'
 function fmtDur(sec: number): string { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
 
 interface Props {
@@ -38,11 +39,11 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const close = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
 
-  const bg = isDark ? '#0F1117' : '#FFFFFF'
-  const text = isDark ? '#EEF2F7' : '#0A0A0A'
-  const mid = isDark ? 'rgba(238,242,247,0.6)' : '#6B7280'
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F7F8FA'
-  const border = isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB'
+  const bg = 'var(--surface-page)'
+  const text = 'var(--text)'
+  const mid = 'var(--text-mid)'
+  const surface = 'var(--surface-card)'
+  const border = 'var(--border)'
 
   const handleSave = async () => {
     if (saving) return
@@ -57,7 +58,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   const seg = <T,>(value: T, current: T, set: (v: T) => void, txt: string) => (
     <button key={String(value)} onClick={() => set(value)}
       style={{ flex: 1, padding: '10px 8px', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-body)',
-        background: current === value ? 'rgba(37,99,235,0.12)' : surface,
+        background: current === value ? 'var(--primary-dim)' : surface,
         border: `1.5px solid ${current === value ? SAVE_BLUE : 'transparent'}`,
         color: current === value ? SAVE_BLUE : text, transition: 'background 0.14s, border-color 0.14s' }}>
       {txt}
@@ -67,7 +68,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   // Ligne de choix « radio » (Qui peut voir cet itinéraire ?).
   const radioRow = (on: boolean, onClick: () => void, title: string, desc: string, icon: React.ReactNode) => (
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '13px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer',
-      background: on ? 'rgba(37,99,235,0.10)' : surface, border: `1.5px solid ${on ? SAVE_BLUE : 'transparent'}`, fontFamily: 'var(--font-body)', marginBottom: 8 }}>
+      background: on ? 'var(--primary-dim)' : surface, border: `1.5px solid ${on ? SAVE_BLUE : 'transparent'}`, fontFamily: 'var(--font-body)', marginBottom: 8 }}>
       <span style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? SAVE_BLUE : (isDark ? 'rgba(255,255,255,0.08)' : '#EDF0F3'), color: on ? '#fff' : mid }}>{icon}</span>
       <span style={{ flex: 1 }}>
         <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700, color: on ? SAVE_BLUE : text }}>{title}</span>
@@ -103,7 +104,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         transform: shown && !closing ? 'translateY(0)' : 'translateY(24px)', opacity: shown && !closing ? 1 : 0, transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center', justifyContent: 'center', padding: isNarrow ? 0 : 16 }}>
+    <div className={rkScope(isDark)} style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center', justifyContent: 'center', padding: isNarrow ? 0 : 16 }}>
       <div onClick={close} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }} />
       <div style={panel}>
         {isNarrow && <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 10 }}><span style={{ width: 40, height: 4, borderRadius: 2, background: border }} /></div>}
@@ -158,7 +159,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         </div>
 
         <button onClick={handleSave} disabled={saving}
-          style={{ width: '100%', height: 52, borderRadius: 'var(--r-md)', background: saving ? surface : SAVE_BLUE, border: 'none', color: saving ? mid : '#fff', fontSize: 16, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', boxShadow: saving ? 'none' : '0 4px 16px rgba(37,99,235,0.34)' }}>
+          style={{ width: '100%', height: 56, borderRadius: 'var(--r-pill)', background: saving ? surface : SAVE_BLUE, border: 'none', color: saving ? mid : 'var(--on-primary)', fontSize: 17, fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', boxShadow: 'none' }}>
           {saving ? t('record.routeSaveSaving') : t('record.routeSaveTitle')}
         </button>
       </div>

@@ -52,15 +52,14 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: 1, background: theme.separator,
-        border: `1px solid ${theme.separator}`,
-        borderRadius: 'var(--r-md)', overflow: 'hidden', margin: '16px 16px 0',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden', margin: '12px 16px 0',
       }}>
         {stats.map((s, i) => (
           <div key={i} style={{ padding: '16px 12px', background: theme.bg, textAlign: 'center' }}>
-            <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: '0 0 4px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: theme.dim, margin: '0 0 4px' }}>
               {s.label}
             </p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily: dataFontFamily }}>
+            <p style={{ fontSize: 28, fontWeight: 800, color: theme.text, margin: 0, lineHeight: 1, fontFamily: dataFontFamily, fontVariantNumeric: 'tabular-nums' }}>
               {s.value}
             </p>
             {s.unit && (
@@ -75,8 +74,7 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
           {/* Carte du tracé */}
           <div style={{
             height: 200, margin: '16px 16px 0',
-            borderRadius: 'var(--r-md)', overflow: 'hidden',
-            border: `1px solid ${theme.separator}`,
+            borderRadius: 'var(--r-lg)', overflow: 'hidden',
           }}>
             <SessionTraceMap points={session.gps_points} isDark={isDark} />
           </div>
@@ -86,10 +84,10 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
             margin: '12px 16px 0',
             borderRadius: 'var(--r-md)', overflow: 'hidden',
             border: `1px solid ${theme.separator}`,
-            background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFAFA',
+            background: 'var(--surface-card)',
           }}>
             <div style={{ padding: '8px 12px 4px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: theme.dim }}>
                 {t('record.sessionP1ElevationProfile')}
               </p>
             </div>

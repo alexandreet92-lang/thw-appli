@@ -437,42 +437,44 @@ export default function MapPage({
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 210, background: 'var(--live-scrim-bot)', pointerEvents: 'none', zIndex: 10 }} />
       )}
 
-      {/* Bandeau guidage compact — à droite de la croix (spec §4) */}
+      {/* Bandeau guidage (turn-by-turn) — carte flottante premium en haut.
+          Manœuvre réelle : tuile sombre + distance en gros chiffres. */}
       <div
         onClick={hasRoute && !locked ? () => setGuideOpen(true) : undefined}
         role={hasRoute ? 'button' : undefined}
+        className="rk-fade-up"
         style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 16, right: 16,
-          minHeight: 54, borderRadius: 'var(--r-md)', zIndex: 30,
-          background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+          position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', left: 14, right: 14,
+          minHeight: 64, borderRadius: 'calc(var(--r-lg) + 4px)', zIndex: 30,
+          background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)',
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px 10px 10px',
           cursor: hasRoute ? 'pointer' : 'default',
         }}
       >
         <div style={{
-          width: 36, height: 36, borderRadius: 'var(--r-sm)', flexShrink: 0,
-          background: hasRoute ? 'var(--live-accent-soft)' : 'var(--live-hairline)',
-          color: hasRoute ? 'var(--live-accent)' : 'var(--live-label)',
+          width: 48, height: 48, borderRadius: 'var(--r-md)', flexShrink: 0,
+          background: turnMode ? 'var(--text)' : hasRoute ? 'var(--primary-dim)' : 'var(--surface-chip)',
+          color: turnMode ? 'var(--bg)' : hasRoute ? 'var(--primary)' : 'var(--text-mid)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background-color 300ms ease, color 300ms ease',
         }}>
-          <ManeuverIcon kind={turnMode && nextStep ? maneuverKind(nextStep.type) : bannerIconKind} size={22} />
+          <ManeuverIcon kind={turnMode && nextStep ? maneuverKind(nextStep.type) : bannerIconKind} size={26} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {turnMode && nextStep && distToNextM != null ? (
             <>
-              {/* Prochaine manœuvre réelle : distance 15/700 · instruction + badge route */}
+              {/* Prochaine manœuvre réelle : distance (gros chiffres) · instruction + badge route */}
               <div style={{
-                fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                display: 'flex', alignItems: 'baseline', gap: 8,
               }}>
-                <span className="lv2-num" style={{ flexShrink: 0 }}>{fmtDist(distToNextM)}</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>· {maneuverShortFR(nextStep.type)}</span>
+                <span className="rk-num" style={{ flexShrink: 0, fontSize: 22 }}>{fmtDist(distToNextM)}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{maneuverShortFR(nextStep.type)}</span>
                 {nextBadge && <RoadBadge info={nextBadge} />}
               </div>
-              {/* Sous-ligne « puis <manœuvre suivante> dans X m » 12/500 */}
-              <div className="lv2-num" style={{
-                fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2,
+              {/* Sous-ligne « puis <manœuvre suivante> dans X m » */}
+              <div className="rk-num" style={{
+                fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
@@ -491,14 +493,14 @@ export default function MapPage({
             </>
           ) : (
             <>
-              <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{guideTitle}</div>
-              <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{guideTitle}</div>
+              <div className="rk-num" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginTop: 2, letterSpacing: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {guideSub}
               </div>
             </>
           )}
         </div>
-        {hasRoute && <span style={{ color: 'var(--live-label)', flexShrink: 0 }}>{chevron}</span>}
+        {hasRoute && <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{chevron}</span>}
       </div>
 
       {/* Panneau de guidage déplié (remplace l'ancien RouteNavScreen).
@@ -522,7 +524,7 @@ export default function MapPage({
       {/* Boutons ronds (bulles) à droite pendant l'enregistrement — façon Apple Plans :
           Parcours (changer d'itinéraire) · Son (commandes vocales). */}
       {started && !locked && (
-        <div style={{ position: 'absolute', right: 16, top: 'calc(env(safe-area-inset-top) + 120px)', zIndex: 30, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ position: 'absolute', right: 14, top: 'calc(env(safe-area-inset-top) + 90px)', zIndex: 30, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
             { key: 'route', label: t('w2c.changeRoute'), on: () => setSheetView('route'), icon: (
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg>
@@ -531,8 +533,8 @@ export default function MapPage({
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/>{voiceOn ? <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /> : <path d="M22 9l-6 6M16 9l6 6" />}</svg>
             ) },
           ].map(b => (
-            <button key={b.key} onClick={b.on} aria-label={b.label} className="lv2-press"
-              style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', color: 'var(--live-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: 0 }}>
+            <button key={b.key} type="button" onClick={b.on} aria-label={b.label} className="rk-fab rk-press"
+              style={{ width: 48, height: 48 }}>
               {b.icon}
             </button>
           ))}
@@ -585,13 +587,10 @@ export default function MapPage({
           <button
             onClick={() => setLayersOpen(o => !o)}
             aria-label={t('w2c.mapLayer')}
-            className="lv2-press"
+            className="rk-fab rk-press"
             style={{
-              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 126px)', right: 24,
-              width: 40, height: 40, borderRadius: '50%', zIndex: 30,
-              background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
-              color: 'var(--live-text-2)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 90px)', right: 14,
+              width: 44, height: 44, zIndex: 30,
             }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18">
@@ -600,11 +599,10 @@ export default function MapPage({
             </svg>
           </button>
           {layersOpen && (
-            <div style={{
-              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 172px)', right: 24, zIndex: 31,
-              background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-              borderRadius: 'var(--r-md)', overflow: 'hidden', minWidth: 150,
-              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+            <div className="rk-fade-up" style={{
+              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 142px)', right: 14, zIndex: 31,
+              background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)',
+              borderRadius: 'var(--r-lg)', overflow: 'hidden', minWidth: 180,
             }}>
               {([['std', 'w2c.layerStandard'], ['sat', 'w2c.layerSatellite'], ['hyb', 'w2c.layerHybrid'], ['dark', 'w2c.layerDark']] as [LayerId, string][]).map(([id, lbl], i) => (
                 <button
@@ -612,11 +610,11 @@ export default function MapPage({
                   onClick={() => { setLayer(id); setLayersOpen(false) }}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', padding: '11px 14px', border: 'none', cursor: 'pointer',
+                    width: '100%', minHeight: 48, padding: '0 16px', border: 'none', cursor: 'pointer',
                     background: 'transparent', textAlign: 'left',
-                    borderTop: i > 0 ? '1px solid var(--live-hairline)' : 'none',
-                    fontSize: 13.5, fontWeight: 600,
-                    color: layer === id ? 'var(--live-accent)' : 'var(--live-text)',
+                    borderTop: i > 0 ? '1px solid var(--border)' : 'none',
+                    fontSize: 15, fontWeight: 600,
+                    color: layer === id ? 'var(--primary)' : 'var(--text)',
                   }}
                 >
                   {t(lbl)}
@@ -636,12 +634,9 @@ export default function MapPage({
 
       {/* Chip itinéraire — avant démarrage, au-dessus du bandeau des totaux */}
       {!started && hasRoute && (
-        <div className="lv2-num" style={{
-          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 156px)', left: '50%', transform: 'translateX(-50%)',
-          height: 32, padding: '0 17px', borderRadius: 'var(--r-md)', zIndex: 20,
-          background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
-          display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
-          fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',
+        <div className="rk-banner rk-num" style={{
+          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 176px)', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20, letterSpacing: 0, animation: 'none',
         }}>
           {t('w2c.routeLabel')} · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)}
           {totalGainM != null && ` · ${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+`}

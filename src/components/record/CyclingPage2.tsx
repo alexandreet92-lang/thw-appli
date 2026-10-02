@@ -1,6 +1,8 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { useI18n } from '@/lib/i18n'
+import { LegacyCell, LegacyGrid } from './kit/LiveFrame'
+import { RK_DOT } from './kit/RecordKit'
 
 const MapBackground = dynamic(() => import('./MapBackground'), { ssr: false })
 
@@ -13,89 +15,29 @@ interface Props {
   paused?: boolean
 }
 
-function getTheme(isDark: boolean) {
-  return {
-    text:      isDark ? '#FFFFFF' : '#0A0A0A',
-    label:     isDark ? 'rgba(255,255,255,0.35)' : '#8C8C8C',
-    separator: isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8',
-  }
-}
-
-function BigCell({ label, value, unit, t }: {
-  label: string; value: string; unit?: string; t: ReturnType<typeof getTheme>
-}) {
-  return (
-    <div style={{
-      padding: '16px 12px',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      minHeight: 0,
-    }}>
-      <p style={{
-        margin: 0, fontSize: 10, fontWeight: 700,
-        color: t.label,
-        textTransform: 'uppercase', letterSpacing: '0.15em',
-      }}>{label}</p>
-      <p style={{
-        margin: '6px 0 0',
-        fontSize: 44, fontWeight: 700, lineHeight: 1,
-        color: t.text, fontFamily: 'var(--font-body)',
-      }}>{value}</p>
-      {unit && (
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: t.label }}>{unit}</p>
-      )}
-    </div>
-  )
-}
-
-export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand, paused }: Props) {
+export default function CyclingPage2({ distanceM, trackPoints, currentPosition, onExpand, paused }: Props) {
   const { t: tr } = useI18n()
-  const t = getTheme(isDark)
   const distanceKm = (distanceM / 1000).toFixed(2)
 
   return (
-    <div className="cycling-page-in" style={{
-      flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
-    }}>
-      {/* Carte — 65% */}
-      <div style={{
-        flexBasis: '65%', flexShrink: 0,
-        padding: '0 12px 12px',
-        minHeight: 0,
-      }}>
-        <div style={{
-          position: 'relative',
-          width: '100%', height: '100%',
-          borderRadius: 'var(--r-md)', overflow: 'hidden',
-          border: `1px solid ${t.separator}`,
-        }}>
+    <div className="cycling-page-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 12 }}>
+      {/* Carte — carte arrondie, ~65 % */}
+      <div style={{ flexBasis: '65%', flexShrink: 0, minHeight: 0 }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 'calc(var(--r-lg) + 4px)', overflow: 'hidden', background: 'var(--surface-card)' }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
           {paused && (
-            <div style={{
-              position: 'absolute', top: 10, left: 10, zIndex: 1000,
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 10px 5px 8px', borderRadius: 'var(--r-pill)',
-              background: 'var(--bg)', border: '1px solid var(--border)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.25)', // design-allow-color
-            }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--primary)" aria-hidden>
-                <rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>
-              </svg>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{tr('record.cyclingPage2Paused')}</span>
-            </div>
+            <span className="rk-banner" style={{ position: 'absolute', top: 12, left: 12, zIndex: 1000 }}>
+              <span className="rk-dot" style={{ background: RK_DOT.warn }} />
+              {tr('record.cyclingPage2Paused')}
+            </span>
           )}
           {onExpand && (
             <button
+              type="button"
               onClick={onExpand}
               aria-label={tr('record.cyclingPage2FullscreenMap')}
-              style={{
-                position: 'absolute', top: 10, right: 10, zIndex: 1000,
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'var(--bg)', color: 'var(--text)',
-                border: '1px solid var(--border)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.25)', // design-allow-color
-                cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-              }}
+              className="rk-fab rk-press"
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000, width: 44, height: 44 }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7"/>
@@ -105,17 +47,11 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
         </div>
       </div>
 
-      {/* Watts + Distance — 35% */}
-      <div style={{
-        flex: 1, minHeight: 0,
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        borderTop: `1px solid ${t.separator}`,
-      }}>
-        <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <BigCell label={tr('record.commonWatts')} value="--" unit="w" t={t} />
-        </div>
-        <BigCell label={tr('record.commonDistance')} value={distanceKm} unit="km" t={t} />
-      </div>
+      {/* Watts + Distance */}
+      <LegacyGrid>
+        <LegacyCell label={tr('record.commonWatts')} value="--" unit="W" />
+        <LegacyCell label={tr('record.commonDistance')} value={distanceKm} unit="km" />
+      </LegacyGrid>
     </div>
   )
 }

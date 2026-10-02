@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { playLapBeep, setLapBeepSoundEnabled } from './lapBeep'
 import { useI18n } from '@/lib/i18n'
+import { RkBanner } from './kit/RecordKit'
 
 /** Réglage alerts.vibration — renvoie un vibrate() muet si désactivé. */
 export function useVibrate(enabled: boolean): (pattern: number | number[]) => void {
@@ -47,10 +48,7 @@ export function useLiveNotice(vibrate: (pattern: number | number[]) => void): {
 export default function LiveNoticeBanner({ noticeKey }: { noticeKey: string | null }) {
   const { t } = useI18n()
   if (!noticeKey) return null
-  return (
-    <div style={{ position: 'fixed', top: 'calc(100px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 'var(--r-md)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}> {/* design-allow-color */}
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', flexShrink: 0 }} /> {/* design-allow-color */}
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{t(noticeKey)}</span> {/* design-allow-color */}
-    </div>
-  )
+  // Pilule transitoire (langage RecordKit) — placée dans la zone de bandeaux
+  // de l'écran live (sous l'en-tête).
+  return <RkBanner key={noticeKey} dot="var(--primary)" live>{t(noticeKey)}</RkBanner>
 }

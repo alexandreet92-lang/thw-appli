@@ -78,6 +78,30 @@
   --live-chip-bg: rgba(0, 0, 0, 0.07); /* design-allow-color */
 }
 
+/* ── Refonte « premium » (maquettes mock8 r2) : les surfaces, textes et
+   filets du direct s'alignent sur la palette globale de l'app (page gris
+   chaud, cartes blanches, texte encre). Le conteneur porte .light/.dark
+   (rkScope) → ces var() suivent le thème choisi dans les réglages. Les
+   tokens spécifiques à la carte (halo, badges route…) restent inchangés. */
+[data-live-shell].rk-scope {
+  --live-bg: var(--surface-page);
+  --live-surface: var(--surface-card);
+  --live-surface-2: var(--surface-chip);
+  --live-hairline: var(--border);
+  --live-text: var(--text);
+  --live-text-2: var(--text-mid);
+  --live-label: var(--text-mid);
+  --live-dim: var(--text-dim);
+  --live-dim-sub: var(--text-dim);
+  --live-accent: var(--primary);
+  --live-accent-on: var(--on-primary);
+  --live-success: var(--success);
+  --live-danger: var(--danger);
+  --live-float: var(--float-bg);
+  --live-veil: var(--scrim);
+  --live-toast-bg: var(--float-bg);
+}
+
 /* ── Bouton photo (PhotoButton partagé, restylé aux tokens live) ───── */
 .lv2-photo button {
   width: 48px !important;
@@ -96,7 +120,7 @@
   z-index: 9999;
   background: var(--live-bg);
   color: var(--live-text);
-  font-family: Inter, var(--font-body), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;

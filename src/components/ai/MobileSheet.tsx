@@ -40,6 +40,8 @@ export function MobileSheet({
   renderHeader,
   expanded = false,
   surface,
+  zIndex = 1400,
+  closeRef,
 }: {
   title?: string
   onClose: () => void
@@ -51,6 +53,10 @@ export function MobileSheet({
   expanded?: boolean
   /** Fond du panneau (token), défaut var(--bg-card). */
   surface?: string
+  /** Plan d'empilement (voile = zIndex, panneau = zIndex + 1). */
+  zIndex?: number
+  /** Reçoit la fermeture animée (pour fermer depuis un bouton du contenu). */
+  closeRef?: React.MutableRefObject<(() => void) | null>
   /** Plafonne la détente initiale (fraction de la hauteur d'écran, ex. 0.6 =
    *  ouvre à mi-hauteur). Le contenu reste défilable et on peut tirer vers le
    *  haut jusqu'à ~94vh. Sans ça, une feuille au contenu long s'ouvre presque
@@ -122,6 +128,12 @@ export function MobileSheet({
     el.style.transition = SPRING
     el.style.height = dims.exp + 'px'
   }, [expanded, mounted])
+
+  useEffect(() => {
+    if (!closeRef) return
+    closeRef.current = requestClose
+    return () => { closeRef.current = null }
+  })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
@@ -256,14 +268,14 @@ export function MobileSheet({
       <div
         ref={backdropRef}
         onClick={requestClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, opacity: 0, transition: 'opacity 0.4s ease' }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', zIndex, opacity: 0, transition: 'opacity 0.4s ease' }}
       />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1401,
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: zIndex + 1,
           background: surface ?? 'var(--bg-card)', color: 'var(--text)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           boxShadow: '0 -10px 44px rgba(0,0,0,0.34)',

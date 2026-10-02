@@ -12,6 +12,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
+import { ModelEffigy } from '@/components/ai/ModelEffigy'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   emptyGraph, sampleGraph, genId, autoLayout, validateGraph, makeGraphAutonomous,
@@ -1220,8 +1221,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div style={{ position: 'relative' }}>
             <PressPop onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title={t('w1i.ai_model')} popScale={1.08}
               style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 11px 0 9px', borderRadius: 'var(--r-pill)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={17} height={17} style={{ objectFit: 'contain', flexShrink: 0 }} />
+              <ModelEffigy model={builderModel} tint={isMobile} spinning={isMobile && chatBusy} size={17} />
               {MODEL_LABEL[builderModel]}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M6 9l6 6 6-6"/></svg>
             </PressPop>
@@ -1232,8 +1232,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                     <button key={m} onClick={() => { setBuilderModel(m); setModelMenuOpen(false) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 'var(--r-sm)', border: 'none', background: builderModel === m ? 'color-mix(in srgb, var(--studio-accent) 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={20} height={20} style={{ objectFit: 'contain', flexShrink: 0 }} />
+                      <ModelEffigy model={m} tint={isMobile} size={20} />
                       <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{MODEL_LABEL[m]}</span>
                       {builderModel === m && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--studio-accent)' }} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                     </button>
@@ -1360,9 +1359,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         })}
         {chatBusy && (
           <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 9, alignItems: 'center', padding: '10px 14px' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-              alt="" width={17} height={17} style={{ objectFit: 'contain', animation: 'studio_spin 2.4s linear infinite', opacity: 0.9 }} />
+            {isMobile
+              ? <ModelEffigy model={builderModel} spinning size={17} />
+              : <ModelEffigy model={builderModel} tint={false} spinning size={17} style={{ animation: 'studio_spin 2.4s linear infinite', opacity: 0.9 }} />}
             <span className="studio-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>{t('w1i.thinking')}</span>
           </div>
         )}
@@ -2757,7 +2756,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
                         <button key={m} onClick={() => patchNode(sel.id, { model: m })}
                           style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--r-sm)', border: `1px solid ${sel.model === m ? KIND_COLOR[sel.kind] : 'var(--border)'}`, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
-                            background: sel.model === m ? KIND_COLOR[sel.kind] : 'var(--bg-card2)', color: sel.model === m ? '#fff' : 'var(--text-mid)' }}>
+                            background: sel.model === m ? KIND_COLOR[sel.kind] : 'var(--bg-card2)', color: sel.model === m ? '#fff' : 'var(--text-mid)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          {isMobile && <ModelEffigy model={m} size={14} color={sel.model === m ? 'currentColor' : undefined} />}
                           {MODEL_LABEL[m]}
                         </button>
                       ))}

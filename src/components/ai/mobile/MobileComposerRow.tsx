@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react'
 import { ArrowUp, AudioLines, ChevronDown, Clock, Globe, Mic, Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { ModelEffigy } from '../ModelEffigy'
+import type { AimModel } from './types'
 
 const round44: React.CSSProperties = {
   width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, flexShrink: 0,
@@ -156,7 +158,7 @@ export function MobileComposerRow({
  * génération, ou statique (cliquable → feuille « Processus de réflexion »)
  * avec le nombre réel de sources web citées.
  */
-export function ThinkingPill({ since, sources, onOpen }: { since?: number; sources?: number; onOpen?: () => void }) {
+export function ThinkingPill({ since, sources, onOpen, model }: { since?: number; sources?: number; onOpen?: () => void; model?: AimModel }) {
   const { t } = useI18n()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -170,7 +172,9 @@ export function ThinkingPill({ since, sources, onOpen }: { since?: number; sourc
   if (sources && sources > 0) parts.push(t('aim.thinking.sources', { n: sources }))
   const inner = (
     <>
-      <Clock size={14} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+      {model
+        ? <ModelEffigy model={model} size={15} spinning={secs !== null} />
+        : <Clock size={14} strokeWidth={2.2} style={{ flexShrink: 0 }} />}
       <span className={secs !== null ? 'ai-shimmer' : undefined} style={{ fontVariantNumeric: 'tabular-nums' }}>{parts.join(' · ')}</span>
       {onOpen && <ChevronDown size={14} strokeWidth={2.2} style={{ flexShrink: 0 }} />}
     </>

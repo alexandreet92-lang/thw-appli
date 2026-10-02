@@ -7,7 +7,11 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion, type PanInfo, type Variants } from 'motion/react'
 import { useI18n } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
+import { useIsMobile } from './mobile/MobileKit'
+import { AimCard, AimPill, AimPress, AimTag, AIM_EASE } from './mobile/cards/kit'
 
 // Locale de reconnaissance vocale selon la langue de l'app.
 const VOICE_LANG: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }
@@ -25,13 +29,7 @@ export interface ClarifyingQuestions {
 
 export interface Answer { selected: string[]; other: string }
 
-export function CoachQuestionCard({
-  data,
-  onSubmit,
-  initialAnswers,
-  onSkip,
-  enableVoice,
-}: {
+type CQProps = {
   data: ClarifyingQuestions
   onSubmit: (recap: string, answers?: Answer[]) => void
   /** Pré-remplissage (mémoire des dernières réponses / données connues). */
@@ -40,7 +38,21 @@ export function CoachQuestionCard({
   onSkip?: boolean
   /** Active le micro (dictée) sur le champ libre. */
   enableVoice?: boolean
-}) {
+}
+
+/** Questions de clarification : carte « mock8 » sur mobile, historique sur bureau. */
+export function CoachQuestionCard(props: CQProps) {
+  const mobile = useIsMobile()
+  return mobile ? <CoachQuestionMobile {...props} /> : <CoachQuestionDesktop {...props} />
+}
+
+function CoachQuestionDesktop({
+  data,
+  onSubmit,
+  initialAnswers,
+  onSkip,
+  enableVoice,
+}: CQProps) {
   const { t, lang } = useI18n()
   const qs = data.questions
   const [page, setPage] = useState(0)
@@ -268,3 +280,258 @@ export function CoachQuestionCard({
 const cardStyle: React.CSSProperties = { border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: 14, background: 'var(--ai-bg)', marginTop: 4 }
 const chip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', padding: '3px 8px', borderRadius: 'var(--r-sm)', fontFamily: 'var(--font-body)' }
 const checkBadge: React.CSSProperties = { width: 18, height: 18, borderRadius: '50%', background: '#3C90D5', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+
+// ══════════════════════════════════════════════════════════════
+// MOBILE (≤ 767 px) — maquette validée « a2-questions » :
+// « Question x sur N » + barre de progression + Passer · grande question ·
+// options en cartes sélectionnables (rond coché, tag « Conseillé ») ·
+// « Autre réponse… » (champ doux + dictée) · Précédent / Suivant.
+// Glisser horizontalement change de question (transition animée).
+// ══════════════════════════════════════════════════════════════
+
+interface SRAlt { transcript: string }
+interface SRRes { readonly length: number; readonly isFinal: boolean; [i: number]: SRAlt }
+interface SREvt { readonly results: { readonly length: number; [i: number]: SRRes } }
+interface SRInst {
+  lang: string; continuous: boolean; interimResults: boolean
+  onresult: ((e: SREvt) => void) | null; onend: (() => void) | null; onerror: (() => void) | null
+  start: () => void; stop: () => void
+}
+type SRCtor = new () => SRInst
+function getSR(): SRCtor | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
+
+// Glissement entre questions : la direction (custom) est relue à la sortie.
+const Q_SLIDE: Variants = {
+  enter: (d: number) => ({ x: d * 48, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (d: number) => ({ x: d * -48, opacity: 0 }),
+}
+const Q_FADE: Variants = { enter: { opacity: 0 }, center: { opacity: 1 }, exit: { opacity: 0 } }
+
+function CheckDot({ on }: { on: boolean }) {
+  const reduce = useReducedMotion()
+  return (
+    <span aria-hidden style={{
+      width: 22, height: 22, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center',
+      background: on ? 'var(--primary)' : 'transparent', color: 'var(--on-primary)',
+      boxShadow: on ? 'none' : 'inset 0 0 0 2px var(--text-dim)', transition: 'background 0.2s ease, box-shadow 0.2s ease',
+    }}>
+      <AnimatePresence initial={false}>
+        {on && (
+          <motion.svg key="c" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"
+            initial={reduce ? false : { scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.3, opacity: 0 }}
+            transition={{ duration: 0.22, ease: AIM_EASE }}>
+            <path d="M20 6 9 17l-5-5" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function CoachQuestionMobile({ data, onSubmit, initialAnswers, onSkip, enableVoice }: CQProps) {
+  const { t, lang } = useI18n()
+  const reduce = useReducedMotion()
+  const qs = data.questions
+  const [page, setPage] = useState(0)
+  const [dir, setDir] = useState<1 | -1>(1)
+  const [answers, setAnswers] = useState<Answer[]>(() => qs.map((_, i) => initialAnswers?.[i] ?? ({ selected: [], other: '' })))
+  const [listening, setListening] = useState(false)
+  const recRef = useRef<SRInst | null>(null)
+  const pageRef = useRef(page); pageRef.current = page
+  const baseRef = useRef('')
+  useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
+
+  // ── Vue lecture seule (déjà répondu) ──
+  if (data.answered !== undefined) {
+    const lines = (data.answered ?? '').split('\n').filter(l => l.trim().startsWith('-')).map(l => {
+      const [q, ...rest] = l.replace(/^[-\s]+/, '').split(' → ')
+      return { q, ans: rest.join(' → ') }
+    })
+    return (
+      <AimCard>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <CheckDot on />
+          <span style={{ fontSize: 15, fontWeight: 800 }}>{t('ai.answersSent')}</span>
+        </div>
+        {lines.map((l, i) => (
+          <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-mid)' }}>{l.q}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{l.ans || '—'}</div>
+          </div>
+        ))}
+      </AimCard>
+    )
+  }
+
+  const n = qs.length
+  const q = qs[page]
+  const a = answers[page]
+  const canProceed = a.selected.length > 0 || a.other.trim().length > 0
+  const isLast = page === n - 1
+  const voiceOk = !!enableVoice && !!getSR()
+
+  const stopVoice = () => { try { recRef.current?.stop() } catch { /* ignore */ } recRef.current = null; setListening(false) }
+
+  const toggle = (label: string) => {
+    haptic('light')
+    setAnswers(prev => prev.map((ans, i) => {
+      if (i !== page) return ans
+      if (q.multiSelect) {
+        const has = ans.selected.includes(label)
+        return { ...ans, selected: has ? ans.selected.filter(l => l !== label) : [...ans.selected, label] }
+      }
+      return { ...ans, selected: ans.selected[0] === label ? [] : [label] }
+    }))
+  }
+  const setOther = (val: string) => setAnswers(prev => prev.map((ans, i) => i === page ? { ...ans, other: val } : ans))
+
+  const submit = (list: Answer[] = answers) => {
+    stopVoice()
+    haptic('success')
+    const lines = qs.map((qq, i) => {
+      const ans = list[i]
+      const parts = [...ans.selected]
+      if (ans.other.trim()) parts.push(ans.other.trim())
+      return `- ${qq.question} → ${parts.length ? parts.join(', ') : t('ai.noAnswer')}`
+    })
+    onSubmit(`${t('ai.myAnswers')}\n${lines.join('\n')}`, list)
+  }
+  const go = (to: number) => {
+    if (to < 0 || to >= n || to === page) return
+    stopVoice()
+    haptic('light')
+    setDir(to > page ? 1 : -1)
+    setPage(to)
+  }
+  const next = () => { if (!canProceed) return; if (isLast) submit(); else go(page + 1) }
+  const skip = () => { if (isLast) submit(); else go(page + 1) }
+
+  // Dictée du champ libre : texte reconstruit à chaque événement (finaux +
+  // intermédiaires) et ajouté à ce qui était déjà écrit.
+  const toggleVoice = () => {
+    if (listening) { stopVoice(); return }
+    const SR = getSR()
+    if (!SR) return
+    try {
+      const r = new SR()
+      r.lang = lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'fr-FR'
+      r.continuous = true; r.interimResults = true
+      baseRef.current = a.other
+      const p = page
+      r.onresult = (e: SREvt) => {
+        let txt = ''
+        for (let i = 0; i < e.results.length; i++) txt += (e.results[i]?.[0]?.transcript ?? '')
+        const base = baseRef.current.trim()
+        const v = [base, txt.replace(/\s+/g, ' ').trim()].filter(Boolean).join(' ')
+        setAnswers(prev => prev.map((ans, i) => i === p ? { ...ans, other: v } : ans))
+      }
+      r.onend = () => { if (recRef.current === r) { recRef.current = null; setListening(false) } }
+      r.onerror = () => { if (recRef.current === r) { recRef.current = null; setListening(false) } }
+      recRef.current = r
+      r.start()
+      haptic('light')
+      setListening(true)
+    } catch { setListening(false) }
+  }
+
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.x < -60 || info.velocity.x < -500) { if (canProceed) next() }
+    else if (info.offset.x > 60 || info.velocity.x > 500) go(page - 1)
+  }
+
+  return (
+    <AimCard>
+      {/* Progression */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>
+        <span className="aimc-num">{n > 1 ? t('ai2.q.progress', { i: page + 1, n }) : (q.header || '')}</span>
+        <AimPress onClick={skip} style={{ minHeight: 36, padding: '0 2px', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('ai2.q.skip')}</AimPress>
+      </div>
+      <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)', margin: '6px 0 14px', overflow: 'hidden' }}>
+        <motion.div
+          style={{ height: '100%', width: '100%', background: 'var(--primary)', borderRadius: 'var(--r-pill)', transformOrigin: 'left center' }}
+          initial={reduce ? false : { scaleX: 0 }}
+          animate={{ scaleX: (page + 1) / n }}
+          transition={{ duration: 0.5, ease: AIM_EASE }}
+        />
+      </div>
+
+      {/* Question courante — glissable */}
+      <div style={{ overflow: 'hidden', margin: '0 -16px', padding: '0 16px' }}>
+        <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+          <motion.div
+            key={page}
+            custom={dir}
+            variants={reduce ? Q_FADE : Q_SLIDE}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.34, ease: AIM_EASE }}
+            drag={n > 1 ? 'x' : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.18}
+            dragDirectionLock
+            onDragEnd={onDragEnd}
+            style={{ touchAction: 'pan-y' }}
+          >
+            <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.3, letterSpacing: '-0.01em' }}>{q.question}</div>
+            <div role={q.multiSelect ? 'group' : 'radiogroup'} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              {q.options.map((opt, i) => {
+                const sel = a.selected.includes(opt.label)
+                return (
+                  <AimPress
+                    key={i}
+                    onClick={() => toggle(opt.label)}
+                    ariaLabel={opt.label}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 56, padding: '12px 14px', borderRadius: 'var(--r-md)',
+                      background: sel ? 'color-mix(in srgb, var(--primary) 12%, var(--surface-card))' : 'var(--aimc-grp)',
+                      boxShadow: sel ? 'inset 0 0 0 2px var(--primary)' : 'none',
+                      transition: 'background 0.22s ease, box-shadow 0.22s ease',
+                    }}
+                  >
+                    <CheckDot on={sel} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{opt.label}</span>
+                        {opt.recommended && <AimTag tint="var(--success)">{t('ai2.q.recommended')}</AimTag>}
+                      </span>
+                      {opt.description && <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.35 }}>{opt.description}</span>}
+                    </span>
+                  </AimPress>
+                )
+              })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 'var(--r-md)', background: 'var(--aimc-grp)', padding: '0 6px 0 14px', minHeight: 52 }}>
+                <input
+                  value={a.other}
+                  onChange={e => setOther(e.target.value)}
+                  placeholder={q.options.length === 0 ? t('ai.yourAnswer') : t('ai2.q.other')}
+                  style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font-body)', padding: '12px 0' }}
+                />
+                {voiceOk && (
+                  <AimPress onClick={toggleVoice} ariaLabel={t('ai.dictate')} style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, color: listening ? 'var(--on-primary)' : 'var(--text-mid)', background: listening ? 'var(--primary)' : 'transparent', transition: 'background 0.2s ease, color 0.2s ease' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+                  </AimPress>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <AimPill onClick={() => go(page - 1)} disabled={page === 0} flex={1} style={page === 0 ? { opacity: 0.45 } : undefined}>{t('ai.previous')}</AimPill>
+        <AimPill variant="primary" onClick={next} disabled={!canProceed} flex={2}>{isLast ? t('ai.send') : t('ai.next')}</AimPill>
+      </div>
+      {onSkip && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+          <AimPill variant="ghost" onClick={() => submit()} style={{ minHeight: 44, fontSize: 14 }}>{t('ai.generateNow')}</AimPill>
+        </div>
+      )}
+    </AimCard>
+  )
+}

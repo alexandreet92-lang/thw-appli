@@ -8,7 +8,7 @@
 
 import { ChevronDown, ChevronRight, Menu, SquarePen } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { MODEL_BADGE } from '@/lib/quick-actions/models'
+import { ModelEffigy } from '../ModelEffigy'
 import type { AimModel } from './types'
 
 const MODEL_NAMES: Record<AimModel, string> = { hermes: 'Hermès', athena: 'Athéna', zeus: 'Zeus' }
@@ -23,6 +23,7 @@ export const aimFab: React.CSSProperties = {
 export function MobileTopBar({
   model,
   modelLocked,
+  generating,
   showModel,
   onMenu,
   onModel,
@@ -31,6 +32,8 @@ export function MobileTopBar({
 }: {
   model: AimModel
   modelLocked: boolean
+  /** Génération en cours → le shuriken du modèle tourne. */
+  generating?: boolean
   showModel: boolean
   onMenu: () => void
   onModel: () => void
@@ -60,11 +63,11 @@ export function MobileTopBar({
               pointerEvents: 'auto', height: 44, padding: '0 14px 0 16px', borderRadius: 'var(--r-pill)', border: 'none',
               display: 'inline-flex', alignItems: 'center', gap: 7, cursor: modelLocked ? 'default' : 'pointer',
               background: 'var(--float-bg)', color: 'var(--text)', boxShadow: 'var(--shadow-capsule)',
-              fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, opacity: modelLocked ? 0.6 : 1,
+              fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, opacity: modelLocked && !generating ? 0.6 : 1,
               maxWidth: '100%',
             }}
           >
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: MODEL_BADGE[model].color, flexShrink: 0 }} />
+            <ModelEffigy model={model} size={18} spinning={!!generating} />
             <span style={{ whiteSpace: 'nowrap' }}>{MODEL_NAMES[model]}</span>
             <ChevronDown size={16} strokeWidth={2.2} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
           </button>

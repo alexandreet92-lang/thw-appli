@@ -27,6 +27,8 @@ import PressPop from '@/components/ui/PressPop'
 import { SlideOverlay } from '@/components/ui/SlideOverlay'
 import { SlideView } from '@/components/ui/SlideView'
 import RoutinesView from '@/components/ai/RoutinesView'
+import { ModelEffigy, type EffigyModel } from '@/components/ai/ModelEffigy'
+import { hasAIConsent, setAIConsent, syncAIConsentFromAccount, AI_CONSENT_EVENT } from '@/components/ai/aiConsent'
 import { listRoutines } from '@/lib/routines/client'
 import { listSystems } from '@/lib/studio/store'
 import {
@@ -462,7 +464,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
         <SectionLabel>{t('aio.s_discussion')}</SectionLabel>
         <Group>
           <GroupRow first icon={tile(TILE.cyan, ICON.sliders)} label={t('aio.s_instructions')} value={instruction.trim() ? t('aio.s_on') : t('aio.s_none')} onClick={() => mPush('instructions')} />
-          <GroupRow icon={tile(TILE.violet, ICON.star)} label={t('w1a.navModele')} value={modelName} onClick={() => mPush('modele')} />
+          <GroupRow icon={tile(TILE.violet, ICON.star)} label={t('w1a.navModele')} value={<><ModelEffigy model={(defaultModel === 'hermes' || defaultModel === 'zeus' ? defaultModel : 'athena') as EffigyModel} size={16} />{modelName}</>} onClick={() => mPush('modele')} />
           <GroupRow icon={tile(TILE.green, ICON.mic)} label={t('w1a.navVoix')} value={voiceName} onClick={() => mPush('voix')} />
         </Group>
 
@@ -650,32 +652,37 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
   )
 }
 
-// ── Confidentialité IA : partage de données avec Anthropic ─────────
-// Reflète et pilote le consentement demandé avant le 1er envoi (clé
-// localStorage 'thw_ai_consent_v1', partagée avec AIPanel). Le retirer
-// désactive l'assistant : le prochain envoi redemandera l'accord.
+// ── Confidentialité IA : partage de données avec notre partenaire d'IA ──
+// Reflète et pilote le consentement demandé une fois (./aiConsent : local +
+// compte). Le retirer désactive l'assistant : le prochain envoi redemandera
+// l'accord. Formulation neutre (aucun nom de fournisseur).
 function AIConsentBlock({ bare = false }: { bare?: boolean } = {}) {
+  const { t } = useI18n()
   const [on, setOn] = useState(true)
   useEffect(() => {
-    try { setOn(localStorage.getItem('thw_ai_consent_v1') === '1') } catch { /* ignore */ }
+    setOn(hasAIConsent())
+    void syncAIConsentFromAccount().then(setOn)
+    const h = () => setOn(hasAIConsent())
+    window.addEventListener(AI_CONSENT_EVENT, h)
+    return () => window.removeEventListener(AI_CONSENT_EVENT, h)
   }, [])
   const change = (v: boolean) => {
     setOn(v)
-    try { localStorage.setItem('thw_ai_consent_v1', v ? '1' : '0') } catch { /* ignore */ }
+    setAIConsent(v)
   }
   return (
     <div style={{ borderTop: bare ? 'none' : '1px solid var(--border)', paddingTop: bare ? 0 : 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)', fontFamily: FB, marginBottom: 3 }}>Partage de données avec l’IA</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)', fontFamily: FB, marginBottom: 3 }}>{t('ai2.consent.settingsTitle')}</div>
           <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: 0, fontFamily: FB }}>
-            Autorise l’envoi de tes messages et du contexte d’entraînement à <strong>Anthropic</strong> (modèles Claude) pour générer les réponses du coach. Le désactiver coupe l’assistant.
+            {t('ai2.consent.settingsBody')}
           </p>
         </div>
         <Toggle value={on} onChange={change} />
       </div>
       <a href="/site/confidentialite.html" target="_blank" rel="noopener" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', fontFamily: FB }}>
-        Politique de confidentialité →
+        {t('ai2.consent.privacy')} →
       </a>
     </div>
   )
@@ -707,6 +714,7 @@ function InstructionsSection({ value, setValue, save }: { value: string; setValu
 // ── Modèle par défaut ──────────────────────────────────────────
 function ModeleSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
+  const mobile = useContext(MobilePaneCtx)
   const MODELS: [string, string, string][] = [['hermes', 'Hermès', t('w1a.speedRapide')], ['athena', 'Athéna', t('w1a.speedEquilibre')], ['zeus', 'Zeus', t('w1a.speedMax')]]
   return (
     <div>
@@ -718,6 +726,7 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
           return (
             <button key={id} type="button" onClick={() => onChange(id)}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-dim)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
+              {mobile && <ModelEffigy model={id as EffigyModel} size={16} />}
               <span style={{ fontSize: 14, fontWeight: on ? 600 : 500 }}>{label}</span>
               <span style={{ fontSize: 10.5, color: on ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 500 }}>{speed}</span>
             </button>

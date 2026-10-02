@@ -9,6 +9,9 @@
 import { Donut, Gauge, Radar, PmcChart, DurationCurve, ZoneDistribution, type DonutSlice, type GaugeBand, type RadarSeries, type CurvePoint } from '@/components/charts'
 import type { PmcPoint } from '@/lib/training/pmc'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from './mobile/MobileKit'
+import { AimCard, AIM_EASE } from './mobile/cards/kit'
+import { motion, useReducedMotion } from 'motion/react'
 
 type AdvSpec = (
   | { type: 'donut'; title?: string; unit?: string; centerLabel?: string; centerValue?: string; slices: DonutSlice[] }
@@ -81,6 +84,33 @@ function chartIcon(type: AdvSpec['type']): string {
   }
 }
 export function AdvancedChartCard({ spec }: { spec: AdvSpec }) {
+  const mobile = useIsMobile()
+  return mobile ? <AdvancedChartCardMobile spec={spec} /> : <AdvancedChartCardDesktop spec={spec} />
+}
+
+/** Mobile : carte blanche r=20 (maquette mock8), graphe qui monte, analyse en tuile douce. */
+function AdvancedChartCardMobile({ spec }: { spec: AdvSpec }) {
+  const { t } = useI18n()
+  const reduce = useReducedMotion()
+  return (
+    <div style={{ margin: '6px 0' }}>
+      <AimCard>
+        {spec.title && <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', marginBottom: 10, lineHeight: 1.25 }}>{spec.title}</div>}
+        <motion.div initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: AIM_EASE, delay: 0.12 }}>
+          <AdvancedChart spec={spec} />
+        </motion.div>
+        {spec.insight && (
+          <motion.div className="aimc-tile" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: AIM_EASE, delay: 0.28 }}
+            style={{ marginTop: 12, padding: '10px 12px', fontSize: 14, lineHeight: 1.45, color: 'var(--text)' }}>
+            <strong style={{ color: 'var(--primary)', fontWeight: 800 }}>{t('w4c.adv_analysis')}</strong>{spec.insight}
+          </motion.div>
+        )}
+      </AimCard>
+    </div>
+  )
+}
+
+function AdvancedChartCardDesktop({ spec }: { spec: AdvSpec }) {
   const { t } = useI18n()
   return (
     <div className="ac-card" style={{ margin: '16px auto', maxWidth: 580, width: '100%', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card)', boxShadow: '0 10px 34px rgba(16,24,40,0.10)', overflow: 'hidden', boxSizing: 'border-box' }}>

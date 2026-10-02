@@ -41,7 +41,7 @@ import StudioView from '@/components/studio/StudioView'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
 import { QUICK_ACTION_SPECS, specToClarifyQuestions } from '@/lib/quick-actions/specs'
 import type { Answer as QAAnswer } from './CoachQuestionCard'
-import { VoiceOverlay } from './VoiceOverlay'
+import { VoiceOverlay, nativeMicEnabled } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
 import { fetchRemoteConvs, pushConvs, deleteRemoteConv, mergeConvs, type SyncConv } from '@/lib/ai/conversations-sync'
@@ -66,6 +66,15 @@ import { MobilePlusSheet, type AimPlusScreen } from './mobile/MobilePlusSheet'
 import { MobileModelSheet } from './mobile/MobileModelSheet'
 import { useAimTokenLimits } from './mobile/useAimData'
 import { limitPct } from './mobile/types'
+import { ModelEffigy, MODEL_LOGO } from './ModelEffigy'
+import { hasAIConsent, setAIConsent, aiConsentWithdrawn, syncAIConsentFromAccount } from './aiConsent'
+import { AIConsentSheet } from './AIConsentSheet'
+import { ToolCallsCard, type ToolKind, type ToolRow } from './mobile/cards/ToolCallsCard'
+import { WeekCard } from './mobile/cards/WeekCard'
+import { ChartCardMobile } from './mobile/cards/ChartCardMobile'
+import { useIsMobile } from './mobile/MobileKit'
+import { AimSheetHeader } from './mobile/SheetParts'
+import { AimCard, AimPress, AimPill, AimStagger, AimStaggerItem, AimStat, AimStatGrid, AimTag, AimSegBar, AimCardStyles } from './mobile/cards/kit'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -232,20 +241,9 @@ function saveConvs(c: AIConv[]) {
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }
 
-// ── Consentement IA (RGPD / App Store 5.1.1) ─────────────────────
-// Avant tout premier envoi, l'utilisateur doit consentir explicitement au
-// transfert de ses messages + contexte d'entraînement vers Anthropic (Claude),
-// notre fournisseur de modèles d'IA. Le choix est mémorisé localement ; le
-// retrait se fait via les réglages (désactive l'assistant).
-const AI_CONSENT_KEY = 'thw_ai_consent_v1'
-function hasAIConsent(): boolean {
-  if (typeof window === 'undefined') return true
-  try { return localStorage.getItem(AI_CONSENT_KEY) === '1' } catch { return false }
-}
-function setAIConsent(ok: boolean) {
-  if (typeof window === 'undefined') return
-  try { localStorage.setItem(AI_CONSENT_KEY, ok ? '1' : '0') } catch { /* ignore */ }
-}
+// ── Consentement IA (RGPD / App Store 5.1.2(i)) ──────────────────
+// Source unique : ./aiConsent (local + compte, formulation neutre). La feuille
+// AIConsentSheet s'affiche une seule fois ; l'envoi reste bloqué sans accord.
 
 // ── Configs des 3 modèles ─────────────────────────────────────
 
@@ -581,6 +579,7 @@ function SourcesBadge({ sources }: { sources: WebSource[] }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+  const mobile = useIsMobile()
 
   // Dédup par domaine pour la pile de favicons (aperçu), max 4.
   const previewHosts: string[] = []
@@ -589,6 +588,53 @@ function SourcesBadge({ sources }: { sources: WebSource[] }) {
     if (!previewHosts.includes(h)) previewHosts.push(h)
     if (previewHosts.length >= 4) break
   }
+
+  // Mobile : puce douce + feuille « Sources » (glisser pour fermer), lignes décalées.
+  if (mobile) return (
+    <div style={{ marginTop: 2 }}>
+      <AimPress onClick={() => setOpen(true)} ariaLabel={t('aip.sources.label')} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, height: 34, padding: '0 12px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          {t('aip.sources.label')}
+          <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            {previewHosts.map((h, i) => (
+              <span key={h} style={{ marginLeft: i === 0 ? 0 : -6, display: 'inline-flex', borderRadius: '50%', boxShadow: '0 0 0 2px var(--surface-chip)' }}>
+                <SourceFavicon url={`https://${h}`} size={18} />
+              </span>
+            ))}
+          </span>
+          <span className="aimc-num" style={{ color: 'var(--text-mid)', fontWeight: 600 }}>{sources.length}</span>
+        </span>
+      </AimPress>
+      {open && (
+        <MobileSheet
+          onClose={() => setOpen(false)}
+          surface="var(--surface-card)"
+          collapsedMaxVh={0.62}
+          zIndex={10000}
+          renderHeader={close => <AimSheetHeader title={t('aip.sources.label')} onClose={close} />}
+        >
+          <div style={{ padding: '0 8px 16px' }}>
+            <AimStagger className="aim-group" style={{ ...AI_PORTAL_VARS }}>
+              {sources.map((src, i) => (
+                <AimStaggerItem key={i}>
+                  {i > 0 && <div className="aim-sep" style={{ marginLeft: 50 }} />}
+                  <a href={src.url} target="_blank" rel="noopener noreferrer" className="aimc-press"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 60, padding: '10px 14px', textDecoration: 'none', color: 'var(--text)' }}>
+                    <SourceFavicon url={src.url} size={24} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: 15, fontWeight: 600, lineHeight: 1.3 }}>{src.title || hostFromUrl(src.url)}</span>
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hostFromUrl(src.url)}</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M7 17 17 7M8 7h9v9" /></svg>
+                  </a>
+                </AimStaggerItem>
+              ))}
+            </AimStagger>
+          </div>
+        </MobileSheet>
+      )}
+    </div>
+  )
 
   return (
     <div style={{ marginLeft: 34, marginTop: 6 }}>
@@ -746,9 +792,25 @@ function ChartThumb({ spec }: { spec: ChartSpec }) {
 // Carte cliquable (façon « artifact » Claude) → ouvre le graphe en grand.
 function ChartCard({ spec }: { spec: ChartSpec }) {
   const { t } = useI18n()
+  const mobile = useIsMobile()
   const [open, setOpen] = useState(false)
   const title = spec.title || t('aip.chart.chart')
   const sub = `${t('aip.chart.interactive')} · ${spec.series[0].points.length} ${t('aip.chart.points')}${spec.y_unit ? ' · ' + spec.y_unit : ''}`
+  // Mobile : carte blanche + sparkline ; vue détaillée en bottom sheet.
+  if (mobile) return (
+    <div style={{ margin: '4px 0' }}>
+      <ChartCardMobile
+        title={title}
+        meta={sub}
+        values={spec.series[0].points.map(p => p.y)}
+        type={spec.type ?? 'line'}
+        viewer={<>
+          <ChartBlock spec={spec} embedded />
+          <div style={{ fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', marginTop: 8 }}>{t('aip.chart.tapBarOrPoint')}</div>
+        </>}
+      />
+    </div>
+  )
   return (
     <>
       <button
@@ -1520,6 +1582,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
   const [saving, setSaving] = useState(false)
   const [done,   setDone]   = useState(false)
   const [errMsg, setErrMsg] = useState('')
+  const mobile = useIsMobile()
 
   const isCycling = /cycling|velo|vélo|aviron|rowing/.test(session.sport)
   const isRunLike  = /running|natation|swim|run/.test(session.sport)
@@ -1582,11 +1645,59 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
       })
       if (error) { setErrMsg(error.message); setSaving(false); return }
       setDone(true)
+      hapticNative('success')
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : t('aip.networkError'))
       setSaving(false)
     }
   }
+
+  // Mobile : bottom sheet (glisser pour fermer), champ doux, pilule cyan.
+  if (mobile) return (
+    <MobileSheet
+      onClose={onClose}
+      surface="var(--surface-card)"
+      zIndex={10000}
+      renderHeader={close => <AimSheetHeader title={t('aip.lib.addToLibrary')} onClose={close} />}
+    >
+      <div className="aimc" style={{ padding: '4px 12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <AimCardStyles />
+        {done ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '12px 0 4px' }}>
+            <span style={{ width: 56, height: 56, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'color-mix(in srgb, var(--success) 14%, transparent)', color: 'var(--success)', animation: 'aim_pop 0.45s cubic-bezier(0.32,0.72,0,1) both' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
+            </span>
+            <style>{'@keyframes aim_pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}@media (prefers-reduced-motion: reduce){[style*="aim_pop"]{animation:none!important}}'}</style>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12 }}>{t('aip.lib.added')}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 4 }}>{t('aip.lib.findInLibrary')}</div>
+            <div style={{ display: 'flex', width: '100%', marginTop: 16 }}><AimPill onClick={onClose} flex={1}>{t('aip.close')}</AimPill></div>
+          </div>
+        ) : (
+          <>
+            <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>
+              {t('aip.lib.sessionName')}
+              <input
+                value={nom}
+                onChange={e => setNom(e.target.value)}
+                placeholder={t('aip.lib.sessionNamePlaceholder')}
+                style={{ display: 'block', width: '100%', marginTop: 6, minHeight: 50, padding: '0 14px', borderRadius: 'var(--r-md)', border: 'none', outline: 'none', background: 'var(--aimc-grp)', color: 'var(--text)', fontSize: 16, fontWeight: 500, boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}
+              />
+            </label>
+            <div className="aimc-tile" style={{ padding: '12px 14px' }}>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{t(SPORT_LABELS_FR[session.sport] ?? session.sport)} · {formatDuration(session.total_min)}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>
+                {t('aip.lib.effortBlocks', { n: session.blocks.filter(b => b.rawValue !== 0).length })} · {t('aip.lib.intensity')} {deriveIntensite().toLowerCase()}
+              </div>
+            </div>
+            {errMsg && <p role="alert" style={{ fontSize: 14, color: 'var(--danger)', margin: 0 }}>{errMsg}</p>}
+            <AimPill variant="primary" onClick={() => void save()} disabled={saving} style={{ minHeight: 52 }}>
+              {saving ? t('aip.saving') : t('aip.lib.addToLibrary')}
+            </AimPill>
+          </>
+        )}
+      </div>
+    </MobileSheet>
+  )
 
   return (
     <div
@@ -1656,6 +1767,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
 
 function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean }) {
   const { t } = useI18n()
+  const mobile = useIsMobile()
   const [session,      setSession]      = useState<ParsedSession | null>(null)
   const [editMode,     setEditMode]     = useState(false)
   const [editedBlocks, setEditedBlocks] = useState<SessionBlock[]>([])
@@ -1698,19 +1810,23 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
 
   return (
     <>
-      <div style={{
+      <div className={mobile ? 'aimc' : undefined} style={mobile ? {
+        borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', overflow: 'hidden', marginLeft: 0,
+      } : {
         borderRadius: 'var(--r-md)', border: '1px solid var(--ai-border)',
         background: 'var(--ai-bg2)', overflow: 'hidden',
         marginLeft: 34,
       }}>
-        <div style={{
+        <div style={mobile ? {
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 4px',
+        } : {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '9px 14px',
           background: 'linear-gradient(90deg,var(--ai-accent-dim) 0%,transparent 100%)',
           borderBottom: '1px solid var(--ai-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: mobile ? 16 : 12, fontWeight: mobile ? 800 : 700, color: 'var(--ai-text)' }}>
               {sportLabel} · {formatDuration(total)}
             </span>
             <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-sm)', background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontWeight: 700, letterSpacing: '0.05em' }}>
@@ -1765,10 +1881,10 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
                 const zCol = SESSION_ZONE_COLORS[(b.zone - 1) % 5]
                 const isRecupRow = b.rawValue === 0
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 'var(--r-sm)' }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: zCol, flexShrink: 0, opacity: isRecupRow ? 0.4 : 1 }} />
-                    <span style={{ flex: 1, fontSize: 11.5, color: isRecupRow ? 'var(--ai-dim)' : 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
-                    <span style={{ fontSize: 10.5, fontFamily: 'var(--font-body)', color: 'var(--ai-mid)', flexShrink: 0 }}>{b.duration_min}′</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: mobile ? 8 : 6, padding: mobile ? '7px 8px' : '3px 8px', borderRadius: 'var(--r-sm)' }}>
+                    <div style={{ width: mobile ? 7 : 6, height: mobile ? 7 : 6, borderRadius: '50%', background: zCol, flexShrink: 0, opacity: isRecupRow ? 0.4 : 1 }} />
+                    <span style={{ flex: 1, fontSize: mobile ? 14 : 11.5, color: isRecupRow ? 'var(--ai-dim)' : 'var(--ai-text)', lineHeight: 1.3 }}>{b.label}</span>
+                    <span style={{ fontSize: mobile ? 13 : 10.5, fontFamily: 'var(--font-body)', color: 'var(--ai-mid)', flexShrink: 0 }}>{b.duration_min}′</span>
                     <span style={{ fontSize: 10, color: zCol, fontWeight: 700, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>
                       {b.intensity.split(' ')[0]}
                     </span>
@@ -1810,6 +1926,21 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
           </div>
         )}
 
+        {mobile ? (
+          <div style={{ display: 'flex', gap: 8, padding: '4px 16px 16px' }}>
+            {editMode ? (
+              <>
+                <AimPill onClick={() => setEditMode(false)} flex={1}>{t('aip.cancel')}</AimPill>
+                <AimPill variant="primary" onClick={confirmEdit} flex={2} hapticKind="light">{t('aip.confirmEdits')}</AimPill>
+              </>
+            ) : (
+              <>
+                <AimPill onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }} flex={1}>{t('aip.edit')}</AimPill>
+                <AimPill variant="primary" onClick={() => setShowModal(true)} flex={2} hapticKind="light">{t('aip.lib.addToLibrary')}</AimPill>
+              </>
+            )}
+          </div>
+        ) : (
         <div style={{ display: 'flex', gap: 6, padding: '0 10px 11px' }}>
           {editMode ? (
             <>
@@ -1831,6 +1962,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
             </>
           )}
         </div>
+        )}
       </div>
 
       {showModal && (
@@ -1859,70 +1991,7 @@ function Dots() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-// MODEL EFFIGY — SVG animé identifiant le modèle actif
-// ══════════════════════════════════════════════════════════════
-
-function ModelEffigy({ model, isAnimating, size = 18, color }: {
-  model: THWModel
-  isAnimating: boolean
-  size?: number
-  color?: string   // override couleur (ex: 'var(--ai-mid)' pour monochrome)
-}) {
-  const cfg = MODEL_CONFIGS[model]
-  const animName  = isAnimating ? `${model}_effigy_on` : `${model}_effigy_off`
-  const animSpeed = isAnimating
-    ? (model === 'hermes' ? '0.65s' : model === 'zeus' ? '1.1s' : '1.5s')
-    : (model === 'zeus' ? '2.5s' : '3.5s')
-
-  const svgStyle: React.CSSProperties = {
-    color: color ?? cfg.color,
-    display: 'block',
-    flexShrink: 0,
-    animation: `${animName} ${animSpeed} ease-in-out infinite`,
-  }
-
-  if (model === 'hermes') return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
-      {/* Staff */}
-      <line x1="10" y1="2.5" x2="10" y2="17.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      {/* Left wing */}
-      <path d="M10 4.5 Q8 2.5 5.5 3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
-      {/* Right wing */}
-      <path d="M10 4.5 Q12 2.5 14.5 3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
-      {/* Snake 1 */}
-      <path d="M10 6 C13.5 7 13.5 9.5 10 10.5 C6.5 11.5 6.5 14 10 15" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-      {/* Snake 2 */}
-      <path d="M10 6 C6.5 7 6.5 9.5 10 10.5 C13.5 11.5 13.5 14 10 15" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-    </svg>
-  )
-
-  if (model === 'athena') return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
-      {/* Left wing */}
-      <path d="M10 12 Q6.5 9.5 4 11 Q4.5 14 8 13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" fill="currentColor" fillOpacity="0.15"/>
-      {/* Right wing */}
-      <path d="M10 12 Q13.5 9.5 16 11 Q15.5 14 12 13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" fill="currentColor" fillOpacity="0.15"/>
-      {/* Head */}
-      <circle cx="10" cy="8" r="4" stroke="currentColor" strokeWidth="1.3"/>
-      {/* Eyes */}
-      <circle cx="8.5" cy="7.5" r="1.1" fill="currentColor"/>
-      <circle cx="11.5" cy="7.5" r="1.1" fill="currentColor"/>
-      {/* Ear tufts */}
-      <path d="M8.5 4 L7.5 2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-      <path d="M11.5 4 L12.5 2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  )
-
-  // Zeus — éclair
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" style={svgStyle}>
-      <path d="M12.5 1.5 L5.5 11 L10.5 11 L7.5 18.5 L14.5 9 L9.5 9 Z"
-        stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round"
-        fill="currentColor" fillOpacity="0.2"/>
-    </svg>
-  )
-}
+// MODEL EFFIGY — shuriken du modèle (3 / 4 / 6 branches) : voir ./ModelEffigy.
 
 // ── AthletePicker — agent Coach : cible l'athlète dont on parle ──────────
 export interface CoachTarget { id: string; name: string; avatar: string | null }
@@ -2027,12 +2096,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
           transition: 'background 0.12s, border-color 0.12s',
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-          alt={cfg.name}
-          style={{ width: 19, height: 19, objectFit: 'contain', opacity: 0.75 }}
-        />
+        <ModelEffigy model={model} tint={false} size={19} title={cfg.name} style={{ opacity: 0.75 }} />
       </PressPop>
 
       {/* Liste des modèles — dropdown (desktop) ou bottom sheet (mobile) */}
@@ -6218,6 +6282,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
   const { t } = useI18n()
+  const isMobileUI = useIsMobile()
   type Phase = 'loading' | 'gate' | 'type_select' | 'select' | 'period_select' | 'year_select' | 'generating' | 'result' | 'period_result'
   type AnalysisType = 'training' | 'race' | 'period' | 'year'
   const [phase, setPhase] = useState<Phase>('loading')
@@ -7063,6 +7128,20 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
       t,
     )
 
+    if (isMobileUI) return (
+      <TrainingReportMobile
+        report={report}
+        mainAct={mainAct}
+        secondAct={selected[1]}
+        zones={ctxZones}
+        compareMode={compareMode}
+        followUps={followUpActions}
+        onFollowUp={handleFollowUp}
+        onClose={onCancel}
+        showRoute
+      />
+    )
+
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -7493,11 +7572,163 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 // rend exactement le même contenu que la phase 'result' de AnalyzeTrainingFlow,
 // sans le bouton "Fermer".
 
+
+// ══════════════════════════════════════════════════════════════
+// MOBILE — rapport d'analyse de séance (maquette « a4-analyse ») :
+// titre + date · sport, tag de verdict · 4 tuiles KPI (comptent jusqu'à
+// leur valeur) · graphes · barre « Zones vs objectif » · analyse du coach ·
+// conseils en tuiles · relances en puces.
+// ══════════════════════════════════════════════════════════════
+type ReportActBase = TrainingReportData['activities'][number]
+type ReportAct = Omit<ReportActBase, 'streams'> & { streams?: ReportActBase['streams'] | null }
+const VERDICT_TINT: Record<string, string> = { excellent: 'var(--success)', bon: 'var(--primary)', passable: 'var(--zone-4)', a_revoir: 'var(--danger)' }
+
+function TrainingReportMobile({ report, mainAct, secondAct, zones, compareMode, followUps, onFollowUp, onClose, showRoute = false }: {
+  report: TrainingReport
+  mainAct: ReportAct
+  secondAct?: ReportAct
+  zones: TrainingReportData['zones']
+  compareMode: boolean
+  followUps?: FollowUpAction[]
+  onFollowUp?: (a: FollowUpAction) => void
+  onClose?: () => void
+  showRoute?: boolean
+}) {
+  const { t } = useI18n()
+  const verdictLabels: Record<string, string> = { excellent: t('aip.at.verdictExcellent'), bon: t('aip.at.verdictGood'), passable: t('aip.at.verdictOk'), a_revoir: t('aip.at.verdictReview') }
+  const sportLabel = t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)
+  let dateLabel = mainAct.started_at.slice(0, 10)
+  try { dateLabel = new Date(mainAct.started_at).toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' }) } catch { /* ignore */ }
+  const k = report.kpis
+  const dec = (v: number, n: number) => v.toLocaleString(currentLocale(), { minimumFractionDigits: n, maximumFractionDigits: n })
+  const zonesOn = (report.zone_distribution ?? []).filter(z => z.pct > 0)
+  const blocks = [
+    { title: t('aip.at.execution'), text: report.interpretation?.execution },
+    { title: t('aip.wp.recovery'), text: report.interpretation?.contexte_recuperation },
+    ...(report.interpretation?.plan_vs_realise ? [{ title: t('aip.at.planVsActual'), text: report.interpretation.plan_vs_realise }] : []),
+    { title: t('aip.at.historicalTrend'), text: report.interpretation?.tendance_historique },
+  ].filter(b => b.text && b.text.trim() !== '')
+  return (
+    <AimCard>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25, color: 'var(--text)' }}>{mainAct.title ?? sportLabel}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2, textTransform: 'capitalize' }}>{dateLabel} · {sportLabel}</div>
+        </div>
+        <AimTag tint={VERDICT_TINT[report.verdict] ?? 'var(--primary)'}>{verdictLabels[report.verdict] ?? report.verdict}</AimTag>
+      </div>
+
+      <AimStatGrid cols={4} style={{ marginTop: 12 }}>
+        <AimStat label={t('aip.stream.durationKpi')} value={fmtDuration(Math.round((k.duree_min ?? 0) * 60))} />
+        <AimStat label={t('aip.stream.distance')} value={k.distance_km != null ? dec(k.distance_km, 1) : '—'} sub={k.distance_km != null ? 'km' : undefined} />
+        <AimStat label="TSS" value={k.tss != null ? String(Math.round(k.tss)) : '—'} />
+        <AimStat label={t('ai2.report.efficiency')} value={k.efficiency_index != null ? dec(k.efficiency_index, 2) : '—'}
+          sub={k.ei_vs_average != null ? `${k.ei_vs_average > 0 ? '+' : ''}${dec(k.ei_vs_average, 1)} %` : undefined} />
+      </AimStatGrid>
+
+      {mainAct.streams && (
+        <div style={{ marginTop: 12 }}>
+          <StreamProfileChart streams={mainAct.streams} zones={zones} sport={mainAct.sport_type} />
+          {showRoute && mainAct.streams.latlng && mainAct.streams.latlng.length > 1 && <RouteMap latlng={mainAct.streams.latlng} />}
+          {mainAct.streams.heartrate && report.cardiac_drift_pct != null && (
+            <CardiacDriftChart heartrate={mainAct.streams.heartrate} driftPct={report.cardiac_drift_pct} />
+          )}
+        </div>
+      )}
+
+      {zonesOn.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('ai2.report.zonesVsTarget')}</div>
+          <AimSegBar height={12} style={{ marginTop: 6 }} segments={zonesOn.map(z => ({ key: z.zone, flex: z.pct, color: z.color }))} />
+          {(report.zone_target ?? []).length > 0 && (
+            <AimSegBar height={5} style={{ marginTop: 4, opacity: 0.45 }}
+              segments={(report.zone_target ?? []).filter(z => z.pct > 0).map(z => ({ key: z.zone, flex: z.pct, color: zonesOn.find(x => x.zone === z.zone)?.color ?? 'var(--text-dim)' }))} />
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 6 }}>
+            {zonesOn.filter(z => z.pct >= 5).map(z => (
+              <span key={z.zone} className="aimc-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: z.color }} />{z.zone} {Math.round(z.pct)} %
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {compareMode && secondAct?.streams && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', marginBottom: 4 }}>{t('aip.at.sessionB')} — {secondAct.title ?? t(AE_SPORT_LABELS[secondAct.sport_type] ?? secondAct.sport_type)}</div>
+          <StreamProfileChart streams={secondAct.streams} zones={zones} sport={secondAct.sport_type} />
+        </div>
+      )}
+
+      {blocks.map((b, i) => (
+        <div key={i} style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', marginBottom: 2 }}>{b.title}</div>
+          <div style={{ fontSize: 15, lineHeight: 1.5 }}><MsgContent text={b.text!} /></div>
+        </div>
+      ))}
+
+      {report.comparison && (
+        <div className="aimc-tile" style={{ marginTop: 14, padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 800 }}>{t('aip.at.comparison')}</span>
+            <AimTag tint={report.comparison.progression === 'progression' ? 'var(--success)' : report.comparison.progression === 'regression' ? 'var(--danger)' : 'var(--text-mid)'}>
+              {report.comparison.progression === 'progression' ? `↑ ${t('aip.at.progression')}` : report.comparison.progression === 'regression' ? `↓ ${t('aip.at.regression')}` : `= ${t('aip.at.stable')}`}
+            </AimTag>
+          </div>
+          {(report.comparison.deltas ?? []).map((d, i) => (
+            <div key={i} className="aimc-num" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
+              <span style={{ flex: 1, minWidth: 0, color: 'var(--text-mid)' }}>{d.metrique}</span>
+              <span style={{ color: 'var(--text)' }}>{d.a ?? '—'} → {d.b ?? '—'}</span>
+              <span style={{ fontWeight: 800, color: (d.delta ?? '').startsWith('+') ? 'var(--success)' : (d.delta ?? '').startsWith('-') ? 'var(--danger)' : 'var(--text-mid)' }}>{d.delta ?? '—'}</span>
+            </div>
+          ))}
+          {report.comparison.verdict && <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.4 }}>{report.comparison.verdict}</p>}
+        </div>
+      )}
+
+      {(report.conseils ?? []).length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', marginBottom: 6 }}>{t('aip.at.optimizationTips')}</div>
+          <AimStagger style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {(report.conseils ?? []).map((c, i) => (
+              <AimStaggerItem key={i} className="aimc-tile" style={{ padding: '10px 12px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>{c.label}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.4 }}>{c.detail}</div>
+              </AimStaggerItem>
+            ))}
+          </AimStagger>
+        </div>
+      )}
+
+      {followUps && followUps.length > 0 && onFollowUp && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+          {followUps.map((a, i) => (
+            <AimPill key={i} onClick={() => onFollowUp(a)} hapticKind="light" style={{ minHeight: 40, padding: '0 14px', fontSize: 14, whiteSpace: 'normal', textAlign: 'left' }}>{a.label}</AimPill>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+        {t('aip.sources')} : {(report.sources_used ?? []).join(' · ')} · {t('aip.test.confidence')} : {report.confiance}
+      </div>
+
+      {onClose && (
+        <div style={{ display: 'flex', marginTop: 12 }}>
+          <AimPill onClick={onClose} flex={1}>{t('aip.close')}</AimPill>
+        </div>
+      )}
+    </AimCard>
+  )
+}
+
 function TrainingReportView({ data }: { data: TrainingReportData }) {
   const { t } = useI18n()
+  const mobile = useIsMobile()
   const { report, activities, zones, compareMode } = data
   const mainAct = activities[0]
   if (!mainAct) return null
+  if (mobile) return <TrainingReportMobile report={report} mainAct={mainAct} secondAct={activities[1]} zones={zones} compareMode={compareMode} />
 
   const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
   const verdictLabels: Record<string, string> = { excellent: t('aip.at.verdictExcellent'), bon: t('aip.at.verdictGood'), passable: t('aip.at.verdictOk'), a_revoir: t('aip.at.verdictReview') }
@@ -11452,6 +11683,46 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
 function SBSessionCard({ session }: { session: SBSession }) {
   const sportObj = SB_SPORTS.find(s => s.id === session.sport)
   const color    = sportObj?.color ?? '#5b6fff'
+  const mobile = useIsMobile()
+
+  // Mobile : carte blanche (mock8) — tags teintés, 3 tuiles, profil, blocs en tuiles décalées.
+  if (mobile) return (
+    <AimCard>
+      <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{session.nom}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+        <AimTag tint={color}>{sportObj?.label ?? session.sport}</AimTag>
+        <AimTag tint={INTENSITE_COLOR[session.intensite] ?? 'var(--primary)'}>{session.intensite}</AimTag>
+        {(session.tags ?? []).slice(0, 3).map(tag => <AimTag key={tag} tint="var(--text-mid)">{tag}</AimTag>)}
+      </div>
+      <AimStatGrid cols={3} style={{ marginTop: 12, gap: 8 }}>
+        <AimStat label="Durée" value={`${session.duree_estimee} min`} />
+        <AimStat label="TSS" value={String(session.tss_estime)} />
+        <AimStat label="RPE" value={`${session.rpe_cible}/10`} />
+      </AimStatGrid>
+      <div style={{ marginTop: 12 }}><SBIntensityChart blocs={session.blocs} sport={session.sport} /></div>
+      {session.description && <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.5 }}>{session.description}</p>}
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', margin: '14px 0 6px' }}>Structure — {session.blocs.length} blocs</div>
+      <AimStagger style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {session.blocs.map((bloc, i) => (
+          <AimStaggerItem key={i} className="aimc-tile" style={{ padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{bloc.nom}</span>
+              <span className="aimc-num" style={{ fontSize: 13, color: 'var(--text-mid)', flexShrink: 0 }}>
+                {bloc.repetitions > 1 ? `${bloc.repetitions}× ` : ''}{bloc.duree_effort} min{bloc.recup > 0 ? ` / ${bloc.recup} min récup` : ''}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {(bloc.zone_effort ?? []).map(z => <AimTag key={z} tint="var(--primary)">{z}</AimTag>)}
+              {bloc.watts != null && <AimTag tint="var(--zone-4)">{bloc.watts} W</AimTag>}
+              {bloc.allure_cible && <AimTag tint="var(--success)">{bloc.allure_cible}</AimTag>}
+              {bloc.fc_cible != null && <AimTag tint="var(--danger)">{bloc.fc_cible} bpm</AimTag>}
+            </div>
+            {bloc.consigne && <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '6px 0 0', lineHeight: 1.4 }}>{bloc.consigne}</p>}
+          </AimStaggerItem>
+        ))}
+      </AimStagger>
+    </AimCard>
+  )
 
   return (
     <div style={{ padding: '4px 0' }}>
@@ -15443,6 +15714,23 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
       description: `${sevLabel} · ${String(inp.zone ?? '—')}${side}` }
   }
   return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
+}
+
+// Mobile : ligne de la carte « modifications à valider » (tuile teintée).
+const TOOL_KIND: Record<string, ToolKind> = {
+  add_session: 'add', move_session: 'move', update_session: 'edit', delete_session: 'delete',
+  add_week: 'week', update_plan_periodisation: 'phases', create_training_plan: 'plan',
+  update_athlete_profile: 'profile', create_injury: 'injury',
+}
+const TOOL_TINT: Record<ToolKind, string> = {
+  add: 'var(--success)', move: 'var(--primary)', edit: 'var(--zone-4)', delete: 'var(--danger)',
+  week: 'var(--success)', phases: 'var(--zone-4)', plan: 'var(--primary)', profile: 'var(--cat-perso)',
+  injury: 'var(--danger)', other: 'var(--text-mid)',
+}
+function toolCallRow(tc: PendingToolCall): ToolRow {
+  const m = toolCallMeta(tc)
+  const kind = TOOL_KIND[tc.tool_name] ?? 'other'
+  return { kind, tint: TOOL_TINT[kind], title: m.label, sub: m.description.replace(/^⚠\s*/, '') }
 }
 
 // Composant : N tool calls empilés + boutons Appliquer / Annuler partagés
@@ -20446,8 +20734,9 @@ FORMAT JSON STRICT :
 
 // ── RaceStrategyView ─────────────────────────────────────────
 // Persisted view rendered from msg.raceStrategy in conversation history
-function RaceStrategyView({ data }: { data: RaceStrategyData }) {
+function RaceStrategyView({ data, bare = false }: { data: RaceStrategyData; bare?: boolean }) {
   const { t } = useI18n()
+  const mobile = useIsMobile()
   const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
   const { result, raceName } = data
   const vc = result.verdict_objectif.status === 'realiste' ? '#22c55e' : result.verdict_objectif.status === 'ambitieux' ? '#f97316' : '#ef4444'
@@ -20455,8 +20744,37 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
   const scenarioColor = (nom: string) => nom === 'conservateur' ? '#22c55e' : nom === 'optimal' ? 'var(--ai-accent)' : '#f97316'
   const currentScenario = result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0] ?? null
 
+  // Mobile : en-tête « mock8 » (titre, tag de verdict, tuiles de forme) dans une
+  // carte blanche ; le détail des scénarios reprend le rendu existant (bare).
+  if (mobile && !bare) {
+    const vTint = result.verdict_objectif.status === 'realiste' ? 'var(--success)' : result.verdict_objectif.status === 'ambitieux' ? 'var(--zone-4)' : 'var(--danger)'
+    const f = result.forme_au_jour_j
+    return (
+      <AimCard>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{raceName}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>Stratégie · {data.raceDate}{data.goalTime ? ` · ${data.goalTime}` : ''}</div>
+          </div>
+          <AimTag tint={vTint}>{verdictLbl}</AimTag>
+        </div>
+        <p style={{ fontSize: 15, lineHeight: 1.5, margin: '10px 0 0', color: 'var(--text)' }}>{result.verdict_objectif.detail}</p>
+        <div className="aimc-num" style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 4 }}>{result.verdict_objectif.confiance}% confiance</div>
+        {(f.tsb_actuel != null || f.tsb_projete != null) && (
+          <AimStatGrid cols={2} style={{ marginTop: 12, gap: 8 }}>
+            {f.tsb_actuel != null && <AimStat label="TSB actuel" value={String(f.tsb_actuel)} />}
+            {f.tsb_projete != null && <AimStat label={t('aip.ui.tsbRaceDay')} value={String(f.tsb_projete)} />}
+          </AimStatGrid>
+        )}
+        {f.verdict && <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '8px 0 0', lineHeight: 1.45 }}>{f.verdict}</p>}
+        <div style={{ marginTop: 12 }}><RaceStrategyView data={data} bare /></div>
+      </AimCard>
+    )
+  }
+
   return (
     <div style={{ padding: '4px 0' }}>
+      {!bare && <>
       <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
         Stratégie · {raceName} · {data.raceDate}
       </p>
@@ -20491,13 +20809,20 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
           <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}>{result.forme_au_jour_j.verdict}</p>
         </div>
       )}
+      </>}
 
       {/* Scenario tabs */}
       {result.scenarios && result.scenarios.length > 0 && (
         <>
           <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
             {result.scenarios.map(s => (
-              <button key={s.nom} onClick={() => setActiveScenario(s.nom)} style={{
+              <button key={s.nom} onClick={() => { if (bare) hapticNative('light'); setActiveScenario(s.nom) }} className={bare ? 'aimc-press' : undefined} style={bare ? {
+                flex: 1, minHeight: 52, padding: '6px 4px', borderRadius: 'var(--r-md)', border: 'none', fontSize: 14, fontWeight: 800,
+                background: activeScenario === s.nom ? `color-mix(in srgb, ${scenarioColor(s.nom)} 14%, var(--surface-card))` : 'var(--aimc-grp)',
+                boxShadow: activeScenario === s.nom ? `inset 0 0 0 2px ${scenarioColor(s.nom)}` : 'none',
+                color: activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--text-mid)',
+                cursor: 'pointer', fontFamily: 'var(--font-body)', textTransform: 'capitalize', transition: 'background 0.22s ease, box-shadow 0.22s ease, color 0.22s ease',
+              } : {
                 flex: 1, padding: '7px 4px', borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: activeScenario === s.nom ? 700 : 400,
                 border: `1px solid ${activeScenario === s.nom ? scenarioColor(s.nom) : 'var(--ai-border)'}`,
                 background: activeScenario === s.nom ? `${scenarioColor(s.nom)}18` : 'var(--ai-bg2)',
@@ -20505,7 +20830,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
                 cursor: 'pointer', fontFamily: 'var(--font-body)', textTransform: 'capitalize',
               }}>
                 {s.nom}<br />
-                <span style={{ fontSize: 10, fontWeight: 400 }}>{s.objectif_temps} · {s.probabilite}%</span>
+                <span className={bare ? 'aimc-num' : undefined} style={{ fontSize: bare ? 12 : 10, fontWeight: bare ? 600 : 400 }}>{s.objectif_temps} · {s.probabilite}%</span>
               </button>
             ))}
           </div>
@@ -20888,10 +21213,28 @@ export default function AIPanel({
   // Feuille « Processus de réflexion » : id du message dont on affiche le
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
-  // Consentement IA : modale de disclosure (Anthropic) affichée avant le
-  // premier envoi. `pendingSendRef` mémorise l'appel à rejouer après accord.
+  // Consentement IA : feuille neutre affichée UNE fois — de préférence à la
+  // première ouverture du coach (pas au moment de poser une question). L'envoi
+  // reste bloqué sans accord ; `pendingSendRef` rejoue l'envoi après accord.
   const [aiConsentOpen, setAiConsentOpen] = useState(false)
   const pendingSendRef = useRef<null | (() => void)>(null)
+  const consentAskedRef = useRef(false)
+  useEffect(() => {
+    if (!open || !mounted || consentAskedRef.current) return
+    let alive = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    // Accord déjà donné sur un autre appareil → rapatrié, jamais redemandé.
+    void syncAIConsentFromAccount().then(ok => {
+      if (!alive) return
+      if (ok || aiConsentWithdrawn()) { consentAskedRef.current = true; return }
+      timer = setTimeout(() => {
+        if (!alive) return
+        consentAskedRef.current = true
+        if (!hasAIConsent()) setAiConsentOpen(true)
+      }, 700)
+    })
+    return () => { alive = false; if (timer) clearTimeout(timer) }
+  }, [open, mounted])
   // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
   // Nouvelle surpage Paramètres (style Claude) — section ciblée par l'avatar.
   // Sidebar desktop repliable.
@@ -21328,11 +21671,10 @@ export default function AIPanel({
     // bouton micro disparaîtrait à tort.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasAudioCtx = typeof window.AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined'
-    // Sur l'app native : AUCUN vocal pour l'instant (le micro plante l'app tant
-    // que la permission n'est pas fiable côté build iOS). On désactive donc la
-    // dictée ET la discussion vocale sur native → reviendra dans une version
-    // ultérieure avec une vraie solution native.
-    setDictationSupported(!isNativeApp() && !!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
+    // Sur l'app native : dictée UNIQUEMENT si le build déclare le micro
+    // (NEXT_PUBLIC_NATIVE_MIC=1 ⇔ NSMicrophoneUsageDescription présent dans
+    // Info.plist) — transcription Whisper progressive (pas de reco WKWebView).
+    setDictationSupported((!isNativeApp() || nativeMicEnabled()) && !!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
   }, [])
 
   // Signale l'ouverture/fermeture du panneau IA (la bulle « Mon coach » s'y masque).
@@ -22333,7 +22675,9 @@ export default function AIPanel({
   const confirmVoice = useCallback((text: string) => {
     setRecording(false)
     setInput(composeVoice(text))
-    setTimeout(() => areaRef.current?.focus(), 60)
+    // ■ : le texte reste dans le champ. Bureau → focus pour continuer à écrire ;
+    // mobile → pas de clavier qui surgit (on tape dans le champ si besoin).
+    if (window.matchMedia('(min-width: 768px)').matches) setTimeout(() => areaRef.current?.focus(), 60)
   }, [])
   // ↑ pendant la dictée (mobile) : on garde le texte transcrit et on envoie aussitôt.
   // `send` est déclaré plus bas → on passe par une ref (mise à jour à chaque rendu).
@@ -22351,6 +22695,9 @@ export default function AIPanel({
   }, [])
   const startVoice = useCallback(() => {
     voiceBaseRef.current = input   // fige le texte présent avant de dicter
+    hapticNative('light')
+    // Mobile : on range le clavier (la dictée écrit seule dans le champ).
+    if (!window.matchMedia('(min-width: 768px)').matches) areaRef.current?.blur()
     // DANS le geste : crée/réveille l'AudioContext (sinon iOS le laisse suspendu
     // → waveform figée). VoiceOverlay réutilisera ce contexte déjà « running ».
     try {
@@ -22363,6 +22710,23 @@ export default function AIPanel({
     } catch { /* ignore */ }
     setRecording(true)
   }, [input])
+
+  // Pendant la dictée le texte arrive sans onChange → le champ grandit ici,
+  // en douceur (hauteur animée depuis la valeur courante), et reste calé en bas.
+  useEffect(() => {
+    const el = areaRef.current
+    if (!el) return
+    if (!recording) { el.style.transition = ''; return }
+    const prev = el.offsetHeight
+    el.style.transition = 'none'
+    el.style.height = 'auto'
+    const target = Math.min(el.scrollHeight, 200)
+    el.style.height = prev + 'px'
+    void el.offsetHeight
+    el.style.transition = 'height 0.24s cubic-bezier(0.32,0.72,0,1)'
+    el.style.height = target + 'px'
+    el.scrollTop = el.scrollHeight
+  }, [input, recording])
 
   // ── Création de plan : génération de l'aperçu (avant validation) ──
   const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
@@ -22539,8 +22903,8 @@ export default function AIPanel({
     const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '') || (hasImages ? `[${effImages.length} photo${effImages.length > 1 ? 's' : ''}]` : '')
     if (!displayText && !hasAttachment && !hasImages) return
 
-    // ── Barrière de consentement IA (avant tout premier transfert vers
-    // Anthropic). Sans accord, on mémorise l'envoi et on ouvre la modale ;
+    // ── Barrière de consentement IA (avant tout premier transfert vers notre
+    // partenaire d'IA). Sans accord, on mémorise l'envoi et on ouvre la feuille ;
     // l'envoi est rejoué à l'acceptation. Le texte saisi n'est pas effacé. ──
     if (!hasAIConsent()) {
       pendingSendRef.current = () => { void send(presetDisplay, presetApi, opts) }
@@ -22558,7 +22922,13 @@ export default function AIPanel({
       setToolApplyError(null)
       setActiveQA(null)
       setQuotedText(null)
-      if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
+      if (areaRef.current) {
+        const el = areaRef.current
+        el.style.height = 'auto'
+        // Mobile : on ne (ré)ouvre PAS le clavier après un envoi vocal — on ne
+        // garde le focus que s'il était déjà dans le champ.
+        if (isDesktop || document.activeElement === el) el.focus()
+      }
     }
 
     let conv = targeted ?? active
@@ -23719,6 +24089,7 @@ export default function AIPanel({
             <MobileTopBar
               model={model}
               modelLocked={loading}
+              generating={loading}
               showModel={activeAgent !== 'networks'}
               onMenu={() => setHistOpen(h => !h)}
               onModel={() => { haptic(); setModelSheetOpen(true) }}
@@ -23774,7 +24145,7 @@ export default function AIPanel({
               <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 8 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                  src={MODEL_LOGO[model]}
                   alt="THW Coach"
                   style={{
                     width: 48, height: 48, objectFit: 'contain',
@@ -24211,15 +24582,10 @@ export default function AIPanel({
                               <ThinkingPill sources={msg.webSources?.length} onOpen={() => setReasoningMsgId(msg.id)} />
                             )}
                             {showThinking && !isDesktop ? (
-                              <ThinkingPill since={active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')?.ts ?? msg.ts} sources={msg.webSources?.length} />
+                              <ThinkingPill model={model} since={active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')?.ts ?? msg.ts} sources={msg.webSources?.length} />
                             ) : showThinking ? (
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 2px' }}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                                  alt=""
-                                  style={{ width: 16, height: 16, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
-                                />
+                                <ModelEffigy model={model} tint={false} spinning size={16} style={{ animation: 'spin 2.4s linear infinite', opacity: 0.85 }} />
                                 <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Ok, je m&apos;en occupe…</span>
                               </div>
                             ) : (
@@ -24253,17 +24619,17 @@ export default function AIPanel({
                     )}
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
-                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
+                      <div style={{ marginLeft: aimIndent }}>
                         <SBSessionCard session={msg.sessionData} />
                       </div>
                     )}
                     {msg.role === 'assistant' && msg.trainingReport && (
-                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
+                      <div style={{ marginLeft: aimIndent }}>
                         <TrainingReportView data={msg.trainingReport} />
                       </div>
                     )}
                     {msg.role === 'assistant' && msg.raceStrategy && (
-                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
+                      <div style={{ marginLeft: aimIndent }}>
                         <RaceStrategyView data={msg.raceStrategy} />
                       </div>
                     )}
@@ -24271,6 +24637,9 @@ export default function AIPanel({
                       const wa = msg.weekAnalysis!
                       const d = wa.data
                       const rC = d.riskScore > 60 ? '#ef4444' : d.riskScore > 35 ? '#f97316' : '#22c55e'
+                      if (!isDesktop) return (
+                        <WeekCard d={d}><MsgContent text={wa.rawAnalysis} /></WeekCard>
+                      )
                       return (
                         <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
@@ -24355,12 +24724,9 @@ export default function AIPanel({
                           display: 'flex', alignItems: 'center', gap: 8, marginLeft: aimIndent, marginTop: 2,
                           animation: 'ai_msg_in 0.18s ease both',
                         }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                            alt=""
-                            style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
-                          />
+                          {isDesktop
+                            ? <ModelEffigy model={model} tint={false} spinning size={15} style={{ animation: 'spin 2.4s linear infinite', opacity: 0.85 }} />
+                            : <ModelEffigy model={model} spinning size={16} />}
                           <span className="ai-shimmer" style={{ fontSize: isDesktop ? 13.5 : 13, fontWeight: 600, fontFamily: isDesktop ? 'var(--font-display)' : 'var(--font-body)' }}>
                             {t(toolStatusByMsg[msg.id])}
                           </span>
@@ -24500,17 +24866,12 @@ export default function AIPanel({
 
                 {/* Thinking indicator — mobile : pilule « Réflexion · Ns » (chrono réel) */}
                 {!isDesktop && loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
-                  <ThinkingPill since={active.msgs[active.msgs.length - 1].ts} />
+                  <ThinkingPill model={model} since={active.msgs[active.msgs.length - 1].ts} />
                 )}
                 {/* Thinking indicator — 3-dot bounce (Claude style) */}
                 {isDesktop && loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '6px 0' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                      alt={model}
-                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
-                    />
+                    <ModelEffigy model={model} tint={false} size={20} title={model} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {(['aip-dot-1','aip-dot-2','aip-dot-3'] as const).map(cls => (
                         <span key={cls} className={cls} style={{
@@ -24522,8 +24883,8 @@ export default function AIPanel({
                   </div>
                 )}
                 {/* ── Tool call preview ─────────────────────── */}
-                {pendingToolCalls.length > 0 && (
-                  <div className={isDesktop ? undefined : 'aim-card'}>
+                {pendingToolCalls.length > 0 && (isDesktop ? (
+                  <div>
                     <ToolCallPreview
                       toolCalls={pendingToolCalls}
                       onApply={() => void applyToolCall()}
@@ -24532,7 +24893,15 @@ export default function AIPanel({
                       applyError={toolApplyError}
                     />
                   </div>
-                )}
+                ) : (
+                  <ToolCallsCard
+                    rows={pendingToolCalls.map(toolCallRow)}
+                    status={toolApplyStatus}
+                    error={toolApplyError}
+                    onApply={() => void applyToolCall()}
+                    onCancel={cancelToolCall}
+                  />
+                ))}
                 <div ref={endRef} />
               </div>
             )}
@@ -24746,6 +25115,7 @@ export default function AIPanel({
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
+                readOnly={recording && !isDesktop}
                 placeholder={recording
                   ? t('aip.speak_ph')
                   : activeQA
@@ -25047,6 +25417,38 @@ export default function AIPanel({
           ?? convs.flatMap(c => c.msgs).find(m => m.id === reasoningMsgId)
         const txt = rMsg?.thinking ?? ''
         const close = () => setReasoningMsgId(null)
+        const streamingThis = loading && active?.msgs[active.msgs.length - 1]?.id === reasoningMsgId
+        // Mobile : bottom sheet (glisser pour fermer), texte en Inter, shuriken du modèle.
+        if (!isDesktop) return (
+          <MobileSheet
+            onClose={close}
+            surface="var(--surface-card)"
+            collapsedMaxVh={0.7}
+            zIndex={10000}
+            renderHeader={rc => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 6px 16px', minHeight: 48 }}>
+                <ModelEffigy model={model} size={20} spinning={streamingThis} />
+                <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>{t('aip.ui.thinkingProcess')}</span>
+                <AimPress onClick={rc} ariaLabel={t('aip.ui.close')} style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-chip)', color: 'var(--text-mid)', display: 'grid', placeItems: 'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </span>
+                </AimPress>
+              </div>
+            )}
+          >
+            <div style={{ padding: '4px 12px 20px' }}>
+              {txt.trim() ? (
+                <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontSize: 16, lineHeight: 1.6, color: 'var(--text-mid)' }}>
+                  {txt}
+                  {streamingThis && <span className="ai-shimmer" style={{ fontWeight: 600 }}> ▍</span>}
+                </p>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 15 }}>{t('aip.ui.noReasoning')}</p>
+              )}
+            </div>
+          </MobileSheet>
+        )
         return createPortal(
           <>
             <style>{`
@@ -25265,102 +25667,23 @@ export default function AIPanel({
         </div>
       )}
 
-      {/* ── Modale de consentement IA (RGPD / Apple 5.1.1(i)) ──
-          Affichée avant le tout premier envoi. Divulgue le transfert des
-          messages + contexte d'entraînement vers Anthropic (Claude) et
-          demande l'accord explicite. Refus → aucun envoi. */}
+      {/* ── Consentement IA (RGPD / Apple 5.1.2(i)) — feuille unique, neutre ──
+          Divulgue le traitement des messages + contexte d'entraînement par
+          notre partenaire d'IA et demande l'accord UNE fois (local + compte).
+          « Plus tard » → aucun envoi. */}
       {aiConsentOpen && mounted && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10050,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
-            animation: 'ai_actions_in 0.16s ease',
-            padding: 'max(16px, env(safe-area-inset-top)) 14px calc(env(safe-area-inset-bottom) + 16px)',
+        <AIConsentSheet
+          isDesktop={isDesktop}
+          model={model}
+          onAccept={() => {
+            setAIConsent(true)
+            setAiConsentOpen(false)
+            const replay = pendingSendRef.current
+            pendingSendRef.current = null
+            if (replay) setTimeout(replay, 0)
           }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: 460,
-              background: 'var(--ai-bg)', color: 'var(--ai-text)',
-              borderRadius: 'var(--r-lg)',
-              border: '1px solid var(--ai-border, rgba(127,127,127,0.16))',
-              boxShadow: '0 18px 60px rgba(0,0,0,0.34)',
-              padding: '24px 22px 20px',
-              marginBottom: 'env(safe-area-inset-bottom)',
-              animation: 'ai_slidein 0.22s cubic-bezier(0.22,1,0.36,1)',
-            }}
-          >
-            <div style={{
-              width: 46, height: 46, borderRadius: 'var(--r-md)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'color-mix(in srgb, var(--ai-text) 8%, transparent)',
-              marginBottom: 14,
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3 3 3 0 0 0-1 5.83V17a3 3 0 0 0 3 3h.17A3 3 0 0 0 12 22a3 3 0 0 0 2.83-2H15a3 3 0 0 0 3-3v-2.17A3 3 0 0 0 17 6a3 3 0 0 0-3-3 3 3 0 0 0-2-1Z"/>
-              </svg>
-            </div>
-            <h2 style={{ fontSize: 19, fontWeight: 700, margin: '0 0 8px', lineHeight: 1.25 }}>
-              Ton coach IA utilise Anthropic
-            </h2>
-            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 10px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
-              Pour générer les réponses de ton coach, tes messages et le contexte
-              d'entraînement pertinent (sport, objectifs, extraits de tes séances)
-              sont transmis à <strong>Anthropic</strong> (modèles Claude), notre
-              fournisseur d'IA.
-            </p>
-            <p style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 6px', color: 'color-mix(in srgb, var(--ai-text) 78%, transparent)' }}>
-              Anthropic n'utilise pas ces échanges pour entraîner ses modèles. Tu
-              peux retirer ton accord à tout moment dans les réglages (l'assistant
-              est alors désactivé).
-            </p>
-            <a
-              href="/site/confidentialite.html"
-              target="_blank"
-              rel="noopener"
-              style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-accent, #5b6fff)', textDecoration: 'none' }}
-            >
-              Lire la politique de confidentialité →
-            </a>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 20 }}>
-              <button
-                onClick={() => {
-                  setAIConsent(true)
-                  setAiConsentOpen(false)
-                  const replay = pendingSendRef.current
-                  pendingSendRef.current = null
-                  if (replay) setTimeout(replay, 0)
-                }}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: 'var(--r-md)', border: 'none',
-                  background: 'var(--ai-text)', color: 'var(--ai-bg)',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                Accepter et continuer
-              </button>
-              <button
-                onClick={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
-                style={{
-                  width: '100%', padding: '13px', borderRadius: 'var(--r-md)',
-                  border: '1px solid var(--ai-border, rgba(127,127,127,0.18))',
-                  background: 'transparent', color: 'var(--ai-text)',
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                Refuser
-              </button>
-            </div>
-          </div>
-        </div>
+          onLater={() => { setAiConsentOpen(false); pendingSendRef.current = null }}
+        />
       )}
     </>,
     document.body

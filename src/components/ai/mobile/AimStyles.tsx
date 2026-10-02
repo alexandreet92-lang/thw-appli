@@ -54,6 +54,9 @@ const CSS = `
     margin-left: 0 !important;
   }
   .aim-card:empty, .aim-cardframe:empty { display: none; }
+  /* Apparition douce (montée + fondu, ressort iOS) des cartes du fil. */
+  @keyframes aim_rise { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+  .aim-card, .aim-cardframe > :first-child:not(.aimc) { animation: aim_rise 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
   /* Barre d'actions des messages : toujours visible au tactile, cibles 44 px. */
   .aim-msg-acts { gap: 0 !important; margin-left: -13px; }
@@ -74,10 +77,17 @@ const CSS = `
   html.dark .aip-input-wrap.aim-composer {
     box-shadow: 0 0 0 1px var(--border), var(--shadow-capsule) !important;
   }
-  html .aip-input-wrap.aim-composer:focus-within, html.dark .aip-input-wrap.aim-composer:focus-within {
-    border: none !important;
-    box-shadow: 0 0 0 1.5px var(--primary-dim), var(--shadow-capsule) !important;
+  /* Jamais d'anneau / de bordure de focus sur le composeur mobile (façon Claude). */
+  html .aip-input-wrap.aim-composer:focus-within {
+    border: none !important; outline: none !important;
+    box-shadow: var(--shadow-capsule) !important;
   }
+  html.dark .aip-input-wrap.aim-composer:focus-within {
+    border: none !important; outline: none !important;
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-capsule) !important;
+  }
+  .aip-input-wrap.aim-composer .aip-textarea { color: var(--text) !important; caret-color: var(--primary); }
+  .aip-input-wrap.aim-composer .aip-textarea:read-only { cursor: default; }
   .aip-input-wrap.aim-composer .aip-textarea {
     font-size: 16px !important; padding: 14px 16px 4px !important; min-height: 48px !important;
   }
@@ -101,7 +111,7 @@ const CSS = `
 }
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
   .aim-press, .aim-press:active { transition: none; transform: none; }
-  .aim-fade-up, .aim-gauge-fill { animation: none; transition: none; }
+  .aim-fade-up, .aim-gauge-fill, .aim-card, .aim-cardframe > :first-child:not(.aimc) { animation: none; transition: none; }
 }
 `
 

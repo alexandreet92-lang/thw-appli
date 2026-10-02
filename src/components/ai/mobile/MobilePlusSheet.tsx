@@ -18,7 +18,8 @@ import { getCurrentUser } from '@/lib/auth/currentUser'
 import { MobileSheet } from '../MobileSheet'
 import { SlideView } from '@/components/ui/SlideView'
 import { Switch } from '@/components/shadcn/switch'
-import { MODEL_BADGE, quickActionEstimate } from '@/lib/quick-actions/models'
+import { quickActionEstimate } from '@/lib/quick-actions/models'
+import { ModelEffigy } from '../ModelEffigy'
 import { AimRow, AimSep, AimSheetHeader, AimSubTitle, AimTile } from './SheetParts'
 import { aimModelName } from './MobileTopBar'
 import type { AimAgent, AimConnector, AimQuickAction, AimTheme } from './types'
@@ -115,7 +116,7 @@ function QuickActionsScreen({ themes, actions, onRun }: {
                   <span style={{ fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.sub}</span>
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: MODEL_BADGE[qa.model].color }} />
+                  <ModelEffigy model={qa.model} size={14} />
                   {aimModelName(qa.model)} · {compactEstimate(quickActionEstimate(qa.flow ?? qa.key))}
                 </span>
               </button>

@@ -5,6 +5,7 @@
 // prompt + l'historique complet des exécutions (chaque run consultable).
 // ══════════════════════════════════════════════════════════════
 
+import { ModelEffigy } from './ModelEffigy'
 import { Switch } from '@/components/shadcn/switch'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
@@ -20,7 +21,7 @@ import {
 import {
   useIsMobile, MobileHeader, RoundBtn, Ico, ICON, MCard, SectionLabel, Group, GroupRow, IconTile, Dot,
   SegTrack, PillButton, HCard, HScroll, MSheet, SheetHeader, SkeletonCard, SKELETON_CSS,
-  TILE, MODEL_DOT, MODEL_NAME, STATUS_DOT, PAGE_BG, HAIRLINE, FB as MFB,
+  TILE, MODEL_NAME, STATUS_DOT, PAGE_BG, HAIRLINE, FB as MFB,
 } from '@/components/ai/mobile/MobileKit'
 
 const ACCENT = 'var(--primary)'
@@ -594,7 +595,7 @@ function MobileList({ routines, loading, err, onNew, onOpen, onToggle, onTemplat
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: HAIRLINE, minHeight: 48, fontSize: 15 }}>
-                      <Dot color={MODEL_DOT[model]} />
+                      <ModelEffigy model={model} size={16} />
                       <span style={{ color: 'var(--text-mid)', flexShrink: 0 }}>{MODEL_NAME[model]}</span>
                       <span style={{ flex: 1, minWidth: 0, textAlign: 'right', color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{right}</span>
                     </div>
@@ -656,7 +657,7 @@ function MobileDetail({ id, routine, onEdit, onChanged, onDeleted, onToggle }: {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: HAIRLINE, minHeight: 48, fontSize: 15, color: 'var(--text-mid)' }}>
-          <Dot color={MODEL_DOT[model]} />
+          <ModelEffigy model={model} size={16} />
           <span style={{ flexShrink: 0 }}>{MODEL_NAME[model]}</span>
           <span style={{ flex: 1, minWidth: 0, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {!routine.enabled ? t('aio.r_paused') : routine.allow_write ? t('aio.r_canEdit') : t('aio.r_proposeOnly')}
@@ -822,7 +823,7 @@ function MobileForm({ initial, onCancel, onSaved }: { initial: FormState; onCanc
         <SectionLabel>{t('aio.r_options')}</SectionLabel>
         <div style={grp}>
           <SelectRow first label={t('w1a.r_modeleIA')} value={model} options={modelOptions} onChange={v => set({ model: asModel(v) })}
-            display={<><Dot color={MODEL_DOT[model]} /><span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>{MODEL_NAME[model]}</span></>} />
+            display={<><ModelEffigy model={model} size={16} /><span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>{MODEL_NAME[model]}</span></>} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 64, padding: '10px 16px', borderTop: HAIRLINE }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('aio.r_canEdit')}</div>

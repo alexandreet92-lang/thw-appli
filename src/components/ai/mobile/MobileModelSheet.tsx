@@ -10,7 +10,7 @@
 import { Check, Lock } from 'lucide-react'
 import { useI18n, currentLocale } from '@/lib/i18n'
 import { MobileSheet } from '../MobileSheet'
-import { MODEL_BADGE } from '@/lib/quick-actions/models'
+import { ModelEffigy } from '../ModelEffigy'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { Skeleton } from '@/components/shadcn/skeleton'
 import { AimGroupLabel, AimSep, AimSheetHeader } from './SheetParts'
@@ -84,7 +84,9 @@ export function MobileModelSheet({ model, locked, descKey, hintKey, limits, onSe
                   className="aim-row"
                   style={{ minHeight: 64, padding: '14px 14px', opacity: locked && !on ? 0.5 : 1, cursor: locked ? 'not-allowed' : 'pointer' }}
                 >
-                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: MODEL_BADGE[m].color, flexShrink: 0 }} />
+                  <span style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', background: on ? 'var(--surface-card)' : 'transparent', transition: 'background 0.25s ease' }}>
+                    <ModelEffigy model={m} size={24} spinning={on && locked} />
+                  </span>
                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
                       {aimModelName(m)}

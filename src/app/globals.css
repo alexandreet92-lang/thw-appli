@@ -150,6 +150,8 @@
 
   /* ── Polices — design system (DESIGN_SYSTEM.md §1) ── */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  /* Serif de marque, gardé aussi sur mobile (titre « Hybrid » du tiroir IA). */
+  --font-serif:   'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* ── Radius — échelle fermée (DESIGN_SYSTEM.md §3) ── */
@@ -1123,6 +1125,13 @@ html.thw-glass-blur .thw-glass-bubble {
   --bg-card: var(--dash-card, var(--bg-card));
   --bg-card2: var(--dash-card, var(--bg-card2));
   --font-display: var(--font-body);
+}
+
+/* Mobile (style Strava / Claude) : toute l'interface en Inter — les titres
+   en serif (--font-display) passent dans la police de l'interface, partout
+   (pages, feuilles, modales). Seul --font-serif reste en Fraunces. */
+@media (max-width: 767px) {
+  :root, :root.dark, :root.light, .dark, .light { --font-display: var(--font-body); }
 }
 
 /* App tactile (iPhone / Capacitor) : un appui long ne sélectionne pas le texte et

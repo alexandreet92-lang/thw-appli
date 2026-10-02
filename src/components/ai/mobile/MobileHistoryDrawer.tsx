@@ -502,7 +502,7 @@ export function MobileHistoryDrawer<C extends DrawerConv>(props: MobileHistoryDr
 
       {/* En-tête : marque + recherche */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 12px 4px 24px', flexShrink: 0 }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 31, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Hybrid</span>
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 31, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Hybrid</span>
         <button type="button" className="aid-btn aid-press"
           onClick={() => { haptic('light'); setSearchOpen(o => { if (o) setQ(''); return !o }) }}
           aria-label={searchOpen ? t('aip.ui.close') : t('aid.search')} aria-expanded={searchOpen}

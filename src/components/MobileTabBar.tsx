@@ -131,8 +131,10 @@ export default function MobileTabBar() {
         icon: (c: string, on?: boolean) => <tab.Icon size={26} color={c} strokeWidth={on ? 2.4 : 2} />,
         onSelect: () => router.push(tab.href),
       })),
-      { key: 'ai', ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o),
-        icon: () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={27} height={27} style={{ objectFit: 'contain' }} />) },
+      // 5ᵉ onglet libellé comme les 4 autres → capsule identique à celle de l'athlète
+      // (5 onglets icône 26 + libellé, même pilule glissante).
+      { key: 'ai', label: t('nav.coachAI'), ariaLabel: t('nav.coachAI'), transient: true, onSelect: () => setAiOpen(o => !o),
+        icon: () => (/* eslint-disable-next-line @next/next/no-img-element */ <img src="/logos/logo_4bras.png" alt="" width={26} height={26} style={{ objectFit: 'contain', display: 'block' }} />) },
     ]
     const coachActive = COACH_TABS.findIndex(tab => tab.match(pathname))
     return (

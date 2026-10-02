@@ -150,9 +150,9 @@ export default function ProgramDetailView({ program, coachName, coachSlug }: { p
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {w.sessions.map((s, si) => {
-                  const t = s.target
-                  const range = t && (t.low || t.high) ? `${t.low ?? ''}${t.high ? `–${t.high}` : ''} ${t.unit ?? ''}`.trim() : null
-                  const targetTxt = [range, t?.relative].filter(Boolean).join(' · ')
+                  const tg = s.target
+                  const range = tg && (tg.low || tg.high) ? `${tg.low ?? ''}${tg.high ? `–${tg.high}` : ''} ${tg.unit ?? ''}`.trim() : null
+                  const targetTxt = [range, tg?.relative].filter(Boolean).join(' · ')
                   return (
                     <div key={si} style={{ padding: '10px 12px', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

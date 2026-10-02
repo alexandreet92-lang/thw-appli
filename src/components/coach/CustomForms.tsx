@@ -86,7 +86,7 @@ function Builder({ athleteId, athleteName, onClose, onCreated }: { athleteId: st
 }
 
 // ── Coach : section fiches dans la bulle « Fiche » ────────────
-export function CoachFormsSection({ athleteId, athleteName }: { athleteId: string; athleteName: string }) {
+export function CoachFormsSection({ athleteId, athleteName, mobile = false }: { athleteId: string; athleteName: string; mobile?: boolean }) {
   const { t } = useI18n()
   const [forms, setForms] = useState<CustomForm[] | null>(null)
   const [build, setBuild] = useState(false)
@@ -94,10 +94,13 @@ export function CoachFormsSection({ athleteId, athleteName }: { athleteId: strin
   useEffect(() => { load() }, [athleteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ ...card, borderStyle: forms && forms.length ? 'solid' : 'dashed' }}>
+    <div style={mobile
+      // Mobile (nouveau style) : carte blanche sans bordure, radius 20.
+      ? { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16, boxShadow: SHEET_CARD_SHADOW }
+      : { ...card, borderStyle: forms && forms.length ? 'solid' : 'dashed' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: forms && forms.length ? 12 : 4 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t('w2d.customForms')}</div>
-        <button onClick={() => setBuild(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+        <div style={{ fontSize: mobile ? 19 : 13.5, fontWeight: mobile ? 800 : 700, color: 'var(--text)', letterSpacing: mobile ? '-0.015em' : undefined }}>{t('w2d.customForms')}</div>
+        <button onClick={() => setBuild(true)} className={mobile ? 'cm-press' : undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: mobile ? '0 16px' : '7px 13px', minHeight: mobile ? 40 : undefined, borderRadius: mobile ? 'var(--r-pill)' : 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: mobile ? 15 : 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           {t('w2d.createForm')}
         </button>
@@ -107,7 +110,7 @@ export function CoachFormsSection({ athleteId, athleteName }: { athleteId: strin
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {forms.map(f => (
-              <div key={f.id} style={{ ...card, background: 'var(--bg-card2)', padding: 12 }}>
+              <div key={f.id} style={mobile ? { background: 'var(--surface-chip)', borderRadius: 'var(--r-md)', padding: 12 } : { ...card, background: 'var(--bg-card2)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', flex: 1 }}>{f.title}</span>
                   <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--r-sm)', color: f.status === 'filled' ? '#22c55e' : 'var(--text-dim)', border: `1px solid ${f.status === 'filled' ? '#22c55e' : 'var(--border)'}` }}>{f.status === 'filled' ? t('w2d.filledOn', { date: fmtDate(f.filledAt) }) : t('w2d.pending')}</span>

@@ -12,6 +12,8 @@ import { setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
 import { MessageThread } from './MessageThread'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile, RoundBtn, Ico, ICON } from '@/components/ai/mobile/MobileKit'
+import { MAvatar } from '@/components/coach/mobile/CoachKit'
 
 export type DrawerKind = 'planning' | 'calendar' | 'training' | 'performance' | 'recovery' | 'nutrition' | 'message' | null
 
@@ -37,6 +39,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
   const { t } = useI18n()
   const open = !!kind
   const [mounted, setMounted] = useState(false)
+  const isMobile = useIsMobile()
 
   // Scope défini AVANT le rendu des enfants (les pages athlète lisent le scope
   // dans leur effet de chargement via resolvePlanningUid).
@@ -64,7 +67,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
     : kind === 'nutrition' ? scoped(<NutritionPage key={`n-${athleteId}`} />)
     : kind === 'training' ? scoped(<TrainingPage key={`t-${athleteId}`} />)
     : kind === 'performance' ? scoped(<PerformancePage key={`perf-${athleteId}`} />)
-    : kind === 'message' ? (coachId ? <div style={{ height: '100%' }}><MessageThread coachId={coachId} athleteId={athleteId} compact /></div> : <Loading />)
+    : kind === 'message' ? (coachId ? <div style={{ height: '100%' }}><MessageThread coachId={coachId} athleteId={athleteId} compact variant={isMobile ? 'm' : 'default'} /></div> : <Loading />)
     : null
 
   return createPortal(
@@ -76,8 +79,22 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
         position: 'absolute', inset: 0, width: '100%',
         background: 'var(--bg)', boxShadow: '-16px 0 60px rgba(0,0,0,0.34)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .3s cubic-bezier(.32,.72,0,1)',
+        transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .34s cubic-bezier(.32,.72,0,1)',
+        // Mobile : les pages athlète embarquées prennent le « nouveau style »
+        // (page gris chaud + cartes blanches), comme dans l'app athlète.
+        ...(isMobile ? { '--bg': 'var(--surface-page)', '--dash-card': 'var(--surface-card)', '--dash-chip': 'var(--surface-chip)', '--dash-bar': 'var(--surface-bar)', '--dash-line': 'var(--border)', '--dash-soft': 'var(--surface-soft)' } as React.CSSProperties : null),
       }}>
+        {isMobile ? (
+          // En-tête mobile : rond retour · avatar · nom + page (cyan).
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px', background: 'var(--bg)', fontFamily: 'var(--font-body)' }}>
+            <RoundBtn label={t('w3d.close')} onClick={onClose}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>
+            <MAvatar name={name} url={avatar} size={40} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+              <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700, marginTop: 1 }}>{kind ? t(`w3d.drawer_${kind}`) : ''}</div>
+            </div>
+          </div>
+        ) : (
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top, 0px) + 12px) clamp(14px,3vw,22px) 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
           <button onClick={onClose} aria-label={t('w3d.close')} style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" transform="rotate(180 12 12)" /></svg>
@@ -88,6 +105,7 @@ export function AthleteDetailDrawer({ kind, athleteId, coachId, name, avatar, on
             <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{kind ? t(`w3d.drawer_${kind}`) : ''}</div>
           </div>
         </div>
+        )}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           {body}
         </div>

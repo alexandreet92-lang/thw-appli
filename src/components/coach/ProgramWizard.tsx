@@ -21,6 +21,8 @@ import {
 const SUMMARY_MAX = 140 // caractères — résumé court affiché sur la carte
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import SlideSheet from '@/components/ui/SlideSheet'
+import { motion, useReducedMotion } from 'motion/react'
+import { useIsMobile, RoundBtn, Ico, ICON } from '@/components/ai/mobile/MobileKit'
 import type { Session, SportType } from '@/app/planning/page'
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -67,8 +69,23 @@ const SPORT_LABEL: Record<string, string> = Object.fromEntries(SPORTS.map(s => [
 const PREPS: PrepType[] = ['endurance', 'force', 'hybride', 'competition', 'reprise', 'perte_poids']
 const STEPS = ['Programme', 'Séances', 'Récap', 'Finalisation']
 
-export default function ProgramWizard({ program, onDone }: { program: CoachProgram; onDone: (p: CoachProgram) => void }) {
+export default function ProgramWizard({ program, onDone, onExit }: { program: CoachProgram; onDone: (p: CoachProgram) => void; onExit?: () => void }) {
   const { t } = useI18n()
+  // Mobile (≤ 767 px) : étapes en écrans plein cadre (en-tête à rond retour,
+  // barre de progression animée, transitions glissées), styles « nouveau style ».
+  const isM = useIsMobile()
+  const reduceMotion = useReducedMotion()
+  const [dir, setDir] = useState(1)
+  const card = isM ? CARD_M : CARD_D
+  const secLbl0 = isM ? SECLBL0_M : SECLBL0_D
+  const secLbl = isM ? SECLBL_M : SECLBL_D
+  const inp = isM ? INP_M : INP_D
+  const primary = isM ? PRIMARY_M : PRIMARY_D
+  const ghost = isM ? GHOST_M : GHOST_D
+  const addBtn = isM ? ADDBTN_M : ADDBTN_D
+  const removeBtn = isM ? REMOVEBTN_M : REMOVEBTN_D
+  const chip = isM ? chipM : chipD
+  const stepCls = isM ? 'pw-step' : undefined
   const hidePrice = hidePricing()
   const [step, setStep] = useState(1)
   const [p, setP] = useState<CoachProgram>(program)
@@ -181,26 +198,50 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
     return next
   }
 
-  const goNext = async () => { setBusy(true); try { await persist({}); setStep(s => Math.min(STEPS.length, s + 1)) } finally { setBusy(false) } }
+  const goNext = async () => { setBusy(true); try { await persist({}); setDir(1); setStep(s => Math.min(STEPS.length, s + 1)) } finally { setBusy(false) } }
+  const goBack = (to: number) => { setDir(-1); setStep(to) }
   const finish = async (published: boolean) => { setBusy(true); try { const next = await persist({ published }); onDone(next) } finally { setBusy(false) } }
 
   const stats = computeProgramFullStats(weeks)
 
   return (
     <div style={{ width: '100%', maxWidth: 820, margin: '0 auto', padding: '8px clamp(16px,4vw,32px) 64px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
+      {isM && <style>{STEP_CSS}</style>}
+      {isM && (
+        <div style={{ margin: '0 0 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <RoundBtn label={t('w1d.back')} onClick={() => { if (step > 1) goBack(step - 1); else onExit?.() }}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{step} / {STEPS.length}</div>
+              <div key={step} className="pw-step" data-dir={dir} style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.015em', color: 'var(--text)' }}>{STEPS[step - 1]}</div>
+            </div>
+            <div style={{ width: 44, flexShrink: 0 }} />
+          </div>
+          {/* Progression : piste grise, remplissage cyan qui glisse (scaleX) */}
+          <div style={{ marginTop: 14, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden' }}>
+            <motion.div initial={false} animate={{ scaleX: step / STEPS.length }} transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 30 }}
+              style={{ height: '100%', width: '100%', borderRadius: 'var(--r-pill)', background: 'var(--primary)', transformOrigin: 'left center' }} />
+          </div>
+          <div style={{ display: 'flex', marginTop: 8 }}>
+            {STEPS.map((lbl, i) => (
+              <span key={lbl} style={{ flex: 1, textAlign: i === 0 ? 'left' : i === STEPS.length - 1 ? 'right' : 'center', fontSize: 12, fontWeight: step === i + 1 ? 800 : 600, color: step >= i + 1 ? 'var(--text)' : 'var(--text-dim)', transition: 'color .2s ease' }}>{lbl}</span>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Fil des étapes */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      {!isM && <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {STEPS.map((lbl, i) => (
           <div key={lbl} style={{ flex: 1, textAlign: 'center' }}>
             <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: step >= i + 1 ? 'var(--primary)' : 'var(--bg-card2)' }} />
             <div style={{ fontSize: 11.5, fontWeight: 700, color: step >= i + 1 ? 'var(--text)' : 'var(--text-dim)', marginTop: 6 }}>{lbl}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* ── ÉTAPE 1 — Programme ── */}
       {step === 1 && (
-        <div style={card}>
+        <div style={card} className={stepCls} data-dir={dir}>
           <Field label={t('w1d.programTitle')}><input value={p.title} onChange={e => set({ title: e.target.value })} style={inp} placeholder={t('w1d.programTitlePh')} /></Field>
           <Field label={t('w1d.objective')} hint={t('w1d.objectiveHint')}><input value={p.objective ?? ''} onChange={e => set({ objective: e.target.value })} style={inp} placeholder={t('w1d.objectivePh')} /></Field>
 
@@ -252,7 +293,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
 
       {/* ── ÉTAPE 2 — Séances ── */}
       {step === 2 && (
-        <div>
+        <div className={stepCls} data-dir={dir}>
           {/* Phases de préparation (bandes de couleur sur les semaines) */}
           <div style={{ ...card, padding: 16, marginBottom: 14 }}>
             <div style={secLbl0}>{t('w1d.prepPhases')}</div>
@@ -298,27 +339,27 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                     </div>
 
                     {/* Grille 7 jours */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                    <div data-hswipe={isM ? '' : undefined} style={isM ? { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(92px, 1fr))', gap: 8, overflowX: 'auto', margin: '0 -16px', padding: '0 16px 4px', scrollSnapType: 'x proximity', scrollbarWidth: 'none' } : { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
                       {DAY_LABELS.map((dl, day) => {
                         const dt = dayTypes[day] as DayType | null
                         const daySessions = w.sessions.map((s, si) => ({ s, si })).filter(({ s }) => (s.day ?? 0) === day)
                         return (
                           <div key={day} data-daycell data-wi={wi} data-day={day}
-                            style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 6, minHeight: 96, display: 'flex', flexDirection: 'column', gap: 5, outline: drag ? '1px dashed var(--border-mid)' : 'none' }}>
+                            style={{ background: isM ? 'var(--surface-chip)' : 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: isM ? 8 : 6, minHeight: isM ? 120 : 96, display: 'flex', flexDirection: 'column', gap: isM ? 6 : 5, outline: drag ? '1px dashed var(--border-mid)' : 'none', scrollSnapAlign: isM ? 'start' : undefined }}>
                             <button onClick={() => cycleDayType(wi, day)} title={t('w1d.dayType')}
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)' }}>{dl}</span>
+                              <span style={{ fontSize: isM ? 13 : 10.5, fontWeight: 700, color: 'var(--text-dim)' }}>{dl}</span>
                               <span style={{ width: 22, height: 3, borderRadius: 2, background: dt ? DAY_TYPE_COLOR[dt] : 'transparent' }} />
                             </button>
                             {daySessions.map(({ s, si }) => {
                               const dragging = drag?.wi === wi && drag?.si === si
                               return (
-                              <div key={si} style={{ position: 'relative', borderRadius: 'var(--r-sm)', background: 'var(--bg-card)', opacity: dragging ? 0.4 : 1 }}>
+                              <div key={si} style={{ position: 'relative', borderRadius: 'var(--r-sm)', background: isM ? 'var(--surface-card)' : 'var(--bg-card)', opacity: dragging ? 0.4 : 1 }}>
                                 <button onClick={() => setEditor({ wi, si, day })}
                                   style={{ border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', padding: '6px 5px 4px', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: sportDot(s.sport) }} />
-                                  <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 12 }}>{s.nom || t('w1d.session')}</span>
-                                  {s.duree ? <span className="tnum" style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>{s.duree}′</span> : null}
+                                  <span style={{ fontSize: isM ? 13 : 10.5, fontWeight: isM ? 700 : 600, color: 'var(--text)', lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 12 }}>{s.nom || t('w1d.session')}</span>
+                                  {s.duree ? <span className="tnum" style={{ fontSize: isM ? 12 : 9.5, color: 'var(--text-dim)' }}>{s.duree}′</span> : null}
                                 </button>
                                 {/* Variantes (« ou … ») */}
                                 {s.variants?.map((v, vi) => (
@@ -357,7 +398,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
                               )
                             })}
                             <button onClick={() => setEditor({ wi, si: null, day })} aria-label={t('w1d.add')}
-                              style={{ marginTop: 'auto', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', color: 'var(--primary)', fontSize: 16, cursor: 'pointer', padding: '2px 0' }}>+</button>
+                              style={{ marginTop: 'auto', border: 'none', borderRadius: isM ? 'var(--r-pill)' : 'var(--r-sm)', background: isM ? 'var(--surface-card)' : 'transparent', color: 'var(--primary)', fontSize: isM ? 20 : 16, cursor: 'pointer', padding: isM ? 0 : '2px 0', minHeight: isM ? 36 : undefined }}>+</button>
                           </div>
                         )
                       })}
@@ -395,7 +436,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22 }}>
-            <button onClick={() => setStep(1)} style={ghost}>{t('w1d.back')}</button>
+            <button onClick={() => goBack(1)} style={ghost}>{t('w1d.back')}</button>
             <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 160 }}>{busy ? '…' : t('w1d.continue')}</button>
           </div>
         </div>
@@ -436,7 +477,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
 
       {/* ── ÉTAPE 3 — Récap ── */}
       {step === 3 && (
-        <div style={card}>
+        <div style={card} className={stepCls} data-dir={dir}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{p.title}</div>
           {p.objective && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginBottom: 14 }}>{p.objective}</div>}
 
@@ -512,7 +553,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           )}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-            <button onClick={() => setStep(2)} style={ghost}>{t('w1d.back')}</button>
+            <button onClick={() => goBack(2)} style={ghost}>{t('w1d.back')}</button>
             <div style={{ flex: 1 }} />
             <button onClick={goNext} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : t('w1d.continue')}</button>
           </div>
@@ -521,7 +562,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
 
       {/* ── ÉTAPE 4 — Finalisation ── */}
       {step === 4 && (
-        <div style={card}>
+        <div style={card} className={stepCls} data-dir={dir}>
           <div style={secLbl0}>{t('w1d.programPrice')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
             {/* Grand montant + € masqué dans l'app native (règles App Store) ;
@@ -574,7 +615,7 @@ export default function ProgramWizard({ program, onDone }: { program: CoachProgr
           )}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-            <button onClick={() => setStep(3)} style={ghost}>{t('w1d.back')}</button>
+            <button onClick={() => goBack(3)} style={ghost}>{t('w1d.back')}</button>
             <div style={{ flex: 1 }} />
             <button onClick={() => void finish(false)} disabled={busy} style={ghost}>{t('w1d.saveDraft')}</button>
             <button onClick={() => void finish(true)} disabled={busy} style={{ ...primary, minWidth: 150 }}>{busy ? '…' : t('w1d.publish')}</button>
@@ -764,14 +805,32 @@ function Star({ filled }: { filled: boolean }) {
 const SPORT_DOT: Record<string, string> = { running: '--sport-run', cycling: '--sport-bike', swim: '--sport-swim', gym: '--sport-gym', hyrox: '--sport-hyrox', rowing: '--sport-rowing', trail: '--sport-run', triathlon: '--sport-swim' }
 function sportDot(s: string): string { return `var(${SPORT_DOT[s] ?? '--sport-run'})` }
 
-const card: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px,4vw,24px)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
-const secLbl0: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
-const secLbl: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '22px 0 10px' }
-const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }
-const primary: React.CSSProperties = { padding: '11px 18px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }
-const ghost: React.CSSProperties = { padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }
-const addBtn: React.CSSProperties = { alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
-const removeBtn: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }
-function chip(on: boolean): React.CSSProperties {
+const CARD_D: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', padding: 'clamp(18px,4vw,24px)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
+const SECLBL0_D: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
+const SECLBL_D: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '22px 0 10px' }
+const INP_D: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }
+const PRIMARY_D: React.CSSProperties = { padding: '11px 18px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }
+const GHOST_D: React.CSSProperties = { padding: '11px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }
+const ADDBTN_D: React.CSSProperties = { alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--bg-card2)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
+const REMOVEBTN_D: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }
+function chipD(on: boolean): React.CSSProperties {
   return { padding: '8px 14px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, background: on ? 'var(--primary)' : 'var(--bg-card2)', color: on ? 'var(--on-primary)' : 'var(--text-mid)' }
 }
+
+// ── Variantes MOBILE (nouveau style : cartes blanches sans bordure, champs
+//    pleins gris, pilules, libellés en casse normale) ───────────────────
+const CARD_M: React.CSSProperties = { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' /* design-allow-color — ombre douce de carte */ }
+const SECLBL0_M: React.CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', margin: '0 0 10px' }
+const SECLBL_M: React.CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', margin: '22px 0 10px' }
+const INP_M: React.CSSProperties = { width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '12px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 16, outline: 'none' }
+const PRIMARY_M: React.CSSProperties = { minHeight: 52, padding: '0 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 800, cursor: 'pointer', flex: 1 }
+const GHOST_M: React.CSSProperties = { minHeight: 52, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, cursor: 'pointer' }
+const ADDBTN_M: React.CSSProperties = { alignSelf: 'flex-start', minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }
+const REMOVEBTN_M: React.CSSProperties = { width: 40, height: 40, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'var(--surface-chip)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 20, lineHeight: 1, cursor: 'pointer' }
+function chipM(on: boolean): React.CSSProperties {
+  return { minHeight: 40, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, background: on ? 'var(--text)' : 'var(--surface-chip)', color: on ? 'var(--bg)' : 'var(--text-mid)', transition: 'background .2s ease, color .2s ease' }
+}
+const STEP_CSS = `@keyframes pwInR{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}@keyframes pwInL{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+.pw-step[data-dir="1"]{animation:pwInR .34s cubic-bezier(.22,1,.36,1)}.pw-step[data-dir="-1"]{animation:pwInL .34s cubic-bezier(.22,1,.36,1)}
+.pw-press{transition:transform .2s cubic-bezier(.2,.8,.2,1)}.pw-press:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){.pw-step{animation:none!important}.pw-press:active{transform:none}}`

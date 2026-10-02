@@ -19,6 +19,8 @@ import { createInvite, acceptInvite, revokeLink, listPendingInvites, listMyCoach
 import { InviteCodeReveal } from '@/components/coach/CodeCells'
 import { useI18n } from '@/lib/i18n'
 import { getGuideDemoId, GUIDE_DEMO_EVENT } from '@/components/guide/guideDemo'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import AthletesMobile from '@/components/coach/mobile/AthletesMobile'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -63,6 +65,7 @@ export default function CoachAthletes() {
   const [acceptCode, setAcceptCode] = useState('')
   const [acceptMsg, setAcceptMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const isMobile = useIsMobile()
 
   const reload = useCallback(async () => {
     // Sur l'app native, un token en cours de refresh peut faire échouer une
@@ -119,6 +122,22 @@ export default function CoachAthletes() {
   const onAccept = async () => { if (!acceptCode.trim() || busy) return; setBusy(true); setAcceptMsg(null); try { await acceptInvite(acceptCode); setAcceptCode(''); setAcceptMsg(t('w1h.coach_added')); await reload() } catch (e) { setAcceptMsg(e instanceof Error ? e.message : t('w1h.invalid_code')) } finally { setBusy(false) } }
   const onRevoke = async (linkId: string) => { if (!confirm(t('w1h.confirm_revoke_link'))) return; try { await revokeLink(linkId); await reload() } catch { /* */ } }
   const bulkGroup = async (name: string) => { const g = name.trim() || null; await Promise.all([...sel].map(id => { const a = roster.find(x => x.id === id); return a ? setAthleteGroup(a.linkId, g).catch(() => {}) : null })); setSel(new Set()); await reload() }
+
+  // Mobile (≤ 767 px) : nouveau style premium — mêmes états et gestionnaires.
+  if (isMobile) {
+    return (
+      <AthletesMobile
+        roster={roster} loading={loading} pending={pending} coaches={coaches}
+        q={q} setQ={setQ} filter={filter} setFilter={setFilter} group={group} setGroup={setGroup} groups={groups}
+        sort={sort} setSort={setSort} visible={visible} priority={priority} kpis={kpis}
+        sel={sel} toggleSel={toggleSel} clearSel={() => setSel(new Set())}
+        manage={manage} setManage={setManage}
+        newCode={newCode} acceptCode={acceptCode} setAcceptCode={setAcceptCode} acceptMsg={acceptMsg} busy={busy}
+        onInvite={() => void onInvite()} onAccept={() => void onAccept()} onRevoke={id => void onRevoke(id)} bulkGroup={name => void bulkGroup(name)}
+        reload={reload} launchSystem={() => router.push(`/coach/studio?athletes=${[...sel].join(',')}`)}
+      />
+    )
+  }
 
   // ── styles partagés ──
   const card: React.CSSProperties = { borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }

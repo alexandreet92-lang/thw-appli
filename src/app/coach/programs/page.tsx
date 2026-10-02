@@ -12,6 +12,8 @@ import {
 } from '@/lib/coach/programs'
 import { startConnectOnboarding, getConnectStatus, getCoachEarnings, type ConnectStatus } from '@/lib/coach/connect'
 import ProgramWizard from '@/components/coach/ProgramWizard'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import ProgramsMobile from '@/components/coach/mobile/ProgramsMobile'
 import { useI18n } from '@/lib/i18n'
 
 export default function CoachProgramsPage() {
@@ -21,6 +23,7 @@ export default function CoachProgramsPage() {
   const [busy, setBusy] = useState(false)
   const [connect, setConnect] = useState<ConnectStatus | null>(null)
   const [earnings, setEarnings] = useState<{ net: number; sales: number } | null>(null)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     void listMyPrograms().then(setList).catch(() => setList([]))
@@ -50,6 +53,15 @@ export default function CoachProgramsPage() {
     await deleteProgram(id)
     setList(await listMyPrograms())
     if (editing?.id === id) setEditing(null)
+  }
+
+  // ── Assistant (mobile : écrans d'étapes plein cadre, rond retour intégré) ──
+  if (editing && isMobile) {
+    return <ProgramWizard program={editing} onExit={() => setEditing(null)} onDone={async () => { setEditing(null); setList(await listMyPrograms()) }} />
+  }
+  // ── Liste (mobile) ──
+  if (isMobile) {
+    return <ProgramsMobile list={list} busy={busy} connect={connect} earnings={earnings} onNew={() => void openNew()} onEdit={setEditing} onDelete={id => void remove(id)} onOnboard={() => void onboard()} />
   }
 
   // ── Assistant ──

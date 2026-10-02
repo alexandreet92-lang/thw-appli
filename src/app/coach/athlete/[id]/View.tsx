@@ -19,6 +19,8 @@ import { Avatar } from '@/components/shared/Sidebar'
 import { AthleteDetailDrawer, type DrawerKind } from '@/components/coach/AthleteDetailDrawer'
 import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
 import { CoachFormsSection } from '@/components/coach/CustomForms'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import AthleteMobile from '@/components/coach/mobile/AthleteMobile'
 import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getActiveNutrition, getUpcomingRaces,
   getWeekSessions, getNutritionToday, getRecoveryVitals, getConnections,
@@ -94,6 +96,7 @@ export default function AthleteFiche() {
   const [eaten, setEaten] = useState<NutritionToday | null>(null)
   const [vitals, setVitals] = useState<RecoveryVitals | null>(null)
   const [conns, setConns] = useState<ConnectionRow[] | null>(null)
+  const isMobile = useIsMobile()
 
   useEffect(() => { void createClient().auth.getUser().then(({ data }) => setCoachId(data.user?.id ?? null)) }, [])
   // Deep-link depuis une notification : ?tab=data|fiche|goals|connexions ouvre
@@ -127,6 +130,24 @@ export default function AthleteFiche() {
   const card: React.CSSProperties = { borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16 }
   const secLabel: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 12px' }
   const num: React.CSSProperties = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }
+
+  // Mobile (≤ 767 px) : nouveau style premium — mêmes données, même drawer.
+  if (isMobile) {
+    const fat = recAvg('fatigue')
+    return (
+      <AthleteMobile
+        id={id} name={name} profile={profile} loading={loading} denied={denied}
+        tab={tab} setTab={setTab} openDrawer={k => setDrawer(k)} onBack={() => router.push('/coach/athletes')}
+        acts={acts} activeInj={activeInj} nutri={nutri} races={races} week={week} eaten={eaten} vitals={vitals} conns={conns}
+        tss7={tss7} fatigueAvg={fat} age={ageOf(profile?.birth_date ?? null)}
+        fx={{ sportLabel, goalLabel, genderLabel, cap, providerMeta, fmtDate, fmtDur, fmtKm, fmtSleep, daysTo }}
+        drawerSlot={<>
+          <AthleteDetailDrawer kind={drawer} athleteId={id} coachId={coachId} name={name} avatar={profile?.avatar_url ?? null} onClose={() => setDrawer(null)} />
+          <CoachMessageBubble />
+        </>}
+      />
+    )
+  }
 
   if (denied) {
     return (

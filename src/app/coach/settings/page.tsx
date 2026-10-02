@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 
 import { Switch } from '@/components/shadcn/switch'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, CreditCard, Users, Sparkles, Share2, ClipboardList, Bell, SlidersHorizontal, Zap, Shield, Palette, LogOut, ChevronLeft, Check, Languages } from 'lucide-react'
 import { useProfile } from '@/hooks/useProfile'
@@ -21,6 +21,14 @@ import { useI18n } from '@/lib/i18n'
 import { openWebsite, isNativeApp } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
 import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
+import { useIsMobile, TILE } from '@/components/ai/mobile/MobileKit'
+import { MSection, MGroup, MLine, MIntro, MTile, MSettingsHeader, MAvatar } from '@/components/profile/mobile/SettingsKit'
+import { SegM, SheetM, CTA, useTT, RoundBtn, Ico, ICON, CoachMobileStyles } from '@/components/coach/mobile/CoachKit'
+
+// Mobile (≤ 767 px) : les primitives basculent sur le kit « réglages » de
+// l'athlète (listes groupées iOS : cartes blanches sans bordure, page gris chaud).
+const MobileCtx = createContext(false)
+const useM = () => useContext(MobileCtx)
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
@@ -57,6 +65,8 @@ const DEFAULTS: S = {
 // ══════════════════════════════════════════════════
 
 function Section({ label, children }: { label?: string; children: React.ReactNode }) {
+  const m = useM()
+  if (m) return <MSection label={label}>{children}</MSection>
   return (
     <div style={{ marginBottom: 22 }}>
       {label && <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{label}</p>}
@@ -65,12 +75,18 @@ function Section({ label, children }: { label?: string; children: React.ReactNod
   )
 }
 function Group({ children }: { children: React.ReactNode }) {
+  const m = useM()
+  if (m) return <MGroup>{children}</MGroup>
   return <div className="thw-glass" style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>{children}</div>
 }
 function Line({ first, align = 'center', children }: { first?: boolean; align?: 'center' | 'flex-start'; children: React.ReactNode }) {
+  const m = useM()
+  if (m) return <MLine first={first} align={align}>{children}</MLine>
   return <div style={{ display: 'flex', alignItems: align, gap: 12, padding: '13px 16px', borderTop: first ? 'none' : '1px solid var(--border)', width: '100%', boxSizing: 'border-box' }}>{children}</div>
 }
 function Intro({ children }: { children: React.ReactNode }) {
+  const m = useM()
+  if (m) return <MIntro>{children}</MIntro>
   return <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 18px 2px' }}>{children}</p>
 }
 function Toggle({ value, onChange, locked }: { value: boolean; onChange?: (v: boolean) => void; locked?: boolean }) {
@@ -80,11 +96,12 @@ function Toggle({ value, onChange, locked }: { value: boolean; onChange?: (v: bo
 // Ligne label + toggle (façon DevicePushSection athlète).
 function ToggleLine({ first, label, sub, value, onChange, locked }: { first?: boolean; label: string; sub?: string; value: boolean; onChange?: (v: boolean) => void; locked?: boolean }) {
   const { t } = useI18n()
+  const m = useM()
   return (
     <Line first={first}>
       <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: '0 0 2px' }}>{label}{locked && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 7, fontWeight: 700 }}>{t('w1b.locked')}</span>}</p>
-        {sub && <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>{sub}</p>}
+        <p style={{ fontSize: m ? 17 : 15, fontWeight: m ? 600 : 500, color: 'var(--text)', margin: '0 0 2px' }}>{label}{locked && <span style={{ fontSize: m ? 13 : 10.5, color: 'var(--text-dim)', marginLeft: 7, fontWeight: 700 }}>{t('w1b.locked')}</span>}</p>
+        {sub && <p style={{ fontSize: m ? 15 : 11.5, color: m ? 'var(--text-mid)' : 'var(--text-dim)', margin: 0, lineHeight: m ? 1.4 : 1.5 }}>{sub}</p>}
       </div>
       <Toggle value={value} onChange={onChange} locked={locked} />
     </Line>
@@ -93,6 +110,18 @@ function ToggleLine({ first, label, sub, value, onChange, locked }: { first?: bo
 
 // Ligne label + contrôle à droite.
 function FieldLine({ first, label, children }: { first?: boolean; label: string; children: React.ReactNode }) {
+  const m = useM()
+  if (m) {
+    // Mobile : libellé au-dessus, contrôle pleine largeur dessous.
+    return (
+      <Line first={first} align="flex-start">
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{children}</div>
+        </div>
+      </Line>
+    )
+  }
   return (
     <Line first={first}>
       <span style={{ flex: 1, fontSize: 15, color: 'var(--text)' }}>{label}</span>
@@ -105,6 +134,8 @@ function FieldLine({ first, label, children }: { first?: boolean; label: string;
 const ctrl: React.CSSProperties = { border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13.5, fontFamily: 'var(--font-body)', outline: 'none' }
 
 function Seg({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (v: string) => void }) {
+  const m = useM()
+  if (m) return <div style={{ width: '100%' }}><SegM options={options.map(([v, l]) => ({ v, l }))} value={value} onChange={onChange} /></div>
   return (
     <div style={{ display: 'inline-flex', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 3, gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       {options.map(([v, l]) => (
@@ -114,24 +145,38 @@ function Seg({ value, options, onChange }: { value: string; options: [string, st
   )
 }
 function Select({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (v: string) => void }) {
+  const m = useM()
+  if (m) return <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', minHeight: 48, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)', outline: 'none', cursor: 'pointer' }}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
   return <select value={value} onChange={e => onChange(e.target.value)} style={{ ...ctrl, cursor: 'pointer' }}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
 }
 function SliderLine({ first, label, min, max, step = 1, value, onChange, suffix }: { first?: boolean; label: string; min: number; max: number; step?: number; value: number; onChange: (v: number) => void; suffix?: string }) {
+  const m = useM()
   return (
     <Line first={first} align="flex-start">
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: m ? 17 : 15, marginBottom: m ? 12 : 8, fontWeight: m ? 600 : undefined }}>
           <span style={{ color: 'var(--text)' }}>{label}</span>
           <span style={{ fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{value}{suffix}</span>
         </div>
-        <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+        <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', minHeight: m ? 28 : undefined }} />
       </div>
     </Line>
   )
 }
 
 // Nav row (façon ListRow athlète) — icône + libellé + valeur + chevron.
-function ListRow({ Icon, label, value, danger, last, onClick }: { Icon: typeof User; label: string; value?: string; danger?: boolean; last?: boolean; onClick: () => void }) {
+function ListRow({ Icon, label, value, danger, last, onClick, color, first }: { Icon: typeof User; label: string; value?: string; danger?: boolean; last?: boolean; onClick: () => void; color?: string; first?: boolean }) {
+  const m = useM()
+  if (m) {
+    return (
+      <MLine first={first} onClick={onClick}>
+        <MTile color={danger ? 'var(--danger)' : color ?? 'var(--text-mid)'}><Icon size={19} strokeWidth={2} /></MTile>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 500, color: danger ? 'var(--danger)' : 'var(--text)' }}>{label}</span>
+        {value && <span style={{ fontSize: 17, color: 'var(--text-mid)', flexShrink: 0 }}>{value}</span>}
+        {!danger && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>}
+      </MLine>
+    )
+  }
   return (
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const, padding: '0 16px', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s' }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
@@ -331,6 +376,7 @@ function SeuilsBloc({ s, set }: { s: S; set: SetFn }) {
 
 function AutoBloc({ s, set, onStudio }: { s: S; set: SetFn; onStudio: () => void }) {
   const { t } = useI18n()
+  const m = useM()
   return (
     <div>
       <Intro>{t('w1b.auto_intro')}</Intro>
@@ -343,7 +389,7 @@ function AutoBloc({ s, set, onStudio }: { s: S; set: SetFn; onStudio: () => void
           <ToggleLine label={t('w1b.tog_injury_pause')} sub={t('w1b.tog_injury_pause_sub')} value={!!s.autoInjuryPause} onChange={v => set('autoInjuryPause', v)} />
         </Group>
       </Section>
-      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>{t('w1b.btn_custom_auto')}</button>
+      {m ? <CTA variant="white" onClick={onStudio}>{t('w1b.btn_custom_auto')}</CTA> : <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>{t('w1b.btn_custom_auto')}</button>}
     </div>
   )
 }
@@ -365,6 +411,18 @@ function AssignBloc({ s, set }: { s: S; set: SetFn }) {
 }
 
 function LinkRow({ first, label, sub, onClick }: { first?: boolean; label: string; sub: string; onClick?: () => void }) {
+  const m = useM()
+  if (m) {
+    return (
+      <MLine first={first} onClick={onClick}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+          <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 3, lineHeight: 1.4 }}>{sub}</span>
+        </span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
+      </MLine>
+    )
+  }
   return (
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderTop: first ? 'none' : '1px solid var(--border)', background: 'transparent', cursor: 'pointer', textAlign: 'left' as const, width: '100%', boxSizing: 'border-box' as const }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -462,9 +520,11 @@ function LangueBloc() {
 // CONTENU — liste + drill-down (mirroir de ProfileContent)
 // ══════════════════════════════════════════════════
 
-export function CoachSettingsContent() {
+export function CoachSettingsContent({ onClose }: { onClose?: () => void } = {}) {
   const router = useRouter()
   const { t } = useI18n()
+  const isM = useIsMobile()
+  const tt = useTT()
   const { profile } = useProfile()
   const [s, setS] = useState<S>(DEFAULTS)
   const [active, setActive] = useState<string | null>(null)
@@ -481,8 +541,11 @@ export function CoachSettingsContent() {
     setSaved(true); if (savedT.current) clearTimeout(savedT.current); savedT.current = setTimeout(() => setSaved(false), 1400)
   }, [])
 
-  function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
-  function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Remonte en haut du conteneur défilant (feuille mobile) ou de la fenêtre.
+  const toTop = () => { try { let el: HTMLElement | null = rootRef.current?.parentElement ?? null; while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement; el?.scrollTo({ top: 0 }) } catch { /* */ } window.scrollTo({ top: 0 }) }
+  function open(id: string) { setDir(1); setActive(id); toTop() }
+  function back() { setDir(-1); setActive(null); toTop() }
 
   const CONTENT: Record<string, { label: string; node: React.ReactNode }> = {
     profil:    { label: t('w1b.nav_profil'),    node: <ProfilBloc s={s} set={set} /> },
@@ -499,28 +562,80 @@ export function CoachSettingsContent() {
     langue:    { label: t('w1b.nav_langue'),    node: <LangueBloc /> },
   }
 
-  const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
+  const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string; color: string }[] }[] = [
     { title: t('w1b.grp_compte'), rows: [
-      { id: 'profil', label: t('w1b.nav_profil'), Icon: User },
-      { id: 'offre',  label: t('w1b.nav_offre'), Icon: CreditCard, value: t('w1b.plan_coach_short') },
-      { id: 'data',   label: t('w1b.nav_data'), Icon: Shield },
+      { id: 'profil', label: t('w1b.nav_profil'), Icon: User, color: TILE.cyan },
+      { id: 'offre',  label: t('w1b.nav_offre'), Icon: CreditCard, value: t('w1b.plan_coach_short'), color: TILE.green },
+      { id: 'data',   label: t('w1b.nav_data'), Icon: Shield, color: TILE.indigo },
     ] },
     { title: t('w1b.grp_coaching'), rows: [
-      { id: 'acces',  label: t('w1b.nav_acces'), Icon: Users },
-      { id: 'ia',     label: t('w1b.nav_ia'), Icon: Sparkles },
-      { id: 'studio', label: t('w1b.nav_studio'), Icon: Share2 },
-      { id: 'assign', label: t('w1b.nav_assign'), Icon: ClipboardList },
-      { id: 'seuils', label: t('w1b.nav_seuils'), Icon: SlidersHorizontal },
-      { id: 'auto',   label: t('w1b.nav_auto'), Icon: Zap },
+      { id: 'acces',  label: t('w1b.nav_acces'), Icon: Users, color: TILE.blue },
+      { id: 'ia',     label: t('w1b.nav_ia'), Icon: Sparkles, color: TILE.violet },
+      { id: 'studio', label: t('w1b.nav_studio'), Icon: Share2, color: TILE.indigo },
+      { id: 'assign', label: t('w1b.nav_assign'), Icon: ClipboardList, color: TILE.orange },
+      { id: 'seuils', label: t('w1b.nav_seuils'), Icon: SlidersHorizontal, color: TILE.red },
+      { id: 'auto',   label: t('w1b.nav_auto'), Icon: Zap, color: TILE.orange },
     ] },
     { title: t('w1b.grp_application'), rows: [
-      { id: 'notifs',    label: t('w1b.nav_notifs'), Icon: Bell },
-      { id: 'apparence', label: t('w1b.nav_apparence'), Icon: Palette },
-      { id: 'langue',    label: t('w1b.nav_langue'), Icon: Languages },
+      { id: 'notifs',    label: t('w1b.nav_notifs'), Icon: Bell, color: TILE.red },
+      { id: 'apparence', label: t('w1b.nav_apparence'), Icon: Palette, color: TILE.violet },
+      { id: 'langue',    label: t('w1b.nav_langue'), Icon: Languages, color: TILE.blue },
     ] },
   ]
 
   const initial = (profile?.full_name || profile?.email || '?').trim().charAt(0).toUpperCase()
+
+  // ── Mobile : réglages façon iOS (kit « réglages » athlète) ──
+  if (isM) {
+    return (
+      <MobileCtx.Provider value>
+        <div ref={rootRef} style={{ width: '100%', minHeight: '100%', background: 'var(--surface-page)', boxSizing: 'border-box', fontFamily: 'var(--font-body)', paddingBottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
+          <CoachMobileStyles />
+          <SlideView screenKey={active ?? '__list__'} direction={dir}>
+            {active ? (
+              <div>
+                <MSettingsHeader title={CONTENT[active]?.label} onBack={back} backLabel={t('w1b.back')}
+                  right={<span aria-live="polite" style={{ fontSize: 13, color: 'var(--primary)', opacity: saved ? 1 : 0, transition: 'opacity .2s', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><Check size={15} /></span>} />
+                <div style={{ padding: '6px 16px 0' }}>{CONTENT[active]?.node}</div>
+              </div>
+            ) : (
+              <div>
+                <MSettingsHeader title={tt('co.settings_title', 'Réglages coach')} backLabel={t('w1b.back')}
+                  right={onClose ? <RoundBtn label={tt('co.close', 'Fermer')} onClick={onClose}><Ico d={ICON.close} size={20} sw={2.2} /></RoundBtn> : undefined} />
+                <div style={{ padding: '4px 16px 0' }}>
+                  {/* En-tête : avatar + nom + interface coach */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 4px 24px' }}>
+                    <MAvatar url={profile?.avatar_url ?? null} initial={initial} size={64} alt={t('w1b.avatar_alt')} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile?.full_name || t('w1b.my_coach_space')}</p>
+                      <p style={{ fontSize: 15, color: 'var(--primary)', margin: '3px 0 0', fontWeight: 700 }}>{t('w1b.coach_interface')}</p>
+                    </div>
+                  </div>
+                  {GROUPS.map(g => (
+                    <MSection key={g.title} label={g.title}>
+                      <MGroup>
+                        {g.rows.map((r, i) => <ListRow key={r.id} first={i === 0} Icon={r.Icon} color={r.color} label={r.label} value={r.value} onClick={() => open(r.id)} />)}
+                      </MGroup>
+                    </MSection>
+                  ))}
+                  <MGroup>
+                    <ListRow first Icon={LogOut} label={t('w1b.exit_coach')} danger onClick={() => setConfirmLeave(true)} />
+                  </MGroup>
+                </div>
+              </div>
+            )}
+          </SlideView>
+          <SheetM open={confirmLeave} onClose={() => setConfirmLeave(false)} title={t('w1b.exit_coach_q')} label={t('w1b.exit_coach_q')} zIndex={13200}
+            footer={<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <CTA onClick={() => router.push('/')}>{t('w1b.exit')}</CTA>
+              <CTA variant="soft" onClick={() => setConfirmLeave(false)}>{t('w1b.cancel')}</CTA>
+            </div>}>
+            <p style={{ margin: '0 8px', fontSize: 16, color: 'var(--text-mid)', lineHeight: 1.5, textAlign: 'center' }}>{t('w1b.exit_coach_desc')}</p>
+          </SheetM>
+        </div>
+      </MobileCtx.Provider>
+    )
+  }
 
   return (
     <div style={{ width: '100%', minHeight: '100dvh', background: GREY_PAGE, boxSizing: 'border-box' }}>

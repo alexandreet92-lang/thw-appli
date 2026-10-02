@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation'
 import { getRoster, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 import { listPendingInvites } from '@/lib/coach/relationships'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import DashboardMobile from '@/components/coach/mobile/DashboardMobile'
 
 const STC: Record<Forme, string> = { ok: '#22C55E', warn: '#F59E0B', injured: '#EF4444', inactive: '#94A3B8' }
 const BODY = 'var(--font-body)'
@@ -28,6 +30,7 @@ export default function CoachDashboard() {
   const [roster, setRoster] = useState<RosterAthlete[]>([])
   const [pending, setPending] = useState(0)
   const [loading, setLoading] = useState(true)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +43,9 @@ export default function CoachDashboard() {
     })()
     return () => { cancelled = true }
   }, [])
+
+  // Mobile (≤ 767 px) : nouveau style premium (mêmes données, même chargement).
+  if (isMobile) return <DashboardMobile roster={roster} pending={pending} loading={loading} />
 
   const total = roster.length
   const active = roster.filter(a => a.lastDays <= 7).length

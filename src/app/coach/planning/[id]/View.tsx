@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PlanningPage from '@/app/planning/page'
 import { setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
@@ -19,6 +19,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/shared/Sidebar'
 import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { MAvatar, RoundBtn, Ico, ICON, MiniPill, NUM, CoachMobileStyles, CARD_BG, SOFT_SHADOW } from '@/components/coach/mobile/CoachKit'
 
 const SPORT_COLOR: Record<string, string> = {
   run: '#22c55e', running: '#22c55e', bike: '#3b82f6', cycling: '#3b82f6', swim: '#06b6d4',
@@ -50,6 +52,8 @@ export default function CoachAthletePlanningPage() {
   const [athlete, setAthlete] = useState<{ name: string; avatar: string | null; email: string | null } | null>(null)
   const [today, setToday] = useState<TodaySession[] | null>(null)
   const [objective, setObjective] = useState<{ id: string; name: string; days: number } | null>(null)
+  const isMobile = useIsMobile()
+  const router = useRouter()
 
   useEffect(() => {
     let alive = true
@@ -82,8 +86,59 @@ export default function CoachAthletePlanningPage() {
 
   const iconBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'none', flexShrink: 0 }
 
+  // Mobile : en-tête « nouveau style » — carte blanche (identité, objectif J-x,
+  // séance du jour) + ronds (retour, message, fiche) et pilule « Analyser ».
+  const mobileHeader = (
+    <div style={{ padding: '6px 16px 4px', fontFamily: 'var(--font-body)' }}>
+      <CoachMobileStyles />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <RoundBtn label={t('w1h.aria_back_athletes')} onClick={() => router.push('/coach/athletes')}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>
+        <span style={{ flex: 1 }} />
+        <RoundBtn label={t('w1h.aria_message')} onClick={() => router.push(`/coach/messages?thread=${athleteId}`)}><Ico d={ICON.chat} size={21} /></RoundBtn>
+        <RoundBtn label={t('w1h.aria_profile_360')} onClick={() => router.push(`/coach/athlete?id=${athleteId}`)}><Ico d={ICON.user} size={21} /></RoundBtn>
+      </div>
+      <div style={{ background: CARD_BG, borderRadius: 'var(--r-lg)', boxShadow: SOFT_SHADOW, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <MAvatar name={athlete?.name ?? t('w1h.athlete')} url={athlete?.avatar ?? null} size={52} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.015em', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{athlete?.name ?? t('w1h.athlete')}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{athlete?.email ?? '\u00a0'}</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: cd ? '1fr 1fr' : '1fr', gap: 10, marginTop: 14 }}>
+          {cd && (
+            <Link href={`/calendar?race=${objective!.id}`} className="cm-press" style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-md)', padding: '10px 12px', textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('w1h.objective')}</span>
+              <span style={{ ...NUM, display: 'block', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 2 }}>{t('w1h.days_to', { n: cd.d })}</span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{objective!.name}</span>
+            </Link>
+          )}
+          <div style={{ background: 'var(--surface-chip)', borderRadius: 'var(--r-md)', padding: '10px 12px', minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' }}>{t('w1h.today')}</span>
+            {today === null ? <span style={{ display: 'block', height: 18, marginTop: 6, borderRadius: 'var(--r-sm)', background: 'var(--surface-card)' }} />
+              : restDay ? <span style={{ display: 'block', fontSize: 15, fontWeight: 700, marginTop: 4 }}>{t('w1h.rest_recovery')}</span>
+              : today.slice(0, 2).map((x, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, minWidth: 0 }}>
+                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor(x.sport), flexShrink: 0 }} />
+                  <span style={{ fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</span>
+                  {x.duration_min ? <span style={{ ...NUM, fontSize: 13, color: 'var(--text-mid)', flexShrink: 0 }}>{x.duration_min}′</span> : null}
+                </span>
+              ))}
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <MiniPill onClick={analyze}>
+            <span style={{ color: 'var(--primary)', display: 'flex' }}><Ico d={<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />} size={16} /></span>
+            {t('w1h.analyze_ai')}
+          </MiniPill>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <PlanningScopeContext.Provider value={athleteId}>
+      {isMobile ? mobileHeader : <>
       {/* En-tête coach — placé sous la rangée de boutons flottants (paddingTop) */}
       <div style={{ position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 44px)', zIndex: 40, background: 'color-mix(in srgb, var(--bg) 88%, transparent)', backdropFilter: 'blur(18px) saturate(1.4)', WebkitBackdropFilter: 'blur(18px) saturate(1.4)', borderBottom: '1px solid var(--border)', paddingTop: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '0 clamp(16px,4vw,40px) 12px', maxWidth: 1200, margin: '0 auto' }}>
@@ -144,6 +199,7 @@ export default function CoachAthletePlanningPage() {
         </div>
       </div>
 
+      </>}
       <PlanningPage key={athleteId} />
       <CoachMessageBubble />
     </PlanningScopeContext.Provider>

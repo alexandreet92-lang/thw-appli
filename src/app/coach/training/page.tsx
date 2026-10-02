@@ -18,6 +18,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/shared/Sidebar'
 import { FilterMenu, type Opt } from '@/components/coach/CoachMenus'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from '@/components/ai/mobile/MobileKit'
+import { MPage, MTitle, Rise, ChipsM, GroupM, MAvatar, SkelRows, EmptyM, MiniPill, Ico, ICON, NUM, EASE, useTT } from '@/components/coach/mobile/CoachKit'
+import { motion, useReducedMotion } from 'motion/react'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -54,6 +57,7 @@ export default function CoachTraining() {
   const [loading, setLoading] = useState(true)
   const [fAth, setFAth] = useState('__all__')
   const [fSport, setFSport] = useState('__all__')
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     let alive = true
@@ -95,6 +99,12 @@ export default function CoachTraining() {
     const who = nameOf.get(a.user_id)
     const name = who?.full_name || who?.first_name || t('w1h.this_athlete')
     window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: t('w1h.analyze_prompt', { title: a.title, name, sport: sportLabel(a.sport), when: relDate(a.started_at).toLowerCase() }) } }))
+  }
+
+  // Mobile (≤ 767 px) : flux nouveau style (puces athlète / sport, lignes riches).
+  if (isMobile) {
+    return <TrainingMobile athletes={athletes} loading={loading} shown={shown} nameOf={nameOf} athOpts={athOpts} sportOpts={sportOpts}
+      fAth={fAth} setFAth={setFAth} fSport={fSport} setFSport={setFSport} analyze={analyze} />
   }
 
   return (
@@ -152,5 +162,64 @@ export default function CoachTraining() {
         </div>
       )}
     </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// Version MOBILE — puces de filtre (athlète, sport), lignes riches dans une
+// carte groupée : avatar, titre + point sport, athlète · sport · quand,
+// chiffres (durée, distance, TSS) et pilule « Analyser » (IA coach).
+// ══════════════════════════════════════════════════════════════
+function TrainingMobile({ athletes, loading, shown, nameOf, athOpts, sportOpts, fAth, setFAth, fSport, setFSport, analyze }: {
+  athletes: AthleteSummary[]; loading: boolean; shown: Act[]; nameOf: Map<string, AthleteSummary>; athOpts: Opt[]; sportOpts: Opt[]
+  fAth: string; setFAth: (v: string) => void; fSport: string; setFSport: (v: string) => void; analyze: (a: Act) => void
+}) {
+  const { t } = useI18n()
+  const tt = useTT()
+  const reduce = useReducedMotion()
+  return (
+    <MPage>
+      <MTitle title="Training" sub={<span style={NUM}>{shown.length > 1 ? t('w1h.sessions_count_plural', { n: shown.length }) : t('w1h.sessions_count_singular', { n: shown.length })} · {t('w1h.training_subtitle')}</span>} />
+      {athOpts.length > 0 && (
+        <Rise i={1}><ChipsM options={[{ v: '__all__', l: tt('co.all_athletes', 'Tous les athlètes') }, ...athOpts.map(o => ({ v: o.value, l: o.label }))]} value={fAth} onChange={setFAth} /></Rise>
+      )}
+      {sportOpts.length > 0 && (
+        <Rise i={2} style={{ marginTop: 8 }}><ChipsM options={[{ v: '__all__', l: tt('co.all_sports', 'Tous les sports') }, ...sportOpts.map(o => ({ v: o.value, l: o.label, dot: sportColor(o.value) }))]} value={fSport} onChange={setFSport} /></Rise>
+      )}
+      <Rise i={3} style={{ marginTop: 14 }}>
+        <GroupM>
+          {loading ? <SkelRows n={5} /> : shown.length === 0 ? (
+            <EmptyM icon={<Ico d={ICON.activity} size={26} />} title={athletes.length === 0 ? t('w1h.no_athlete_invite') : t('w1h.no_sessions_21d')} />
+          ) : shown.map((a, i) => {
+            const who = nameOf.get(a.user_id)
+            const name = who?.full_name || who?.first_name || t('w1h.athlete')
+            const metrics = [fmtDur(a.dur_s), a.dist_m > 0 ? fmtDist(a.dist_m) : '', a.tss ? `${Math.round(a.tss)} TSS` : ''].filter(Boolean)
+            return (
+              <motion.div key={a.id} initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: EASE, delay: Math.min(i, 10) * 0.035 }}
+                style={{ position: 'relative', padding: '14px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                <Link href={`/coach/planning/${a.user_id}`} className="cm-press" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}>
+                  <MAvatar name={name} url={who?.avatar_url ?? null} size={46} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: sportColor(a.sport), flexShrink: 0 }} />
+                      <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
+                    </span>
+                    <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name} · {sportLabel(a.sport)} · {relDate(a.started_at)}</span>
+                  </span>
+                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, paddingLeft: 60 }}>
+                  {metrics.map((m, k) => <span key={k} style={{ ...NUM, fontSize: 16, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>{m}</span>)}
+                  <span style={{ flex: 1 }} />
+                  <MiniPill onClick={() => analyze(a)}>
+                    <span style={{ color: 'var(--primary)', display: 'flex' }}><Ico d={<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />} size={16} /></span>
+                    {t('w1h.analyze')}
+                  </MiniPill>
+                </div>
+              </motion.div>
+            )
+          })}
+        </GroupM>
+      </Rise>
+    </MPage>
   )
 }

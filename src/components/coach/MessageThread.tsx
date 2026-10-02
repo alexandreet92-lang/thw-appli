@@ -68,8 +68,11 @@ function MsgMedia({ url, type, name, mine }: { url: string; type: 'image' | 'par
   )
 }
 
-export function MessageThread({ coachId, athleteId, compact = false }: { coachId: string; athleteId: string; compact?: boolean }) {
+export function MessageThread({ coachId, athleteId, compact = false, variant = 'default' }: { coachId: string; athleteId: string; compact?: boolean; variant?: 'default' | 'm' }) {
   const { t } = useI18n()
+  // variant 'm' : messagerie MOBILE nouveau style (bulles sur page gris chaud,
+  // composeur façon IA : carte arrondie, « + » rond, envoi rond).
+  const m_ = variant === 'm'
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -165,8 +168,8 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <style>{`@keyframes mtBubbleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`}</style>
-      <div ref={scroller} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: compact ? '14px 12px' : '18px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}
+      <style>{`@keyframes mtBubbleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@keyframes mtPop{0%{opacity:0;transform:translateY(10px) scale(.92)}70%{opacity:1;transform:translateY(-1px) scale(1.01)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){[data-mt-pop]{animation:none!important}}`}</style>
+      <div ref={scroller} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: m_ ? '16px 14px 12px' : compact ? '14px 12px' : '18px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}
         onClick={() => menuId && setMenuId(null)}>
         {loading ? (
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 'auto' }}>{t('w2d.loading')}</p>
@@ -192,9 +195,9 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           return (
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && (
-                <div style={{ alignSelf: 'center', margin: i === 0 ? '0 0 12px' : '16px 0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 12px', borderRadius: 'var(--r-pill)' }}>{dayLabel(m.created_at)}</div>
+                <div style={m_ ? { alignSelf: 'center', margin: i === 0 ? '0 0 14px' : '18px 0 14px', fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--surface-chip)', padding: '5px 12px', borderRadius: 'var(--r-pill)', textTransform: 'capitalize' } : { alignSelf: 'center', margin: i === 0 ? '0 0 12px' : '16px 0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-card2)', padding: '4px 12px', borderRadius: 'var(--r-pill)' }}>{dayLabel(m.created_at)}</div>
               )}
-            <div style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '82%', position: 'relative', marginTop: i === 0 || showDay ? 0 : grouped ? 3 : 11, animation: m.id.startsWith('tmp-') ? 'mtBubbleIn .2s ease' : undefined }}>
+            <div data-mt-pop style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: m_ ? '80%' : '82%', position: 'relative', marginTop: i === 0 || showDay ? 0 : grouped ? (m_ ? 2 : 3) : (m_ ? 12 : 11), animation: m.id.startsWith('tmp-') ? (m_ ? 'mtPop .38s cubic-bezier(.2,.8,.2,1)' : 'mtBubbleIn .2s ease') : (m_ && i === msgs.length - 1 ? 'mtBubbleIn .28s ease' : undefined) }}>
               {editing ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} autoFocus
@@ -209,12 +212,12 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                 <>
                   <div
                     onClick={e => { if (hasMenu) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : '9px 13px', borderRadius: 'var(--r-lg)', fontSize: 13.5, lineHeight: 1.45, fontFamily: 'var(--font-body)',
+                    style={{ padding: m.media_type === 'image' && !m.body && !deleted ? 4 : m_ ? '10px 14px' : '9px 13px', borderRadius: 'var(--r-lg)', fontSize: m_ ? 16 : 13.5, lineHeight: m_ ? 1.4 : 1.45, fontFamily: 'var(--font-body)',
                       cursor: hasMenu ? 'pointer' : 'default',
-                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : 'var(--bg-alt)',
+                      background: deleted ? 'transparent' : m.mine ? 'var(--primary)' : m_ ? 'var(--surface-card)' : 'var(--bg-alt)',
                       color: deleted ? 'var(--text-dim)' : m.mine ? 'var(--on-primary)' : 'var(--text)',
                       border: deleted ? '1px dashed var(--border)' : 'none',
-                      boxShadow: deleted || m.mine ? 'none' : '0 1px 2px rgba(0,0,0,0.04)',
+                      boxShadow: deleted || m.mine ? 'none' : m_ ? '0 1px 3px rgba(0,0,0,0.06)' /* design-allow-color — ombre douce de bulle */ : '0 1px 2px rgba(0,0,0,0.04)',
                       fontStyle: deleted ? 'italic' : 'normal',
                       borderBottomRightRadius: m.mine && !groupedNext ? 5 : 18, borderBottomLeftRadius: !m.mine && !groupedNext ? 5 : 18, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {deleted ? t('w2d.messageDeleted') : (<>
@@ -224,7 +227,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                   </div>
                   {/* Menu d'actions : mes messages → Modifier/Supprimer ; ceux de l'autre → Signaler/Bloquer */}
                   {menuId === m.id && hasMenu && (
-                    <div style={{ position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
+                    <div style={m_ ? { position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 6, zIndex: 20, background: 'var(--surface-card)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-float)', overflow: 'hidden', minWidth: 180, animation: 'mtBubbleIn .18s ease' } : { position: 'absolute', top: '100%', right: m.mine ? 0 : 'auto', left: m.mine ? 'auto' : 0, marginTop: 4, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', overflow: 'hidden', minWidth: 140 }}>
                       {canAct ? (<>
                         <button onClick={e => { e.stopPropagation(); startEdit(m) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -248,7 +251,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
                     </div>
                   )}
                   {showMeta && (
-                    <div style={{ fontSize: 10, color: 'var(--text-dim)', margin: '3px 4px 0', textAlign: m.mine ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: 3, justifyContent: m.mine ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ fontSize: m_ ? 12 : 10, color: 'var(--text-dim)', margin: m_ ? '4px 6px 0' : '3px 4px 0', textAlign: m.mine ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: 3, justifyContent: m.mine ? 'flex-end' : 'flex-start' }}>
                       <span>{fmtTime(m.created_at)}</span>
                       {m.edited_at && !deleted && <span style={{ fontStyle: 'italic' }}>{t('w2d.editedSuffix')}</span>}
                       {m.mine && !deleted && <StatusTick m={m} />}
@@ -261,6 +264,56 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           )
         })}
       </div>
+      {m_ ? (
+        // ── Composeur MOBILE façon IA : carte arrondie flottante, champ en haut,
+        //    ligne basse « + » rond · envoi rond (flèche) ──
+        <div style={{ flexShrink: 0, padding: '6px 12px calc(10px + env(safe-area-inset-bottom))' }}>
+          <input ref={fileRef} type="file" accept="image/*,.gpx,.tcx,application/gpx+xml,application/pdf" style={{ display: 'none' }}
+            onChange={e => pickAttach(e.target.files?.[0] ?? null)} />
+          <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+            onChange={e => pickAttach(e.target.files?.[0] ?? null)} />
+          {attachErr && <p style={{ fontSize: 13, color: 'var(--danger)', margin: '0 6px 8px', fontWeight: 600 }}>{attachErr}</p>}
+          <div style={{ position: 'relative', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-capsule)', padding: '10px 10px 8px' }}>
+            {attach && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 2px 8px', padding: 8, borderRadius: 'var(--r-md)', background: 'var(--surface-chip)', animation: 'mtBubbleIn .2s ease' }}>
+                {attachPreview
+                  ? <img src={attachPreview} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0 }} />
+                  : <span style={{ flexShrink: 0, display: 'flex', color: 'var(--text-mid)' }}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>}
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attach.name}</span>
+                <button onClick={() => setAttach(null)} aria-label={t('w2d.remove')} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--surface-card)', color: 'var(--text-mid)', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            )}
+            <textarea value={input} onChange={e => { setInput(e.target.value); const el = e.currentTarget; el.style.height = 'auto'; el.style.height = `${Math.min(140, el.scrollHeight)}px` }} rows={1}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
+              placeholder={attach ? t('w2d.captionPlaceholder') : t('w2d.messagePlaceholder')}
+              style={{ display: 'block', width: '100%', boxSizing: 'border-box', resize: 'none', maxHeight: 140, minHeight: 40, padding: '8px 8px 4px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 17, fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.4 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <button onClick={() => setPlusOpen(o => !o)} aria-label={t('w2d.attach')} title={t('w2d.attachTitle')} aria-expanded={plusOpen}
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--float-bg)', boxShadow: 'inset 0 0 0 1px var(--border-mid)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, transform: plusOpen ? 'rotate(45deg)' : 'none', transition: 'transform .25s cubic-bezier(.2,.8,.2,1)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <span style={{ flex: 1 }} />
+              <button onClick={() => void send()} disabled={(!input.trim() && !attach) || sending} aria-label={t('w2d.send')}
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, background: (input.trim() || attach) ? 'var(--text)' : 'var(--surface-chip)', color: (input.trim() || attach) ? 'var(--surface-card)' : 'var(--text-dim)', cursor: (input.trim() || attach) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transform: (input.trim() || attach) ? 'scale(1)' : 'scale(.92)', transition: 'transform .22s cubic-bezier(.34,1.56,.64,1), background .18s ease' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+            {plusOpen && (<>
+              <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+              <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 31, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-float)', overflow: 'hidden', minWidth: 240, animation: 'mtPop .28s cubic-bezier(.2,.8,.2,1)', transformOrigin: 'bottom left' }}>
+                <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }} style={{ ...menuItem, minHeight: 52, fontSize: 16, padding: '12px 16px' }}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg> {t('w2d.attachPhotoFileParcours')}
+                </button>
+                <button onClick={() => { setPlusOpen(false); camRef.current?.click() }} style={{ ...menuItem, minHeight: 52, fontSize: 16, padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> {t('w2d.takePhoto')}
+                </button>
+              </div>
+            </>)}
+          </div>
+        </div>
+      ) : (
       <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: 10 }}>
         {/* Inputs cachés : fichier (image/parcours/PDF) + caméra (mobile) */}
         <input ref={fileRef} type="file" accept="image/*,.gpx,.tcx,application/gpx+xml,application/pdf" style={{ display: 'none' }}
@@ -313,6 +366,7 @@ export function MessageThread({ coachId, athleteId, compact = false }: { coachId
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }

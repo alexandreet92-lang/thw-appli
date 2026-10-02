@@ -78,8 +78,11 @@ export function NewGroupModal({ asAdmin, onClose, onCreated }: { asAdmin: boolea
   )
 }
 
-export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary; onChanged: () => void; onClosed: () => void }) {
+export function GroupChat({ group, onChanged, onClosed, variant = 'default' }: { group: GroupSummary; onChanged: () => void; onClosed: () => void; variant?: 'default' | 'm' }) {
   const { t } = useI18n()
+  // variant 'm' : conversation MOBILE nouveau style (en-tête à ronds, bulles,
+  // composeur carte façon IA).
+  const mob = variant === 'm'
   const [msgs, setMsgs] = useState<GroupMessage[]>([])
   const [members, setMembers] = useState<GroupMember[]>([])
   const [me, setMe] = useState<string | null>(null)
@@ -110,33 +113,36 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
     if (ok) void loadMsgs()
   }
 
-  const headStyle: React.CSSProperties = { flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }
+  const headStyle: React.CSSProperties = mob
+    ? { flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '4px 16px 10px' }
+    : { flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }
+  const roundM: React.CSSProperties = { width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
       <div style={headStyle}>
-        <button onClick={onClosed} aria-label={t('w2d.back')} style={{ width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        <button onClick={onClosed} aria-label={t('w2d.back')} className={mob ? 'thw-press' : undefined} style={mob ? roundM : { width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width={mob ? 22 : 16} height={mob ? 22 : 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
-        <span style={{ width: 34, height: 34, borderRadius: group.isDm ? '50%' : 11, overflow: 'hidden', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800 }}>
+        <span style={{ width: mob ? 40 : 34, height: mob ? 40 : 34, borderRadius: group.isDm || mob ? '50%' : 11, overflow: 'hidden', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800 }}>
           {group.isDm
             // eslint-disable-next-line @next/next/no-img-element
             ? (group.dmAvatar ? <img src={group.dmAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (group.name.slice(0, 1).toUpperCase()))
             : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
-          {!group.isDm && <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t(members.length > 1 ? 'w2d.membersCountPlural' : 'w2d.membersCountSingular', { n: members.length })}{isAdmin ? t('w2d.youAreAdmin') : ''}</div>}
+          <div style={{ fontSize: mob ? 17 : 14, fontWeight: mob ? 800 : 700, color: 'var(--text)', fontFamily: mob ? 'var(--font-body)' : 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</div>
+          {!group.isDm && <div style={{ fontSize: mob ? 13 : 11.5, color: 'var(--text-dim)' }}>{t(members.length > 1 ? 'w2d.membersCountPlural' : 'w2d.membersCountSingular', { n: members.length })}{isAdmin ? t('w2d.youAreAdmin') : ''}</div>}
         </div>
         {!group.isDm && (
-          <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={() => setPanel(true)} aria-label={t('w2d.members')} className={mob ? 'thw-press' : undefined} style={mob ? roundM : { width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
           </button>
         )}
       </div>
 
       {/* Fil */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: mob ? '12px 14px' : '14px', display: 'flex', flexDirection: 'column', gap: mob ? 8 : 10 }}
         onClick={() => menuId && setMenuId(null)}>
         {msgs.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-dim)', fontSize: 13 }}>{t('w2d.startGroupConversation')}</div>}
         {msgs.map((m, i) => {
@@ -146,14 +152,14 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
           const canReport = !mine && !isBlocked
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', position: 'relative' }}>
-              {showName && <span style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 3px 4px', fontWeight: 600 }}>{m.senderName}</span>}
+              {showName && <span style={{ fontSize: mob ? 13 : 11, color: 'var(--text-dim)', margin: mob ? '6px 0 4px 6px' : '0 0 3px 4px', fontWeight: 600 }}>{m.senderName}</span>}
               {isBlocked ? (
                 <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 'var(--r-md)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontStyle: 'italic', border: '1px dashed var(--border)' }}>
                   Message masqué (utilisateur bloqué)
                 </div>
               ) : (
                 <div onClick={e => { if (canReport) { e.stopPropagation(); setMenuId(menuId === m.id ? null : m.id) } }}
-                  style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: 'var(--r-md)', background: mine ? 'var(--primary)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: canReport ? 'pointer' : 'default' }}>
+                  style={{ maxWidth: mob ? '80%' : '78%', padding: mob ? '10px 14px' : '8px 12px', borderRadius: mob ? 'var(--r-lg)' : 'var(--r-md)', background: mine ? 'var(--primary)' : mob ? 'var(--surface-card)' : 'var(--bg-card2)', color: mine ? 'var(--on-primary)' : 'var(--text)', fontSize: mob ? 16 : 13.5, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: canReport ? 'pointer' : 'default', boxShadow: mob && !mine ? '0 1px 3px rgba(0,0,0,0.06)' /* design-allow-color — ombre douce de bulle */ : 'none', animation: mob && i === msgs.length - 1 ? 'gcIn .3s cubic-bezier(.2,.8,.2,1)' : undefined }}>
                   {m.body}
                   <span style={{ display: 'block', fontSize: 9.5, opacity: 0.6, marginTop: 3, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtT(m.createdAt)}</span>
                 </div>
@@ -179,6 +185,21 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
       </div>
 
       {/* Composer */}
+      {mob ? (
+        <div style={{ flexShrink: 0, padding: '6px 12px calc(10px + env(safe-area-inset-bottom))' }}>
+          <style>{`@keyframes gcIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){[style*="gcIn"]{animation:none!important}}`}</style>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-capsule)', padding: 8 }}>
+            <textarea value={input} rows={1} onChange={e => { setInput(e.target.value); const el = e.currentTarget; el.style.height = 'auto'; el.style.height = `${Math.min(140, el.scrollHeight)}px` }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
+              placeholder={t('w2d.groupMessagePlaceholder')}
+              style={{ flex: 1, minWidth: 0, resize: 'none', minHeight: 44, maxHeight: 140, padding: '11px 8px', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 17, lineHeight: 1.35, outline: 'none', fontFamily: 'var(--font-body)' }} />
+            <button onClick={() => void send()} disabled={!input.trim()} aria-label={t('w2d.send')}
+              style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, background: input.trim() ? 'var(--text)' : 'var(--surface-chip)', color: input.trim() ? 'var(--surface-card)' : 'var(--text-dim)', cursor: input.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transform: input.trim() ? 'scale(1)' : 'scale(.92)', transition: 'transform .22s cubic-bezier(.34,1.56,.64,1), background .18s ease' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+            </button>
+          </div>
+        </div>
+      ) : (
       <div style={{ flexShrink: 0, display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
           placeholder={t('w2d.groupMessagePlaceholder')} style={{ flex: 1, padding: '10px 13px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }} />
@@ -186,6 +207,7 @@ export function GroupChat({ group, onChanged, onClosed }: { group: GroupSummary;
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
         </button>
       </div>
+      )}
 
       {panel && <MembersPanel group={group} members={members} isAdmin={isAdmin} me={me}
         onClose={() => setPanel(false)}

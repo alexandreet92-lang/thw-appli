@@ -78,15 +78,34 @@ function categoryIcon(id: string, color = 'currentColor', size = 14): React.Reac
 }
 
 interface Connection {
-  id: string; provider?: OAuthProvider; label: string
+  id: string; provider?: OAuthProvider | 'garmin' | 'coros' | 'apple_health'; label: string
   connected: boolean; lastSync: string; loading: boolean; available: boolean
+  /** Horodatage ISO de la dernière synchro (oauth_tokens.last_used_at ?? updated_at). */
+  lastSyncIso?: string | null
+  /** Jeton Polar v3 (scope accesslink.read_all) → reconnexion nécessaire. */
+  reconnect?: boolean
+  /** Logo de marque (public/logos/apps/<logo>). */
+  logo?: string
+}
+
+/** Ligne renvoyée par GET /api/oauth/status (cf. ConnectionInfo de la route). */
+interface OAuthStatusRow { provider: string; last_used_at: string | null; updated_at: string | null; scope: string | null }
+
+/** « À l'instant » / « Il y a 5min » / « Il y a 2h » / « Il y a 3j » (mêmes libellés que /connections). */
+function relativeSync(iso: string | null | undefined, t: TFunc): string {
+  if (!iso) return ''
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (!Number.isFinite(diff)) return ''
+  if (diff < 120)   return t('connections.relativeNow')
+  if (diff < 3600)  return t('connections.relativeMin', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('connections.relativeHour', { n: Math.floor(diff / 3600) })
+  return t('connections.relativeDay', { n: Math.floor(diff / 86400) })
 }
 
 // ══════════════════════════════════════════════════
 // HELPERS & CONSTANTS
 // ══════════════════════════════════════════════════
 
-function today() { return new Date().toISOString().split('T')[0] }
 function sinceDate(d: string, t: TFunc): string {
   const now = new Date(), dt = new Date(d)
   const m = (now.getFullYear()-dt.getFullYear())*12+now.getMonth()-dt.getMonth()
@@ -125,6 +144,24 @@ function AppLogo({ id, size=28 }: { id:string; size?:number }) {
     cronometer:<svg width={size} height={size} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#F5A623"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">C</text></svg>,
   }
   return <>{logos[id] ?? <div style={{ width:size, height:size, borderRadius: 'var(--r-sm)', background:'var(--border)' }}/>}</>
+}
+
+/** Logo de marque (mêmes visuels que /connections) sur tuile blanche arrondie.
+ *  Repli : initiale sur puce grise si l'image manque. */
+function BrandTile({ logo, label, size = 40, muted }: { logo?: string; label: string; size?: number; muted?: boolean }) {
+  const [err, setErr] = useState(false)
+  const img = Math.round(size * 0.7)
+  return (
+    <span aria-hidden style={{ width: size, height: size, borderRadius: 'var(--r-sm)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: logo && !err ? '#fff' : 'var(--surface-chip)', // design-allow-color — fond blanc des logos de marque (lisibles en clair comme en sombre)
+      boxShadow: '0 1px 3px rgba(0,0,0,0.10)', // design-allow-color — ombre douce de tuile
+      opacity: muted ? 0.55 : 1, filter: muted ? 'grayscale(1)' : undefined }}>
+      {logo && !err
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={`/logos/apps/${logo}`} alt="" width={img} height={img} onError={() => setErr(true)} style={{ width: img, height: img, objectFit: 'contain', display: 'block' }} />
+        : <span style={{ fontFamily: 'var(--font-body)', fontSize: Math.round(size * 0.4), fontWeight: 700, color: 'var(--text-mid)' }}>{label.charAt(0)}</span>}
+    </span>
+  )
 }
 
 // ══════════════════════════════════════════════════
@@ -228,53 +265,95 @@ function NavRow({ label, sub, icon, onClick, first }: { label:string; sub:string
 // HOOKS
 // ══════════════════════════════════════════════════
 
+// Mêmes fournisseurs que /connections : les 4 branchés en OAuth (strava, wahoo,
+// polar, withings) + ceux « bientôt disponibles » mis en avant (Garmin, Coros,
+// Apple Santé). Un fournisseur « bientôt » qui apparaîtrait connecté dans
+// oauth_tokens s'affiche quand même comme connecté.
+const CONNECTION_DEFS: Connection[] = [
+  { id:'strava',       provider:'strava',       label:'Strava',         logo:'strava.png',      connected:false, lastSync:'', loading:false, available:true },
+  { id:'wahoo',        provider:'wahoo',        label:'Wahoo',          logo:'wahoo.png',       connected:false, lastSync:'', loading:false, available:true },
+  { id:'polar',        provider:'polar',        label:'Polar',          logo:'polar.png',       connected:false, lastSync:'', loading:false, available:true },
+  { id:'withings',     provider:'withings',     label:'Withings',       logo:'withings.png',    connected:false, lastSync:'', loading:false, available:true },
+  { id:'garmin',       provider:'garmin',       label:'Garmin Connect', logo:'garmin.svg',      connected:false, lastSync:'', loading:false, available:false },
+  { id:'coros',        provider:'coros',        label:'Coros',          logo:'coros.png',       connected:false, lastSync:'', loading:false, available:false },
+  { id:'apple_health', provider:'apple_health', label:'Apple Health',   logo:'applehealth.png', connected:false, lastSync:'', loading:false, available:false },
+]
+
 function useConnections() {
-  const [connections, setConnections] = useState<Connection[]>([
-    { id:'strava',       provider:'strava',   label:'Strava',       connected:false, lastSync:'', loading:false, available:true },
-    { id:'wahoo',        provider:'wahoo',    label:'Wahoo',        connected:false, lastSync:'', loading:false, available:true },
-    { id:'polar',        provider:'polar',    label:'Polar',        connected:false, lastSync:'', loading:false, available:true },
-    { id:'withings',     provider:'withings', label:'Withings',     connected:false, lastSync:'', loading:false, available:true },
-  ])
+  const [connections, setConnections] = useState<Connection[]>(CONNECTION_DEFS)
+  // false tant que /api/oauth/status n'a pas répondu → squelette, jamais un faux « Non connecté ».
+  const [statusLoaded, setStatusLoaded] = useState(false)
 
   const reload = useCallback(async () => {
     try {
-      const res = await fetch('/api/oauth/status')
+      const res = await fetch('/api/oauth/status', { cache: 'no-store' })
       if (!res.ok) return
-      const { connected: cp } = await res.json() as { connected: string[] }
-      setConnections(p => p.map(c => ({ ...c, connected: c.provider ? cp.includes(c.provider) : false })))
-    } catch {}
+      // BUG corrigé : la route renvoie { connected: ConnectionInfo[] } (objets
+      // { provider, last_used_at, updated_at, scope }) et non string[] — l'ancien
+      // `cp.includes(c.provider)` comparait une chaîne à des objets → toujours
+      // false → chaque appli s'affichait « Non connecté ». On accepte les deux formes.
+      const json = await res.json() as { connected?: (OAuthStatusRow | string)[] }
+      const rows: OAuthStatusRow[] = (json.connected ?? []).map(r => typeof r === 'string'
+        ? { provider: r, last_used_at: null, updated_at: null, scope: null }
+        : r)
+      const byProvider = new Map(rows.map(r => [r.provider, r]))
+      setConnections(p => p.map(c => {
+        const row = c.provider ? byProvider.get(c.provider) : undefined
+        const iso = row ? (row.last_used_at ?? row.updated_at) : null
+        return {
+          ...c,
+          connected: !!row,
+          lastSyncIso: iso,
+          lastSync: iso ? iso.slice(0, 10) : '',
+          reconnect: c.provider === 'polar' && !!row && (row.scope ?? '').includes('accesslink.read_all'),
+          loading: false,
+        }
+      }))
+    } catch { /* réseau : on garde l'état courant */ }
+    finally { setStatusLoaded(true) }
   }, [])
 
-  useEffect(() => { reload() }, [reload])
+  useEffect(() => { void reload() }, [reload])
 
   function setLoading(id:string, v:boolean)   { setConnections(p=>p.map(c=>c.id===id?{...c,loading:v}:c)) }
-  function setConnected(id:string, v:boolean) { setConnections(p=>p.map(c=>c.id===id?{...c,connected:v,lastSync:v?today():''}:c)) }
 
   async function connect(c:Connection) {
     if (!c.provider||!c.available) return
     setLoading(c.id, true)
     window.location.href = `/api/oauth/connect?provider=${c.provider}`
   }
-  async function disconnect(c:Connection) {
-    if (!c.provider) return
+  /** Déconnexion → true si la route a répondu OK. */
+  async function disconnect(c:Connection): Promise<boolean> {
+    if (!c.provider) return false
     setLoading(c.id, true)
+    let ok = false
     try {
       const res = await fetch(`/api/oauth/disconnect?provider=${c.provider}`, { method:'POST' })
-      if (res.ok) setConnected(c.id, false)
-    } catch {}
+      ok = res.ok
+      if (ok) setConnections(p=>p.map(x=>x.id===c.id?{...x,connected:false,lastSync:'',lastSyncIso:null,reconnect:false}:x))
+    } catch { /* réseau */ }
     setLoading(c.id, false)
+    return ok
   }
-  async function sync(c:Connection) {
-    if (!c.provider||!c.connected) return
+  /** Synchronisation → { ok, n } (n = éléments importés quand la route le renvoie). */
+  async function sync(c:Connection): Promise<{ ok: boolean; n: number; error?: string }> {
+    if (!c.provider||!c.connected) return { ok: false, n: 0 }
     setLoading(c.id, true)
+    let out: { ok: boolean; n: number; error?: string } = { ok: false, n: 0 }
     try {
-      await fetch(`/api/sync/${c.provider}`, { method:'POST' })
-      setConnections(p=>p.map(x=>x.id===c.id?{...x,lastSync:today()}:x))
-    } catch {}
+      const res = await fetch(`/api/sync/${c.provider}`, { method:'POST' })
+      const data = await res.json().catch(() => ({})) as { synced?: number; error?: string }
+      out = { ok: res.ok, n: typeof data.synced === 'number' ? data.synced : 0, error: data.error }
+      if (res.ok) {
+        const now = new Date().toISOString()
+        setConnections(p=>p.map(x=>x.id===c.id?{...x,lastSync:now.slice(0,10),lastSyncIso:now}:x))
+      }
+    } catch { /* réseau */ }
     setLoading(c.id, false)
+    return out
   }
 
-  return { connections, connect, disconnect, sync, reload }
+  return { connections, connect, disconnect, sync, reload, statusLoaded }
 }
 
 function useProfile() {
@@ -899,7 +978,7 @@ function ConnexionsBloc() {
   const { t } = useI18n()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { connections, connect, disconnect, sync, reload: reloadConn } = useConnections()
+  const { connections, connect, disconnect, sync, reload: reloadConn, statusLoaded } = useConnections()
   const pm = useProfileMobile()
   const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null)
 
@@ -914,31 +993,107 @@ function ConnexionsBloc() {
     if (MSGS[status]) { setToast(MSGS[status]); setTimeout(()=>setToast(null),4000); reloadConn(); router.replace('/profile') }
   }, [searchParams, router, reloadConn, t])
 
-  const availableConns = connections.filter(c=>c.available)
+  // Applis branchables (OAuth) + toute appli déjà connectée ; le reste = « bientôt ».
+  const availableConns = connections.filter(c=>c.available || c.connected)
+  const soonConns = connections.filter(c=>!c.available && !c.connected)
+  const [notice, setNotice] = useState<{ msg: string; ok: boolean } | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function flash(msg: string, ok: boolean) {
+    setNotice({ msg, ok })
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), 3800)
+  }
+  useEffect(() => () => { if (noticeTimer.current) clearTimeout(noticeTimer.current) }, [])
+
+  async function onSync(c: Connection) {
+    const r = await sync(c)
+    if (r.ok) flash(t('connections.appSynced', { name: c.label, n: r.n }), true)
+    else flash(r.error ? t('connections.syncError', { name: c.label, error: r.error }) : t('connections.networkErrorFor', { name: c.label }), false)
+  }
+  async function onDisconnect(c: Connection) {
+    if (!window.confirm(t('connections.confirmDisconnect', { name: c.label }))) return
+    const ok = await disconnect(c)
+    flash(ok ? t('connections.appDisconnected', { name: c.label }) : t('connections.disconnectError', { name: c.label }), ok)
+  }
+  function statusText(c: Connection): string {
+    if (c.reconnect) return t('connections.reconnectNeeded')
+    const rel = relativeSync(c.lastSyncIso, t)
+    if (!rel) return t('profile.connected')
+    return `${t('profile.connected')} · ${t('connections.syncedAgo', { when: rel.charAt(0).toLowerCase() + rel.slice(1) })}`
+  }
+
+  const shownNotice = notice ?? toast
 
   if (pm.mobile) {
     return (
       <div>
-        {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
         <MIntro>{t('profile.connIntro')}</MIntro>
+        {shownNotice && (
+          <div role="status" className="thw-notice" style={{ margin: '0 0 18px', padding: '12px 16px', borderRadius: 'var(--r-lg)', background: CARD_BG, boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', gap: 10, fontFamily: FB, fontSize: 15, color: 'var(--text)' }}>
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: shownNotice.ok ? 'var(--success)' : 'var(--danger)' }} />
+            <span style={{ minWidth: 0 }}>{shownNotice.msg}</span>
+          </div>
+        )}
         <MSection label={t('profile.applications')}>
           <MGroup>
             {availableConns.map((c,i)=>(
-              <MLine key={c.id} first={i===0}>
-                <span style={{ flexShrink:0, display:'flex' }}><AppLogo id={c.id} size={32}/></span>
-                <MRowText title={c.label}
-                  sub={c.loading ? '…' : c.connected ? (c.lastSync ? t('profile.connectedSync', { date: c.lastSync }) : t('profile.connected')) : t('profile.notConnected')}
-                  subColor={c.connected ? 'var(--success)' : undefined} />
-                {c.connected && (
-                  <MTextBtn onClick={()=>sync(c)} disabled={c.loading} color="var(--text-mid)" label={t('prf.sync')}>
-                    <Ico d={<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>} size={20} />
+              <MLine key={c.id} first={i===0} align={statusLoaded && c.connected ? 'flex-start' : 'center'} style={{ minHeight: 72 }}>
+                <BrandTile logo={c.logo} label={c.label} size={40} />
+                <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
+                  <span style={{ display: 'block', fontSize: 17, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3, fontFamily: FB, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                  {!statusLoaded ? (
+                    <span aria-hidden className="skeleton-shimmer" style={{ display: 'block', marginTop: 7, width: 132, height: 12, borderRadius: 'var(--r-pill)' }} />
+                  ) : (
+                    <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 3, fontSize: 14, lineHeight: 1.35, fontFamily: FB, minWidth: 0,
+                      color: c.connected ? (c.reconnect ? 'var(--warning, var(--text-mid))' : 'var(--success)') : 'var(--text-mid)' }}>
+                      {c.connected && <span aria-hidden className={c.reconnect ? undefined : 'thw-live-dot'} style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: 'currentColor', alignSelf: 'center' }} />}
+                      <span style={{ minWidth: 0 }}>{c.connected ? statusText(c) : t('profile.notConnected')}</span>
+                    </span>
+                  )}
+                  {statusLoaded && c.connected && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                      {!c.reconnect && (
+                        <button type="button" onClick={() => void onSync(c)} disabled={c.loading}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', cursor: c.loading ? 'default' : 'pointer',
+                            background: 'var(--surface-chip)', color: 'var(--text)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>
+                          <span aria-hidden className={c.loading ? 'thw-spin' : undefined} style={{ display: 'flex' }}>
+                            <Ico d={<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>} size={15} sw={2.4} />
+                          </span>
+                          {c.loading ? t('connections.syncing') : t('prf.sync')}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => void onDisconnect(c)} disabled={c.loading}
+                        style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', background: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--danger)' }}>
+                        {t('profile.disconnect')}
+                      </button>
+                    </span>
+                  )}
+                </span>
+                {statusLoaded && (c.reconnect || !c.connected) && (
+                  <MTextBtn onClick={()=>void connect(c)} disabled={c.loading || !c.available} color="var(--primary)">
+                    {c.loading ? '…' : c.reconnect ? t('connections.reconnect') : t('profile.connect')}
                   </MTextBtn>
                 )}
-                <MTextBtn onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} color={c.connected ? 'var(--danger)' : 'var(--primary)'}>
-                  {c.loading ? '…' : c.connected ? t('profile.disconnect') : t('profile.connect')}
-                </MTextBtn>
               </MLine>
             ))}
+          </MGroup>
+        </MSection>
+        {soonConns.length > 0 && (
+          <MSection label={t('connections.comingSoon')}>
+            <MGroup>
+              {soonConns.map((c,i)=>(
+                <MLine key={c.id} first={i===0}>
+                  <BrandTile logo={c.logo} label={c.label} size={40} muted />
+                  <MRowText title={c.id === 'apple_health' ? t('gm.appleHealth') : c.label} />
+                  <span style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 600 }}>{t('gm.soon')}</span>
+                </MLine>
+              ))}
+            </MGroup>
+          </MSection>
+        )}
+        <MSection>
+          <MGroup>
+            <MNavRow first icon={<MIcon><Plug size={20} /></MIcon>} label={t('gm.allConnections')} onClick={() => router.push('/connections')} />
           </MGroup>
         </MSection>
       </div>
@@ -947,7 +1102,7 @@ function ConnexionsBloc() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
-      {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
+      {shownNotice && <Toast msg={shownNotice.msg} ok={shownNotice.ok}/>}
       <Intro>{t('profile.connIntro')}</Intro>
 
       <Section label={t('profile.applications')}>
@@ -957,13 +1112,13 @@ function ConnexionsBloc() {
               <span style={{ flexShrink:0, display:'flex' }}><AppLogo id={c.id} size={28}/></span>
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{c.label}</p>
-                <p style={{ fontSize:11, color:c.connected?'#22c55e':'var(--text-dim)', margin:'2px 0 0' }}>
-                  {c.loading?'…' : c.connected?(c.lastSync?t('profile.connectedSync', { date: c.lastSync }):t('profile.connected')):t('profile.notConnected')}
+                <p style={{ fontSize:11, color:c.connected?'var(--success)':'var(--text-dim)', margin:'2px 0 0' }}>
+                  {c.loading || !statusLoaded ?'…' : c.connected?statusText(c):t('profile.notConnected')}
                 </p>
               </div>
               <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'6px 10px', borderRadius: 'var(--r-sm)', background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer' }}>↻</button>}
-                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'6px 12px', borderRadius: 'var(--r-sm)', background:'transparent', border:`1px solid ${c.connected?'rgba(239,68,68,0.4)':'var(--primary)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
+                {c.connected && <button onClick={()=>void onSync(c)} disabled={c.loading} style={{ padding:'6px 10px', borderRadius: 'var(--r-sm)', background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer' }}>↻</button>}
+                <button onClick={()=>c.connected?void onDisconnect(c):void connect(c)} disabled={c.loading || (!c.connected && !c.available)} style={{ padding:'6px 12px', borderRadius: 'var(--r-sm)', background:'transparent', border:`1px solid ${c.connected?'rgba(239,68,68,0.4)':'var(--primary)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
                   {c.loading?'…' : c.connected?t('profile.disconnect'):t('profile.connect')}
                 </button>
               </div>
@@ -3579,7 +3734,7 @@ export function ProfileContent({ onClose }: { onClose?: () => void } = {}) {
   // séparation par le fond, zéro carte encadrée. (Mobile = drill-down.)
   // ══════════════════════════════════════════════════════════════════
   if (!narrow) {
-    const navRow = (r: { id: string; label: string; Icon: typeof User; value?: string }, danger?: boolean) => {
+    const navRow = (r: { id: string; label: string; Icon: typeof User; value?: string; onClick?: () => void }, danger?: boolean) => {
       const on = !danger && eff === r.id
       return (
         <button

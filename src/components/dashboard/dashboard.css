@@ -95,7 +95,7 @@
   .dash-mobile-only  { display: none; }
 }
 
-/* Skeleton — shimmer (pas de spinner). */
+/* Skeleton — shimmer (pas de spinner). Reflet balayé en transform (compositeur). */
 .dash-skel { position: relative; overflow: hidden; }
 .dash-skel::after {
   content: "";
@@ -106,6 +106,18 @@
   animation: dash-shimmer 1.4s infinite;
 }
 @keyframes dash-shimmer { to { transform: translateX(100%); } }
+/* Desktop : bloc plein inchangé (formes internes masquées). */
+.dash-skel-inner { display: none; }
+@media (max-width: 767px) {
+  /* Mobile : la carte squelette reprend la forme du contenu ; seules les
+     formes scintillent (reflet doux, un peu plus lent, synchronisé). */
+  .dash-skel-inner { display: block; padding: 18px 20px 20px; }
+  .dash-skel-card.dash-skel::after { display: none; }
+  .dash-skel-inner .dash-skel::after {
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 7%, transparent), transparent);
+    animation: dash-shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
 
 /* Retour tactile discret sur les surfaces cliquables. */
 .dash-tap { transition: background 0.15s ease; }
@@ -131,4 +143,51 @@
 .dash-card.dash-tap:active { transform: scale(0.985); }
 @media (prefers-reduced-motion: reduce) { .dash-card.dash-tap:active { transform: none; } }
 .dash-card.dash-tap:active { background: var(--dash-card, var(--bg-card2)); }
+
+/* ── Mobile premium (≤ 767 px) ─────────────────────────────────────
+   Appui : la carte s'enfonce vite (90 ms) et revient en ressort (280 ms),
+   le chevron glisse de 3 px → « ça s'ouvre ». transform / opacity seulement. */
+@media (max-width: 767px) {
+  .dash-card { transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .dash-card.dash-tap:active { transform: scale(0.975); transition-duration: 90ms; }
+  .dash-card .dash-chev { transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .dash-card.dash-tap:active .dash-chev { transform: translateX(3px); transition-duration: 90ms; }
+  /* Carte focale (Aujourd'hui) : voile d'accent très léger en haut (≤ 7 %). */
+  .dash-card--hero {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 7%, var(--dash-card, var(--bg-card2))) 0%, var(--dash-card, var(--bg-card2)) 62%) !important;
+  }
+  /* Suggestions : cartes blanches sans bordure (séparation par le fond), tappables. */
+  .dash-suggest { background: var(--dash-card, var(--bg-card2)) !important; border: none !important; cursor: pointer; transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); -webkit-tap-highlight-color: transparent; }
+  .dash-suggest:active { transform: scale(0.975); transition-duration: 90ms; }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .dash-card.dash-tap:active, .dash-suggest:active { transform: none; }
+  .dash-card.dash-tap:active .dash-chev { transform: none; }
+}
+
+/* Mini-barres : montée en cascade au montage (mobile). */
+@keyframes dash-bar-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  .dash-bars rect {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: dash-bar-rise 620ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(180ms + var(--i, 0) * 45ms);
+  }
+}
+
+/* Jauges de macros : remplissage gauche → droite au montage (mobile, scaleX). */
+@keyframes dash-fill-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  .dash-fill { transform-origin: 0 50%; animation: dash-fill-in 900ms cubic-bezier(0.4, 0, 0.2, 1) 200ms backwards; }
+}
+
+/* Accueil mobile : salutation « héros ». */
+.dash-hero { margin: 4px 4px 18px; }
+@keyframes dash-hero-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .dash-hero > * { animation: dash-hero-in 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  .dash-hero > *:nth-child(2) { animation-delay: 60ms; }
+  .dash-hero > *:nth-child(3) { animation-delay: 120ms; }
+}
 .dash-gap:not(:empty) { margin-bottom: 12px; }

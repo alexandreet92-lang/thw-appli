@@ -16,8 +16,9 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useState, useRef, type CSSProperties, type ReactNode } from 'react'
 import PressPop from '@/components/ui/PressPop'
-import { useSwipeDown } from '@/hooks/useSwipeBack'
 import { useI18n } from '@/lib/i18n'
+import { useSheetGesture } from '@/components/ui/useSheetGesture'
+import { IOS_EASE_CSS } from '@/components/ui/motion'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -36,6 +37,9 @@ export const SHEET_RADIUS = 'calc(var(--r-lg) + 4px) calc(var(--r-lg) + 4px) 0 0
 /** Ombre douce des cartes blanches (quasi invisible en sombre). */
 export const SHEET_CARD_SHADOW = '0 1px 3px rgba(0,0,0,0.05)' // design-allow-color — ombre douce de carte
 const MAX_H = 'calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px)'
+/** Ouverture : ressort iOS un peu plus long (la feuille « se pose ») ; fermeture plus vive. */
+const SHEET_OPEN_T = `transform 440ms ${IOS_EASE_CSS}`
+const SHEET_CLOSE_T = `transform 280ms ${IOS_EASE_CSS}`
 
 /** Vrai sous 768 px. Démarre à `false` (identique au rendu serveur, sans
  *  écart d'hydratation) puis suit le media query après le montage. */
@@ -170,7 +174,12 @@ export interface MobileSheetProps {
 export function MobileSheet({ open, onClose, children, title, sub, icon, onBack, right, hideClose, footer, full, locked, zIndex = 9999, label, surface = 'page', bodyStyle }: MobileSheetProps) {
   const { mounted, visible, animIn } = usePresence(open)
   const close = () => { if (!locked) onClose() }
-  const down = useSwipeDown(close)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const scrimRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  // Tirer vers le bas (poignée, en-tête, ou contenu déjà en haut) : suit le doigt,
+  // voile qui s'estompe, fermeture à la vitesse du geste, élastique vers le haut.
+  useSheetGesture({ axis: 'y', panelRef, scrimRef, scrollRef: bodyRef, onClose: close, enabled: mounted && visible && open && !locked, restTransition: SHEET_OPEN_T })
 
   useEffect(() => {
     if (!open) return
@@ -184,24 +193,24 @@ export function MobileSheet({ open, onClose, children, title, sub, icon, onBack,
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex, display: 'flex', alignItems: 'flex-end' }}>
-      <div aria-hidden onClick={close}
+      <div ref={scrimRef} aria-hidden onClick={close}
         style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', opacity: animIn ? 1 : 0, transition: 'opacity 300ms cubic-bezier(0.16,1,0.3,1)' }} />
-      <div role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         data-sheet-panel={surface === 'page' ? 'm' : 'mc'}
         style={{
           position: 'relative', width: '100%', borderRadius: SHEET_RADIUS, overflow: 'hidden',
           maxHeight: MAX_H, height: full ? MAX_H : undefined,
           display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-float)', fontFamily: FB,
-          transform: animIn ? `translateY(${down.dragY}px)` : 'translateY(100%)',
-          transition: down.dragY > 0 ? 'none' : 'transform 320ms cubic-bezier(0.32,0.72,0,1)',
+          transform: animIn ? 'translateY(0px)' : 'translateY(100%)',
+          transition: animIn ? SHEET_OPEN_T : SHEET_CLOSE_T,
         }}>
-        <div {...down.handlers} style={{ flexShrink: 0, touchAction: 'pan-x' }}>
+        <div style={{ flexShrink: 0, touchAction: 'none' }}>
           <div aria-hidden style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: hasHeader ? 2 : 10 }}>
             <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
           </div>
           {hasHeader && <SheetTopBar title={title} sub={sub} icon={icon} onBack={onBack} right={right} onClose={hideClose ? undefined : close} />}
         </div>
-        <div style={{
+        <div ref={bodyRef} style={{
           overflowY: 'auto', flex: 1, minHeight: 0, overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
           padding: '4px 16px', paddingBottom: footer ? 16 : 'calc(24px + env(safe-area-inset-bottom))', ...bodyStyle,
         }}>

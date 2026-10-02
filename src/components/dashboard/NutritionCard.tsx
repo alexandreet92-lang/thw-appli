@@ -11,6 +11,7 @@ import { useDailyMeals, SLOT_KEYS, type MealSlotKey } from '@/hooks/useDailyMeal
 import { useI18n } from '@/lib/i18n'
 import { DashCard, DASH_ICONS, Skeleton } from './primitives'
 import { FB, NUM, todayIso } from './lib'
+import { CountUp } from '@/components/ui/CountUp'
 
 const PLAN_SLOT: Record<MealSlotKey, keyof MealSet> = {
   breakfast: 'petit_dejeuner', morning_snack: 'collation_matin', lunch: 'dejeuner',
@@ -27,10 +28,10 @@ function Macro({ label, value, target, unit }: { label: string; value: number; t
     <div style={{ minWidth: 0 }}>
       <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{label}</p>
       <p style={{ margin: '2px 0 0', ...NUM, fontSize: 22, fontWeight: 800, whiteSpace: 'nowrap' }}>
-        {Math.round(value)}<span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}> / {Math.round(target)}{unit}</span>
+        <CountUp value={Math.round(value)} /><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}> / {Math.round(target)}{unit}</span>
       </p>
       <div aria-hidden style={{ marginTop: 8, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--bg-hover)', overflow: 'hidden' }}>
-        <div style={{ width: `${pct * 100}%`, height: '100%', borderRadius: 'var(--r-pill)', background: pct >= 1 ? 'var(--success)' : 'var(--primary)' }} />
+        <div className="dash-fill" style={{ width: `${pct * 100}%`, height: '100%', borderRadius: 'var(--r-pill)', background: pct >= 1 ? 'var(--success)' : 'var(--primary)' }} />
       </div>
     </div>
   )

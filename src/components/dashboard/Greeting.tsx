@@ -26,7 +26,8 @@ const TRIAL_DAYS = 14
 
 interface SubRow { tier: string | null; status: string | null; stripe_subscription_id: string | null }
 
-export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
+/** Prénom + badge plan/essai (partagé par la salutation desktop et le héros mobile). */
+function useGreetingData() {
   const { t } = useI18n()
   const { profile } = useProfile()
   const [sub, setSub] = useState<SubRow | null>(null)
@@ -61,6 +62,13 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
     ? (sub?.tier ? (PLAN_LABEL[sub.tier] ?? sub.tier) : null)
     : (trialDaysLeft && trialDaysLeft > 0 ? t('dashboard.trialBadge', { days: trialDaysLeft }) : null)
 
+  return { firstName, badge }
+}
+
+export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
+  const { t } = useI18n()
+  const { firstName, badge } = useGreetingData()
+
   return (
     <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
       <div style={{ minWidth: 0 }}>
@@ -77,6 +85,42 @@ export function Greeting({ rightSlot }: { rightSlot?: React.ReactNode }) {
         </div>
       </div>
       {rightSlot}
+    </header>
+  )
+}
+
+/** Moment de la journée → salutation (matin / après-midi / soir). */
+function greetingKey(h: number): 'gm.goodMorning' | 'gm.goodAfternoon' | 'gm.goodEvening' {
+  if (h >= 5 && h < 12) return 'gm.goodMorning'
+  if (h >= 12 && h < 18) return 'gm.goodAfternoon'
+  return 'gm.goodEvening'
+}
+
+/**
+ * Héros de l'accueil MOBILE (façon Strava / Claude iOS) : date en sur-titre
+ * discret, salutation en grand (Inter 28, graisse 800, approche serrée), badge
+ * de plan/essai en pastille. Entrée en fondu + montée (CSS .dash-hero).
+ */
+export function HomeHero() {
+  const { t } = useI18n()
+  const { firstName, badge } = useGreetingData()
+  const [hour, setHour] = useState<number | null>(null)
+  useEffect(() => { setHour(new Date().getHours()) }, [])
+  const hello = hour === null ? t('dashboard.greeting') : t(greetingKey(hour))
+  return (
+    <header className="dash-hero">
+      <p style={{ margin: 0, fontFamily: FB, fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>
+        {formatLongDate()}
+      </p>
+      <h1 style={{ margin: '6px 0 0', fontFamily: FB, fontSize: 28, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1, color: 'var(--text)', overflowWrap: 'anywhere' }}>
+        {firstName ? `${hello}, ${firstName}` : hello}
+      </h1>
+      {badge && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '4px 10px', borderRadius: 'var(--r-pill)', background: 'var(--dash-chip, var(--bg-hover))', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
+          <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />
+          {badge}
+        </span>
+      )}
     </header>
   )
 }

@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/currentUser'
 import { sportLabel } from '@/components/recovery/helpers'
 import { DashCard, DASH_ICONS, Metric, Ring, Skeleton, EmptyState } from './primitives'
 import { todayIso, daysUntil } from './lib'
+import { CountUp } from '@/components/ui/CountUp'
 import { currentLocale } from '@/lib/i18n/locale'
 
 interface Race { id: string; name: string; sport: string; date: string; goal: string | null }
@@ -51,7 +52,7 @@ export function NextRaceCard() {
       ) : (
         <Metric
           label={race.name}
-          value={t('dashboard.daysCountdown', { n: d })}
+          value={<CountUp value={d} format={n => t('dashboard.daysCountdown', { n: Math.round(n) })} />}
           sub={[longDate(race.date), race.goal ?? sportLabel(race.sport)].filter(Boolean).join(' · ')}
           right={<Ring value={1 - Math.min(d, 84) / 84} />}
         />

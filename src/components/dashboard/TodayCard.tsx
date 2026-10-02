@@ -63,7 +63,7 @@ export function TodayCard() {
     : ''
 
   return (
-    <DashCard icon={DASH_ICONS.today} title={t('dashboard.todayTitle')} meta={todayShort()} href={`/planning?week=${weekStartIso()}`}>
+    <DashCard hero icon={DASH_ICONS.today} title={t('dashboard.todayTitle')} meta={todayShort()} href={`/planning?week=${weekStartIso()}`}>
       {!session ? (
         <EmptyState title={t('dashboard.todayEmptyTitle')} hint={t('dashboard.todayEmptyHint')} />
       ) : (

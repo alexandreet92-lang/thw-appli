@@ -8,11 +8,16 @@
 //    pour revenir. --bg-card2 / --dash-card valent --surface-card dans la
 //    surpage : les blocs du contenu deviennent des cartes blanches.
 // ══════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useI18n } from '@/lib/i18n'
 import { SheetCloseBtn, useMobileSafe } from '@/components/ui/BottomSheet'
+import { useSheetGesture } from '@/components/ui/useSheetGesture'
+import { IOS_EASE_CSS } from '@/components/ui/motion'
+
+/** Push iOS : ~350 ms à l'ouverture, un peu plus vif à la fermeture. */
+const SLIDE_OPEN_T = `transform 360ms ${IOS_EASE_CSS}`
+const SLIDE_CLOSE_T = `transform 280ms ${IOS_EASE_CSS}`
 
 interface Props {
   open: boolean
@@ -24,18 +29,24 @@ interface Props {
 export default function SlideSheet({ open, onClose, title, children }: Props) {
   const { t } = useI18n()
   const mobile = useMobileSafe()
-  const swipe = useSwipeBack(onClose)
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)   // pilote la transition
+  const panelRef = useRef<HTMLDivElement>(null)
+  const scrimRef = useRef<HTMLDivElement>(null)
+  // Glisser depuis le bord gauche : la surpage suit le doigt, le voile s'estompe,
+  // retour à la vitesse du geste (flick) ou retour en place.
+  useSheetGesture({ axis: 'x', panelRef, scrimRef, onClose, enabled: mobile && mounted && open, restTransition: SLIDE_OPEN_T, edge: 40 })
 
   useEffect(() => {
     if (open) {
       setMounted(true)
-      const t = requestAnimationFrame(() => setShown(true))
-      return () => cancelAnimationFrame(t)
+      // Double rAF : le panneau est peint hors écran avant de glisser (sinon pas d'animation).
+      let r2 = 0
+      const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setShown(true)) })
+      return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2) }
     }
     setShown(false)
-    const t = setTimeout(() => setMounted(false), 280)   // attend la fin de l'anim
+    const t = setTimeout(() => setMounted(false), 300)   // attend la fin de l'anim
     return () => clearTimeout(t)
   }, [open])
 
@@ -51,15 +62,14 @@ export default function SlideSheet({ open, onClose, title, children }: Props) {
   if (!mounted || typeof document === 'undefined') return null
 
   if (mobile) {
-    const dragging = swipe.dragX > 0
     return createPortal(
       <div style={{ position: 'fixed', inset: 0, zIndex: 14000 }}>
-        <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', opacity: shown ? 1 : 0, transition: 'opacity 240ms ease' }} />
-        <div data-slide-sheet="m" {...swipe.handlers} style={{
+        <div ref={scrimRef} onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', opacity: shown ? 1 : 0, transition: 'opacity 300ms ease' }} />
+        <div ref={panelRef} data-slide-sheet="m" style={{
           position: 'absolute', inset: 0, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)',
-          transform: shown ? `translateX(${swipe.dragX}px)` : 'translateX(100%)',
-          transition: dragging ? 'none' : 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)',
-          boxShadow: 'var(--shadow-float)', touchAction: 'pan-y',
+          transform: shown ? 'translateX(0px)' : 'translateX(100%)',
+          transition: shown ? SLIDE_OPEN_T : SLIDE_CLOSE_T,
+          boxShadow: 'var(--page-edge-shadow)', touchAction: 'pan-y',
         }}>
           {/* En-tête collant : rond ‹ · titre centré gras · espace. */}
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 16px 10px', background: 'var(--surface-page)' }}>

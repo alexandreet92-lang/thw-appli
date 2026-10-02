@@ -28,6 +28,7 @@ import { haptic } from '@/lib/ui/haptic'
 import { useCoachAccess } from '@/hooks/useCoachAccess'
 import { useI18n } from '@/lib/i18n'
 import { setNavDirection } from '@/lib/nav/direction'
+import { useCardEntrance } from '@/components/ui/motion'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -80,6 +81,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // La sidebar mobile n'existe plus que dans l'espace coach.
   const isCoach = !!pathname?.startsWith('/coach')
   const panelRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  // Cartes des pages : entrée en cascade (fondu + 8 px) au montage uniquement.
+  useCardEntrance(mainRef, !!pathname && !pathname.startsWith('/topup') && !isFullscreenRoute(pathname))
   const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null, hswipe: false, past: false, vx: 0, lx: 0, lt: 0 })
 
   useEffect(() => {
@@ -284,7 +288,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith('/topup')) return <>{children}</>
   // Pages d'entrée (connexion, onboarding…) : plein écran, sans chrome.
   if (isFullscreenRoute(pathname)) {
-    return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}><PageTransition>{children}</PageTransition></div>
+    return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}><PageTransition mobile>{children}</PageTransition></div>
   }
   const hideHeader = pathname?.startsWith('/competences') || immersive
   // Page « lancer une activité » : carte plein écran (pas de gap haut), pas de
@@ -314,7 +318,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     position: 'absolute', top: 'calc(env(safe-area-inset-top) + 7px)', width: 44, height: 44, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
     background: 'var(--float-bg, color-mix(in srgb, var(--text) 10%, var(--bg)))',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.16)', cursor: 'pointer', zIndex: 5, padding: 0, WebkitTransform: 'translateZ(0)',
+    boxShadow: 'var(--shadow-fab)', cursor: 'pointer', zIndex: 5, padding: 0, WebkitTransform: 'translateZ(0)',
   }
 
   return (
@@ -410,7 +414,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </>}
         </>}
 
-        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
+        <main ref={mainRef} data-card-page={CARD_PAGES.has(pathname) ? '' : undefined} style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
           // Façon Strava : le contenu NET glisse directement sous la barre translucide
           // du haut (le flou de l'overlay le rend lisible sous la barre de statut).
           // Pas de fondu vers le blanc → plus de « bloc blanc » en haut.
@@ -419,7 +423,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         <PlanActivatedHost />
         {/* Sous-onglets de l'onglet courant (ex. Plan → Planning · Planning Week · Objectifs). */}
         {!isRecord && !isCoach && <MobileSectionTabs />}
-        <PageTransition>{children}</PageTransition>
+        <PageTransition mobile>{children}</PageTransition>
         {/* Espaceur de bas de page : un VRAI élément (jamais rogné par WebKit,
             contrairement à padding-bottom sur un conteneur scrollable) → garantit
             que la barre d'onglets flottante ne cache jamais le dernier contenu. */}

@@ -7,6 +7,9 @@
 import { useI18n } from '@/lib/i18n'
 import { latestPmc, tsbVerdict, daysToOptimal, type ActivityRow } from '@/lib/training/pmc'
 import { DashCard, DASH_ICONS, Metric, Skeleton, EmptyState } from './primitives'
+import { CountUp } from '@/components/ui/CountUp'
+
+const signed = (n: number) => { const r = Math.round(n); return `${r > 0 ? '+' : ''}${r === 0 ? 0 : r}` }
 
 const TSB_MIN = -40, TSB_MAX = 25
 
@@ -38,7 +41,7 @@ export function FormeArc({ activities, loading }: { activities: ActivityRow[]; l
         return (
           <Metric
             label={t('dashboard.freshness')}
-            value={`${tsb > 0 ? '+' : ''}${Math.round(tsb)}`}
+            value={<CountUp value={Math.round(tsb)} format={signed} />}
             chip={v.label} chipColor={v.color}
             sub={days != null && days > 0 ? t('dashboard.optimalFormIn', { n: days }) : undefined}
             right={<MiniGauge frac={frac} color={v.color} />}

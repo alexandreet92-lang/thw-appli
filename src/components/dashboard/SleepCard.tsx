@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { parseSleepNight, type SleepNight, type SleepRow } from '@/lib/health/sleep'
 import { DashCard, DASH_ICONS, Metric, MiniBars, Skeleton, EmptyState } from './primitives'
+import { CountUp } from '@/components/ui/CountUp'
 
 function fmtH(min: number): string {
   const h = Math.floor(min / 60), m = Math.round(min % 60)
@@ -56,7 +57,7 @@ export function SleepCard() {
       ) : (
         <Metric
           label={t('dashboard.lastNight')}
-          value={fmtH(last.totalMin)}
+          value={<CountUp value={last.totalMin} format={fmtH} />}
           chip={delta != null && Math.abs(delta) >= 5 ? `${delta > 0 ? '▲' : '▼'} ${fmtH(Math.abs(delta))}` : undefined}
           right={nights.length > 1 ? <MiniBars values={nights.map(n => n.totalMin)} highlight={nights.length - 1} /> : undefined}
         />

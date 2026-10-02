@@ -4126,8 +4126,9 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
     try {
       const res = await fetch('/api/oauth/status')
       if (!res.ok) return
-      const { connected: cp } = await res.json() as { connected: string[] }
-      setStravaConnected(cp.includes('strava'))
+      // /api/oauth/status renvoie des objets { provider, … } (ancien format : chaînes).
+      const { connected: cp } = await res.json() as { connected: (string | { provider?: string })[] }
+      setStravaConnected((cp ?? []).some(c => (typeof c === 'string' ? c : c?.provider) === 'strava'))
     } catch {}
   }, [])
 

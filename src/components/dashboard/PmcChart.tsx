@@ -8,6 +8,7 @@ import { useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { buildPmc, LOAD_COLORS, type ActivityRow, type PmcPoint } from '@/lib/training/pmc'
 import { DashCard, DASH_ICONS, Metric, Skeleton, EmptyState } from './primitives'
+import { CountUp } from '@/components/ui/CountUp'
 
 const W = 110, H = 56
 
@@ -34,7 +35,7 @@ export function PmcChart({ activities, loading }: { activities: ActivityRow[]; l
       ) : (
         <Metric
           label={t('dashboard.condition')}
-          value={Math.round(last.ctl)}
+          value={<CountUp value={Math.round(last.ctl)} />}
           chip={delta !== 0 ? `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta)}` : undefined}
           sub={`${t('dashboard.fatigue')} ${Math.round(last.atl)}`}
           right={

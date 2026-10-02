@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { detectSignals, type Signal, type SignalKind } from '@/lib/suggestions/engine'
 import { FB, FD } from './lib'
+import { usePushNav } from '@/hooks/usePushNav'
 
 const DISMISS_KEY = () => `thw_suggest_dismissed_${new Date().toISOString().slice(0, 10)}`
 function readDismissed(): SignalKind[] {
@@ -31,6 +32,7 @@ function Icon({ kind }: { kind: SignalKind }) {
 
 export function Suggestions() {
   const { t } = useI18n()
+  const push = usePushNav()
   const [signals, setSignals] = useState<Signal[] | null>(null)
   const [dismissed, setDismissed] = useState<SignalKind[]>([])
 
@@ -82,7 +84,14 @@ export function Suggestions() {
         const c = cardOf(s)
         const accent = s.tone === 'warn' ? 'var(--danger)' : 'var(--primary)'
         return (
-          <div key={s.kind} style={{ position: 'relative', display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', border: `1px solid color-mix(in srgb, ${accent} 30%, var(--border))` }}>
+          <div key={s.kind} className="dash-suggest"
+            // Mobile : toute la carte est tappable (= son action) ; desktop : seul le bouton.
+            onClick={e => {
+              if (!window.matchMedia('(max-width: 767px)').matches) return
+              if ((e.target as HTMLElement).closest('button, a')) return
+              if (c.href) push(c.href); else c.onClick?.()
+            }}
+            style={{ position: 'relative', display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', border: `1px solid color-mix(in srgb, ${accent} 30%, var(--border))` }}>
             <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 'var(--r-sm)', display: 'grid', placeItems: 'center', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)` }}><Icon kind={s.kind} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: FD, fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{c.title}</div>

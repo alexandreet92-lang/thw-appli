@@ -79,9 +79,22 @@ export function Gauge({ value, max }: { value: number; max: number }) {
   )
 }
 
+/** Squelette de carte. Desktop : bloc plein qui scintille (inchangé).
+ *  Mobile : reprend la FORME de la carte (icône + titre, gros chiffre, ligne
+ *  secondaire), chaque forme balayée par un reflet doux (shimmer, transform). */
 export function Skeleton({ height = 96 }: { height?: number }) {
+  const bone: React.CSSProperties = { display: 'block', background: 'var(--dash-chip, var(--bg-hover))' }
   return (
-    <div style={{ height, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }} className="dash-skel" aria-hidden />
+    <div style={{ height, borderRadius: 'var(--r-lg)', background: 'var(--dash-card, var(--bg-card2))', boxSizing: 'border-box' }} className="dash-skel dash-skel-card" aria-hidden>
+      <div className="dash-skel-inner">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <span className="dash-skel" style={{ ...bone, width: 22, height: 22, borderRadius: '50%' }} />
+          <span className="dash-skel" style={{ ...bone, width: '38%', height: 14, borderRadius: 'var(--r-pill)' }} />
+        </div>
+        <span className="dash-skel" style={{ ...bone, width: '44%', height: 30, borderRadius: 'var(--r-sm)' }} />
+        {height >= 120 && <span className="dash-skel" style={{ ...bone, marginTop: 12, width: '64%', height: 12, borderRadius: 'var(--r-pill)' }} />}
+      </div>
+    </div>
   )
 }
 
@@ -112,13 +125,15 @@ export function EmptyState({ title, hint, href, cta }: {
 // en mobile clair), sinon --bg-card2.
 // ══════════════════════════════════════════════════════════════
 
-export function DashCard({ icon, title, meta, href, onOpen, children }: {
+export function DashCard({ icon, title, meta, href, onOpen, hero, children }: {
   icon: React.ReactNode
   title: string
   meta?: React.ReactNode
   href?: string
   /** Ouverture d'une vue détail interne (prioritaire sur href). */
   onOpen?: () => void
+  /** Carte focale de la vue (mobile : très léger voile d'accent en haut). */
+  hero?: boolean
   children: React.ReactNode
 }) {
   const push = usePushNav()
@@ -129,7 +144,7 @@ export function DashCard({ icon, title, meta, href, onOpen, children }: {
       tabIndex={open ? 0 : undefined}
       onClick={open}
       onKeyDown={open ? e => { if (e.key === 'Enter') open() } : undefined}
-      className={open ? 'dash-card dash-tap' : 'dash-card'}
+      className={['dash-card', open ? 'dash-tap' : '', hero ? 'dash-card--hero' : ''].filter(Boolean).join(' ')}
       style={{ background: 'var(--dash-card, var(--bg-card2))', borderRadius: 'var(--r-lg)', padding: '18px 20px 20px', minWidth: 0, cursor: open ? 'pointer' : undefined }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, minWidth: 0 }}>
@@ -137,7 +152,7 @@ export function DashCard({ icon, title, meta, href, onOpen, children }: {
         <h2 style={{ margin: 0, flex: 1, minWidth: 0, fontFamily: FB, fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h2>
         {meta && <span style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-mid)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
         {open && (
-          <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
+          <svg aria-hidden className="dash-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
         )}
       </div>
       {children}
@@ -179,10 +194,11 @@ export function MiniBars({ values, highlight, width = 96, height = 54 }: { value
   const gap = 4
   const bw = (width - gap * (n - 1)) / n
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="dash-bars">
       {values.map((v, i) => {
         const h = v > 0 ? Math.max(4, (v / max) * height) : 4
-        return <rect key={i} x={i * (bw + gap)} y={height - h} width={bw} height={h} rx={3}
+        // --i : rang de la barre → montée en cascade au montage (mobile, CSS).
+        return <rect key={i} x={i * (bw + gap)} y={height - h} width={bw} height={h} rx={3} style={{ '--i': i } as React.CSSProperties}
           fill={i === highlight ? 'var(--primary)' : v > 0 ? 'var(--dash-bar, var(--border-mid))' : 'var(--bg-hover)'} />
       })}
     </svg>

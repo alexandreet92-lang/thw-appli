@@ -1,55 +1,103 @@
 'use client'
-// Pull-to-refresh mobile (tactile uniquement). Quand on tire vers le bas alors que
-// la page est déjà tout en haut, on déclenche onRefresh. Indicateur = logo shuriken
-// qui tourne. Aucune lib. Désactivé sur pointeur fin (souris).
+// Pull-to-refresh mobile (tactile uniquement), façon iOS. Quand on tire vers le
+// bas alors que la page est déjà tout en haut, on déclenche onRefresh.
+//  • Défilement réel : l'app défile dans <main> (MobileShell), pas dans la
+//    fenêtre → on lit le scrollTop du VRAI conteneur défilant (ancêtre), sinon
+//    le geste se déclenchait au milieu de la page.
+//  • Élastique (résistance croissante), vibration légère au seuil, retour ressort.
+//  • Peint en refs (transform / opacity, 60 fps) : aucun re-rendu par frame.
+// Indicateur = logo shuriken qui tourne. Aucune lib. Désactivé sur souris.
 
 import { useEffect, useRef, useState } from 'react'
+import { haptic } from '@/lib/haptics'
+import { IOS_EASE_CSS, prefersReducedMotion } from '@/components/ui/motion'
 
-const THRESHOLD = 70   // px à tirer pour déclencher
-const MAX_PULL = 110
+const THRESHOLD = 70   // px (après amortissement) pour déclencher
+const MAX_PULL = 120
+const REST = 56        // hauteur tenue pendant le rafraîchissement
+
+function scrollParent(el: HTMLElement | null): HTMLElement | null {
+  let n = el?.parentElement ?? null
+  while (n && n !== document.body) {
+    const oy = getComputedStyle(n).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) return n
+    n = n.parentElement
+  }
+  return null
+}
+
+/** Résistance façon iOS : rapide au début, de plus en plus dure. */
+function damp(dy: number): number {
+  return MAX_PULL * (1 - Math.exp(-dy / (MAX_PULL * 1.6)))
+}
 
 export function PullToRefresh({ onRefresh, children }: {
   onRefresh: () => Promise<void> | void
   children: React.ReactNode
 }) {
-  const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
-  const startY = useRef<number | null>(null)
-  const active = useRef(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const indRef = useRef<HTMLDivElement>(null)
+  const logoRef = useRef<HTMLImageElement>(null)
+  const onRefreshRef = useRef(onRefresh)
+  onRefreshRef.current = onRefresh
+  const busyRef = useRef(false)
 
   useEffect(() => {
-    // Tactile seulement (pas de souris). On lit le scroll global de la fenêtre.
     const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches
-    if (!isTouch) return
+    const root = rootRef.current
+    if (!isTouch || !root) return
+    const reduce = prefersReducedMotion()
+    const st = { startY: 0, active: false, pull: 0, armed: false }
+
+    const scrollTop = () => {
+      const sp = scrollParent(root)
+      return sp ? sp.scrollTop : window.scrollY
+    }
+    const paint = (p: number, animate: boolean) => {
+      const tr = animate && !reduce ? `transform 420ms ${IOS_EASE_CSS}, opacity 240ms ease` : 'none'
+      const c = contentRef.current, ind = indRef.current, logo = logoRef.current
+      if (c) { c.style.transition = tr; c.style.transform = p > 0 ? `translate3d(0, ${p}px, 0)` : '' }
+      if (ind) {
+        const prog = Math.min(1, p / THRESHOLD)
+        ind.style.transition = tr
+        ind.style.transform = `translate3d(0, ${p}px, 0) scale(${(0.6 + 0.4 * prog).toFixed(3)})`
+        ind.style.opacity = p > 4 || busyRef.current ? String(Math.min(1, 0.25 + prog)) : '0'
+        if (logo && !busyRef.current) logo.style.transform = `rotate(${Math.round(prog * 270)}deg)`
+      }
+    }
 
     function onStart(e: TouchEvent) {
-      if (window.scrollY > 0 || refreshing) { active.current = false; return }
-      startY.current = e.touches[0].clientY
-      active.current = true
+      if (busyRef.current || scrollTop() > 0) { st.active = false; return }
+      st.startY = e.touches[0].clientY
+      st.active = true; st.pull = 0; st.armed = false
     }
     function onMove(e: TouchEvent) {
-      if (!active.current || startY.current == null) return
-      const dy = e.touches[0].clientY - startY.current
-      if (dy <= 0) { setPull(0); return }
-      if (window.scrollY > 0) { active.current = false; setPull(0); return }
-      // résistance : on amortit le déplacement
-      const damped = Math.min(MAX_PULL, dy * 0.5)
-      setPull(damped)
+      if (!st.active) return
+      const dy = e.touches[0].clientY - st.startY
+      if (dy <= 0 || scrollTop() > 0) { if (st.pull) paint(0, false); st.pull = 0; if (dy < -4) st.active = false; return }
+      st.pull = damp(dy)
+      const armed = st.pull >= THRESHOLD
+      if (armed !== st.armed) { st.armed = armed; if (armed) haptic('light') }
+      paint(st.pull, false)
     }
     async function onEnd() {
-      if (!active.current) return
-      active.current = false
-      if (pull >= THRESHOLD && !refreshing) {
+      if (!st.active) return
+      st.active = false
+      if (st.pull >= THRESHOLD && !busyRef.current) {
+        busyRef.current = true
         setRefreshing(true)
-        setPull(THRESHOLD)
-        try { await onRefresh() } finally {
+        paint(REST, true)
+        try { await onRefreshRef.current() } finally {
+          busyRef.current = false
           setRefreshing(false)
-          setPull(0)
+          paint(0, true)
         }
       } else {
-        setPull(0)
+        paint(0, true)
       }
-      startY.current = null
+      st.pull = 0
     }
 
     window.addEventListener('touchstart', onStart, { passive: true })
@@ -62,28 +110,21 @@ export function PullToRefresh({ onRefresh, children }: {
       window.removeEventListener('touchend', onEnd)
       window.removeEventListener('touchcancel', onEnd)
     }
-  }, [pull, refreshing, onRefresh])
-
-  const progress = Math.min(1, pull / THRESHOLD)
+  }, [])
 
   return (
-    <div style={{ position: 'relative' }}>
-      <style>{`@keyframes ptrSpin{to{transform:rotate(360deg)}}`}</style>
+    <div ref={rootRef} style={{ position: 'relative' }}>
       {/* Indicateur */}
-      <div style={{
-        position: 'absolute', top: -52, left: 0, right: 0, display: 'flex', justifyContent: 'center',
-        transform: `translateY(${pull}px)`, transition: active.current ? 'none' : 'transform 0.25s ease',
-        pointerEvents: 'none', opacity: pull > 4 || refreshing ? 1 : 0,
+      <div ref={indRef} aria-hidden style={{
+        position: 'absolute', top: -44, left: 0, right: 0, display: 'flex', justifyContent: 'center',
+        pointerEvents: 'none', opacity: 0, willChange: 'transform, opacity',
       }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logos/logo_4bras.png" alt="" style={{
-          width: 28, height: 28, objectFit: 'contain',
-          transform: refreshing ? undefined : `rotate(${progress * 270}deg)`,
-          animation: refreshing ? 'ptrSpin 0.8s linear infinite' : undefined,
-          opacity: 0.5 + progress * 0.5,
-        }} />
+        <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--float-bg)', boxShadow: 'var(--shadow-fab)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img ref={logoRef} src="/logos/logo_4bras.png" alt="" className={refreshing ? 'thw-spin' : undefined} style={{ width: 22, height: 22, objectFit: 'contain' }} />
+        </span>
       </div>
-      <div style={{ transform: `translateY(${pull}px)`, transition: active.current ? 'none' : 'transform 0.25s ease' }}>
+      <div ref={contentRef}>
         {children}
       </div>
     </div>

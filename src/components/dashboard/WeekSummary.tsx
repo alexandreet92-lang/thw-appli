@@ -11,6 +11,9 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { DashCard, DASH_ICONS, Metric, MiniBars, Skeleton, EmptyState } from './primitives'
 import { formatDuration, weekStartIso, currentDayIndex } from './lib'
+import { CountUp } from '@/components/ui/CountUp'
+
+const fmtMin = (n: number) => (n < 1 ? '0 min' : formatDuration(Math.round(n)))
 
 interface PSession { status: string; duration_min: number | null }
 interface State { sessions: PSession[]; perDay: number[] }
@@ -67,7 +70,7 @@ export function WeekSummary() {
       ) : (
         <Metric
           label={t('dashboard.volumeDone')}
-          value={doneMin > 0 ? formatDuration(doneMin) : '0 min'}
+          value={doneMin > 0 ? <CountUp value={doneMin} format={fmtMin} /> : '0 min'}
           unit={objMin > 0 ? `/ ${formatDuration(objMin)}` : undefined}
           sub={total > 0 ? `${done} / ${total} ${t('dashboard.sessionsLabel')}` : undefined}
           right={<MiniBars values={s.perDay} highlight={currentDayIndex()} />}

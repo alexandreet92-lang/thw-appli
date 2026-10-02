@@ -8,7 +8,7 @@
 import './dashboard.css'
 import { useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
-import { Greeting } from './Greeting'
+import { Greeting, HomeHero } from './Greeting'
 import { QuickActions } from './QuickActions'
 import { Suggestions } from './Suggestions'
 import { DailyPlanningNotifier } from './DailyPlanningNotifier'
@@ -32,10 +32,11 @@ export function DashboardContent() {
     <div className="dash-wrap">
       {/* Émet une fois/jour le résumé du planning du jour (sport + pro + perso). */}
       <DailyPlanningNotifier />
-      {/* Mobile : pas de salutation / titre en haut de page (les sous-onglets suffisent). */}
+      {/* Desktop : salutation + actions rapides. Mobile : héros (date · salutation · plan). */}
       <div className="dash-desktop-only">
         <Greeting rightSlot={<QuickActions />} />
       </div>
+      <div className="dash-mobile-only"><HomeHero /></div>
 
       {/* Ma vitrine : rendu UNE seule fois (plus de doublon
           desktop/mobile). QuickActions reste à droite de la salutation en desktop. */}

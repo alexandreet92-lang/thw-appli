@@ -304,7 +304,7 @@ export function RkStartButton({ onClick, disabled, label, size = 96, children, g
   }
   return (
     <button type="button" className="rk-start" data-guide={guide} aria-label={label} disabled={disabled} onClick={fire}
-      style={{ width: size, height: size, fontSize: size >= 90 ? 20 : 16 }}>
+      style={{ width: size, height: size, fontSize: size >= 110 ? 18 : 15 }}>
       {ripples.map(id => <span key={id} className="rk-ripple" />)}
       <span style={{ position: 'relative' }}>{children ?? label}</span>
     </button>

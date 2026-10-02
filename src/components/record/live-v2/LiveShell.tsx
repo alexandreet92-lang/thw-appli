@@ -452,7 +452,7 @@ export default function LiveShell({
   const controlsHidden = started && onMapPage
   // Sur la carte en cours d'enregistrement, les commandes vivent dans la console
   // MapPage (bas de carte) : les points de pagination remontent au-dessus.
-  const dotsBottom = controlsHidden ? 306 : (machine.phase === 'paused' ? 172 : 150)
+  const dotsBottom = controlsHidden ? 306 : (machine.phase === 'idle' ? 222 : machine.phase === 'paused' ? 172 : 150)
   const currentPos = gps.currentLat != null && gps.currentLng != null
     ? { lat: gps.currentLat, lng: gps.currentLng }
     : null

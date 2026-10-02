@@ -114,7 +114,7 @@ export function AmKpis({ items, cols = 3 }: { items: { label: ReactNode; value: 
       {items.map((s, i) => (
         <div key={s.key ?? (typeof s.label === 'string' ? s.label : i)} style={{ minWidth: 0 }}>
           <div style={{ ...AM_LABEL, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
-          <div style={{ ...NUMS, marginTop: 3, fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ ...NUMS, marginTop: 3, fontSize: 'clamp(15px, 4.6vw, 20px)', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {s.value}{s.unit && <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 3 }}>{s.unit}</span>}
           </div>
         </div>

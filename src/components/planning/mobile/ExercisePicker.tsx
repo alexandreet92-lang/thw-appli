@@ -15,10 +15,11 @@ import {
 import { defForFamille, defForVariante } from '../biblioExercises'
 import type { ExoDefinition } from '../exercises'
 import { useI18n } from '@/lib/i18n'
+import { useSeM } from './mobileKit'
 
 const famsOf = (g: Groupe) => FAMILLES_MUSCU.filter(f => f.groupe === g)
 
-const rowStyle: React.CSSProperties = {
+const baseRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
   padding: '10px 8px', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer',
   background: 'var(--se-card2)', marginBottom: 6,
@@ -37,6 +38,9 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
   onCustom: (name: string) => void
 }) {
   const { t: tr } = useI18n()
+  const isM = useSeM()
+  // Mobile : panneau gris (sans bordure) et lignes blanches de 48 px.
+  const rowStyle: React.CSSProperties = isM ? { ...baseRowStyle, minHeight: 48, padding: '8px 10px', borderRadius: 'var(--r-md)', background: 'var(--surface-card)' } : baseRowStyle
   const [groupe, setGroupe] = useState<Groupe | null>(null)
   const [famille, setFamille] = useState<FamilleExercice | null>(null)
   const [query, setQuery] = useState('')
@@ -59,7 +63,7 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
   )
 
   return (
-    <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
+    <div style={isM ? { marginTop: 10, borderRadius: 'var(--r-md)', background: 'var(--surface-page)', padding: 10 } : { marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
       {/* Barre de recherche + retour contextuel */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
         {(groupe || famille) && !q && (
@@ -70,7 +74,7 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
         )}
         <IconSearch size={15} color="var(--se-dim)" />
         <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchExercise')}
-          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
+          style={{ flex: 1, minHeight: isM ? 40 : undefined, background: 'transparent', border: 'none', outline: 'none', fontSize: isM ? 16 : 13, color: 'var(--se-text)' }} />
       </div>
 
       <div style={{ maxHeight: 320, overflowY: 'auto' }}>

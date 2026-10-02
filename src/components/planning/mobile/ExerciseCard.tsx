@@ -5,6 +5,7 @@ import { IconX, IconRefresh } from '@tabler/icons-react'
 import { type ExerciseItem, type ExoCategory, MUSCU_PATTERNS, PATTERN_VAR, PATTERN_LABEL_KEY, fmtSec } from './strength'
 import { secToPace, paceToSec } from './editorial'
 import { Stepper, FieldLabel } from './ui'
+import { useSeM, mChipSm, SEG_SHADOW } from './mobileKit'
 import { useI18n } from '@/lib/i18n'
 
 function NumField({ label, value, unit, step = 1, min = 0, onChange }: {
@@ -31,6 +32,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
   onReplace?: () => void
 }) {
   const { t } = useI18n()
+  const isM = useSeM()
   const set = (patch: Partial<ExerciseItem>) => onChange({ ...item, ...patch })
   // Principe de chaque type : en Séries on règle les séries par exo ; en Lap/
   // Superset c'est le circuit qui porte les tours (l'exo n'a que ses reps) ;
@@ -48,20 +50,23 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
   const isRun = /run|course|cours/i.test(item.name)
 
   return (
-    <div style={{ background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderLeft: `3px solid ${rule}`, borderRadius: 'var(--se-r)', padding: '12px 13px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={isM
+      // Mobile : sous-carte grise dans la carte circuit, filet couleur pattern (ombre interne, pas de bordure) ; champs blancs.
+      ? { background: 'var(--surface-page)', boxShadow: `inset 4px 0 0 ${rule}`, borderRadius: 'var(--r-md)', padding: '12px 12px 12px 16px', display: 'flex', flexDirection: 'column', gap: 12, '--sem-field': 'var(--surface-card)' } as React.CSSProperties
+      : { background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderLeft: `3px solid ${rule}`, borderRadius: 'var(--se-r)', padding: '12px 13px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* En-tête : #num · nom · tag · ✕ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <span className="se-tnum" style={{ fontSize: 11, fontWeight: 700, color: 'var(--se-dim)', flexShrink: 0 }}>#{index + 1}</span>
         <input value={item.name} onChange={e => set({ name: e.target.value })} placeholder={t('planning.exerciseNamePlaceholder')}
-          className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: 0 }} />
-        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '2px 7px' }}>
+          className="se-fr" style={{ flex: 1, minWidth: 0, minHeight: isM ? 36 : undefined, background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: isM ? 16 : 15, fontWeight: isM ? 700 : 600, padding: 0 }} />
+        <span style={isM ? { flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--surface-card)', borderRadius: 'var(--r-pill)', padding: '3px 9px' } : { flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '2px 7px' }}>
           {variant === 'muscu' ? t(PATTERN_LABEL_KEY[item.category]) : isStation ? t('planning.station') : t('planning.free')}
         </span>
         {onReplace && (
           <button type="button" onClick={onReplace} aria-label={t('planning.replace')} title={t('planning.replace')}
-            style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconRefresh size={15} /></button>
+            style={isM ? mIconBtn : { flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconRefresh size={isM ? 18 : 15} /></button>
         )}
-        <button type="button" onClick={onRemove} aria-label={t('planning.remove')} style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={16} /></button>
+        <button type="button" onClick={onRemove} aria-label={t('planning.remove')} style={isM ? mIconBtn : { flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={isM ? 18 : 16} /></button>
       </div>
 
       {/* Champs */}
@@ -72,12 +77,14 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
             {/* Reps ⇄ Temps : toggle en guise de label (gainage / core = temps) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, minHeight: 16 }}>
-                <div style={{ display: 'inline-flex', gap: 2, padding: 2, borderRadius: 'var(--r-pill)', background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
+                <div style={{ display: 'inline-flex', gap: 2, padding: 2, borderRadius: 'var(--r-pill)', background: isM ? 'var(--surface-chip)' : 'var(--se-card2)', border: isM ? 'none' : '1px solid var(--se-rule)' }}>
                   {([['reps', t('planning.repsShort')], ['time', t('planning.time')]] as const).map(([m, label]) => {
                     const on = (timeMode ? 'time' : 'reps') === m
                     return (
                       <button key={m} type="button" onClick={() => setMode(m)}
-                        style={{ border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '2px 9px', fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: on ? 'var(--se-card)' : 'transparent', color: on ? accent : 'var(--se-dim)', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
+                        style={isM
+                          ? { border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', minHeight: 28, padding: '0 10px', fontSize: 12, fontWeight: on ? 700 : 600, background: on ? 'var(--surface-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-mid)', boxShadow: on ? SEG_SHADOW : 'none' }
+                          : { border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '2px 9px', fontSize: 10, fontWeight: on ? 700 : 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: on ? 'var(--se-card)' : 'transparent', color: on ? accent : 'var(--se-dim)', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
                     )
                   })}
                 </div>
@@ -102,7 +109,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
             {MUSCU_PATTERNS.map(p => {
               const on = item.category === p
               return <button key={p} type="button" onClick={() => set({ category: p })}
-                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{t(PATTERN_LABEL_KEY[p])}</button>
+                style={isM ? { ...mChipSm(on), background: on ? 'var(--text)' : 'var(--surface-card)' } : { border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{t(PATTERN_LABEL_KEY[p])}</button>
             })}
           </div>
         </>
@@ -158,10 +165,14 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, hideRe
 
       {/* Notes */}
       <input value={item.notes ?? ''} onChange={e => set({ notes: e.target.value })} placeholder={t('planning.notesPlaceholder')}
-        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
+        style={isM
+          ? { width: '100%', boxSizing: 'border-box', minHeight: 44, background: 'var(--surface-card)', border: 'none', borderRadius: 'var(--r-md)', padding: '0 12px', fontSize: 15, color: 'var(--text)', outline: 'none' }
+          : { width: '100%', boxSizing: 'border-box', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
     </div>
   )
 }
+
+const mIconBtn: React.CSSProperties = { flexShrink: 0, width: 36, height: 40, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }
 
 // helper exporté pour typer une catégorie depuis l'extérieur si besoin
 export type { ExoCategory }

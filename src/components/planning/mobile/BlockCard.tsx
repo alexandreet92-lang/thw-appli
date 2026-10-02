@@ -6,7 +6,9 @@
 // reste canonique pour SM/SN).
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
-import { IconDotsVertical, IconCopy, IconTrash } from '@tabler/icons-react'
+import { IconDotsVertical, IconDots, IconCopy, IconTrash, IconChevronRight } from '@tabler/icons-react'
+import type { ReactNode } from 'react'
+import { useSeM, mChipSm } from './mobileKit'
 import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, paceToSec, secToPace, RUN_REF_DISTANCES, type AthleteRefs } from './editorial'
 import { recalc, kmhEquivalent, durFromDistance, BLOCK_NAME_KEY, SWIM_EQUIPMENT, HYPOXIE_DISTANCES, HYPOXIE_STROKES, type MBlock } from './blocks'
@@ -18,12 +20,15 @@ function pctVmaToZone(p: number): number {
   if (p < 102) return 4; if (p < 110) return 5; if (p < 120) return 6; return 7
 }
 
-export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, expanded, onToggle, onChange, onRemove, onDuplicate }: {
+export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, expanded, onToggle, onChange, onRemove, onDuplicate, handle }: {
   block: MBlock; sport: SportType; runningSub?: RunningSub; accent: string; refs: AthleteRefs; riderKg?: number
   expanded: boolean; onToggle: () => void
   onChange: (b: MBlock) => void; onRemove: () => void; onDuplicate: () => void
+  /** Mobile : poignée de réordonnancement affichée en tête de ligne. */
+  handle?: ReactNode
 }) {
   const { t: tr } = useI18n()
+  const isM = useSeM()
   const [menu, setMenu] = useState(false)
   // Distance dont l'athlète n'a pas de temps de référence (message transitoire au tap).
   const [noRefDist, setNoRefDist] = useState<string | null>(null)
@@ -152,7 +157,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                   else setNoRefDist(d.label)
                 }}
                 title={has ? `${d.label} · ${secToPace(paceSec!)}/km` : tr('planning.noReferenceTime')}
-                style={{
+                style={isM ? { ...mChipSm(sel), flexShrink: 0, opacity: has ? 1 : 0.45 } : {
                   flexShrink: 0, borderRadius: 'var(--r-pill)', padding: '5px 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
                   border: `1px solid ${sel ? accent : 'var(--se-rule)'}`,
                   background: 'transparent',
@@ -251,41 +256,19 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
 
   const showDistToggle = sport === 'run' || sport === 'swim' || sport === 'rowing'
 
-  return (
-    <div style={{ background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderLeft: `3px solid ${zColor(z)}`, borderRadius: 'var(--se-r)', overflow: 'hidden' }}>
-      {/* Ligne repliée */}
-      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', cursor: 'pointer' }}>
-        <span style={{ width: 22, fontSize: 10, fontWeight: 700, color: zColor(z), letterSpacing: '0.04em' }}>Z{z}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="se-fr" style={{ fontSize: 16, fontWeight: 600, color: 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {name}<span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 400, color: 'var(--se-dim)' }}>{repsLabel}{repsLabel ? '' : ` · ${target}`}</span>
-          </div>
-        </div>
-        <div className="se-fr se-tnum" style={{ fontSize: 18, fontWeight: 600, color: 'var(--se-text)', flexShrink: 0 }}>
-          {rightVal.num}<span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 400, color: 'var(--se-dim)' }}> {rightVal.unit}</span>
-        </div>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <button type="button" onClick={e => { e.stopPropagation(); setMenu(m => !m) }} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={18} /></button>
-          {menu && (
-            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 26, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-              <button type="button" onClick={() => { setMenu(false); onDuplicate() }} style={menuBtn}><IconCopy size={15} /> {tr('planning.duplicate')}</button>
-              <button type="button" onClick={() => { setMenu(false); onRemove() }} style={{ ...menuBtn, color: '#ff5f5f' }}><IconTrash size={15} /> {tr('planning.delete')}</button>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Déplié */}
-      {expanded && (
-        <div style={{ borderTop: '1px solid var(--se-rule-soft)', padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+  const expandedBody = (
+    <>
           {/* Nom + presets de type */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <input value={b.label} placeholder={BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : tr('planning.blocName')} onChange={e => set({ label: e.target.value })}
-              className="se-fr" style={{ flex: 1, minWidth: 120, background: 'transparent', border: 'none', borderBottom: '1px solid var(--se-rule)', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: '2px 0' }} />
+              className="se-fr" style={isM
+                ? { flex: '1 1 100%', minWidth: 120, minHeight: 44, boxSizing: 'border-box', background: 'var(--sem-field)', border: 'none', borderRadius: 'var(--r-md)', outline: 'none', color: 'var(--text)', fontSize: 16, fontWeight: 700, padding: '0 14px' }
+                : { flex: 1, minWidth: 120, background: 'transparent', border: 'none', borderBottom: '1px solid var(--se-rule)', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: '2px 0' }} />
             {!isTest && (
               <div style={{ display: 'flex', gap: 4 }}>
                 {(['warmup', 'effort', 'recovery'] as const).map(t => (
                   <button key={t} type="button" onClick={() => set({ type: t, label: '', zone: t === 'warmup' ? 2 : t === 'recovery' ? 1 : b.zone })}
-                    style={{ border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                    style={isM ? mChipSm(b.type === t) : { border: `1px solid ${b.type === t ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.type === t ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
                     {t === 'warmup' ? tr('planning.warmupShort') : t === 'recovery' ? tr('planning.recovery') : tr('planning.effort')}
                   </button>
                 ))}
@@ -337,11 +320,11 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
           )}
           {!isTest && (<>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isProg ? tr('planning.progressive') : isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
+            <span style={isM ? { fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' } : { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isProg ? tr('planning.progressive') : isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {canProgressive && (
                 <button type="button" onClick={() => set({ progressive: !b.progressive, ...(b.progressive ? { repValues: undefined } : {}) })} title={tr('planning.progressive')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${b.progressive ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.progressive ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                  style={isM ? mChipSm(!!b.progressive) : { display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${b.progressive ? accent : 'var(--se-rule)'}`, background: 'transparent', color: b.progressive ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
                   ↗ {tr('planning.progressive')}
                 </button>
               )}
@@ -401,7 +384,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button"
                       onClick={() => set({ shuttleLegM: on ? 0 : Math.round(dist / 2) })}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      style={isM ? mChipSm(on) : { display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: 'transparent', color: on ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       ↔ {on ? tr('planning.shuttleOn') : tr('planning.shuttleActivate')}
                     </button>
                     {on && (
@@ -470,7 +453,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
                   return (
                     <button key={eq} type="button"
                       onClick={() => set({ equipment: active ? (b.equipment ?? []).filter(x => x !== eq) : [...(b.equipment ?? []), eq] })}
-                      style={{ border: `1px solid ${active ? accent : 'var(--se-rule)'}`, background: active ? `${accent}14` : 'transparent', color: active ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      style={isM ? mChipSm(active) : { border: `1px solid ${active ? accent : 'var(--se-rule)'}`, background: active ? `${accent}14` : 'transparent', color: active ? accent : 'var(--se-dim)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                       {eq}
                     </button>
                   )
@@ -478,6 +461,74 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
               </div>
             </Field>
           )}
+    </>
+  )
+  // Résumé de la ligne repliée (mobile) : durée/distance · zone · cible ou répétitions.
+  const mSummary = [
+    `${rightVal.num}${rightVal.unit ? ` ${rightVal.unit}` : ''}`,
+    isTest ? null : `Z${z}`,
+    repsLabel ? repsLabel.replace(/^ · /, '') : target,
+  ].filter(Boolean).join(' · ')
+
+  if (isM) {
+    // Mobile : ligne de liste groupée — filet zone + titre + résumé + ⋯ + chevron.
+    return (
+      <div>
+        <div onClick={onToggle} role="button" aria-expanded={expanded} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 64, padding: '8px 0', cursor: 'pointer' }}>
+          {handle}
+          <span style={{ width: 6, alignSelf: 'stretch', minHeight: 40, borderRadius: 3, background: zColor(z), flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+            <div className="se-tnum" style={{ marginTop: 2, fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mSummary}</div>
+          </div>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button type="button" aria-label={tr('sem.blockActions')} onClick={e => { e.stopPropagation(); setMenu(m => !m) }}
+              style={{ width: 36, height: 44, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}><IconDots size={18} /></button>
+            {menu && (
+              <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 42, zIndex: 5, minWidth: 170, background: 'var(--surface-card)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-capsule)', padding: 6 }}>
+                <button type="button" onClick={() => { setMenu(false); onDuplicate() }} style={mMenuBtn}><IconCopy size={17} /> {tr('planning.duplicate')}</button>
+                <button type="button" onClick={() => { setMenu(false); onRemove() }} style={{ ...mMenuBtn, color: 'var(--danger)' }}><IconTrash size={17} /> {tr('planning.delete')}</button>
+              </div>
+            )}
+          </div>
+          <IconChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .18s' }} />
+        </div>
+        {expanded && (
+          <div style={{ padding: '4px 0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {expandedBody}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderLeft: `3px solid ${zColor(z)}`, borderRadius: 'var(--se-r)', overflow: 'hidden' }}>
+      {/* Ligne repliée */}
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', cursor: 'pointer' }}>
+        <span style={{ width: 22, fontSize: 10, fontWeight: 700, color: zColor(z), letterSpacing: '0.04em' }}>Z{z}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="se-fr" style={{ fontSize: 16, fontWeight: 600, color: 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {name}<span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 400, color: 'var(--se-dim)' }}>{repsLabel}{repsLabel ? '' : ` · ${target}`}</span>
+          </div>
+        </div>
+        <div className="se-fr se-tnum" style={{ fontSize: 18, fontWeight: 600, color: 'var(--se-text)', flexShrink: 0 }}>
+          {rightVal.num}<span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 400, color: 'var(--se-dim)' }}> {rightVal.unit}</span>
+        </div>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button type="button" onClick={e => { e.stopPropagation(); setMenu(m => !m) }} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={18} /></button>
+          {menu && (
+            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 26, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+              <button type="button" onClick={() => { setMenu(false); onDuplicate() }} style={menuBtn}><IconCopy size={15} /> {tr('planning.duplicate')}</button>
+              <button type="button" onClick={() => { setMenu(false); onRemove() }} style={{ ...menuBtn, color: '#ff5f5f' }}><IconTrash size={15} /> {tr('planning.delete')}</button>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Déplié */}
+      {expanded && (
+        <div style={{ borderTop: '1px solid var(--se-rule-soft)', padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {expandedBody}
         </div>
       )}
     </div>
@@ -486,6 +537,15 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, riderKg, 
 
 function Field({ label, eq, opt, children }: { label: string; eq?: string; opt?: boolean; children: React.ReactNode }) {
   const { t: tr } = useI18n()
+  if (useSeM()) {
+    return (
+      <div style={{ minWidth: 0 }}>
+        <FieldLabel right={opt ? <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{tr('planning.option')}</span> : undefined}>{label}</FieldLabel>
+        {children}
+        {eq && <p className="se-tnum" style={{ margin: '6px 2px 0', fontSize: 12, color: 'var(--text-mid)' }}>{eq}</p>}
+      </div>
+    )
+  }
   return (
     <div>
       <FieldLabel right={opt ? <span style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '1px 5px' }}>{tr('planning.option')}</span> : undefined}>{label}</FieldLabel>
@@ -498,5 +558,10 @@ function Field({ label, eq, opt, children }: { label: string; eq?: string; opt?:
 const menuBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '9px 14px',
   border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 12.5, fontWeight: 600,
+  cursor: 'pointer', whiteSpace: 'nowrap',
+}
+const mMenuBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 12px',
+  border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', color: 'var(--text)', fontSize: 15, fontWeight: 600,
   cursor: 'pointer', whiteSpace: 'nowrap',
 }

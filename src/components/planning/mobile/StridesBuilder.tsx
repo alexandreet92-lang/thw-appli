@@ -11,6 +11,7 @@ import { useI18n } from '@/lib/i18n'
 import type { Block } from '@/app/planning/page'
 import type { MBlock } from './blocks'
 import { Card, FieldLabel } from './ui'
+import { useSeM, mChipSm, MCardHead } from './mobileKit'
 import { ATELIER_PRESETS, type AtelierPreset } from './atelierPresets'
 import {
   newAtelierFromPreset, newFreeAtelier, newAtelierFromCustom, syncStrideBlock, atelierMin,
@@ -25,6 +26,17 @@ function Diagram({ svg, accent, size = 96 }: { svg: string; accent: string; size
   )
 }
 function Num({ value, onChange, unit, w = 66, min = 0, step = 1 }: { value: number; onChange: (n: number) => void; unit?: string; w?: number; min?: number; step?: number }) {
+  if (useSeM()) {
+    // Mobile : champ gris 44 px, pleine largeur de cellule.
+    return (
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+        <input type="number" value={Number.isFinite(value) ? value : ''} min={min} step={step}
+          onChange={e => onChange(Math.max(min, Number(e.target.value) || 0))} inputMode="numeric"
+          className="se-tnum" style={{ width: '100%', boxSizing: 'border-box', height: 44, textAlign: 'center', padding: unit ? '0 26px 0 10px' : '0 10px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--sem-field)', color: 'var(--text)', fontSize: 16, fontWeight: 700, outline: 'none' }} />
+        {unit && <span style={{ position: 'absolute', right: 10, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', pointerEvents: 'none' }}>{unit}</span>}
+      </div>
+    )
+  }
   return (
     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: w }}>
       <input type="number" value={Number.isFinite(value) ? value : ''} min={min} step={step}
@@ -50,6 +62,14 @@ function IntensityProfile({ blocks, accent }: { blocks: StrideBlock[]; accent: s
 
 export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[]; onChange: (b: Block[]) => void; accent: string }) {
   const { t } = useI18n()
+  const isM = useSeM()
+  const mvBtn = (disabled: boolean, danger?: boolean): React.CSSProperties => isM
+    ? { width: 36, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: danger ? 'var(--danger)' : 'var(--text-mid)', fontSize: 18, fontWeight: 700, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1, flexShrink: 0 }
+    : { width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: danger ? 'var(--danger)' : 'var(--se-dim)', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1 }
+  const tileS = (dashed?: boolean): React.CSSProperties => isM
+    ? { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 6px 8px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--sem-field)', cursor: 'pointer', minHeight: 78, width: '100%' }
+    : { ...tileStyle(accent), ...(dashed ? { borderStyle: 'dashed' } : {}) }
+  const microLbl: React.CSSProperties = { margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }
   const sBlocks = useMemo(() => (blocks as MBlock[]).filter(isStrideBlock) as StrideBlock[], [blocks])
   const [gallery, setGallery] = useState(false)
   const [custom, setCustom] = useState<CustomAtelier[]>([])
@@ -74,11 +94,11 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
   const totalMin = sBlocks.reduce((s, b) => s + atelierMin(b.at), 0)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isM ? 12 : 14 }}>
       {sBlocks.length > 0 && (
         <Card style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_intensity_profile')}</span>
+            <span style={isM ? { fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' } : { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_intensity_profile')}</span>
             <span className="se-tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--se-text)' }}>{sBlocks.length > 1 ? t('w3g.strides_summary_plural', { min: totalMin, count: sBlocks.length }) : t('w3g.strides_summary', { min: totalMin, count: sBlocks.length })}</span>
           </div>
           <IntensityProfile blocks={sBlocks} accent={accent} />
@@ -88,12 +108,12 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
       {sBlocks.map((b, i) => (
         <Card key={b.id} style={{ padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            {b.at.svg && <div style={{ flexShrink: 0, width: 64, height: 32, border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Diagram svg={b.at.svg} accent={accent} size={60} /></div>}
+            {b.at.svg && <div style={{ flexShrink: 0, width: 64, height: 32, border: isM ? 'none' : '1px solid var(--se-rule)', background: isM ? 'var(--sem-field)' : undefined, borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><Diagram svg={b.at.svg} accent={accent} size={60} /></div>}
             <input value={b.at.name} onChange={e => setAt(b.id, { ...b.at, name: e.target.value })}
-              style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--se-text)', border: 'none', background: 'transparent', outline: 'none' }} />
-            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
-            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
-            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--danger)', cursor: 'pointer' }}>×</button>
+              style={{ flex: 1, minWidth: 0, minHeight: isM ? 40 : undefined, fontFamily: 'var(--font-body)', fontSize: isM ? 16 : 15, fontWeight: 700, color: 'var(--se-text)', border: 'none', background: 'transparent', outline: 'none' }} />
+            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={mvBtn(i === 0)}>↑</button>
+            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={mvBtn(i === sBlocks.length - 1)}>↓</button>
+            <button type="button" onClick={() => remove(b.id)} style={mvBtn(false, true)}>×</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
@@ -103,11 +123,15 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
             <div><FieldLabel>{t('w3g.strides_rest_between_blocks')}</FieldLabel><Num value={b.at.restBetweenSec} onChange={n => setAt(b.id, { ...b.at, restBetweenSec: n })} unit="s" w={78} step={5} /></div>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={{ width: 22, height: 20, borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>{t('w3g.strides_zone_note')}</FieldLabel>
+            <FieldLabel right={<span style={{ display: 'inline-flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(z => <button key={z} type="button" onClick={() => setAt(b.id, { ...b.at, zone: z })} style={isM ? { ...mChipSm(b.at.zone === z), minHeight: 36, width: 36, padding: 0, justifyContent: 'center' } : { width: 22, height: 20, borderRadius: 'var(--r-sm)', fontSize: 10, fontWeight: 700, cursor: 'pointer', border: `1px solid ${b.at.zone === z ? accent : 'var(--se-rule)'}`, background: b.at.zone === z ? accent : 'var(--se-card)', color: b.at.zone === z ? '#fff' : 'var(--se-dim)' }}>{z}</button>)}</span>}>{t('w3g.strides_zone_note')}</FieldLabel>
             <input value={b.at.note} onChange={e => setAt(b.id, { ...b.at, note: e.target.value })} placeholder={t('w3g.strides_note_placeholder')}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
+              style={isM
+                ? { width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '0 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--sem-field)', color: 'var(--text)', fontSize: 15, outline: 'none' }
+                : { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, outline: 'none' }} />
           </div>
-          <button type="button" onClick={() => saveReusable(b)} style={{ width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <button type="button" onClick={() => saveReusable(b)} style={isM
+            ? { width: '100%', minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--sem-field)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }
+            : { width: '100%', padding: '9px', borderRadius: 'var(--r-sm)', border: `1px dashed ${accent}`, background: 'transparent', color: accent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             {savedFlash === b.id ? t('w3g.strides_saved_flash') : t('w3g.strides_save_reusable')}
           </button>
         </Card>
@@ -115,7 +139,9 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
 
       {!sBlocks.length && <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>{t('w3g.strides_empty')}</p>}
 
-      <button type="button" onClick={() => setGallery(g => !g)} style={{ padding: '13px', borderRadius: 'var(--r-md)', border: `1px solid ${accent}`, background: gallery ? accent : 'var(--se-card)', color: gallery ? '#fff' : accent, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+      <button type="button" onClick={() => setGallery(g => !g)} style={isM
+        ? { minHeight: 48, borderRadius: 'var(--r-pill)', border: 'none', background: gallery ? 'var(--text)' : 'var(--surface-card)', color: gallery ? 'var(--surface-card)' : 'var(--text)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }
+        : { padding: '13px', borderRadius: 'var(--r-md)', border: `1px solid ${accent}`, background: gallery ? accent : 'var(--se-card)', color: gallery ? '#fff' : accent, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
         {gallery ? t('w3g.strides_close_library') : t('w3g.strides_add_atelier')}
       </button>
 
@@ -124,29 +150,29 @@ export function StridesBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
           {/* Mes ateliers */}
           {custom.length > 0 && (
             <>
-              <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_my_ateliers')}</p>
+              {isM ? <MCardHead>{t('w3g.strides_my_ateliers')}</MCardHead> : <p style={microLbl}>{t('w3g.strides_my_ateliers')}</p>}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8, marginBottom: 16 }}>
                 {custom.map(c => (
                   <div key={c.id} style={{ position: 'relative' }}>
-                    <button type="button" onClick={() => add(newAtelierFromCustom(c))} style={tileStyle(accent)}>
+                    <button type="button" onClick={() => add(newAtelierFromCustom(c))} style={tileS()}>
                       {c.svg ? <Diagram svg={c.svg} accent={accent} size={72} /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M12 8v8"/></svg>}
                       <span style={tileName}>{c.name}</span>
                     </button>
-                    <button type="button" onClick={() => delCustom(c.id)} aria-label={t('w3g.strides_delete')} style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'var(--se-card2)', color: 'var(--se-dim)', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                    <button type="button" onClick={() => delCustom(c.id)} aria-label={t('w3g.strides_delete')} style={{ position: 'absolute', top: 4, right: 4, width: isM ? 26 : 18, height: isM ? 26 : 18, borderRadius: '50%', border: 'none', background: 'var(--se-card2)', color: 'var(--se-dim)', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>×</button>
                   </div>
                 ))}
               </div>
             </>
           )}
           {/* Atelier libre */}
-          <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w3g.strides_catalog')}</p>
+          {isM ? <MCardHead>{t('w3g.strides_catalog')}</MCardHead> : <p style={microLbl}>{t('w3g.strides_catalog')}</p>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
-            <button type="button" onClick={() => add(newFreeAtelier())} style={{ ...tileStyle(accent), borderStyle: 'dashed' }}>
+            <button type="button" onClick={() => add(newFreeAtelier())} style={tileS(true)}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               <span style={tileName}>{t('w3g.strides_free_atelier')}</span>
             </button>
             {ATELIER_PRESETS.map((p: AtelierPreset) => (
-              <button key={p.id} type="button" onClick={() => add(newAtelierFromPreset(p))} style={tileStyle(accent)}>
+              <button key={p.id} type="button" onClick={() => add(newAtelierFromPreset(p))} style={tileS()}>
                 <Diagram svg={p.svg} accent={accent} size={82} />
                 <span style={tileName}>{p.name}</span>
               </button>

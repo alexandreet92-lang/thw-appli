@@ -14,6 +14,7 @@ import type { Block } from '@/app/planning/page'
 import type { MBlock } from './blocks'
 import { createClient } from '@/lib/supabase/client'
 import { Card, FieldLabel, Segmented } from './ui'
+import { useSeM, mChipSm, MCardHead } from './mobileKit'
 import {
   SPRINT_DRILLS, newSprintWarmup, newSprint, newStairs, isSprintBlock, sprintSpeedKmh,
   sprintBlockMin, syncSprintBlock, type SprintBlock, type WarmupExt, type SprintExt, type StairsExt,
@@ -39,6 +40,23 @@ const IconStairs = ({ c }: { c: string }) => <svg width="17" height="17" viewBox
 
 // ── Stepper compact − valeur + ─────────────────────────────────────
 function Step({ value, onChange, unit, step = 1, min = 0, w }: { value: number; onChange: (n: number) => void; unit?: string; step?: number; min?: number; w?: number }) {
+  const isM = useSeM()
+  const round0 = (n: number) => Math.round(n / step) * step
+  if (isM) {
+    // Mobile : champ gris arrondi sans bordure, boutons 44 px.
+    const mb: React.CSSProperties = { width: 40, flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 19, fontWeight: 600, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', padding: 0 }
+    return (
+      <div style={{ display: 'inline-flex', alignItems: 'stretch', height: 44, width: w ? w + 16 : '100%', minWidth: 0, maxWidth: '100%', borderRadius: 'var(--r-md)', background: 'var(--sem-field)', overflow: 'hidden' }}>
+        <button type="button" onClick={() => onChange(Math.max(min, round0(value - step)))} style={mb}>−</button>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>
+          <input value={value} onChange={e => { const n = Number(e.target.value.replace(',', '.')); if (Number.isFinite(n)) onChange(Math.max(min, n)) }} inputMode="decimal"
+            className="se-tnum" style={{ width: '100%', minWidth: 0, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 16, fontWeight: 700, padding: 0 }} />
+          {unit && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 2, whiteSpace: 'nowrap' }}>{unit}</span>}
+        </div>
+        <button type="button" onClick={() => onChange(round0(value + step))} style={mb}>+</button>
+      </div>
+    )
+  }
   const btn: React.CSSProperties = { width: 30, height: 34, flexShrink: 0, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', padding: 0 }
   const round = (n: number) => Math.round(n / step) * step
   return (
@@ -54,25 +72,30 @@ function Step({ value, onChange, unit, step = 1, min = 0, w }: { value: number; 
   )
 }
 function Txt({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const isM = useSeM()
+  if (isM) return <input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+    style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '0 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--sem-field)', color: 'var(--text)', fontSize: 16, fontWeight: 600, outline: 'none' }} />
   return <input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
     style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 14, fontWeight: 500, outline: 'none' }} />
 }
 function Chip({ on, onClick, children, accent }: { on: boolean; onClick: () => void; children: React.ReactNode; accent: string }) {
+  if (useSeM()) return <button type="button" onClick={onClick} aria-pressed={on} style={mChipSm(on)}>{children}</button>
   return <button type="button" onClick={onClick} style={{ padding: '7px 12px', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontSize: 12, fontWeight: 700, border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'var(--se-card)', color: on ? '#fff' : 'var(--se-dim)' }}>{children}</button>
 }
 
 // ── Panneau Temps de référence (toujours visible) ─────────────────
 function ReferenceZones({ pbs }: { pbs: Record<number, number> }) {
   const { t } = useI18n()
+  const isM = useSeM()
   return (
-    <Card style={{ padding: 14 }}>
-      <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.refTime')}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SPRINT_PB_DISTS.length}, 1fr)`, gap: 8 }}>
+    <Card style={{ padding: isM ? 16 : 14 }}>
+      {isM ? <MCardHead>{t('w2e.refTime')}</MCardHead> : <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.refTime')}</p>}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SPRINT_PB_DISTS.length}, minmax(0, 1fr))`, gap: isM ? 6 : 8 }}>
         {SPRINT_PB_DISTS.map(d => {
           const sec = pbs[d]
           const kmh = sec > 0 ? (d / sec) * 3.6 : 0
           return (
-            <div key={d} style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '9px 6px', textAlign: 'center', background: sec > 0 ? 'var(--se-card)' : 'transparent' }}>
+            <div key={d} style={isM ? { borderRadius: 'var(--r-md)', padding: '10px 4px', textAlign: 'center', background: 'var(--sem-field)', minWidth: 0 } : { border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '9px 6px', textAlign: 'center', background: sec > 0 ? 'var(--se-card)' : 'transparent' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--se-dim)' }}>{d} m</div>
               <div className="se-tnum" style={{ fontSize: 15, fontWeight: 800, color: sec > 0 ? 'var(--se-text)' : 'var(--se-dim)', marginTop: 2 }}>{fmtSprintTime(sec)}</div>
               <div className="se-tnum" style={{ fontSize: 9.5, color: 'var(--se-dim)', marginTop: 1 }}>{sec > 0 ? fmtSpeed(kmh) : t('w2e.noData')}</div>
@@ -212,8 +235,11 @@ function StairsCard({ x, on }: { x: StairsExt; on: (x: StairsExt) => void }) {
 
 // ── Bouton d'ajout « évolué » (icône + titre + sous-titre) ─────────
 function AddBtn({ icon, title, sub, accent, onClick }: { icon: React.ReactNode; title: string; sub: string; accent: string; onClick: () => void }) {
+  const isM = useSeM()
   return (
-    <button type="button" onClick={onClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '13px 14px', borderRadius: 'var(--r-md)', border: `1px solid var(--se-rule)`, background: 'var(--se-card)', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}>
+    <button type="button" onClick={onClick} style={isM
+      ? { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '14px 12px', borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--surface-card)', cursor: 'pointer', textAlign: 'left', minWidth: 0 }
+      : { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '13px 14px', borderRadius: 'var(--r-md)', border: `1px solid var(--se-rule)`, background: 'var(--se-card)', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--r-sm)', background: `${accent}18` }}>{icon}</span>
       <span style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 700, color: 'var(--se-text)' }}>{title}</span>
       <span style={{ fontSize: 10.5, color: 'var(--se-dim)', lineHeight: 1.25 }}>{sub}</span>
@@ -223,6 +249,10 @@ function AddBtn({ icon, title, sub, accent, onClick }: { icon: React.ReactNode; 
 
 export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[]; onChange: (b: Block[]) => void; accent: string }) {
   const { t } = useI18n()
+  const isM = useSeM()
+  const mvBtn = (disabled: boolean, danger?: boolean): React.CSSProperties => isM
+    ? { width: 36, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: danger ? 'var(--danger)' : 'var(--text-mid)', fontSize: 18, fontWeight: 700, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1, flexShrink: 0 }
+    : { width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: danger ? '#dc2626' : 'var(--se-dim)', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1 }
   const sBlocks = useMemo(() => (blocks as MBlock[]).filter(isSprintBlock) as SprintBlock[], [blocks])
   const [pbs, setPbs] = useState<Record<number, number>>({})
 
@@ -258,13 +288,13 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
   const totalMin = sBlocks.reduce((s, b) => s + sprintBlockMin(b.sx), 0)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isM ? 12 : 14 }}>
       <ReferenceZones pbs={pbs} />
 
       {sBlocks.length > 0 && (
         <Card style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.intensityProfile')}</span>
+            <span style={isM ? { fontSize: 13, fontWeight: 700, color: 'var(--text-mid)' } : { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{t('w2e.intensityProfile')}</span>
             <span className="se-tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--se-text)' }}>≈ {totalMin} min</span>
           </div>
           <IntensityProfile blocks={sBlocks} accent={accent} />
@@ -277,12 +307,12 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
             <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 'var(--r-sm)', background: `${accent}18`, flexShrink: 0 }}>
               {b.sx.kind === 'warmup' ? <IconWarm c={accent} /> : b.sx.kind === 'sprint' ? <IconSprint c={accent} /> : <IconStairs c={accent} />}
             </span>
-            <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--se-text)' }}>
+            <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: isM ? 16 : 15, fontWeight: 700, color: 'var(--se-text)' }}>
               {b.sx.kind === 'warmup' ? t('w2e.warmup') : b.sx.kind === 'sprint' ? t('w2e.sprintDist', { dist: b.sx.distanceM }) : t('w2e.stairs')}
             </span>
-            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.35 : 1 }}>↑</button>
-            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-dim)', cursor: i === sBlocks.length - 1 ? 'default' : 'pointer', opacity: i === sBlocks.length - 1 ? 0.35 : 1 }}>↓</button>
-            <button type="button" onClick={() => remove(b.id)} style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: '#dc2626', cursor: 'pointer' }}>×</button>
+            <button type="button" onClick={() => move(b.id, -1)} disabled={i === 0} style={mvBtn(i === 0)}>↑</button>
+            <button type="button" onClick={() => move(b.id, 1)} disabled={i === sBlocks.length - 1} style={mvBtn(i === sBlocks.length - 1)}>↓</button>
+            <button type="button" onClick={() => remove(b.id)} style={mvBtn(false, true)}>×</button>
           </div>
           {b.sx.kind === 'warmup' && <WarmupCard x={b.sx} on={sx => setBlock(b.id, sx)} accent={accent} />}
           {b.sx.kind === 'sprint' && <SprintCard x={b.sx} on={sx => setBlock(b.id, sx)} accent={accent} pbs={pbs} />}
@@ -294,7 +324,7 @@ export function SprintsBuilder({ blocks, onChange, accent }: { blocks: MBlock[];
         <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--se-dim)', textAlign: 'center' }}>{t('w2e.addBlockHint')}</p>
       )}
 
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: isM ? 8 : 10 }}>
         <AddBtn accent={accent} onClick={() => add(newSprintWarmup())} icon={<IconWarm c={accent} />} title={t('w2e.warmup')} sub={t('w2e.warmupSub')} />
         <AddBtn accent={accent} onClick={() => add(newSprint())} icon={<IconSprint c={accent} />} title={t('w2e.sprint')} sub={t('w2e.sprintSub')} />
         <AddBtn accent={accent} onClick={() => add(newStairs())} icon={<IconStairs c={accent} />} title={t('w2e.stairs')} sub={t('w2e.stairsSub')} />

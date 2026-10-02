@@ -1,14 +1,18 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════
-// SessionEditor — coquille MOBILE « éditorial clair » (< breakpoint desktop).
-// Plein écran : header + corps scrollable (MainFields + BuilderSection) +
-// footer flottant. Masque la MobileTabBar (§0). Aucune logique métier ici.
+// SessionEditor — coquille MOBILE « cartes » (< breakpoint desktop).
+// Plein écran sur page grise : barre de boutons ronds flottants, corps
+// scrollable (titre + MainFieldsMobile + BuilderSection) et pied flottant.
+// Le contexte SeMobileProvider active le look cartes dans les builders
+// partagés (le desktop et les autres usages restent inchangés).
+// Masque la MobileTabBar (§0). Aucune logique métier ici.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { EDITORIAL_CSS } from './editorial'
-import { MainFields } from './MainFields'
+import { MainFieldsMobile } from './MainFieldsMobile'
 import { BuilderSection } from './BuilderSection'
-import { PanelHeader, PanelFooter } from './PanelChrome'
+import { MobileHeaderBar, MobileTitle, MobileFooter, MOBILE_FOOTER_SPACE } from './MobileChrome'
+import { SeMobileProvider, SEM_CSS } from './mobileKit'
 import type { SessionEditorPanelProps } from './panelProps'
 
 export type { SessionEditorPanelProps as SessionEditorMobileProps }
@@ -25,19 +29,22 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
   const pc = { ...p, onClose: requestClose }
 
   return (
-    <>
+    <SeMobileProvider>
       <style>{EDITORIAL_CSS}</style>
+      <style>{SEM_CSS}</style>
       <div className="se-m" onClick={e => e.stopPropagation()} style={{
         position: 'fixed', inset: 0, zIndex: 999,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        background: 'var(--surface-page)',
         transform: shown ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform .32s cubic-bezier(.2,.8,.2,1)',
       }}>
-        <PanelHeader p={pc} padding={'calc(8px + env(safe-area-inset-top)) 16px 12px'} bordered={false} stacked />
+        <MobileHeaderBar p={pc} />
 
-        {/* Corps scrollable — padding bas pour dégager les boutons flottants */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 96px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-          <MainFields
+        {/* Corps scrollable — padding bas ≥ hauteur du pied flottant + safe-area */}
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: `0 16px ${MOBILE_FOOTER_SPACE}`, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+          <div style={{ marginBottom: 12 }}><MobileTitle p={pc} /></div>
+          <MainFieldsMobile
             reserveMode={p.reserveMode}
             programMode={p.programMode}
             sport={p.sport} accent={p.accent} onSportChange={p.onSportChange} lockSport={p.lockSport}
@@ -51,12 +58,12 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
             desc={p.desc} setDesc={p.setDesc}
             athlete={p.athlete}
           />
-          <div style={{ height: 1, background: 'var(--se-rule)', margin: '24px 0' }} />
+          <div style={{ height: 12 }} />
           <BuilderSection p={p} />
         </div>
 
-        <PanelFooter p={pc} floating />
+        <MobileFooter p={pc} />
       </div>
-    </>
+    </SeMobileProvider>
   )
 }

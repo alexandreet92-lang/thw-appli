@@ -17,7 +17,7 @@ const PCT_CHIPS = [5, 10, 15, 20]
 
 // Popover « Dupliquer » : répète la séance toutes les 1 ou 2 semaines, N fois,
 // avec ajustement de durée (min ou %) et choix du contenu copié.
-function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string; sport: SportType; onApply: (n: number, c: number, opts: DuplicateOpts) => void; onClose: () => void }) {
+export function DuplicatePopover({ accent, sport, onApply, onClose, top = 38 }: { accent: string; sport: SportType; onApply: (n: number, c: number, opts: DuplicateOpts) => void; onClose: () => void; top?: number }) {
   const { t } = useI18n()
   const [every, setEvery] = useState(1)
   const [count, setCount] = useState(4)
@@ -38,7 +38,7 @@ function DuplicatePopover({ accent, sport, onApply, onClose }: { accent: string;
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-      <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 41, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-md)', boxShadow: '0 8px 30px rgba(0,0,0,0.22)', padding: 16, width: 288, maxHeight: '78vh', overflowY: 'auto' }}>
+      <div style={{ position: 'absolute', top, right: 0, zIndex: 41, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-md)', boxShadow: '0 8px 30px rgba(0,0,0,0.22)', padding: 16, width: 288, maxHeight: '78vh', overflowY: 'auto' }}>
         <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--se-text)' }}>{t('pch.duplicateSession')}</p>
         <p style={{ margin: '0 0 14px', fontSize: 11.5, color: 'var(--se-dim)' }}>Répète cette séance dans le planning.</p>
 

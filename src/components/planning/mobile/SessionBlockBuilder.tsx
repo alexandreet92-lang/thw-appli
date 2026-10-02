@@ -15,7 +15,8 @@ import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } fro
 import { BlockCard } from './BlockCard'
 import { EnduranceLiveSummary } from './EnduranceLiveSummary'
 import { parseSessionText } from './parseSessionText'
-import { Segmented } from './ui'
+import { Segmented, MBuilderHeader } from './ui'
+import { useSeM, MCard, MKpis, mChipSm, HAIR } from './mobileKit'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import { isNativeApp } from '@/lib/native/platform'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
@@ -30,7 +31,10 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
   const { t: tr } = useI18n()
+  const isM = useSeM()
   const [openId, setOpenId] = useState<string | null>(null)
+  // Mobile : menu d'ajout de blocs (« + Ajouter » de la carte Blocs).
+  const [addOpen, setAddOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -304,6 +308,252 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
     }
   }
 
+  // ── Fragments partagés desktop / mobile (même DOM côté desktop) ──
+  const addBtnS = isM ? mAddBtn : addBtn
+  const aiInner = (
+    <>
+      <p style={{ margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: accent }}>
+        <IconSparkles size={15} /> {tr('planning.aiDescribeSession')}
+      </p>
+      <div style={{ position: 'relative' }}>
+        <textarea
+          value={aiPrompt}
+          onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
+          rows={4}
+          placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
+          style={{ width: '100%', boxSizing: 'border-box', background: isM ? 'var(--sem-field)' : 'var(--bg-card2)', border: isM ? 'none' : '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: '12px 40px 12px 12px', fontSize: isM ? 15 : 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+        />
+        {/* Dictée : masquée sur l'app native (vocal désactivé pour le moment). */}
+        {!isNativeApp() && (
+        <button type="button" onClick={() => { voiceBaseRef.current = aiPrompt; setVoiceOpen(true) }} aria-label={tr('planning.aiDescribeSession')}
+          style={{ position: 'absolute', right: 8, bottom: 12, border: 'none', background: 'transparent', color: accent, cursor: 'pointer', display: 'flex', padding: 4 }}>
+          <IconMicrophone size={18} />
+        </button>
+        )}
+      </div>
+      <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
+        style={{ marginTop: 8, width: '100%', padding: 12, minHeight: isM ? 48 : undefined, borderRadius: isM ? 'var(--r-pill)' : 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>
+        {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
+      </button>
+      {aiError && (
+        <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
+      )}
+      {/* Résumé live sous « Générer les blocs » : dès qu'il y a des blocs,
+          leurs stats ; SINON, estimation EN DIRECT du texte tapé (parseur
+          client, zéro IA) — durée/vitesse/allure évoluent pendant la frappe. */}
+      {(() => {
+        const typedBlocks = blocks.length === 0 ? parseSessionText(aiPrompt, sport, runningSub) : []
+        const useTyped = blocks.length === 0 && typedBlocks.length > 0
+        return (
+          <>
+            <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={useTyped ? typedBlocks : blocks} />
+            {useTyped && (
+              <p style={{ margin: '4px 2px 0', fontSize: 10.5, color: 'var(--se-dim)' }}>{tr('planning.liveEstimate')}</p>
+            )}
+          </>
+        )
+      })()}
+</>
+  )
+  const voiceEl = (
+    <>
+      {voiceOpen && (
+        <VoiceOverlay
+          isDesktop={typeof window !== 'undefined' && window.innerWidth >= 1024}
+          onLiveText={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt : base) }}
+          onConfirm={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt.trim() : base); setVoiceOpen(false) }}
+          onCancel={() => { setAiPrompt(voiceBaseRef.current); setVoiceOpen(false) }}
+        />
+      )}
+    </>
+  )
+  const parcoursInner = (
+    <>
+      {parcoursFile ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <IconMapPin size={15} color={accent} />
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursFile.name}</span>
+            <button type="button" onClick={() => setParcoursFile(null)} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+          </div>
+          <ParcoursViewer file={parcoursFile} />
+        </div>
+      ) : (parcoursData?.elevationProfile && parcoursData.elevationProfile.length > 1) ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <IconMapPin size={15} color={accent} />
+            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || tr('planning.stageParcours')}</span>
+            <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>{tr('planning.replace')}</button>
+            {onParcoursRemove && (
+              <button type="button" onClick={onParcoursRemove} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+            )}
+          </div>
+          <ParcoursViewer
+            data={parcoursData}
+            portions={parcoursPortions}
+            sequencing={sport === 'bike' ? {
+              riderKg: riderKg ?? 75,
+              bikeKg: bikeKg ?? 8,
+              defaultWatts: refs.ftp ? Math.round(refs.ftp * 0.75 / 5) * 5 : 200,
+              intervalWatts: refs.ftp ? Math.round(refs.ftp * 1.08 / 5) * 5 : 280,
+              recoveryWatts: baseWatts || enduranceZ2Watts(refs.ftp),
+              colorForWatts,
+              onAddBlock: p => {
+                const id = `pc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
+                onChange([...blocks, blockFromPortion(p, id)])
+              },
+              onUpdateBlock: p => {
+                if (!p.id) return
+                onChange(blocks.map(b => b.id === p.id ? blockFromPortion(p, p.id as string) : b))
+              },
+              onRemoveBlock: id => {
+                onChange(blocks.filter(b => b.id !== id))
+                if (openId === id) setOpenId(null)
+              },
+            } : undefined}
+          />
+        </div>
+      ) : (
+        <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtnS}>
+          <IconMapPin size={15} /> {tr('planning.addParcours')}
+        </button>
+      )}
+      <input ref={parcoursInputRef} type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }}
+        onChange={e => {
+          const f = e.target.files?.[0]
+          if (f) {
+            // Persistance : le parent parse + stocke dans la séance (parcours_data).
+            if (onParcoursFile) { onParcoursFile(f); setParcoursFile(null) }
+            else setParcoursFile(f)
+          }
+          e.target.value = ''
+        }} />
+  </>
+  )
+
+  // ══ MOBILE — cartes (maquette mock7) : KPI · Intensité · Blocs · Zones ══
+  if (isM) {
+    const mCells = (isSwim || isRun) ? [cells[3], cells[2], cells[4], cells[0], cells[1]] : [cells[2], cells[3], cells[0], cells[1]]
+    const addOpenNow = addOpen || blocks.length === 0
+    const addChips: { key: string; icon: React.ReactNode; label: string; onClick: () => void }[] = [
+      { key: 'single', icon: <IconPlus size={15} />, label: tr('planning.simpleBlock'), onClick: () => add(newSingle(sport, runningSub === 'treadmill')) },
+      { key: 'interval', icon: <IconRefresh size={15} />, label: isSwim ? tr('planning.series') : tr('planning.interval'), onClick: () => add(newInterval(sport, runningSub === 'treadmill')) },
+      ...(isSwim ? [{ key: 'hypo', icon: <IconLungs size={15} />, label: tr('planning.hypoxie'), onClick: () => add(newHypoxie()) }] : []),
+      ...(isRun && !isTreadmill ? [{ key: 'prog', icon: <IconTrendingUp size={15} />, label: tr('planning.progressive'), onClick: () => add(newProgressive(sport)) }] : []),
+      ...(isRun ? [{ key: 'strides', icon: <IconRefresh size={15} />, label: 'VMA / Strides', onClick: () => add(newStrides(sport, runningSub === 'treadmill')) }] : []),
+      ...(sport === 'bike' ? [{ key: 'test', icon: <IconActivity size={15} />, label: 'Test', onClick: () => add(newTest('ramp')) }] : []),
+    ]
+    const midTick = tot > 0 ? Math.round(tot / 2) : 0
+    return (
+      <div>
+        <MBuilderHeader tab={builderTab} onTab={onBuilderTab} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        <div data-guide="builder-load"><MKpis cells={mCells} /></div>
+
+        {/* Profil d'intensité — barres par zone (hauteur = règle barHeightPct) */}
+        <MCard data-guide="builder-profile" title={tr('planning.intensityProfile')}
+          right={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)' }}>{isSwim ? tr('planning.byDistance') : tr('planning.highIsIntensity')}</span>}>
+          <div data-testid="intensity-graph" style={{ height: 96, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+            {bars.length === 0
+              ? <span style={{ fontSize: 13, color: 'var(--text-mid)', alignSelf: 'center', margin: '0 auto', textAlign: 'center' }}>{tr('planning.addBlockToSeeProfile')}</span>
+              : bars.map(bar => (
+                <div key={bar.id} data-zone={bar.zone} data-km={bar.startKm ?? ''} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`} style={{
+                  flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 3,
+                  height: `${barHeightPct(bar, sport, refs)}%`,
+                  background: zColor(bar.zone), opacity: bar.recovery ? 0.5 : 1,
+                  borderRadius: 4,
+                }} />
+              ))}
+          </div>
+          {bars.length > 0 && tot > 0 && (
+            <div className="se-tnum" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-dim)' }}>
+              <span>0′</span><span>{midTick}′</span><span>{Math.round(tot)}′</span>
+            </div>
+          )}
+        </MCard>
+
+        {/* Tapis : profil ALTIMÉTRIQUE (pente cumulée) */}
+        {isTreadmill && treadProfile.length > 1 && treadGain > 0 && (
+          <MCard title={tr('sed.elevationProfile')} right={<span className="se-tnum" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>+{treadGain} m D+</span>}>
+            <RouteElevationProfile profile={treadProfile} totalKm={treadKm} totalGainM={treadGain} height={92} staticMode />
+          </MCard>
+        )}
+
+        {/* Fond de sortie Z2 (parcours vélo) — puissance éditable */}
+        {baseBlock && (
+          <MCard data-testid="base-z2-strip" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 12px 16px' }}>
+            <span style={{ width: 6, alignSelf: 'stretch', borderRadius: 3, background: zColor(baseBlock.zone), flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Fond de sortie · endurance Z2</p>
+              <p className="se-tnum" style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-mid)' }}>
+                {(baseBlock._baseSegments ?? []).length || 1} portion{((baseBlock._baseSegments ?? []).length || 1) > 1 ? 's' : ''} · {fmtDur(baseBlock.durationMin)}
+              </p>
+            </div>
+            <button type="button" onClick={() => bumpBaseWatts(-5)} aria-label="Baisser la puissance du fond" style={mStepBtn}>−</button>
+            <span className="se-tnum" data-testid="base-z2-watts" style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', minWidth: 52, textAlign: 'center' }}>{baseWatts} W</span>
+            <button type="button" onClick={() => bumpBaseWatts(5)} aria-label="Augmenter la puissance du fond" style={mStepBtn}>+</button>
+          </MCard>
+        )}
+
+        {/* Blocs — liste groupée (filet zone + titre + résumé + chevron), glisser la poignée pour réordonner.
+            Le résumé live (onglet manuel) ferme la carte, en tuiles grises. */}
+        <MCard data-guide="builder-blocks" style={{ padding: '16px 16px 6px', '--sem-tile': 'var(--surface-page)' } as React.CSSProperties} title={tr('planning.blocs')}
+          right={blocks.length > 0 ? (
+            <button type="button" onClick={() => setAddOpen(o => !o)} aria-expanded={addOpenNow}
+              style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', minHeight: 44, margin: '-13px -8px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {addOpenNow ? <IconX size={16} /> : <IconPlus size={16} stroke={2.4} />} {addOpenNow ? tr('planning.close') : tr('planning.add')}
+            </button>
+          ) : undefined}>
+          {addOpenNow && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 12 }}>
+              {addChips.map(c => (
+                <button key={c.key} type="button" onClick={() => { c.onClick(); setAddOpen(false) }} style={mChipSm(false)}>
+                  {c.icon} {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
+            {blocks.map(b => (
+              <div key={b.id} ref={el => { rowRefs.current[b.id] = el }}
+                style={{ borderTop: HAIR, opacity: dragging === b.id ? 0.55 : 1, transition: 'opacity 0.12s' }}>
+                <BlockCard block={b} sport={sport} runningSub={runningSub} accent={accent} refs={refs} riderKg={riderKg}
+                  expanded={openId === b.id} onToggle={() => setOpenId(id => id === b.id ? null : b.id)}
+                  onChange={update} onRemove={() => remove(b.id)} onDuplicate={() => duplicate(b.id)}
+                  handle={
+                    <div onPointerDown={e => onDragStart(b.id, e)} aria-label={tr('planning.moveBlock')} title={tr('planning.dragToMove')}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, alignSelf: 'stretch', marginLeft: -8, color: 'var(--text-dim)', cursor: 'grab', touchAction: 'none', flexShrink: 0 }}>
+                      <IconGripVertical size={16} />
+                    </div>
+                  } />
+              </div>
+            ))}
+          </div>
+          {builderTab !== 'ai' && <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={blocks} />}
+        </MCard>
+
+        {/* IA : description → génération des blocs */}
+        {builderTab === 'ai' && (
+          <MCard style={{ '--sem-tile': 'var(--surface-page)' } as React.CSSProperties}>
+            {aiInner}
+          </MCard>
+        )}
+
+        {/* Zones de l'athlète (référence) */}
+        {(sport === 'bike' || sport === 'run') && <ZonesReference sport={sport} refs={refs} />}
+
+        {/* Parcours : parcours lié au stage (auto) OU import manuel */}
+        <MCard>
+          {parcoursInner}
+        </MCard>
+
+        {voiceEl}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* Header + toggle */}
@@ -402,12 +652,12 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       {/* Boutons d'ajout — 3ᵉ bouton selon le sport : natation « Hypoxie »,
           course extérieure « Progressif », vélo « Test ». */}
       <div data-guide="builder-blocks" style={{ display: 'grid', gridTemplateColumns: (isSwim || (isRun && !isTreadmill) || sport === 'bike') ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
-        <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
-        <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
-        {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
-        {isRun && !isTreadmill && <button type="button" onClick={() => add(newProgressive(sport))} style={addBtn}><IconTrendingUp size={15} /> {tr('planning.progressive')}</button>}
-        {isRun && <button type="button" onClick={() => add(newStrides(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> VMA / Strides</button>}
-        {sport === 'bike' && <button type="button" onClick={() => add(newTest('ramp'))} style={addBtn}><IconActivity size={15} /> Test</button>}
+        <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtnS}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
+        <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtnS}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
+        {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtnS}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
+        {isRun && !isTreadmill && <button type="button" onClick={() => add(newProgressive(sport))} style={addBtnS}><IconTrendingUp size={15} /> {tr('planning.progressive')}</button>}
+        {isRun && <button type="button" onClick={() => add(newStrides(sport, runningSub === 'treadmill'))} style={addBtnS}><IconRefresh size={15} /> VMA / Strides</button>}
+        {sport === 'bike' && <button type="button" onClick={() => add(newTest('ramp'))} style={addBtnS}><IconActivity size={15} /> Test</button>}
       </div>
 
       {/* Résumé live (manuel) : durée + intensité moyenne — tapis : km, D+, allure, VAP */}
@@ -416,120 +666,15 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       {/* IA : champ d'écriture → génération des blocs d'intensité */}
       {builderTab === 'ai' && (
         <div style={{ marginTop: 14, padding: 14, border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)' }}>
-          <p style={{ margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: accent }}>
-            <IconSparkles size={15} /> {tr('planning.aiDescribeSession')}
-          </p>
-          <div style={{ position: 'relative' }}>
-            <textarea
-              value={aiPrompt}
-              onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
-              rows={4}
-              placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: '12px 40px 12px 12px', fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
-            />
-            {/* Dictée : masquée sur l'app native (vocal désactivé pour le moment). */}
-            {!isNativeApp() && (
-            <button type="button" onClick={() => { voiceBaseRef.current = aiPrompt; setVoiceOpen(true) }} aria-label={tr('planning.aiDescribeSession')}
-              style={{ position: 'absolute', right: 8, bottom: 12, border: 'none', background: 'transparent', color: accent, cursor: 'pointer', display: 'flex', padding: 4 }}>
-              <IconMicrophone size={18} />
-            </button>
-            )}
-          </div>
-          <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
-            style={{ marginTop: 8, width: '100%', padding: 12, borderRadius: 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>
-            {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
-          </button>
-          {aiError && (
-            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
-          )}
-          {/* Résumé live sous « Générer les blocs » : dès qu'il y a des blocs,
-              leurs stats ; SINON, estimation EN DIRECT du texte tapé (parseur
-              client, zéro IA) — durée/vitesse/allure évoluent pendant la frappe. */}
-          {(() => {
-            const typedBlocks = blocks.length === 0 ? parseSessionText(aiPrompt, sport, runningSub) : []
-            const useTyped = blocks.length === 0 && typedBlocks.length > 0
-            return (
-              <>
-                <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={useTyped ? typedBlocks : blocks} />
-                {useTyped && (
-                  <p style={{ margin: '4px 2px 0', fontSize: 10.5, color: 'var(--se-dim)' }}>{tr('planning.liveEstimate')}</p>
-                )}
-              </>
-            )
-          })()}
+          {aiInner}
         </div>
       )}
 
-      {voiceOpen && (
-        <VoiceOverlay
-          isDesktop={typeof window !== 'undefined' && window.innerWidth >= 1024}
-          onLiveText={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt : base) }}
-          onConfirm={txt => { const base = voiceBaseRef.current; setAiPrompt(txt ? (base ? base.trimEnd() + ' ' : '') + txt.trim() : base); setVoiceOpen(false) }}
-          onCancel={() => { setAiPrompt(voiceBaseRef.current); setVoiceOpen(false) }}
-        />
-      )}
+      {voiceEl}
 
       {/* Parcours : parcours lié au stage (auto) OU import manuel */}
       <div style={{ marginTop: 14 }}>
-        {parcoursFile ? (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <IconMapPin size={15} color={accent} />
-              <span style={{ flex: 1, fontSize: 12, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursFile.name}</span>
-              <button type="button" onClick={() => setParcoursFile(null)} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
-            </div>
-            <ParcoursViewer file={parcoursFile} />
-          </div>
-        ) : (parcoursData?.elevationProfile && parcoursData.elevationProfile.length > 1) ? (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <IconMapPin size={15} color={accent} />
-              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || tr('planning.stageParcours')}</span>
-              <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>{tr('planning.replace')}</button>
-              {onParcoursRemove && (
-                <button type="button" onClick={onParcoursRemove} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
-              )}
-            </div>
-            <ParcoursViewer
-              data={parcoursData}
-              portions={parcoursPortions}
-              sequencing={sport === 'bike' ? {
-                riderKg: riderKg ?? 75,
-                bikeKg: bikeKg ?? 8,
-                defaultWatts: refs.ftp ? Math.round(refs.ftp * 0.75 / 5) * 5 : 200,
-                intervalWatts: refs.ftp ? Math.round(refs.ftp * 1.08 / 5) * 5 : 280,
-                recoveryWatts: baseWatts || enduranceZ2Watts(refs.ftp),
-                colorForWatts,
-                onAddBlock: p => {
-                  const id = `pc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
-                  onChange([...blocks, blockFromPortion(p, id)])
-                },
-                onUpdateBlock: p => {
-                  if (!p.id) return
-                  onChange(blocks.map(b => b.id === p.id ? blockFromPortion(p, p.id as string) : b))
-                },
-                onRemoveBlock: id => {
-                  onChange(blocks.filter(b => b.id !== id))
-                  if (openId === id) setOpenId(null)
-                },
-              } : undefined}
-            />
-          </div>
-        ) : (
-          <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtn}>
-            <IconMapPin size={15} /> {tr('planning.addParcours')}
-          </button>
-        )}
-        <input ref={parcoursInputRef} type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }}
-          onChange={e => {
-            const f = e.target.files?.[0]
-            if (f) {
-              // Persistance : le parent parse + stocke dans la séance (parcours_data).
-              if (onParcoursFile) { onParcoursFile(f); setParcoursFile(null) }
-              else setParcoursFile(f)
-            }
-            e.target.value = ''
-          }} />
+        {parcoursInner}
       </div>
     </div>
   )
@@ -545,4 +690,15 @@ const addBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
   padding: '12px', borderRadius: 'var(--se-r)', border: '1px dashed var(--se-rule)',
   background: 'transparent', color: 'var(--se-dim)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+}
+
+// ── Mobile (cartes) ──
+const mAddBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', minHeight: 44,
+  padding: '0 14px', borderRadius: 'var(--r-pill)', border: 'none',
+  background: 'var(--sem-field)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+}
+const mStepBtn: React.CSSProperties = {
+  width: 44, height: 44, borderRadius: '50%', flexShrink: 0, border: 'none', background: 'var(--sem-field)',
+  color: 'var(--text)', fontSize: 20, fontWeight: 600, lineHeight: 1, cursor: 'pointer',
 }

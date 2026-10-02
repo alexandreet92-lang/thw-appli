@@ -13,6 +13,7 @@ import {
 import { ExerciseCard } from './ExerciseCard'
 import { ExercisePicker } from './ExercisePicker'
 import { Stepper, FieldLabel } from './ui'
+import { useSeM, mChipSm } from './mobileKit'
 import { CIRCUIT_TYPES, type CircuitType } from '@/app/planning/page'
 import { useI18n } from '@/lib/i18n'
 
@@ -30,6 +31,8 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
   banner: ReactNode; presets?: ReactNode
 }) {
   const { t: tr } = useI18n()
+  const isM = useSeM()
+  const addBtnS = (accent: string): React.CSSProperties => isM ? { ...addBtn(accent), minHeight: 44, padding: '0 4px', fontSize: 14, fontWeight: 700 } : addBtn(accent)
   const [adding, setAdding] = useState<string | null>(null)
   // Remplacement d'un exercice : rouvre le sélecteur en conservant reps/charge/repos.
   const [replacing, setReplacing] = useState<string | null>(null)
@@ -82,16 +85,16 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 
   // Panneau de recherche hyrox (stations + nom libre) — partagé ajout / remplacement.
   const hyroxSearchPanel = (onDef: (def: ExoDefinition) => void, onCustomName: (name: string) => void) => (
-    <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
+    <div style={isM ? { marginTop: 10, borderRadius: 'var(--r-md)', background: 'var(--surface-page)', padding: 10 } : { marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <IconSearch size={15} color="var(--se-dim)" />
         <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchOrFreeName')}
-          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
+          style={{ flex: 1, minHeight: isM ? 40 : undefined, background: 'transparent', border: 'none', outline: 'none', fontSize: isM ? 16 : 13, color: 'var(--se-text)' }} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
         {results.map(def => (
           <button key={def.id} type="button" onClick={() => onDef(def)}
-            style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>{def.name}</button>
+            style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: isM ? 15 : 13, padding: '7px 6px', minHeight: isM ? 44 : undefined, borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>{def.name}</button>
         ))}
         {query.trim() && (
           <button type="button" onClick={() => onCustomName(query.trim())}
@@ -115,30 +118,34 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
         const showRoundRest = variant === 'hyrox' || ctype === 'circuit' || ctype === 'superset'
         return (
         <Fragment key={c.id}>
-        <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: isLastCircuit ? 14 : 0, background: 'var(--se-card2)' }}>
+        <div style={isM
+          ? { borderRadius: 'var(--r-lg)', padding: 16, marginBottom: isLastCircuit ? 12 : 0, background: 'var(--surface-card)' }
+          : { border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: isLastCircuit ? 14 : 0, background: 'var(--se-card2)' }}>
           {/* En-tête de groupe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <input value={c.name} onChange={e => updateCircuit(c.id, { name: e.target.value })}
-              className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }} />
+              className="se-fr" style={{ flex: 1, minWidth: 0, minHeight: isM ? 40 : undefined, background: 'transparent', border: 'none', outline: 'none', fontSize: isM ? 17 : 15, fontWeight: isM ? 800 : 600, color: 'var(--se-text)' }} />
             {variant === 'hyrox' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--se-dim)' }}>{tr('planning.target')}</span>
                 <input value={fmtSec(c.targetTimeSec ?? 0)} onChange={e => { const m = e.target.value.match(/^(\d+):(\d{1,2})$/); updateCircuit(c.id, { targetTimeSec: m ? (+m[1]) * 60 + (+m[2]) : (parseInt(e.target.value) || 0) }) }}
-                  className="se-fr se-tnum" style={{ width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
+                  className="se-fr se-tnum" style={isM
+                    ? { width: 64, height: 40, textAlign: 'center', background: 'var(--sem-field)', border: 'none', borderRadius: 'var(--r-sm)', padding: '0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)', outline: 'none' }
+                    : { width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
               </div>
             )}
             {variant !== 'hyrox' && (
               <button type="button" onClick={() => setTypeMenu(typeMenu === c.id ? null : c.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 'var(--r-pill)', border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                style={isM ? { ...mChipSm(false), color: 'var(--text)', flexShrink: 0 } : { display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 'var(--r-pill)', border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <span>{CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.icon ?? '▤'}</span>
                 {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? tr('planning.seriesPlural')}
               </button>
             )}
             <div style={{ position: 'relative' }}>
-              <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
+              <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} aria-label={tr('planning.deleteGroup')} style={isM ? { width: 36, height: 44, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 } : { border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
               {menu === c.id && (
-                <div style={{ position: 'absolute', right: 0, top: 24, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-                  <button type="button" onClick={() => removeCircuit(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 'none', background: 'transparent', color: '#ff5f5f', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}><IconTrash size={15} /> {tr('planning.deleteGroup')}</button>
+                <div style={isM ? { position: 'absolute', right: 0, top: 42, zIndex: 5, background: 'var(--surface-card)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-capsule)', padding: 6 } : { position: 'absolute', right: 0, top: 24, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+                  <button type="button" onClick={() => removeCircuit(c.id)} style={isM ? { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--danger)', fontSize: 15, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' } : { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 'none', background: 'transparent', color: '#ff5f5f', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}><IconTrash size={15} /> {tr('planning.deleteGroup')}</button>
                 </div>
               )}
             </div>
@@ -146,7 +153,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 
           {/* Sélecteur de type de circuit (muscu) */}
           {typeMenu === c.id && variant !== 'hyrox' && (
-            <CircuitTypeChips current={c.type} accent={accent} onPick={t => changeCircuitType(c.id, t)} />
+            <CircuitTypeChips current={c.type} accent={accent} onPick={t => changeCircuitType(c.id, t)} isM={isM} />
           )}
 
           {/* Tours / minutes du circuit (sauf Séries : chaque exo porte ses séries) */}
@@ -179,7 +186,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
           )}
 
           {/* Exercices du groupe — flèche d'enchaînement si repos court (≤30s) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: isM ? 8 : 10 }}>
             {exosOf(c.id).map((e, i, arr) => {
               const chained = i < arr.length - 1 && (c.type === 'superset' || (c.type === 'circuit' && (e.restSec ?? 0) <= 30))
               // RÈGLE : le dernier exercice d'un circuit (hors Séries) n'affiche pas
@@ -218,7 +225,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
                 onCustom={name => { if (name) addItem(customItem(name, 'mixte'), c.id) }} />
             )
           ) : (
-            <button type="button" onClick={() => { setAdding(c.id); setReplacing(null); setQuery('') }} style={addBtn(accent)}>
+            <button type="button" onClick={() => { setAdding(c.id); setReplacing(null); setQuery('') }} style={addBtnS(accent)}>
               <IconPlus size={15} /> {variant === 'hyrox' ? tr('planning.addStationExercise') : tr('planning.addExercise')}
             </button>
           )}
@@ -227,7 +234,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
         {!isLastCircuit && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 0 0' }}>
             <div style={{ width: 2, height: 10, background: 'var(--se-rule)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'var(--se-card)' }}>
+            <div style={isM ? { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 6px 6px 14px', borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', '--sem-field': 'var(--surface-chip)' } as React.CSSProperties : { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'var(--se-card)' }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', whiteSpace: 'nowrap' }}>⏱ {tr('planning.restAfterCircuit')}</span>
               <Stepper value={String(c.restAfterCircuitSec ?? 0)} unit="s"
                 onChange={v => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, parseInt(v) || 0) })}
@@ -242,17 +249,17 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 
       {/* Ajouter un circuit — muscu : choix du type ; hyrox : direct */}
       {variant === 'hyrox' ? (
-        <button type="button" onClick={() => addCircuit()} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
+        <button type="button" onClick={() => addCircuit()} style={isM ? mAddCircuit : { ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
           <IconRefresh size={15} /> {tr('planning.addCircuit')}
         </button>
       ) : typeMenu === 'new' ? (
-        <div style={{ border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)', padding: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)', marginBottom: 8 }}>{tr('planning.circuitType')}</div>
-          <CircuitTypeChips current={null} accent={accent} onPick={t => addCircuit(t)} />
-          <button type="button" onClick={() => setTypeMenu(null)} style={{ ...addBtn(accent), color: 'var(--se-dim)', marginTop: 4 }}>{tr('planning.cancel')}</button>
+        <div style={isM ? { borderRadius: 'var(--r-lg)', padding: 16, background: 'var(--surface-card)' } : { border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)', padding: 10 }}>
+          <div style={isM ? { fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', marginBottom: 10 } : { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)', marginBottom: 8 }}>{tr('planning.circuitType')}</div>
+          <CircuitTypeChips current={null} accent={accent} onPick={t => addCircuit(t)} isM={isM} />
+          <button type="button" onClick={() => setTypeMenu(null)} style={{ ...addBtnS(accent), color: 'var(--se-dim)', marginTop: 4 }}>{tr('planning.cancel')}</button>
         </div>
       ) : (
-        <button type="button" onClick={() => setTypeMenu('new')} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
+        <button type="button" onClick={() => setTypeMenu('new')} style={isM ? mAddCircuit : { ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
           <IconRefresh size={15} /> {tr('planning.addCircuit')}
         </button>
       )}
@@ -261,8 +268,8 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 }
 
 // Chips de sélection du type de circuit (Séries / Lap / Superset / EMOM / Tabata).
-function CircuitTypeChips({ current, accent, onPick }: {
-  current: string | null; accent: string; onPick: (t: CircuitType) => void
+function CircuitTypeChips({ current, accent, onPick, isM }: {
+  current: string | null; accent: string; onPick: (t: CircuitType) => void; isM?: boolean
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '4px 0 10px' }}>
@@ -270,7 +277,9 @@ function CircuitTypeChips({ current, accent, onPick }: {
         const on = (current ?? 'series') === ct.id
         return (
           <button key={ct.id} type="button" onClick={() => onPick(ct.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '8px 10px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
+            style={isM
+              ? { display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', minHeight: 52, padding: '8px 12px', borderRadius: 'var(--r-md)', cursor: 'pointer', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--sem-field)' }
+              : { display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '8px 10px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
               border: on ? `2px solid ${accent}` : '1px solid var(--se-rule)', background: on ? `${accent}14` : 'var(--se-card)' }}>
             <span style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }}>{ct.icon}</span>
             <span style={{ minWidth: 0 }}>
@@ -288,3 +297,9 @@ const addBtn = (accent: string): React.CSSProperties => ({
   display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '9px 12px',
   border: 'none', background: 'transparent', color: accent, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
 })
+// Mobile : bouton pilule gris pleine largeur (« Ajouter un circuit »).
+const mAddCircuit: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', minHeight: 48,
+  border: 'none', borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', color: 'var(--text)',
+  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+}

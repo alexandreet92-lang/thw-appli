@@ -13,10 +13,16 @@ import { ComposedBuilder } from '../ComposedBuilder'
 import type { ComposedSport } from '../composedSports'
 import type { MBlock } from './blocks'
 import type { SessionEditorPanelProps } from './panelProps'
+import { useSeM, MSectionTitle } from './mobileKit'
+import { useI18n } from '@/lib/i18n'
 
 export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
+  const isM = useSeM()
+  const { t } = useI18n()
+  // Mobile : titre de section « Construction » pour les builders sans en-tête propre.
+  const mTitle = isM ? <MSectionTitle>{t('sem.build')}</MSectionTitle> : null
   if (p.isComposed) {
-    return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuits={p.composedCircuits} onCircuitsChange={p.setComposedCircuits} />
+    return <>{mTitle}<ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuits={p.composedCircuits} onCircuitsChange={p.setComposedCircuits} /></>
   }
   if (p.sport === 'mobilite') {
     return <MobilityBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
@@ -32,10 +38,10 @@ export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
   }
   // Famille course « Sprints » / « Intervals Strides » — builders dédiés.
   if (p.sport === 'run' && p.runFamily === 'sprints') {
-    return <SprintsBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
+    return <>{mTitle}<SprintsBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} /></>
   }
   if (p.sport === 'run' && p.runFamily === 'intervals') {
-    return <StridesBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} />
+    return <>{mTitle}<StridesBuilder blocks={p.blocks as MBlock[]} accent={p.accent} onChange={b => p.setBlocks(b as Block[])} /></>
   }
   if (p.sport === 'hyrox') {
     return (

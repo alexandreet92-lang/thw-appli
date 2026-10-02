@@ -15,6 +15,7 @@
 import type { SportType } from '@/app/planning/page'
 import { powerZones, paceZones } from '@/app/performance/components/profil/zones'
 import { zColor, secToPace, type AthleteRefs } from './editorial'
+import { useSeM, MCard, HAIR } from './mobileKit'
 
 const FTP_DEFAULT = 200
 const VMA_DEFAULT = 12.8   // km/h ⇒ Z2 (0,78·VMA) ≈ 10 km/h (6:00/km)
@@ -42,6 +43,35 @@ export function ZonesReference({ sport, refs }: { sport: SportType; refs: Athlet
         { k: 'SL1', v: paceStr(refs.runSl1PaceSec) },
         { k: 'SL2', v: paceStr(refs.runSl2PaceSec) },
       ]
+
+  const isM = useSeM()
+  if (isM) {
+    // Mobile : carte blanche — filet zone 4 px · Zx · nom · borne en gras.
+    return (
+      <MCard data-testid="zones-reference" data-guide="builder-zones"
+        title={isBike ? 'Zones de puissance' : "Zones d'allure"}
+        right={<span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{isBike ? 'FTP' : 'seuil'} de l’athlète</span>}>
+        <div>
+          {zones.map((z, i) => (
+            <div key={z.n} data-zone={z.n} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 40, borderTop: i ? HAIR : 'none' }}>
+              <span style={{ width: 4, height: 22, borderRadius: 2, background: zColor(z.n), flexShrink: 0 }} />
+              <span className="se-tnum" style={{ width: 28, fontSize: 13, fontWeight: 800, color: zColor(z.n), flexShrink: 0 }}>Z{z.n}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.label}</span>
+              <span className="se-tnum" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>{z.range}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, paddingTop: 12, borderTop: HAIR }}>
+          {refItems.map(it => (
+            <div key={it.k} style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)' }}>{it.k}</span>
+              <span className="se-tnum" style={{ display: 'block', marginTop: 2, fontSize: 17, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>{it.v}</span>
+            </div>
+          ))}
+        </div>
+      </MCard>
+    )
+  }
 
   const rowLabel: React.CSSProperties = {
     fontSize: 11, color: 'var(--se-text)', fontWeight: 500, minWidth: 0,

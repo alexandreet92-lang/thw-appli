@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import type { MBlock } from './blocks'
 import { Stepper, FieldLabel } from './ui'
+import { useSeM, mChipSm, HAIR } from './mobileKit'
 import {
   MOBILITY_LIBRARY, MOBILITY_REGION_LABEL, MOBILITY_REGION_ORDER,
   type MobilityExo, type MobilityRegion,
@@ -39,6 +40,7 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
   blocks: MBlock[]; accent: string; onChange: (b: MBlock[]) => void
 }) {
   const { t } = useI18n()
+  const isM = useSeM()
   const [openRegion, setOpenRegion] = useState<MobilityRegion | null>(MOBILITY_REGION_ORDER[0])
   const items = blocks.filter(b => b.mob)
 
@@ -63,27 +65,29 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
   return (
     <div>
       {/* Bandeau : nb d'exos + durée indicative (HORS volume) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600, flex: 1 }}>{t('w3g.mob_session')}</h3>
-        <span className="se-tnum" style={{ fontSize: 12, color: 'var(--se-dim)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isM ? 6 : 14, ...(isM ? { margin: '12px 4px 6px' } : {}) }}>
+        <h3 className="se-fr" style={{ margin: 0, fontSize: isM ? 20 : 19, fontWeight: isM ? 800 : 600, flex: 1 }}>{t('w3g.mob_session')}</h3>
+        <span className="se-tnum" style={{ fontSize: isM ? 13 : 12, fontWeight: isM ? 600 : undefined, color: 'var(--se-dim)' }}>
           {items.length > 1 ? t('w3g.mob_summary_plural', { count: items.length, min: Math.round(totalMin) }) : t('w3g.mob_summary', { count: items.length, min: Math.round(totalMin) })}
         </span>
       </div>
-      <p style={{ margin: '0 0 14px', fontSize: 11, color: 'var(--se-dim)', lineHeight: 1.5 }}>
+      <p style={{ margin: isM ? '0 4px 12px' : '0 0 14px', fontSize: isM ? 13 : 11, color: 'var(--se-dim)', lineHeight: 1.5 }}>
         {t('w3g.mob_volume_note')}
       </p>
 
       {/* Liste des exercices sélectionnés */}
       {items.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isM ? 12 : 10, marginBottom: isM ? 12 : 18 }}>
           {items.map((b, i) => (
-            <div key={b.id} style={{ border: '1px solid var(--se-rule)', borderLeft: `3px solid ${accent}`, borderRadius: 'var(--se-r)', padding: 12, background: 'var(--se-card)' }}>
+            <div key={b.id} style={isM
+              ? { borderRadius: 'var(--r-lg)', padding: 16, background: 'var(--surface-card)' }
+              : { border: '1px solid var(--se-rule)', borderLeft: `3px solid ${accent}`, borderRadius: 'var(--se-r)', padding: 12, background: 'var(--se-card)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: accent }}>{MOBILITY_REGION_LABEL[b.mob!.region as MobilityRegion] ?? b.mob!.region}</span>
-                <span className="se-fr" style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--se-text)' }}>{b.label}</span>
-                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('w3g.mob_move_up')} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={15} /></button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={t('w3g.mob_move_down')} style={{ ...iconBtn, opacity: i === items.length - 1 ? 0.3 : 1 }}><IconChevronDown size={15} /></button>
-                <button onClick={() => remove(b.id)} aria-label={t('w3g.mob_remove')} style={{ ...iconBtn, color: '#ff5f5f' }}><IconTrash size={15} /></button>
+                <span style={isM ? { fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' } : { fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: accent }}>{MOBILITY_REGION_LABEL[b.mob!.region as MobilityRegion] ?? b.mob!.region}</span>
+                <span className="se-fr" style={{ flex: 1, fontSize: isM ? 16 : 14, fontWeight: isM ? 700 : 600, color: 'var(--se-text)' }}>{b.label}</span>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('w3g.mob_move_up')} style={{ ...(isM ? mIconBtn : iconBtn), opacity: i === 0 ? 0.3 : 1 }}><IconChevronUp size={15} /></button>
+                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={t('w3g.mob_move_down')} style={{ ...(isM ? mIconBtn : iconBtn), opacity: i === items.length - 1 ? 0.3 : 1 }}><IconChevronDown size={15} /></button>
+                <button onClick={() => remove(b.id)} aria-label={t('w3g.mob_remove')} style={{ ...(isM ? mIconBtn : iconBtn), color: isM ? 'var(--danger)' : '#ff5f5f' }}><IconTrash size={15} /></button>
               </div>
               <div className="se-fgrid">
                 {b.mob!.holdSec != null
@@ -93,35 +97,37 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
                 <div>
                   <FieldLabel>{t('w3g.mob_sides')}</FieldLabel>
                   <button type="button" onClick={() => patch(b.id, { perSide: !b.mob!.perSide })}
-                    style={{ width: '100%', height: 38, borderRadius: 'var(--se-r-sm, 8px)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: `1px solid ${b.mob!.perSide ? accent : 'var(--se-rule)'}`, background: b.mob!.perSide ? `${accent}14` : 'transparent', color: b.mob!.perSide ? accent : 'var(--se-dim)' }}>
+                    style={isM
+                      ? { ...mChipSm(!!b.mob!.perSide), width: '100%', height: 44, borderRadius: 'var(--r-md)', justifyContent: 'center' }
+                      : { width: '100%', height: 38, borderRadius: 'var(--se-r-sm, 8px)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: `1px solid ${b.mob!.perSide ? accent : 'var(--se-rule)'}`, background: b.mob!.perSide ? `${accent}14` : 'transparent', color: b.mob!.perSide ? accent : 'var(--se-dim)' }}>
                     {b.mob!.perSide ? t('w3g.mob_per_side_btn') : t('w3g.mob_symmetric')}
                   </button>
                 </div>
               </div>
-              <p style={{ margin: '8px 2px 0', fontSize: 10, color: 'var(--se-dim)' }}>{itemDetail(b.mob!, t)} · ≈ {Math.round((b.durationMin ?? 0) * 10) / 10} min</p>
+              <p className="se-tnum" style={{ margin: '8px 2px 0', fontSize: isM ? 12 : 10, color: 'var(--se-dim)' }}>{itemDetail(b.mob!, t)} · ≈ {Math.round((b.durationMin ?? 0) * 10) / 10} min</p>
             </div>
           ))}
         </div>
       )}
 
       {/* Catalogue par région */}
-      <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden' }}>
-        {MOBILITY_REGION_ORDER.map(region => {
+      <div style={isM ? { borderRadius: 'var(--r-lg)', overflow: 'hidden', background: 'var(--surface-card)' } : { border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden' }}>
+        {MOBILITY_REGION_ORDER.map((region, ri) => {
           const exos = MOBILITY_LIBRARY.filter(e => e.region === region)
           const open = openRegion === region
           return (
-            <div key={region} style={{ borderTop: '1px solid var(--se-rule-soft)' }}>
+            <div key={region} style={{ borderTop: isM ? (ri ? HAIR : 'none') : '1px solid var(--se-rule-soft)', margin: isM ? '0 16px' : undefined }}>
               <button type="button" onClick={() => setOpenRegion(open ? null : region)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                <span className="se-fr" style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 600, color: 'var(--se-text)' }}>{MOBILITY_REGION_LABEL[region]}</span>
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: isM ? '0' : '12px 14px', minHeight: isM ? 52 : undefined, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                <span className="se-fr" style={{ flex: 1, textAlign: 'left', fontSize: isM ? 16 : 14, fontWeight: isM ? 700 : 600, color: 'var(--se-text)' }}>{MOBILITY_REGION_LABEL[region]}</span>
                 <span className="se-tnum" style={{ fontSize: 11, color: 'var(--se-dim)' }}>{exos.length}</span>
                 {open ? <IconChevronUp size={16} color="var(--se-dim)" /> : <IconChevronDown size={16} color="var(--se-dim)" />}
               </button>
               {open && (
-                <div style={{ padding: '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ padding: isM ? '0 0 14px' : '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: isM ? 8 : 6 }}>
                   {exos.map(exo => (
                     <button key={exo.id} type="button" onClick={() => add(exo)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'transparent', color: 'var(--se-text)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                      style={isM ? { ...mChipSm(false), color: 'var(--text)', fontWeight: 600 } : { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 'var(--r-pill)', border: '1px dashed var(--se-rule)', background: 'transparent', color: 'var(--se-text)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
                       <IconPlus size={13} color={accent} /> {exo.nom}
                     </button>
                   ))}
@@ -136,3 +142,4 @@ export function MobilityBuilder({ blocks, accent, onChange }: {
 }
 
 const iconBtn: React.CSSProperties = { width: 26, height: 26, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+const mIconBtn: React.CSSProperties = { width: 36, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }

@@ -14,6 +14,7 @@ import { summarizeIntervals, kmhEq, type TreadInterval } from '@/components/reco
 import { toBars, totalMin, totalDistance, type MBlock } from './blocks'
 import { paceToSec, secToPace, fmtDur } from './editorial'
 import { Banner } from './ui'
+import { useSeM, MKpis } from './mobileKit'
 import { useI18n } from '@/lib/i18n'
 
 // Vitesse de récup tapis si non chiffrée (style trot / marche).
@@ -42,6 +43,7 @@ export function EnduranceLiveSummary({ sport, runningSub, blocks }: {
   sport: SportType; runningSub?: RunningSub; blocks: MBlock[]
 }) {
   const { t: tr } = useI18n()
+  const isM = useSeM()
   const cells = useMemo(() => {
     if (blocks.length === 0) return null
     const isTreadmill = sport === 'run' && runningSub === 'treadmill'
@@ -101,5 +103,7 @@ export function EnduranceLiveSummary({ sport, runningSub, blocks }: {
   }, [blocks, sport, runningSub, tr])
 
   if (!cells) return null
+  // Mobile : tuiles KPI (fond --sem-tile fourni par la carte parente).
+  if (isM) return <div style={{ margin: '12px 0 10px' }}><MKpis cells={cells} /></div>
   return <div style={{ marginTop: 14 }}><Banner cells={cells} /></div>
 }

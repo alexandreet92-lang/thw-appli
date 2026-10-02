@@ -7,6 +7,7 @@ import {
 import { Banner, BuilderHeader } from './ui'
 import { GroupBuilder } from './GroupBuilder'
 import { useI18n } from '@/lib/i18n'
+import { useSeM, mChipSm, MCardHead } from './mobileKit'
 
 export function HyroxBuilder(p: {
   accent: string
@@ -16,6 +17,10 @@ export function HyroxBuilder(p: {
   sm: number; sn: number; builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
   const { t } = useI18n()
+  const isM = useSeM()
+  const chipS = (dashed: boolean): React.CSSProperties => isM
+    ? { ...mChipSm(false), flexShrink: 0, color: dashed ? 'var(--primary)' : 'var(--text)' }
+    : chip(p.accent, dashed)
   const firstCid = p.circuits[0]?.id ?? 'default'
   const add = (item: ExerciseItem) => { p.setExercises([...p.exercises, item]); p.setMap({ ...p.map, [item.id]: firstCid }) }
   const tt = targetTimeSec(p.exercises, p.circuits)
@@ -27,23 +32,23 @@ export function HyroxBuilder(p: {
   ]
 
   const presets = (
-    <div style={{ marginBottom: 16 }}>
-      <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{t('planning.officialStations')}</p>
+    <div style={isM ? { marginBottom: 12, background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16 } : { marginBottom: 16 }}>
+      {isM ? <MCardHead>{t('planning.officialStations')}</MCardHead> : <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{t('planning.officialStations')}</p>}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'] }}>
         {hyroxStations().map(def => (
           <button key={def.id} type="button" onClick={() => add(itemFromDef(def))}
-            style={chip(p.accent, false)}>{def.name}</button>
+            style={chipS(false)}>{def.name}</button>
         ))}
-        <button type="button" onClick={() => add(customItem(t('planning.freeExercise'), 'hyrox'))} style={chip(p.accent, true)}>
+        <button type="button" onClick={() => add(customItem(t('planning.freeExercise'), 'hyrox'))} style={chipS(true)}>
           <IconPlus size={13} /> {t('planning.free')}
         </button>
       </div>
       {/* Exercices additionnels (hors 8 stations) — ergo alternatifs, renfo, sauts… */}
-      <p style={{ margin: '14px 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Exercices additionnels</p>
+      {isM ? <div style={{ marginTop: 14 }}><MCardHead>Exercices additionnels</MCardHead></div> : <p style={{ margin: '14px 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Exercices additionnels</p>}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, flexWrap: 'wrap' as const }}>
         {hyroxExtras().map(def => (
           <button key={def.id} type="button" onClick={() => add(itemFromDef(def))}
-            style={chip(p.accent, false)}>{def.name}</button>
+            style={chipS(false)}>{def.name}</button>
         ))}
       </div>
     </div>

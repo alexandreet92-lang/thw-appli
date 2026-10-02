@@ -26,6 +26,7 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
+import { MobileHistoryDrawer } from './mobile/MobileHistoryDrawer'
 import { openIapStore } from '@/lib/iap/store-events'
 import { haptic } from '@/lib/ui/haptic'
 import { haptic as hapticNative } from '@/lib/haptics'
@@ -57,6 +58,15 @@ import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actio
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
 import { currentLocale, currentLang } from '@/lib/i18n'
+// Interface IA mobile (≤ 767 px) — composants dédiés (desktop inchangé).
+import { AimStyles } from './mobile/AimStyles'
+import { MobileTopBar } from './mobile/MobileTopBar'
+import { MobileWelcome } from './mobile/MobileWelcome'
+import { MobileComposerRow, ThinkingPill } from './mobile/MobileComposerRow'
+import { MobilePlusSheet, type AimPlusScreen } from './mobile/MobilePlusSheet'
+import { MobileModelSheet } from './mobile/MobileModelSheet'
+import { useAimTokenLimits } from './mobile/useAimData'
+import { limitPct } from './mobile/types'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -13241,6 +13251,7 @@ function HistoryDrawer({
   coachAccess = false,
   onConvDragStart,
   onConvDragEnd,
+  open = false,
 }: {
   convs: AIConv[]
   activeId: string | null
@@ -13270,6 +13281,8 @@ function HistoryDrawer({
   coachAccess?: boolean
   onConvDragStart?: (id: string) => void
   onConvDragEnd?: () => void
+  /** Mobile (underlay) : le tiroir est-il découvert ? */
+  open?: boolean
 }) {
   const { t, lang, setLang } = useI18n()
   const [menuId,   setMenuId]   = useState<string | null>(null)
@@ -13317,6 +13330,44 @@ function HistoryDrawer({
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [menuId])
+
+  // ── Mode underlay (mobile ≤ 767 px) — tiroir façon Claude iOS, posé sous
+  // la colonne chat qui coulisse vers la droite. ─────────────────────────
+  if (underlay) {
+    return (
+      <>
+        <MobileHistoryDrawer<AIConv>
+          open={open}
+          width={AI_SIDEBAR_W}
+          convs={convs}
+          activeId={activeId}
+          generatingConvs={generatingConvs}
+          unreadDone={unreadDone}
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onSelectProject={onSelectProject}
+          onEditProject={p => setProjModal({ id: p.id, name: p.name, instructions: p.instructions })}
+          onNewProject={() => setProjModal({ name: '', instructions: '' })}
+          onMoveConvToProject={onMoveConvToProject}
+          onOpenRoutines={onOpenRoutines}
+          onOpenStudio={onOpenStudio}
+          onSelect={onSelect}
+          onRename={(c, title) => onSelect({ ...c, title })}
+          onDelete={onDelete}
+          onPin={onPin}
+          onNew={onNew}
+          onClose={onClose}
+          onOpenProfile={() => openSettings('profil')}
+          avatarUrl={avatarUrl}
+          initials={initials}
+          activeAgent={activeAgent}
+          onAgentChange={onAgentChange}
+          coachAccess={coachAccess}
+        />
+        {renderProjModal()}
+      </>
+    )
+  }
 
   // ── Contenu partagé (header + liste + settings) ─────────────
 
@@ -13873,29 +13924,16 @@ function HistoryDrawer({
         ))}</AnimatedList>}
       </div>
 
-      {/* Nouvelle conversation — bulle flottante (mobile, style Claude) */}
-      {underlay && (
-        <button
-          onClick={onNew}
-          style={{
-            position: 'absolute', bottom: 20, left: 84, right: 16,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 5,
-            minHeight: 56, padding: '0 20px', borderRadius: 'var(--r-pill)', border: 'none',
-            background: 'var(--text)', color: 'var(--bg-card)',
-            fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)',
-            cursor: 'pointer', whiteSpace: 'nowrap',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.24)',
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {t('w1i.new_conversation')}
-        </button>
-      )}
-
       {/* ── Modale projet (création / édition) ── */}
-      {projModal && (
+      {renderProjModal()}
+    </div>
+  )
+
+  // Modale projet (création / édition) — partagée desktop + tiroir mobile.
+  // Déclaration de fonction (hissée) : utilisable avant sa définition.
+  function renderProjModal() {
+    if (!projModal) return null
+    return (
         <div
           onClick={() => { if (!projSaving) setProjModal(null) }}
           style={{ position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
@@ -13949,23 +13987,10 @@ function HistoryDrawer({
             </div>
           </div>
         </div>
-      )}
-    </div>
-  )
-
-  // ── Mode underlay (mobile) — sidebar fixe sous la colonne chat ──
-  if (underlay) {
-    return (
-      <div style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0,
-        width: AI_SIDEBAR_W, background: 'var(--bg-card)',
-        borderRight: '0.5px solid var(--border)',
-        zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      }}>
-        {sidebarContent}
-      </div>
     )
   }
+
+  // (Mode underlay mobile : rendu plus haut par MobileHistoryDrawer.)
 
   // ── Mode persistant (desktop) — colonne inline ──────────────
   if (persistent) {
@@ -20829,6 +20854,10 @@ export default function AIPanel({
   const [fullscr,     setFullscr]     = useState(false)
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
+  // Mobile : écran initial de la feuille « Ajouter » (« Toutes les actions
+  // rapides » l'ouvre directement sur le sous-écran) + feuille « Modèle ».
+  const [plusScreen,  setPlusScreen]  = useState<AimPlusScreen>('main')
+  const [modelSheetOpen, setModelSheetOpen] = useState(false)
   // Split-view desktop (Option B) : jusqu'à 2 VOLETS secondaires (ids de conv)
   // affichés à droite de la colonne principale. Chaque volet a son propre
   // composer texte ; le total de colonnes est donc plafonné à 3.
@@ -21003,6 +21032,8 @@ export default function AIPanel({
   // le comportement historique de l'UI (barre d'envoi, bouton Stop, TypedText)
   // tout en autorisant d'autres chats à tourner en arrière-plan.
   const loading = activeId != null && generatingConvs.has(activeId)
+  // Mobile : jauges de tokens réelles (puce crédits du composeur + feuille Modèle).
+  const aimLimits = useAimTokenLimits(mounted && open && !isDesktop, loading)
 
   // Ref sur l'id actif : lue DANS les callbacks async (fin de génération) pour
   // savoir si la conversation qui vient de finir est toujours à l'écran.
@@ -21419,7 +21450,8 @@ export default function AIPanel({
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (plusOpen)   { setPlusOpen(false) }
+        if (modelSheetOpen) { setModelSheetOpen(false) }
+        else if (plusOpen)   { setPlusOpen(false) }
         else if (histOpen)  { setHistOpen(false) }
         else if (activeFlow) { setActiveFlow(null) }
         else if (activeQA)  { setActiveQA(null) }
@@ -21429,7 +21461,7 @@ export default function AIPanel({
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose, plusOpen, histOpen, activeFlow, activeQA, fullscr])
+  }, [onClose, plusOpen, histOpen, activeFlow, activeQA, fullscr, modelSheetOpen])
 
   // Fermer la sélection popup au clic extérieur
   useEffect(() => {
@@ -23051,10 +23083,43 @@ export default function AIPanel({
     }
   }, [send])
 
+  // ── Interface MOBILE : actions rapides & navigation ──────────
+  const aimRouter = useRouter()
+  const aimActions: QuickAction[] = activeAgent === 'coach' ? COACH_QUICK_ACTIONS : QUICK_ACTIONS
+  const aimThemes = activeAgent === 'coach' ? COACH_QA_THEMES : QA_THEMES
+  // Même priorité que le menu « + » (renderActionButton) : spec → wizard à
+  // cartes natives, flow → flow dédié, action enrichie, sinon prompt direct.
+  const launchQuickAction = (qa: QuickAction) => {
+    haptic()
+    setPlusOpen(false)
+    setActiveQA(null)
+    setModel(qa.model)
+    if (QUICK_ACTION_SPECS[qa.key]) { setQuickActionKey(qa.key); setActiveFlow('quickaction'); return }
+    if (qa.flow) { setActiveFlow(qa.flow); return }
+    setActiveFlow(null)
+    if (qa.enrichedId) { void handleEnrichedAction(qa.enrichedId, qa.label); return }
+    if (qa.prompt) void send(qa.label, qa.prompt)
+  }
+  const launchQuickActionKey = (key: string) => {
+    const qa = aimActions.find(a => a.key === key)
+    if (qa) launchQuickAction(qa)
+  }
+  // Lien vers une page de l'app depuis l'IA : on ferme le panneau puis on navigue.
+  const navigateFromPanel = (href: string) => { onClose(); aimRouter.push(href) }
+  const openPlusSheet = (screen: AimPlusScreen) => { haptic(); setPlusScreen(screen); setPlusOpen(true) }
+  // Recherche web : activer depuis Hermès (incompatible) bascule sur Athéna.
+  const toggleWebFromUi = () => {
+    if (!webSearchOn) setModel(m => (m === 'hermes' ? 'athena' : m))
+    toggleWebSearch()
+  }
+
   // SSR guard
   if (!mounted) return null
 
   const showEmpty = !active || active.msgs.length === 0
+  // Retrait des cartes sous un message IA : aligné sur l'avatar en desktop,
+  // pleine largeur en mobile (pas d'avatar).
+  const aimIndent = isDesktop ? 34 : 0
 
   return createPortal(
     <>
@@ -23399,6 +23464,8 @@ export default function AIPanel({
         .ai-search-dots span:nth-child(2) { animation-delay: 0.2s; }
         .ai-search-dots span:nth-child(3) { animation-delay: 0.4s; }
       `}</style>
+      {/* Styles de l'interface mobile (≤ 767 px) — sans effet en desktop. */}
+      <AimStyles />
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
       <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
@@ -23458,6 +23525,7 @@ export default function AIPanel({
           {!isDesktop && (
             <HistoryDrawer
               underlay
+              open={histOpen}
               avatarUrl={userAvatarUrl}
               initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
@@ -23495,19 +23563,25 @@ export default function AIPanel({
               ...(isDesktop ? {} : {
                 position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
                 transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
-                transition: 'transform 0.2s cubic-bezier(0.22,0.7,0.15,1), filter 0.25s ease',
+                transition: 'transform 0.2s cubic-bezier(0.22,0.7,0.15,1), border-radius 0.25s ease, box-shadow 0.25s ease',
                 willChange: 'transform', touchAction: 'pan-y',
-                borderTopLeftRadius: 26, borderBottomLeftRadius: 26,
-                boxShadow: '-6px 0 48px rgba(0,0,0,0.12)',
+                // Tiroir ouvert : carte poussée à droite, grands coins arrondis +
+                // filet fin et ombre douce (tokens --aid-* du tiroir mobile).
+                borderTopLeftRadius: histOpen ? 44 : 0, borderBottomLeftRadius: histOpen ? 44 : 0,
+                boxShadow: histOpen
+                  ? '0 0 0 1px var(--aid-main-edge), -6px 0 24px var(--aid-main-shadow)'
+                  : '-6px 0 24px var(--aid-main-shadow)',
               }),
             }}
           >
 
-          {/* Tap sur la conversation (tiroir ouvert) → referme. Transparent : aucun grisé. */}
+          {/* Tap sur la conversation (tiroir ouvert) → referme. Voile très léger
+              en clair (la carte reste claire), assombri en sombre. */}
           {!isDesktop && histOpen && (
             <div
+              className="aid-veil"
               onClick={() => setHistOpen(false)}
-              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'transparent', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'var(--aid-veil)', borderTopLeftRadius: 44, borderBottomLeftRadius: 44 }}
             />
           )}
 
@@ -23630,40 +23704,17 @@ export default function AIPanel({
             </div>{/* /actions */}
           </div>}
 
-          {/* ── Boutons flottants (mobile) : menu à gauche, sortie à droite ── */}
+          {/* ── Barre haute flottante (mobile) : ☰ · modèle · nouvelle conv · sortie ── */}
           {!isDesktop && (
-            <>
-              <button
-                onClick={() => setHistOpen(h => !h)}
-                aria-label="Conversations"
-                className="aip-float-btn"
-                style={{
-                  position: 'absolute', top: 12, left: 12, zIndex: 6,
-                  width: 40, height: 40, borderRadius: '50%',
-                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M4 7h16M4 12h16M4 17h10" />
-                </svg>
-              </button>
-              <button
-                onClick={onClose}
-                aria-label="Sortir de l'assistant"
-                className="aip-float-btn"
-                style={{
-                  position: 'absolute', top: 12, right: 12, zIndex: 6,
-                  width: 40, height: 40, borderRadius: '50%',
-                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </button>
-            </>
+            <MobileTopBar
+              model={model}
+              modelLocked={loading}
+              showModel={activeAgent !== 'networks'}
+              onMenu={() => setHistOpen(h => !h)}
+              onModel={() => { haptic(); setModelSheetOpen(true) }}
+              onNew={newConv}
+              onClose={onClose}
+            />
           )}
 
           {/* ── Hybrid Networks ──────────────────────────── */}
@@ -23679,8 +23730,10 @@ export default function AIPanel({
           {/* ── MESSAGES ───────────────────────────────────── */}
           {activeAgent !== 'networks' && <div
             ref={scrollContainerRef}
-            className="aip-messages"
-            style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined, marginTop: showEmpty && !activeFlow ? 'auto' : undefined }}
+            className={isDesktop ? 'aip-messages' : 'aip-messages aim-msgs'}
+            // Mobile : le fil occupe toute la hauteur (accueil en haut, composeur
+            // flottant en bas) ; desktop : bloc {accueil + saisie} centré.
+            style={{ padding: isDesktop ? '24px 20px 0' : '64px 18px 0', flex: showEmpty && !activeFlow && isDesktop ? '0 0 auto' : undefined, marginTop: showEmpty && !activeFlow && isDesktop ? 'auto' : undefined }}
             onMouseUp={handleMsgMouseUp}
             onScroll={() => {
               const el = scrollContainerRef.current
@@ -23693,8 +23746,21 @@ export default function AIPanel({
             }}
           >
 
+            {/* ── Empty state MOBILE — salut + contexte réel + suggestions ── */}
+            {showEmpty && !activeFlow && !isDesktop && (
+              <MobileWelcome
+                agent={activeAgent}
+                greeting={t(getGreeting())}
+                firstName={userFirstName}
+                resolveAction={key => aimActions.find(a => a.key === key)}
+                onRunAction={launchQuickActionKey}
+                onOpenAllActions={() => openPlusSheet('actions')}
+                onNavigate={navigateFromPanel}
+              />
+            )}
+
             {/* ── Empty state — logo shuriken + salut horaire ── */}
-            {showEmpty && !activeFlow && (
+            {showEmpty && !activeFlow && isDesktop && (
               <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 8 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -24080,11 +24146,20 @@ export default function AIPanel({
                       {/* Bulle user / bulle IA */}
                       {msg.role === 'user' ? (
                         <>
-                          <div className="aip-user-bubble" style={{
-                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: isDesktop ? '74%' : '90%',
+                          <div className="aip-user-bubble" style={isDesktop ? {
+                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '74%',
                             borderRadius: '18px 18px 4px 18px',
                             padding: '11px 16px',
                             fontSize: 15, lineHeight: 1.55,
+                            whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+                            animation: 'fadeUp 0.2s ease-out',
+                          } : {
+                            // Mobile : bulle grise à droite, coin bas-droit resserré, sans avatar.
+                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '80%',
+                            borderRadius: '22px 22px 6px 22px',
+                            padding: '11px 15px',
+                            fontSize: 16, lineHeight: 1.4,
+                            background: 'var(--surface-chip)', color: 'var(--text)',
                             whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
@@ -24093,7 +24168,7 @@ export default function AIPanel({
                           {/* User avatar */}
                           <div style={{
                             width: 28, height: 28, borderRadius: '50%', flexShrink: 0, marginTop: 2,
-                            background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: '#E5E7EB', display: isDesktop ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {userInitials ? (
                               <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', fontFamily: 'var(--font-body)', userSelect: 'none' }}>{userInitials}</span>
@@ -24115,12 +24190,19 @@ export default function AIPanel({
                             borderRadius: 0,
                             boxShadow: 'none',
                             padding: 0,
-                            fontSize: 16, lineHeight: 1.6,
+                            fontSize: 16, lineHeight: isDesktop ? 1.6 : 1.5,
                             color: 'var(--text)',
                             wordBreak: 'break-word',
                             animation: 'fadeUp 0.2s ease-out',
+                            ...(isDesktop ? {} : { display: 'flex', flexDirection: 'column' as const, gap: 8 }),
                           }}>
-                            {showThinking ? (
+                            {/* Mobile : pilule « Réflexion » AU-DESSUS du texte (ouvre le raisonnement) */}
+                            {!isDesktop && !isStreamingMsg && msg.thinking && msg.content.trim() && (
+                              <ThinkingPill sources={msg.webSources?.length} onOpen={() => setReasoningMsgId(msg.id)} />
+                            )}
+                            {showThinking && !isDesktop ? (
+                              <ThinkingPill since={active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')?.ts ?? msg.ts} sources={msg.webSources?.length} />
+                            ) : showThinking ? (
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 2px' }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -24131,15 +24213,16 @@ export default function AIPanel({
                                 <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Ok, je m&apos;en occupe…</span>
                               </div>
                             ) : (
-                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
+                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={isDesktop ? 'var(--font-display)' : 'var(--font-body)'} />
                             )}
                           </div>
                         )
                       })()}
                     </div>
                     {/* Lien « Processus de réflexion » — visible quand le message a
-                        un raisonnement et n'est plus en cours de streaming */}
-                    {msg.role === 'assistant' && msg.thinking && msg.content.trim() && !(loading && idx === active.msgs.length - 1) && (
+                        un raisonnement et n'est plus en cours de streaming
+                        (desktop ; en mobile : pilule au-dessus du texte). */}
+                    {isDesktop && msg.role === 'assistant' && msg.thinking && msg.content.trim() && !(loading && idx === active.msgs.length - 1) && (
                       <button
                         onClick={() => setReasoningMsgId(msg.id)}
                         style={{
@@ -24160,17 +24243,17 @@ export default function AIPanel({
                     )}
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
-                      <div style={{ marginLeft: 34 }}>
+                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
                         <SBSessionCard session={msg.sessionData} />
                       </div>
                     )}
                     {msg.role === 'assistant' && msg.trainingReport && (
-                      <div style={{ marginLeft: 34 }}>
+                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
                         <TrainingReportView data={msg.trainingReport} />
                       </div>
                     )}
                     {msg.role === 'assistant' && msg.raceStrategy && (
-                      <div style={{ marginLeft: 34 }}>
+                      <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
                         <RaceStrategyView data={msg.raceStrategy} />
                       </div>
                     )}
@@ -24179,7 +24262,7 @@ export default function AIPanel({
                       const d = wa.data
                       const rC = d.riskScore > 60 ? '#ef4444' : d.riskScore > 35 ? '#f97316' : '#22c55e'
                       return (
-                        <div style={{ marginLeft: 34 }}>
+                        <div className={isDesktop ? undefined : 'aim-card'} style={{ marginLeft: aimIndent }}>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
                             {([
                               { label: 'Activités', value: String(d.totalActivities) },
@@ -24216,10 +24299,19 @@ export default function AIPanel({
                       )
                     })()}
                     {msg.role === 'assistant' && !msg.sessionData && !msg.trainingReport && !msg.raceStrategy && !msg.weekAnalysis && (
-                      <SessionCard
-                        text={msg.content}
-                        isStreaming={loading && idx === active.msgs.length - 1}
-                      />
+                      isDesktop ? (
+                        <SessionCard
+                          text={msg.content}
+                          isStreaming={loading && idx === active.msgs.length - 1}
+                        />
+                      ) : (
+                        <div className="aim-cardframe">
+                          <SessionCard
+                            text={msg.content}
+                            isStreaming={loading && idx === active.msgs.length - 1}
+                          />
+                        </div>
+                      )
                     )}
                     {/* Statut animé : le coach consulte tes données (boucle agentique) */}
                     {msg.role === 'assistant' && toolStatusByMsg[msg.id] && (
@@ -24227,7 +24319,7 @@ export default function AIPanel({
                         /* Recherche internet — animation « radar » dédiée pour
                            bien voir quand le coach part chercher sur le web. */
                         <div style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 34, marginTop: 2,
+                          display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: aimIndent, marginTop: 2,
                           padding: '5px 11px 5px 8px', borderRadius: 'var(--r-pill)',
                           border: '1px solid var(--ai-accent-line, rgba(6,182,212,0.40))',
                           background: 'var(--ai-accent-soft, rgba(6,182,212,0.06))',
@@ -24241,7 +24333,7 @@ export default function AIPanel({
                               <path d="M21 21l-4.3-4.3" />
                             </svg>
                           </span>
-                          <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                          <span className="ai-shimmer" style={{ fontSize: isDesktop ? 13.5 : 13, fontWeight: 600, fontFamily: isDesktop ? 'var(--font-display)' : 'var(--font-body)' }}>
                             {t('aip.searchingInternet')}
                           </span>
                           <span className="ai-search-dots" style={{ color: 'var(--ai-accent, #06B6D4)', fontWeight: 700, letterSpacing: 1, fontSize: 13.5 }}>
@@ -24250,7 +24342,7 @@ export default function AIPanel({
                         </div>
                       ) : (
                         <div style={{
-                          display: 'flex', alignItems: 'center', gap: 8, marginLeft: 34, marginTop: 2,
+                          display: 'flex', alignItems: 'center', gap: 8, marginLeft: aimIndent, marginTop: 2,
                           animation: 'ai_msg_in 0.18s ease both',
                         }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -24259,7 +24351,7 @@ export default function AIPanel({
                             alt=""
                             style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
                           />
-                          <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                          <span className="ai-shimmer" style={{ fontSize: isDesktop ? 13.5 : 13, fontWeight: 600, fontFamily: isDesktop ? 'var(--font-display)' : 'var(--font-body)' }}>
                             {t(toolStatusByMsg[msg.id])}
                           </span>
                         </div>
@@ -24274,11 +24366,13 @@ export default function AIPanel({
                     ) : null}
                     {/* Parcours RÉELS calculés (preview_route) — carte + profil interactifs */}
                     {msg.role === 'assistant' && msg.routes && msg.routes.map((r, ri) => (
-                      <RouteCard key={`msgroute-${ri}`} spec={r} />
+                      isDesktop
+                        ? <RouteCard key={`msgroute-${ri}`} spec={r} />
+                        : <div key={`msgroute-${ri}`} className="aim-cardframe"><RouteCard spec={r} /></div>
                     ))}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (
-                      <div style={{ marginLeft: 34 }}>
+                      <div className={isDesktop ? undefined : 'aim-cardframe'} style={{ marginLeft: aimIndent }}>
                         <CoachQuestionCard
                           data={msg.clarifyingQuestions}
                           onSubmit={(recap) => {
@@ -24297,7 +24391,7 @@ export default function AIPanel({
                     )}
                     {/* Aperçu de plan — à valider avant enregistrement */}
                     {msg.role === 'assistant' && msg.planProposal && (
-                      <div style={{ marginLeft: 4, marginRight: 2 }}>
+                      <div className={isDesktop ? undefined : 'aim-cardframe'} style={{ marginLeft: isDesktop ? 4 : 0, marginRight: isDesktop ? 2 : 0 }}>
                         <PlanProposalCard
                           proposal={msg.planProposal}
                           onValidate={() => { if (msg.planProposal) void validatePlanProposal(active.id, msg.id, msg.planProposal) }}
@@ -24310,16 +24404,18 @@ export default function AIPanel({
                       </div>
                     )}
 
-                    {/* ── Message actions + timestamp (C1, C4) ─── */}
-                    {hoveredMsgId === msg.id && (
-                      <div style={{
+                    {/* ── Message actions + timestamp (C1, C4) ───
+                        Desktop : au survol. Mobile (tactile, pas de survol) :
+                        TOUJOURS visibles sous chaque réponse terminée. */}
+                    {(hoveredMsgId === msg.id || (!isDesktop && msg.role === 'assistant' && !!msg.content.trim() && !(loading && idx === active.msgs.length - 1))) && (
+                      <div className={!isDesktop && msg.role === 'assistant' ? 'aim-msg-acts' : undefined} style={{
                         display: 'flex', alignItems: 'center',
                         justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                         gap: 4, paddingLeft: msg.role === 'assistant' && isDesktop ? 32 : 0,
                         opacity: 0, animation: 'ai_actions_in 0.15s ease forwards',
                       }}>
-                        {/* Timestamp (C4) */}
-                        <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.7, userSelect: 'none', marginRight: 4 }}>
+                        {/* Timestamp (C4) — en fin de ligne sur mobile */}
+                        <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.7, userSelect: 'none', marginRight: 4, order: isDesktop ? 0 : 9, marginLeft: isDesktop ? 0 : 6 }}>
                           {fmtMsgTime(msg.ts, t)}
                         </span>
                         {/* AI message actions (C1) */}
@@ -24392,8 +24488,12 @@ export default function AIPanel({
                   </div>
                 ))}
 
+                {/* Thinking indicator — mobile : pilule « Réflexion · Ns » (chrono réel) */}
+                {!isDesktop && loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
+                  <ThinkingPill since={active.msgs[active.msgs.length - 1].ts} />
+                )}
                 {/* Thinking indicator — 3-dot bounce (Claude style) */}
-                {loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
+                {isDesktop && loading && active?.msgs[active.msgs.length - 1]?.role === 'user' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'ai_msg_in 0.18s ease both', padding: '6px 0' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -24413,13 +24513,15 @@ export default function AIPanel({
                 )}
                 {/* ── Tool call preview ─────────────────────── */}
                 {pendingToolCalls.length > 0 && (
-                  <ToolCallPreview
-                    toolCalls={pendingToolCalls}
-                    onApply={() => void applyToolCall()}
-                    onCancel={cancelToolCall}
-                    applyStatus={toolApplyStatus}
-                    applyError={toolApplyError}
-                  />
+                  <div className={isDesktop ? undefined : 'aim-card'}>
+                    <ToolCallPreview
+                      toolCalls={pendingToolCalls}
+                      onApply={() => void applyToolCall()}
+                      onCancel={cancelToolCall}
+                      applyStatus={toolApplyStatus}
+                      applyError={toolApplyError}
+                    />
+                  </div>
                 )}
                 <div ref={endRef} />
               </div>
@@ -24437,8 +24539,11 @@ export default function AIPanel({
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
             // Empty state : centrer verticalement {messages + saisie} sous le
-            // header (qui reste collé en haut) — marges auto haut/bas.
-            marginBottom: showEmpty && !activeFlow ? 'auto' : undefined,
+            // header (qui reste collé en haut) — marges auto haut/bas (desktop ;
+            // en mobile le composeur flottant reste ancré en bas).
+            marginBottom: showEmpty && !activeFlow && isDesktop ? 'auto' : undefined,
+            // Mobile : marge basse pilotée par AimStyles (safe-area) ; clavier ouvert → juste au-dessus.
+            ...(!isDesktop && kbInset ? ({ '--aim-pb': `${kbInset + 8}px` } as React.CSSProperties) : {}),
           }}>
             {/* Bouton « descendre en bas » — flotte juste au-dessus du champ (façon Claude). */}
             {showScrollDown && active && active.msgs.length > 0 && !activeFlow && (
@@ -24469,8 +24574,8 @@ export default function AIPanel({
             {/* Bandeau d'alerte de consommation (50/70/90/100 %) — juste au-dessus du champ. */}
             {activeAgent !== 'coach' && <TokenUsageWarning onBuyTokens={() => openTopup()} isMobile={!isDesktop} />}
 
-            {/* ── Conteneur principal de saisie ── */}
-            <div className="aip-input-wrap" style={{
+            {/* ── Conteneur principal de saisie (mobile : carte flottante .aim-composer) ── */}
+            <div className={isDesktop ? 'aip-input-wrap' : 'aip-input-wrap aim-composer'} style={{
               transition: 'border-color 0.15s',
               // Dictée en cours → le champ RESTE visible : la transcription s'y écrit
               // en direct. La barre de dictée (X · waveform · ✓) flotte en bas.
@@ -24635,7 +24740,9 @@ export default function AIPanel({
                   ? t('aip.speak_ph')
                   : activeQA
                     ? t('aip.qa_context_ph')
-                    : t('aip.write_message')}
+                    : isDesktop
+                      ? t('aip.write_message')
+                      : (active && active.msgs.length > 0 ? t('aim.composer.reply') : t('aim.composer.placeholder'))}
                 rows={1}
                 style={{
                   display: 'block', width: '100%',
@@ -24669,8 +24776,37 @@ export default function AIPanel({
                 />
               )}
 
-              {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}
-              <div style={{
+              {/* Ligne basse MOBILE : + · Web · crédits · [athlète] · micro · envoyer/voix/stop */}
+              {!isDesktop && (
+                <MobileComposerRow
+                  plusOpen={plusOpen}
+                  onPlus={() => { if (plusOpen) setPlusOpen(false); else openPlusSheet('main') }}
+                  webSearchOn={webSearchOn}
+                  onToggleWeb={() => { haptic(); toggleWebFromUi() }}
+                  creditsPct={aimLimits ? Math.round(limitPct(aimLimits.monthly.used, aimLimits.monthly.limit)) : null}
+                  onCredits={() => { haptic(); setModelSheetOpen(true) }}
+                  extra={activeAgent === 'coach' ? <AthletePicker athletes={coachRoster} active={coachTarget} onPick={setCoachTarget} disabled={loading} /> : undefined}
+                  showMic={dictationSupported && !loading}
+                  recording={recording}
+                  onMic={recording ? cancelVoice : startVoice}
+                  loading={loading}
+                  canSend={!imgOverBudget && !!(input.trim() || attachment || images.length > 0 || activeQA || quotedText)}
+                  voiceAvailable={dictationSupported && !recording}
+                  onStop={stopGeneration}
+                  onSend={() => void send()}
+                  onVoice={() => {
+                    // Débloque la synthèse vocale dans le geste utilisateur (sinon iOS bloque la voix différée)
+                    try {
+                      const s = window.speechSynthesis
+                      if (s) { s.cancel(); s.speak(new SpeechSynthesisUtterance(' ')) }
+                    } catch { /* ignore */ }
+                    setVoiceConvOpen(true)
+                  }}
+                />
+              )}
+
+              {/* Ligne basse : + · modèle · [spacer] · mic · envoyer (desktop) */}
+              {isDesktop && <div style={{
                 display: 'flex', alignItems: 'center',
                 padding: '4px 8px 8px', gap: 5,
               }}>
@@ -24828,7 +24964,7 @@ export default function AIPanel({
                   </button>
                     )
                   })()}
-              </div>
+              </div>}
             </div>
 
           </div>
@@ -24984,6 +25120,43 @@ export default function AIPanel({
       {/* La fenêtre « Paramètres » est rendue par un hôte UNIQUE global
           (AISettingsHost, monté dans le layout) — plus de fonds empilés.
           Ici on se contente de déclencher l'événement d'ouverture. */}
+
+      {/* ── MOBILE : feuille « Ajouter » (+) avec sous-écrans ─────────── */}
+      {!isDesktop && plusOpen && activeAgent !== 'networks' && (
+        <MobilePlusSheet
+          agent={activeAgent}
+          initialScreen={plusScreen}
+          themes={aimThemes}
+          actions={aimActions}
+          connectors={PLUS_CONNECTORS}
+          webSearchOn={webSearchOn}
+          onToggleWeb={toggleWebFromUi}
+          onCamera={() => { void openCamera() }}
+          onPhotos={() => { void openPhotos() }}
+          onFiles={() => filesRef.current?.click()}
+          onPickPhotos={urls => { urls.forEach(u => { void handlePickRecentPhoto(u) }) }}
+          onRunAction={qa => { const full = aimActions.find(a => a.key === qa.key); if (full) launchQuickAction(full) }}
+          onCreateRoute={() => { setActiveFlow(null); setActiveQA(null); void send(t('record.routeLibraryCreate'), CREATE_ROUTE_PROMPT) }}
+          onOpenCompetences={() => navigateFromPanel('/competences')}
+          onOpenConnections={() => navigateFromPanel('/connections')}
+          onClose={() => setPlusOpen(false)}
+        />
+      )}
+
+      {/* ── MOBILE : feuille « Modèle » + crédits IA ─────────────────── */}
+      {!isDesktop && modelSheetOpen && (
+        <MobileModelSheet
+          model={model}
+          locked={loading}
+          descKey={m => MODEL_CONFIGS[m].desc}
+          hintKey={m => MODEL_CONFIGS[m].hint}
+          limits={aimLimits}
+          onSelect={m => setModel(m)}
+          onClose={() => setModelSheetOpen(false)}
+          onBuyTokens={() => openTopup()}
+          onUpgrade={() => openUpgrade()}
+        />
+      )}
 
       {/* ── Modal d'achat de tokens ───────────────────────── */}
       <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />

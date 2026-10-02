@@ -37,10 +37,20 @@ export function MobileSheet({
   children,
   collapsedMaxVh,
   headerAction,
+  renderHeader,
+  expanded = false,
+  surface,
 }: {
   title?: string
   onClose: () => void
   children: React.ReactNode
+  /** En-tête personnalisé (remplace la ligne titre + ✕), reçoit la fermeture
+   *  animée. Reste dans la zone de drag. */
+  renderHeader?: (requestClose: () => void) => React.ReactNode
+  /** Passe à true → la feuille s'agrandit (détente haute), ex. sous-écran long. */
+  expanded?: boolean
+  /** Fond du panneau (token), défaut var(--bg-card). */
+  surface?: string
   /** Plafonne la détente initiale (fraction de la hauteur d'écran, ex. 0.6 =
    *  ouvre à mi-hauteur). Le contenu reste défilable et on peut tirer vers le
    *  haut jusqu'à ~94vh. Sans ça, une feuille au contenu long s'ouvre presque
@@ -101,6 +111,17 @@ export function MobileSheet({
     }
     window.setTimeout(onClose, 400)
   }
+
+  // Agrandissement piloté (ex. sous-écran « Actions rapides » plus long).
+  useEffect(() => {
+    if (!expanded || !mounted) return
+    const el = panelRef.current
+    const dims = dimsRef.current
+    if (!el || !dims || closingRef.current) return
+    detentRef.current = 'exp'
+    el.style.transition = SPRING
+    el.style.height = dims.exp + 'px'
+  }, [expanded, mounted])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
@@ -243,7 +264,7 @@ export function MobileSheet({
         aria-modal="true"
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1401,
-          background: 'var(--bg-card)', color: 'var(--text)',
+          background: surface ?? 'var(--bg-card)', color: 'var(--text)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           boxShadow: '0 -10px 44px rgba(0,0,0,0.34)',
           height: 'auto', maxHeight: '94vh',
@@ -261,7 +282,8 @@ export function MobileSheet({
           style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}
         >
           <div style={{ width: 38, height: 4, borderRadius: 2, background: 'var(--border-mid)', margin: '9px auto 2px' }} />
-          {title !== undefined && (
+          {renderHeader && renderHeader(requestClose)}
+          {!renderHeader && title !== undefined && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 16px 8px' }}>
               <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>

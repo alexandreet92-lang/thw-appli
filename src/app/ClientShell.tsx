@@ -11,6 +11,7 @@ import { installNativeApiFetch } from '@/lib/native/apiFetch'
 import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
 import { IapStoreHost } from '@/components/iap/IapStoreHost'
+import { TokenPurchaseHost } from '@/components/topup/TokenPurchaseHost'
 import { installOverlayMotion } from '@/lib/ui/overlayMotion'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { initIap } from '@/lib/iap/purchases'
@@ -163,6 +164,7 @@ export function ClientShell({ children }: ClientShellProps) {
         <GlobalSaveToast />
         <ReauthGate />
         <IapStoreHost />
+        <TokenPurchaseHost />
       </CallProvider>
     </I18nProvider>
   )

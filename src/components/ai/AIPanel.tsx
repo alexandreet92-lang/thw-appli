@@ -27,7 +27,6 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { MobileHistoryDrawer } from './mobile/MobileHistoryDrawer'
-import { openIapStore } from '@/lib/iap/store-events'
 import { haptic } from '@/lib/ui/haptic'
 import { haptic as hapticNative } from '@/lib/haptics'
 import { computeZoneDistribution, type ZoneRowLite, type StreamsForZones } from '@/lib/analysis/zoneDistribution'
@@ -53,7 +52,7 @@ import { MethodPicker } from './MethodPicker'
 import { ActivityMap } from '@/components/planning/ActivityDetails'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TokenUsageWarning from '@/components/ai-coach/TokenUsageWarning'
-import TopupEmailModal from '@/components/topup/TopupEmailModal'
+import { openTokenPurchase } from '@/lib/topup/startTokenPurchase'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
@@ -20864,9 +20863,9 @@ export default function AIPanel({
   const [splitIds,    setSplitIds]    = useState<string[]>([])
   const [splitPickerOpen, setSplitPickerOpen] = useState(false)
   const [dragOverSplit,   setDragOverSplit]   = useState(false)
-  const [topupOpen,   setTopupOpen]   = useState(false)
-  // App iOS : les tokens s'achètent par achat intégré Apple (jamais de lien web, règle 3.1.1).
-  const openTopup = () => { if (isNativeApp()) openIapStore('tokens'); else setTopupOpen(true) }
+  // Achat de tokens DANS l'app : iOS → achat intégré Apple (règle 3.1.1) ;
+  // web → fenêtre de choix du pack + paiement Stripe direct (plus de lien email).
+  const openTopup = () => openTokenPurchase()
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
@@ -25182,8 +25181,6 @@ export default function AIPanel({
         />
       )}
 
-      {/* ── Modal d'achat de tokens ───────────────────────── */}
-      <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />
 
       {/* ── Modal limite de tokens atteinte ───────────────── */}
       {tokenLimitMsg && (() => {

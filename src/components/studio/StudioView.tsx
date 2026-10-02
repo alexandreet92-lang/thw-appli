@@ -25,16 +25,17 @@ import { buildLivingContext, detectHealthFlags } from '@/lib/studio/living'
 import { CoachQuestionCard } from '@/components/ai/CoachQuestionCard'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
-import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
+import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess, type StudioPackKey } from '@/lib/studio/offers'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { hasCoachAccess } from '@/lib/coach/owner'
 import { listMyAthletes } from '@/lib/coach/relationships'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
-import TokenEmailModal from './TokenEmailModal'
+import { TokenPackOption, formatPrice } from '@/components/topup/TokenPackOption'
+import { startStudioPackPurchase } from '@/lib/topup/startTokenPurchase'
 import PressPop from '@/components/ui/PressPop'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, currentLocale } from '@/lib/i18n'
 import { isNativeApp } from '@/lib/native/platform'
 import {
   MobileHeader, RoundBtn, Ico, ICON, MCard, SectionLabel, Group, GroupRow, IconTile, NeutralTile, Dot, Chevron,
@@ -265,8 +266,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [helpOpen, setHelpOpen] = useState(false)
-  // Achat de packs : envoi d'un lien sécurisé par email (pas de redirection directe).
-  const [tokenEmailOpen, setTokenEmailOpen] = useState(false)
+  // Achat de packs DANS l'app : iOS → achat intégré Apple ; web → Stripe direct.
+  const [studioPack, setStudioPack] = useState<StudioPackKey>('builder')
+  const [packBusy, setPackBusy] = useState(false)
+  const [packError, setPackError] = useState<string | null>(null)
+  const [packPrices, setPackPrices] = useState<Partial<Record<StudioPackKey, { amount: number; currency: string }>>>({})
   // Contrôle pré-run : erreurs (bloquent) + avertissements (on peut forcer).
   const [issues, setIssues] = useState<(GraphIssues & { canForce: boolean }) | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -436,6 +440,30 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       .then(a => { if (a) setAccess(a) })
       .catch(() => { /* silencieux */ })
   }, [])
+
+  // Prix des packs Studio (web uniquement : l'app iOS n'affiche aucun prix hors Apple).
+  useEffect(() => {
+    if (!walletOpen || isNativeApp() || Object.keys(packPrices).length > 0) return
+    let alive = true
+    void fetch('/api/studio/packs')
+      .then(r => (r.ok ? (r.json() as Promise<{ prices?: Partial<Record<StudioPackKey, { amount: number; currency: string }>> }>) : null))
+      .then(j => { if (alive && j?.prices) setPackPrices(j.prices) })
+      .catch(() => { /* prix masqués */ })
+    return () => { alive = false }
+  }, [walletOpen, packPrices])
+
+  const buyStudioPack = async () => {
+    if (packBusy) return
+    setPackBusy(true); setPackError(null)
+    try {
+      await startStudioPackPurchase(studioPack)
+      // Web : redirection Stripe en cours. iOS : la boutique Apple s'ouvre par-dessus.
+      if (isNativeApp()) { setPackBusy(false); setWalletOpen(false) }
+    } catch (e) {
+      setPackError(e instanceof Error && e.message ? e.message : t('misc.error'))
+      setPackBusy(false)
+    }
+  }
 
   // Démontage : sauvegarde immédiate du système ouvert (sinon les 700 ms de
   // debounce peuvent se perdre à la fermeture du Studio).
@@ -3127,7 +3155,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('w1i.packs_available_site')}</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('tok.studio_packs_after_sub')}</p>
               </div>
             ) : (
               <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 22, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
@@ -3920,30 +3948,42 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* Les 3 packs — AUCUN prix dans l'app (règle Apple) : l'achat se fait sur le site */}
+            {/* Les 3 packs — achat direct : iOS → achat intégré Apple (aucun prix
+                hors Apple, règle 3.1.1) ; web → prix Stripe + paiement direct. */}
             <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'var(--font-body)' }}>{t('w1i.recharge')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {STUDIO_PACKS.map(p => (
-                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{p.label} — {formatTokens(p.tokens)} {t('w1i.tokens_word')}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'var(--font-body)' }}>{p.tagline}</div>
-                  </div>
-                </div>
-              ))}
+              {STUDIO_PACKS.map(p => {
+                const pr = packPrices[p.key]
+                return (
+                  <TokenPackOption key={p.key}
+                    title={`${p.label} — ${formatTokens(p.tokens)} ${t('w1i.tokens_word')}`}
+                    sub={p.tagline}
+                    price={pr && !isNativeApp() ? formatPrice(pr.amount, pr.currency, currentLocale()) : null}
+                    on={studioPack === p.key} disabled={packBusy}
+                    onClick={() => setStudioPack(p.key)}
+                    accent="var(--studio-accent)" accentDim="color-mix(in srgb, var(--studio-accent) 12%, transparent)" />
+                )
+              })}
             </div>
-            <button onClick={() => setTokenEmailOpen(true)}
-              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-              {t('w1i.buy_packs_site')}
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
-            </button>
-            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>{t('w1i.pricing_note')}</p>
+            {packError && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '10px 0 0', fontFamily: 'var(--font-body)' }}>{packError}</p>}
+            {(() => {
+              const pr = packPrices[studioPack]
+              // iOS : pas encore de produit Apple dédié aux packs Studio (ils
+              // seraient crédités sur le solde chat) → achat désactivé dans l'app.
+              const unavailable = isNativeApp() || !access.packsAvailable
+              return (
+                <button onClick={() => void buyStudioPack()} disabled={packBusy || unavailable}
+                  style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', minHeight: 44, padding: '11px 0', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--studio-accent)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: packBusy || unavailable ? 'default' : 'pointer', opacity: packBusy || unavailable ? 0.6 : 1, fontFamily: 'var(--font-body)' }}>
+                  {packBusy && !isNativeApp() ? t('misc.redirecting') : (pr && !isNativeApp() ? `${t('tok.buy')} · ${formatPrice(pr.amount, pr.currency, currentLocale())}` : t('tok.buy'))}
+                </button>
+              )
+            })()}
+            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'var(--font-body)' }}>
+              {isNativeApp() ? t('tok.studio_ios_soon') : !access.packsAvailable ? t('tok.studio_unavailable') : t('tok.studio_note')}
+            </p>
           </div>
         </div>
       )}
-
-      {/* ══ Achat de packs : lien sécurisé par email ══ */}
-      {tokenEmailOpen && <TokenEmailModal onClose={() => setTokenEmailOpen(false)} />}
 
       {/* ══ Sur-page d'aide ══ */}
       {helpOpen && (

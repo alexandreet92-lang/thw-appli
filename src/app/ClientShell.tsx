@@ -12,6 +12,7 @@ import { isNativeApp, openWebsite } from '@/lib/native/platform'
 import { createClient } from '@/lib/supabase/client'
 import { IapStoreHost } from '@/components/iap/IapStoreHost'
 import { TokenPurchaseHost } from '@/components/topup/TokenPurchaseHost'
+import { SubscriptionChangeHost } from '@/components/subscription/SubscriptionChangeHost'
 import { installOverlayMotion } from '@/lib/ui/overlayMotion'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { initIap } from '@/lib/iap/purchases'
@@ -165,6 +166,7 @@ export function ClientShell({ children }: ClientShellProps) {
         <ReauthGate />
         <IapStoreHost />
         <TokenPurchaseHost />
+        <SubscriptionChangeHost />
       </CallProvider>
     </I18nProvider>
   )

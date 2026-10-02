@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
-import { COACH_PACKS, getCoachPack, coachPackPriceEur, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
-import CoachSubscribeEmailModal from '@/components/subscription/CoachSubscribeEmailModal'
+import { COACH_PACKS, getCoachPack, type CoachPackKey, type CoachTier } from '@/lib/subscriptions/coach-packs'
+import { startCoachCheckout, openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 import { getCoachAccessState, startCoachTrial, type CoachAccessState } from '@/lib/coach/owner'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
@@ -25,7 +25,6 @@ export default function CoachSubscriptionPage() {
   const [current, setCurrent] = useState<CurrentSub | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [emailPack, setEmailPack] = useState<CoachPackKey | null>(null)
   const [coachState, setCoachState] = useState<CoachAccessState | null>(null)
   const [trialErr, setTrialErr] = useState<string | null>(null)
   const [athleteCount, setAthleteCount] = useState<number | null>(null)
@@ -58,19 +57,23 @@ export default function CoachSubscriptionPage() {
     catch { setTrialErr(t('w3c.trial_start_failed')); setBusy(null) }
   }
 
-  // On ne redirige pas directement vers Stripe : on ouvre la modale qui envoie
-  // le lien de paiement par email (preuve de possession de l'adresse).
-  const subscribe = (packKey: CoachPackKey) => setEmailPack(packKey)
-
-  const manage = async () => {
-    setBusy('portal')
+  // Paiement DIRECT (plus de lien par email) : Stripe sur le web, boutique
+  // Apple (achat intégré) dans l'app iOS.
+  const subscribe = async (packKey: CoachPackKey) => {
+    if (busy) return
+    setBusy(packKey)
     try {
-      const r = await fetch('/api/stripe/portal', { method: 'POST' })
-      const d = await r.json()
-      if (d.url) window.location.href = d.url
-      else alert(d.error ?? t('w3c.portal_unavailable'))
-    } catch { alert(t('w3c.network_error')) } finally { setBusy(null) }
+      const r = await startCoachCheckout(packKey, coachTier, billing)
+      if (r === 'store') setBusy(null)
+      // 'redirect' : redirection Stripe en cours → on garde l'état « busy ».
+    } catch (e) {
+      alert(e instanceof Error && e.message ? e.message : t('w3c.checkout_error'))
+      setBusy(null)
+    }
   }
+
+  // Gérer / résilier : portail Stripe (web) ou réglages Apple selon la source.
+  const manage = () => openSubscriptionManage('coach')
 
   const activePack = current && (current.status === 'active' || current.status === 'trialing') ? getCoachPack(current.pack_key) : null
 
@@ -105,7 +108,7 @@ export default function CoachSubscriptionPage() {
             })()}
             {current?.current_period_end && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{t('w3c.next_renewal')} {new Date(current.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
           </div>
-          <button onClick={manage} disabled={busy === 'portal'} style={btnManage}>{busy === 'portal' ? '…' : t('w3c.change_cancel')}</button>
+          <button onClick={manage} style={btnManage}>{t('w3c.change_cancel')}</button>
         </div>
       )}
 
@@ -145,7 +148,7 @@ export default function CoachSubscriptionPage() {
                 {isCurrent ? (
                   <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--primary)', padding: '11px 0' }}>{t('w3c.current_pack')}</div>
                 ) : (
-                  <button onClick={() => subscribe(p.key as CoachPackKey)} disabled={!!busy}
+                  <button onClick={() => void subscribe(p.key as CoachPackKey)} disabled={!!busy}
                     style={{ height: 44, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
                     {busy === p.key ? '…' : activePack ? t('w3c.switch_to_pack') : t('w3c.choose')}
                   </button>
@@ -158,21 +161,6 @@ export default function CoachSubscriptionPage() {
 
       <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>{t('w3c.coach_sub_footer')}</p>
 
-      {emailPack && (() => {
-        const p = getCoachPack(emailPack)
-        if (!p) return null
-        return (
-          <CoachSubscribeEmailModal
-            packKey={p.key}
-            packName={p.name}
-            packLabel={p.label}
-            price={coachPackPriceEur(p, coachTier, billing)}
-            billingPeriod={billing}
-            tier={coachTier}
-            onClose={() => setEmailPack(null)}
-          />
-        )
-      })()}
     </div>
   )
 }

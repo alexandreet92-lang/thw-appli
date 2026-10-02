@@ -3,13 +3,13 @@
 // Upsell — modale « Passe à une offre », déclenchable de n'importe où via
 // openUpgrade(reason). Un seul hôte monté dans le shell écoute l'événement.
 // Sert : mur de quota atteint (429), fonctionnalité verrouillée (Gratuit).
-// Neutre + un accent primary ; renvoie vers /settings/subscription.
+// Neutre + un accent primary ; « Voir les offres » ouvre l'achat direct
+// (boutique Apple dans l'app iOS, choix de formule + Stripe sur le web).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { hidePricing } from '@/lib/native/platform'
-import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
+import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 
 const EVT = 'thw:upgrade'
 
@@ -20,13 +20,11 @@ export function openUpgrade(reason?: string): void {
 }
 
 export function UpgradeModalHost() {
-  const router = useRouter()
   const { t } = useI18n()
   const [reason, setReason] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [emailModal, setEmailModal] = useState(false)
   const hidePrice = hidePricing()
 
   useEffect(() => {
@@ -45,12 +43,7 @@ export function UpgradeModalHost() {
 
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(() => setOpen(false), 280) }
 
-  if (!open && !emailModal) return null
-
-  // Modale email ouverte (natif) → on remplace l'upsell par l'envoi du lien.
-  if (emailModal) {
-    return <SubscriptionEmailModal action="change" plan="athlete" onClose={() => { setEmailModal(false); setOpen(false) }} />
-  }
+  if (!open) return null
 
   const perks = [
     t('w3c.upgrade_perk_1'),
@@ -81,9 +74,9 @@ export function UpgradeModalHost() {
         </div>
         {hidePrice ? (
           <>
-            <button onClick={() => { setEmailModal(true) }}
+            <button onClick={() => { setOpen(false); openSubscriptionChange('athlete') }}
               style={{ width: '100%', marginTop: 14, height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
-              {t('w3c.upgrade_see_offers')} ✉
+              {t('w3c.upgrade_see_offers')}
             </button>
             <button onClick={requestClose} style={{ width: '100%', marginTop: 10, height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               {t('w3c.close')}
@@ -91,7 +84,7 @@ export function UpgradeModalHost() {
           </>
         ) : (
           <>
-            <button onClick={() => { setOpen(false); router.push('/settings/subscription') }}
+            <button onClick={() => { setOpen(false); openSubscriptionChange('athlete') }}
               style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
               {t('w3c.upgrade_see_offers')}
             </button>

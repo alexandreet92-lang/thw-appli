@@ -22,7 +22,7 @@ import {
 } from '@/lib/ai/agent-settings'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
-import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
+import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 import PressPop from '@/components/ui/PressPop'
 import { SlideOverlay } from '@/components/ui/SlideOverlay'
 import { SlideView } from '@/components/ui/SlideView'
@@ -1068,7 +1068,7 @@ function AbonnementSection() {
   const [loading, setLoading] = useState(true)
   const [isCoach, setIsCoach] = useState(false)
   const [hasAthletePaid, setHasAthletePaid] = useState(false)
-  const [change, setChange] = useState<null | 'athlete' | 'coach' | 'choose'>(null)
+  const [change, setChange] = useState<null | 'choose'>(null)
 
   useEffect(() => {
     void (async () => {
@@ -1095,7 +1095,7 @@ function AbonnementSection() {
   // Décision auto : coach & athlète payant → on demande ; sinon type déduit.
   const onChange = () => {
     if (isCoach && hasAthletePaid) setChange('choose')
-    else setChange(isCoach ? 'coach' : 'athlete')
+    else openSubscriptionChange(isCoach ? 'coach' : 'athlete')
   }
 
   const planName = tier ? (PLAN_LABELS[tier] ?? tier) : '—'
@@ -1147,16 +1147,13 @@ function AbonnementSection() {
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px', textAlign: 'center' }}>{t('w1a.quelAbonnement')}</h3>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: '0 0 18px', lineHeight: 1.5 }}>{t('w1a.quelAbonnementDesc')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => setChange('athlete')} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementAthlete')}</button>
-              <button onClick={() => setChange('coach')} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementCoach')}</button>
+              <button onClick={() => { setChange(null); openSubscriptionChange('athlete') }} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementAthlete')}</button>
+              <button onClick={() => { setChange(null); openSubscriptionChange('coach') }} style={{ padding: 13, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>{t('w1a.abonnementCoach')}</button>
             </div>
           </div>
         </div>
       )}
 
-      {(change === 'athlete' || change === 'coach') && (
-        <SubscriptionEmailModal action="change" plan={change} onClose={() => setChange(null)} />
-      )}
     </div>
   )
 }

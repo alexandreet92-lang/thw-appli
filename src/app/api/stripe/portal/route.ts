@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 // POST /api/stripe/portal
 // Crée une Stripe Billing Portal Session pour gérer l'abonnement.
+// Body   : { return_path?: string } (optionnel — chemin interne de retour)
 // Return : { url: string }
 // ══════════════════════════════════════════════════════════════
 
@@ -42,14 +43,25 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Billing Portal Session ────────────────────────────────────
-  const origin = req.headers.get('origin')
+  // Origine http(s) uniquement : depuis l'app iOS, l'en-tête Origin vaut
+  // « capacitor://localhost » (refusé comme return_url) → URL du site.
+  const rawOrigin = req.headers.get('origin')
+  const origin = (rawOrigin && /^https?:\/\//.test(rawOrigin) ? rawOrigin : null)
     ?? process.env.NEXT_PUBLIC_APP_URL
     ?? 'https://thw-coaching.vercel.app'
+
+  // Chemin de retour interne sûr (pas d'URL absolue ni « // » → pas d'open redirect).
+  let returnPath = '/settings/subscription'
+  try {
+    const body = await req.json() as { return_path?: unknown }
+    const p = body.return_path
+    if (typeof p === 'string' && p.startsWith('/') && !p.startsWith('//')) returnPath = p
+  } catch { /* corps vide : défaut */ }
 
   try {
     const session = await stripe.billingPortal.sessions.create({
       customer:   customerId,
-      return_url: `${origin}/settings/subscription`,
+      return_url: `${origin}${returnPath}`,
     })
     return NextResponse.json({ url: session.url })
   } catch (err) {

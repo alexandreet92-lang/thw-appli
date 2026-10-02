@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
           const coachPack = coachMatch.pack
           await sb.from('coach_subscriptions').upsert({
             user_id: userId, pack_key: coachPack.key, max_athletes: coachPack.maxAthletes,
-            stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
+            stripe_customer_id: custId, stripe_subscription_id: subscriptionId, store: 'stripe',
             status: mapStatus(subscription.status),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString(),
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
           // formule) → on débloque le tier athlète correspondant pour le coach.
           await sb.from('user_subscriptions').upsert({
             user_id: userId, tier: athleteTierForCoachTier(coachMatch.tier),
-            stripe_customer_id: custId, stripe_subscription_id: subscriptionId,
+            stripe_customer_id: custId, stripe_subscription_id: subscriptionId, store: 'stripe',
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             status: mapStatus(subscription.status), updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
@@ -303,6 +303,7 @@ export async function POST(req: NextRequest) {
             tier,
             stripe_customer_id:     custId,
             stripe_subscription_id: subscriptionId,
+            store:                  'stripe',
             current_period_start:   new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end:     new Date(subscription.current_period_end   * 1000).toISOString(),
             status:                 mapStatus(subscription.status),

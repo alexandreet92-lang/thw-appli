@@ -6,8 +6,9 @@ import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 import { currentLocale } from '@/lib/i18n'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { hidePricing } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
+import { openSubscriptionChange, openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 import { refreshEntitlements } from '@/hooks/useEntitlements'
 import { TIER_FEATURES } from '@/lib/subscriptions/tier-features'
 
@@ -494,10 +495,10 @@ export default function SubscriptionPage() {
           {hasBilling && (
             <button
               className="sub-btn"
-              onClick={() => void openWebsite('/site/compte.html')}
+              onClick={() => openSubscriptionManage('athlete')}
               style={{ background: 'var(--bg-card2)', color: 'var(--text)', border: '1.5px solid var(--border)' }}
             >
-              {t('misc.manageSubscription')} ↗
+              {t('misc.manageSubscription')}
             </button>
           )}
         </section>
@@ -636,14 +637,14 @@ export default function SubscriptionPage() {
                   ) : (
                     <button
                       className="sub-btn"
-                      onClick={() => void openWebsite('/site/compte.html')}
+                      onClick={() => openSubscriptionChange('athlete', plan.tier)}
                       style={{
                         background: 'var(--primary)',
                         color:      '#0a0a0a',
                         width:      '100%',
                       }}
                     >
-                      {t('misc.choosePlan', { name: plan.name })} ↗
+                      {t('misc.choosePlan', { name: plan.name })}
                     </button>
                   )}
                 </div>

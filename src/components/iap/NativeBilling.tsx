@@ -3,16 +3,16 @@
 // Facturation de l'app iOS (achats intégrés Apple).
 // Même structure que « Facturation » d'Apple/Claude : une ligne Forfait, puis
 // une liste d'actions à icône. Aucun lien vers le site (règle App Store 3.1.1).
+// « Gérer l'abonnement » : réglages Apple, ou portail Stripe si l'abonnement
+// actif a été souscrit sur le web (lien de gestion, pas d'achat).
 // ══════════════════════════════════════════════════════════════════
 import { useState, type ReactNode } from 'react'
 import { Card } from '@/components/shadcn/card'
 import { Button } from '@/components/shadcn/button'
 import { ChevronRight, CircleDollarSign, RefreshCw, Sparkles, Zap } from 'lucide-react'
-import { openExternalUrl } from '@/lib/native/platform'
 import { restoreIap } from '@/lib/iap/purchases'
 import { openIapStore } from '@/lib/iap/store-events'
-
-const APPLE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
+import { openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 
 export default function NativeBilling({ planName, isCoach, loading }: { planName: string; isCoach: boolean; loading: boolean }) {
   const [note, setNote] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export default function NativeBilling({ planName, isCoach, loading }: { planName
   const rows: { label: string; icon: ReactNode; onClick: () => void }[] = [
     { label: 'Changer d’offre', icon: <Sparkles size={22} strokeWidth={1.7} />, onClick: () => openIapStore(isCoach ? 'coach' : 'athlete') },
     { label: 'Acheter des tokens', icon: <Zap size={22} strokeWidth={1.7} />, onClick: () => openIapStore('tokens') },
-    { label: 'Gérer l’abonnement', icon: <CircleDollarSign size={22} strokeWidth={1.7} />, onClick: () => void openExternalUrl(APPLE_SUBSCRIPTIONS_URL) },
+    { label: 'Gérer l’abonnement', icon: <CircleDollarSign size={22} strokeWidth={1.7} />, onClick: () => openSubscriptionManage(isCoach ? 'coach' : 'athlete') },
     { label: restoring ? 'Restauration…' : 'Restaurer les achats', icon: <RefreshCw size={22} strokeWidth={1.7} />, onClick: restore },
   ]
 

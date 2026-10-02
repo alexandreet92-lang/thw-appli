@@ -6,7 +6,7 @@ import { Switch } from '@/components/shadcn/switch'
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2, Trash2 } from 'lucide-react'
-import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
+import { openSubscriptionChange, openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getMyActivityVisibility, setActivityVisibility, getMyHiddenData, setMyHiddenData, HIDDEN_DATA_CATS, type ActivityVisibility, type HiddenDataCat } from '@/lib/profile/activityShowcase'
@@ -2530,8 +2530,7 @@ function AbonnementContent() {
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [subEmail, setSubEmail] = useState<'change' | 'cancel' | null>(null)
-  // Type d'abonnement à cibler par le lien email (athlète vs coach), déduit du profil.
+  // Type d'abonnement ciblé par « Changer / Résilier » (athlète vs coach), déduit du profil.
   const [subPlan, setSubPlan] = useState<'athlete' | 'coach'>('athlete')
 
   useEffect(() => {
@@ -2652,8 +2651,8 @@ function AbonnementContent() {
   ) : null
 
   // ── MOBILE : carte plan blanche + listes groupées (mêmes actions). ──
-  // NB : « Changer d'abonnement » / « Résilier » ouvrent toujours
-  // SubscriptionEmailModal (lien e-mail) — handlers inchangés.
+  // NB : « Changer d'abonnement » / « Résilier » → paiement / gestion directs
+  // (startSubscriptionChange : boutique Apple, Stripe Checkout ou portail).
   if (pm.mobile) {
     const statusLine = isCancelling
       ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{t('profile.cancellingExpires', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}</span>
@@ -2739,14 +2738,13 @@ function AbonnementContent() {
             {!isCancelling && (
               <MSection>
                 <MGroup>
-                  <MNavRow first label={"Changer d'abonnement"} onClick={() => setSubEmail('change')} />
-                  <MNavRow danger label={"Résilier l'abonnement"} onClick={() => setSubEmail('cancel')} />
+                  <MNavRow first label={"Changer d'abonnement"} onClick={() => openSubscriptionChange(subPlan)} />
+                  <MNavRow danger label={"Résilier l'abonnement"} onClick={() => openSubscriptionManage(subPlan)} />
                 </MGroup>
               </MSection>
             )}
 
             <MExternalLink href="/site/decouvrir.html" label={t('profile.learnMoreApp')} />
-            {subEmail && <SubscriptionEmailModal action={subEmail} plan={subPlan} onClose={() => setSubEmail(null)} />}
           </>
         )}
         {cancelModal}
@@ -2882,11 +2880,11 @@ function AbonnementContent() {
           {/* ── Actions abonnement (liste groupée, façon Claude) ── */}
           {!isCancelling && (
             <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-              <button onClick={() => setSubEmail('change')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button onClick={() => openSubscriptionChange(subPlan)} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              <button onClick={() => setSubEmail('cancel')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+              <button onClick={() => openSubscriptionManage(subPlan)} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--danger)' }}>Résilier l&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
@@ -2917,7 +2915,6 @@ function AbonnementContent() {
             </div>
           )}
 
-          {subEmail && <SubscriptionEmailModal action={subEmail} plan={subPlan} onClose={() => setSubEmail(null)} />}
         </div>
       )}
 

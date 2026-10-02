@@ -20,7 +20,7 @@ import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { openWebsite, isNativeApp } from '@/lib/native/platform'
 import { openIapStore } from '@/lib/iap/store-events'
-import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
+import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 
 // ── Fonds « façon Claude » (identiques à ProfileContent) ─────────────
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
@@ -395,9 +395,8 @@ function DataBloc() {
 
 function OffreBloc() {
   const { t } = useI18n()
-  // « Gérer » n'ouvre JAMAIS une page directement (règle App Store) : on envoie
-  // un email avec un lien sécurisé vers l'espace compte du site.
-  const [emailModal, setEmailModal] = useState(false)
+  // « Gérer » → changement de pack direct : boutique Apple dans l'app iOS,
+  // page des packs coach (Stripe) sur le web. Plus aucun lien par email.
   // « Historique de facturation » : consultation → on ouvre directement l'espace
   // compte du SITE (connexion d'abord, puis SES factures réelles). Jamais une
   // page in-app.
@@ -412,7 +411,7 @@ function OffreBloc() {
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('w1b.offre_coach')}</p>
               <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('w1b.offre_coach_sub')}</p>
             </div>
-            <button onClick={() => setEmailModal(true)} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
+            <button onClick={() => openSubscriptionChange('coach')} style={{ border: 'none', cursor: 'pointer', padding: '8px 14px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{t('w1b.manage')}</button>
           </Line>
         </Group>
       </Section>
@@ -422,7 +421,6 @@ function OffreBloc() {
           <LinkRow label={t('w1b.link_billing_history')} sub={t('w1b.link_billing_history_sub')} onClick={openBilling} />
         </Group>
       </Section>
-      {emailModal && <SubscriptionEmailModal action="change" plan="coach" onClose={() => setEmailModal(false)} />}
     </div>
   )
 }

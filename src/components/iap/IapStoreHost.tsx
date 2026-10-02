@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
-import { isNativeApp, openWebsite, openExternalUrl } from '@/lib/native/platform'
+import { isNativeApp, openWebsite } from '@/lib/native/platform'
+import { openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { initIap, iapPrices, buyIap, restoreIap } from '@/lib/iap/purchases'
 import {
@@ -20,7 +21,6 @@ import { refreshEntitlements } from '@/hooks/useEntitlements'
 import { IAP_STORE_EVENT } from '@/lib/iap/store-events'
 import { IapStoreSheet, type Msg, type StoreTab } from './IapStoreSheet'
 
-const APPLE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
 const TIER_NAME: Record<AthleteTier, string> = { premium: 'Premium', pro: 'Pro', expert: 'Expert' }
 
 async function fetchTier(): Promise<string | null> {
@@ -125,7 +125,7 @@ export function IapStoreHost() {
       coachTier={coachTier} onCoachTier={setCoachTier} coachId={(pack, tier) => coachProductId(pack, tier, period)}
       tokens={IAP_TOKEN_PRODUCTS} selectedToken={selectedToken} onSelectToken={setSelectedToken}
       onBuy={(id, kind) => void buy(id, kind)} onRestore={() => void restore()}
-      onManage={() => void openExternalUrl(APPLE_SUBSCRIPTIONS_URL)}
+      onManage={() => openSubscriptionManage(tab === 'coach' ? 'coach' : 'athlete')}
       onTerms={() => void openWebsite('/site/conditions-utilisation.html')}
       onPrivacy={() => void openWebsite('/site/confidentialite.html')}
       onContact={() => void openWebsite('/site/support.html')}

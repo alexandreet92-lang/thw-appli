@@ -3,6 +3,11 @@
 // Crée une Stripe Checkout Session pour un tier + période donnés.
 // Body  : { tier: TierName, billingPeriod: 'monthly' | 'yearly' }
 // Return: { url: string }
+//      ou { updated: true, tier } — abonné Stripe actif qui change de
+//         formule : l'abonnement EXISTANT est modifié (prorata), pas de
+//         second abonnement.
+// 409    : abonnement App Store actif (à gérer chez Apple) ou formule
+//          identique déjà active.
 // ══════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -73,6 +78,53 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[checkout] body parse error:', err)
     return NextResponse.json({ error: 'Corps de requête JSON invalide' }, { status: 400 })
+  }
+
+  // ── Changement de formule pour un abonné existant ─────────────
+  // Un nouveau Checkout créerait un SECOND abonnement facturé en parallèle :
+  // on modifie le prix de l'abonnement Stripe actif (prorata). Le webhook
+  // customer.subscription.updated confirme ensuite le tier.
+  try {
+    const sb = createServiceClient()
+    const { data: cur } = await sb
+      .from('user_subscriptions')
+      .select('store, status, stripe_subscription_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    const live = cur?.status === 'active' || cur?.status === 'trialing' || cur?.status === 'past_due'
+    // Stripe fait foi en premier : un ancien achat Apple expiré peut laisser
+    // store = 'app_store' sur une ligne désormais payée via Stripe.
+    if (cur?.stripe_subscription_id && live) {
+      let existing: Awaited<ReturnType<typeof stripe.subscriptions.retrieve>> | null = null
+      try { existing = await stripe.subscriptions.retrieve(cur.stripe_subscription_id) } catch { existing = null }
+      const item = existing?.items.data[0]
+      if (existing && item && (existing.status === 'active' || existing.status === 'trialing' || existing.status === 'past_due')) {
+        if (item.price.id === priceId) {
+          return NextResponse.json({ error: 'same_plan' }, { status: 409 })
+        }
+        await stripe.subscriptions.update(existing.id, {
+          items: [{ id: item.id, price: priceId }],
+          proration_behavior: 'create_prorations',
+          cancel_at_period_end: false,
+          metadata: checkoutMeta,
+        })
+        await sb.from('user_subscriptions')
+          .update({ tier: checkoutMeta.tier, cancel_at_period_end: false })
+          .eq('user_id', userId)
+        console.log('[checkout] plan switched in place:', existing.id, '→', checkoutMeta.tier)
+        return NextResponse.json({ updated: true, tier: checkoutMeta.tier })
+      }
+      // Abonnement introuvable / terminé côté Stripe → nouveau Checkout ci-dessous.
+    }
+    // Abonnement Apple actif : il se change / résilie chez Apple (pas de
+    // second abonnement Stripe en parallèle).
+    if (cur?.store === 'app_store' && live) {
+      return NextResponse.json({ error: 'app_store_managed' }, { status: 409 })
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[checkout] plan switch error:', msg)
+    return NextResponse.json({ error: `Erreur Stripe : ${msg}` }, { status: 500 })
   }
 
   // ── Customer Stripe (récupère ou crée) ────────────────────────

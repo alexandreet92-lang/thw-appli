@@ -3,14 +3,16 @@
 // Surpage de FIN D'ESSAI (athlète). À la 1re arrivée après les 14 jours,
 // on explique : l'essai premium est terminé, l'app reste utilisable en
 // gratuit (fonctions limitées), et pour garder le premium il faut s'abonner.
-// Le bouton envoie un LIEN SÉCURISÉ par email vers la page des formules.
+// Le bouton ouvre l'abonnement DIRECT (boutique Apple dans l'app iOS, choix
+// de formule + Stripe sur le web) — plus aucun lien par email.
 // Affichée une seule fois (flag localStorage) ; ensuite le bandeau prend le relais.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useEntitlements } from '@/hooks/useEntitlements'
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
+import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 
 const SEEN_KEY = 'thw_trial_ended_seen'
 
@@ -21,10 +23,6 @@ export function TrialEndedModal() {
   const [show, setShow] = useState(false)
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [email, setEmail] = useState<string | null>(null)
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
     if (!show) return
@@ -37,10 +35,7 @@ export function TrialEndedModal() {
     let seen = false
     try { seen = localStorage.getItem(SEEN_KEY) === '1' } catch { /* ignore */ }
     if (seen) return
-    void createClient().auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null)
-      setShow(true)
-    })
+    setShow(true)
   }, [loading, isFree])
 
   if (!show) return null
@@ -51,19 +46,7 @@ export function TrialEndedModal() {
     setTimeout(() => setShow(false), 280)
   }
 
-  const sendLink = async () => {
-    if (!email || sending) return
-    setSending(true); setErr(null)
-    try {
-      const r = await fetch('/api/subscription/request-link', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, action: 'change' }),
-      })
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? t('w3c.trial_send_failed')) }
-      setSent(true)
-    } catch (e) { setErr(e instanceof Error ? e.message : t('w3c.trial_send_failed2')) }
-    finally { setSending(false) }
-  }
+  const subscribe = () => { dismiss(); openSubscriptionChange('athlete') }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(8,12,18,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, opacity: shown && !closing ? 1 : 0, transition: 'opacity 0.28s ease' }}>
@@ -77,25 +60,12 @@ export function TrialEndedModal() {
           {t('w3c.trial_ended_p1')}<strong style={{ color: 'var(--text)' }}>{t('w3c.trial_ended_free')}</strong>{t('w3c.trial_ended_p2')}<strong style={{ color: 'var(--text)' }}>{t('w3c.trial_ended_plans')}</strong>.
         </p>
 
-        {sent ? (
-          <div style={{ marginTop: 22, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text)', margin: 0, fontWeight: 600 }}>{t('w3c.trial_link_sent')}</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{t('w3c.trial_check_mail_pre')}{email ? ` (${email})` : ''}{t('w3c.trial_check_mail_post')}</p>
-            <button onClick={dismiss} style={{ ...ghostBtn, marginTop: 12 }}>{t('w3c.continue')}</button>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-              <button onClick={sendLink} disabled={sending || !email} style={{ ...primaryBtn, opacity: sending || !email ? 0.65 : 1 }}>
-                {sending ? t('w3c.sending') : t('w3c.trial_receive_link')}
-              </button>
-              <button onClick={() => { dismiss(); router.push('/settings/subscription') }} style={ghostBtn}>{t('w3c.trial_see_plans')}</button>
-              <button onClick={dismiss} style={{ ...ghostBtn, background: 'transparent', color: 'var(--text-dim)' }}>{t('w3c.trial_continue_free')}</button>
-            </div>
-            {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--danger)', margin: '10px 0 0' }}>{err}</p>}
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '14px 0 0' }}>{t('w3c.trial_secure_note')}</p>
-          </>
-        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
+          <button onClick={subscribe} style={primaryBtn}>{t('profile.chooseSubscription')}</button>
+          <button onClick={() => { dismiss(); router.push('/settings/subscription') }} style={ghostBtn}>{t('w3c.trial_see_plans')}</button>
+          <button onClick={dismiss} style={{ ...ghostBtn, background: 'transparent', color: 'var(--text-dim)' }}>{t('w3c.trial_continue_free')}</button>
+        </div>
+        {!isNativeApp() && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '14px 0 0' }}>{t('w3c.pp_subtitle')}</p>}
       </div>
     </div>
   )

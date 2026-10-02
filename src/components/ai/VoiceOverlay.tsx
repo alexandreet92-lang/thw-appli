@@ -50,8 +50,11 @@ export function VoiceOverlay({
   language = 'fr',
   getAudioCtx,
   inline = false,
+  onSendNow,
 }: {
   onConfirm: (text: string) => void
+  /** Inline mobile (façon Claude) : ↑ = valide la dictée ET envoie le message. */
+  onSendNow?: (text: string) => void
   onCancel: () => void
   /** Appelé en continu avec le texte transcrit (final + interim) → champ live. */
   onLiveText?: (text: string) => void
@@ -284,7 +287,7 @@ export function VoiceOverlay({
     } catch { return '' }
   }
 
-  const confirm = () => {
+  const finish = (done: (text: string) => void) => {
     if (phase !== 'rec') return
     confirmedRef.current = true
     try { srRef.current?.stop() } catch { /* ignore */ }
@@ -292,15 +295,17 @@ export function VoiceOverlay({
     // Whisper progressif) ; on retombe sur la ref si l'état a du retard.
     const live = (liveText || srFinalRef.current).trim()
     // Texte déjà transcrit → validation INSTANTANÉE (zéro attente serveur).
-    if (live) { onConfirm(live); return }
+    if (live) { done(live); return }
     // Rien côté navigateur → on tente Whisper une seule fois.
     setPhase('transcribing')
     void (async () => {
       const w = await whisperFallback()
-      if (w) { onConfirm(w); return }
+      if (w) { done(w); return }
       setPhase('error'); setErrorMsg(t('ai.transcriptionEmpty'))
     })()
   }
+  const confirm = () => finish(onConfirm)
+  const sendNow = () => finish(onSendNow ?? onConfirm)
   const cancel = () => {
     confirmedRef.current = true
     try { srRef.current?.stop() } catch { /* ignore */ }
@@ -367,6 +372,48 @@ export function VoiceOverlay({
       @keyframes vo_pulse { 0%,100% { box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 40%, transparent) } 50% { box-shadow: 0 4px 22px color-mix(in srgb, var(--primary) 62%, transparent) } }
     `}</style>
   )
+
+  // Rendu INTÉGRÉ façon Claude (mobile) : la ligne d'actions de la barre de
+  // saisie devient × · waveform · ■ (arrêter, garder le texte) · ↑ (envoyer).
+  if (inline && onSendNow) {
+    const round = (bg: string, fg: string): React.CSSProperties => ({
+      width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0, padding: 0,
+      background: bg, color: fg, cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    })
+    return (
+      <>
+        {keyframes}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '4px 10px 10px', boxSizing: 'border-box' }}>
+          <button type="button" onClick={cancel} aria-label={t('ai.cancel')} style={round('var(--bg-card2)', 'var(--text-mid)')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+          {phase === 'error'
+            ? <span style={{ flex: 1, fontSize: 13, color: 'var(--text-mid)', fontFamily: 'var(--font-body)' }}>{errorMsg}</span>
+            : (
+              <div style={{ flex: 1, minWidth: 0, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
+                {Array.from({ length: NBARS }, (_, i) => (
+                  <span key={i} ref={el => { barsRef.current[i] = el }} style={{
+                    width: 3, height: '100%', borderRadius: 'var(--r-pill)', flexShrink: 0,
+                    background: 'var(--text)', transformOrigin: 'center',
+                    transform: 'scaleY(0.12)', opacity: 0.55,
+                    transition: 'transform 0.08s ease-out, opacity 0.12s ease-out', willChange: 'transform, opacity',
+                  }} />
+                ))}
+              </div>
+            )}
+          <button type="button" onClick={confirm} disabled={phase !== 'rec'} aria-label={t('ai.validate')} style={{ ...round('var(--bg-card2)', 'var(--text)'), opacity: phase === 'rec' ? 1 : 0.5 }}>
+            {phase === 'transcribing'
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ animation: 'vo_spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+              : <span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor' }} />}
+          </button>
+          <button type="button" onClick={sendNow} disabled={phase !== 'rec'} aria-label={t('aim.composer.send')} style={{ ...round('var(--primary)', 'var(--on-primary)'), opacity: phase === 'rec' ? 1 : 0.6 }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+          </button>
+        </div>
+      </>
+    )
+  }
 
   // Rendu INTÉGRÉ (dans le champ de saisie) : pas de portail, pas de barre
   // flottante — juste la ligne X · waveform · ✓. Le texte live s'écrit dans le

@@ -22336,6 +22336,16 @@ export default function AIPanel({
     setInput(composeVoice(text))
     setTimeout(() => areaRef.current?.focus(), 60)
   }, [])
+  // ↑ pendant la dictée (mobile) : on garde le texte transcrit et on envoie aussitôt.
+  // `send` est déclaré plus bas → on passe par une ref (mise à jour à chaque rendu).
+  const sendRef = useRef<((text: string) => unknown) | null>(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sendVoice = useCallback((text: string) => {
+    setRecording(false)
+    const full = composeVoice(text).trim()
+    if (full) void sendRef.current?.(full)
+    else setInput(full)
+  }, [])
   const cancelVoice = useCallback(() => {
     setRecording(false)
     setInput(voiceBaseRef.current)   // on jette la dictée, on garde le texte d'avant
@@ -23066,6 +23076,7 @@ export default function AIPanel({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen, activeProjectId, projects, attachment, images, imgOverBudget])
+  sendRef.current = (text: string) => send(text)
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -24757,8 +24768,9 @@ export default function AIPanel({
                 }}
               />
 
-              {/* Dictée vocale — barre inline flottante (X · waveform · ✓), style Claude */}
-              {recording && (
+              {/* Dictée vocale — desktop : barre flottante (X · waveform · ✓).
+                  Mobile : rendue plus bas, à la place de la ligne d'actions (façon Claude). */}
+              {recording && isDesktop && (
                 <VoiceOverlay
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
@@ -24776,8 +24788,20 @@ export default function AIPanel({
                 />
               )}
 
+              {/* Dictée MOBILE façon Claude : la ligne d'actions devient × · onde · ■ · ↑ */}
+              {!isDesktop && recording && (
+                <VoiceOverlay
+                  inline
+                  onCancel={cancelVoice}
+                  onConfirm={confirmVoice}
+                  onSendNow={sendVoice}
+                  onLiveText={liveVoice}
+                  getAudioCtx={() => dictationCtxRef.current}
+                />
+              )}
+
               {/* Ligne basse MOBILE : + · Web · crédits · [athlète] · micro · envoyer/voix/stop */}
-              {!isDesktop && (
+              {!isDesktop && !recording && (
                 <MobileComposerRow
                   plusOpen={plusOpen}
                   onPlus={() => { if (plusOpen) setPlusOpen(false); else openPlusSheet('main') }}

@@ -117,8 +117,16 @@ export function ClientShell({ children }: ClientShellProps) {
 
           // Échec renvoyé par Supabase (lien expiré, déjà utilisé…) : on ne
           // reste PAS muet, on renvoie l'utilisateur sur /auth avec la raison.
+          // error_description transmise : /auth reste muet sur une simple
+          // annulation (Google « Annuler », Apple fermé).
           const err = q.get('error_code') || q.get('error')
-          if (err) { window.location.href = `/auth?error=${encodeURIComponent(err)}`; return }
+          if (err) {
+            const back = new URLSearchParams({ error: err })
+            const desc = q.get('error_description')
+            if (desc) back.set('error_description', desc)
+            window.location.href = `/auth?${back.toString()}`
+            return
+          }
 
           const rawNext = q.get('next') ?? '/'
           const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/'

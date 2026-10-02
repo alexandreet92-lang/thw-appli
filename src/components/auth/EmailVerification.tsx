@@ -1,9 +1,15 @@
 'use client'
+// Écran « Vérifie ta boîte mail » (après inscription) — même grammaire que
+// les autres écrans d'entrée : pictogramme rond, grand titre, adresse en
+// pastille, renvoi (pilule blanche) avec compte à rebours, retour.
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getAuthError } from '@/lib/auth/errors'
 import { authCallbackUrl } from '@/lib/auth/redirect'
 import { useI18n } from '@/lib/i18n'
+import { SheetPill } from '@/components/ui/BottomSheet'
+import { ErrorMessage } from './ErrorMessage'
+import { Dots } from './AuthKit'
 
 interface Props {
   email: string
@@ -19,12 +25,12 @@ export function EmailVerification({ email, onBack }: Props) {
 
   useEffect(() => {
     if (countdown <= 0) return
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000)
-    return () => clearTimeout(t)
+    const id = setTimeout(() => setCountdown(c => c - 1), 1000)
+    return () => clearTimeout(id)
   }, [countdown])
 
-  // L'échec d'envoi (quota SMTP atteint, expéditeur refusé…) était AVALÉ ici :
-  // l'écran affichait « ✓ Email renvoyé » alors que rien n'était parti.
+  // L'échec d'envoi (quota SMTP atteint, expéditeur refusé…) n'est jamais
+  // avalé : sans ça l'écran afficherait « ✓ Email renvoyé » pour rien.
   const handleResend = async () => {
     setResending(true); setError('')
     const sb = createClient()
@@ -39,62 +45,32 @@ export function EmailVerification({ email, onBack }: Props) {
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-      <style>{`
-        @keyframes ev-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-        @keyframes ev-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-      `}</style>
-
-      <div style={{
-        width: 100, height: 100, margin: '0 auto 32px',
-        background: 'rgba(6,182,212,0.1)', borderRadius: '50%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: 'ev-pulse 3s ease-in-out infinite',
-      }}>
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect x="4" y="10" width="40" height="28" rx="3" stroke="var(--primary)" strokeWidth="2"/>
-          <path d="M4 14l20 14 20-14" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="36" cy="12" r="5" fill="#10B981" style={{ animation: 'ev-bounce 1s ease-in-out infinite' }}/>
-        </svg>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, textAlign: 'center', paddingTop: 36 }}>
+        <div className="au-logo" style={{
+          width: 96, height: 96, margin: '0 auto 24px', borderRadius: '50%', background: 'var(--primary-dim)', color: 'var(--primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg aria-hidden width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="5" width="18" height="14" rx="3" />
+            <path d="M4 7l8 6 8-6" />
+          </svg>
+        </div>
+        <h1 className="au-h1">{t('verify.title')}</h1>
+        <p className="au-sub" style={{ marginTop: 10 }}>{t('verify.sentTo')}</p>
+        <p style={{ display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere', margin: '10px 0 0', padding: '8px 14px', borderRadius: 'var(--r-pill)', background: 'var(--surface-card)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+          {email}
+        </p>
+        <p className="au-sub" style={{ margin: '18px auto 0', maxWidth: 320, fontSize: 14 }}>{t('verify.activate')}</p>
       </div>
 
-      <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
-        {t('verify.title')}
-      </h2>
-      <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
-        {t('verify.sentTo')}
-      </p>
-      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)', margin: '0 0 32px', padding: '8px 16px', borderRadius: 'var(--r-sm)', background: 'var(--primary-dim)', display: 'inline-block', fontFamily: 'var(--font-body)' }}>
-        {email}
-      </p>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-        {t('verify.activate')}
-      </p>
-
-      <button
-        onClick={handleResend}
-        disabled={resending || countdown > 0}
-        style={{
-          width: '100%', height: 48, borderRadius: 'var(--r-md)', marginBottom: 12,
-          background: resent ? 'rgba(16,185,129,0.15)' : 'var(--bg-card2)',
-          border: `1px solid ${resent ? 'rgba(16,185,129,0.4)' : 'var(--border-mid)'}`,
-          color: resent ? '#10B981' : countdown > 0 ? 'var(--text-dim)' : 'var(--text)',
-          fontSize: 14, cursor: countdown > 0 ? 'not-allowed' : 'pointer',
-          transition: 'all 200ms', fontFamily: 'var(--font-body)',
-        }}
-      >
-        {resending ? t('verify.resending') : resent ? t('verify.resent') : countdown > 0 ? t('verify.resendIn', { s: countdown }) : t('verify.resend')}
-      </button>
-
-      {error && (
-        <p style={{ fontSize: 13, color: 'var(--danger)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-          {error}
-        </p>
-      )}
-
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-        {t('verify.back')}
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 20 }}>
+        <ErrorMessage error={error} />
+        <SheetPill variant="white" onClick={handleResend} disabled={resending || countdown > 0} style={{ minHeight: 56, fontSize: 17 }}>
+          {resending ? <Dots /> : resent && countdown > 0 ? `${t('verify.resent')} · ${countdown}s` : t('verify.resend')}
+        </SheetPill>
+        <SheetPill variant="ghost" onClick={onBack}>{t('verify.back')}</SheetPill>
+      </div>
     </div>
   )
 }

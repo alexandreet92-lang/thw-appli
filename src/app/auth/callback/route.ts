@@ -25,16 +25,26 @@ export async function GET(request: Request) {
   // FRAGMENT (#) du flux implicite — ce dernier n'atteint jamais le serveur,
   // il est traité côté client sur /auth/reset-password.
   const err = searchParams.get('error_code') || searchParams.get('error')
-  if (err) return fail(origin, err, searchParams.get('error_description'))
+  const native = searchParams.get('native') === '1'
+  // App native : l'échec (OAuth annulé / refusé, lien expiré) doit lui aussi
+  // REVENIR dans l'app — sinon l'utilisateur reste coincé sur la page /auth
+  // du site, dans la feuille Safari. ClientShell le renvoie sur /auth?error=….
+  if (err && !native) return fail(origin, err, searchParams.get('error_description'))
 
   // App native (Capacitor) : on NE consomme PAS le jeton ici (le code PKCE doit
   // être échangé côté app avec son verifier). On renvoie une page qui rebondit
   // vers le lien custom scheme → l'app se rouvre et termine la connexion.
-  if (searchParams.get('native') === '1' && (code || token_hash)) {
+  if (native && (err || code || token_hash)) {
     const params = new URLSearchParams()
-    if (code) params.set('code', code)
-    if (token_hash) params.set('token_hash', token_hash)
-    if (type) params.set('type', type)
+    if (err) {
+      params.set('error', err)
+      const desc = searchParams.get('error_description')
+      if (desc) params.set('error_description', desc)
+    } else {
+      if (code) params.set('code', code)
+      if (token_hash) params.set('token_hash', token_hash)
+      if (type) params.set('type', type)
+    }
     params.set('next', next)
     const scheme = `com.thehybridway.app://auth-callback?${params.toString()}`
     return new NextResponse(

@@ -8,20 +8,13 @@ import type { AuthChangeEvent, EmailOtpType, Session } from '@supabase/supabase-
 import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
+import { AUTH_CSS, AuthHeading, AuthScreen, BackButton, PrimaryPill } from '@/components/auth/AuthKit'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { getAuthError, getAuthLinkError } from '@/lib/auth/errors'
 import { useI18n } from '@/lib/i18n'
 
-const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
-
-const primaryBtn: React.CSSProperties = {
-  width: '100%', height: 52, borderRadius: 'var(--r-md)',
-  background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-  border: 'none', color: 'white',
-  fontSize: 16, fontWeight: 700, cursor: 'pointer',
-  boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
-  fontFamily: 'var(--font-body)',
-  transition: 'opacity 200ms',
-}
+// Même minimum que l'inscription.
+const PW_MIN = 8
 
 // État du lien de récupération : tant qu'on n'a pas de session « recovery »,
 // afficher le formulaire ne sert à rien (updateUser échouerait avec un message
@@ -97,10 +90,10 @@ export default function ResetPasswordPage() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const isDisabled = password !== confirm || password.length < 6
+  const isDisabled = password !== confirm || password.length < PW_MIN
 
   async function handleReset() {
-    if (isDisabled) return
+    if (isDisabled || loading) return
     setLoading(true); setError('')
     const sb = createClient()
     const { error: e } = await sb.auth.updateUser({ password })
@@ -114,89 +107,54 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
-      <style>{`@keyframes scale-in{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
-      <div style={{ width: '100%', maxWidth: 380, padding: '0 24px' }}>
+    <AuthScreen>
+      <style>{AUTH_CSS}</style>
+      {!success && <div><BackButton onClick={() => router.replace('/auth')} /></div>}
 
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 40, height: 40 }} />
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '10px 0 4px', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)' }}>
-            Hybrid
-          </h2>
+      {success ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+          <div className="au-logo" style={{
+            width: 96, height: 96, margin: '0 auto 22px', borderRadius: '50%',
+            background: 'color-mix(in srgb, var(--success) 16%, transparent)', color: 'var(--success)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg aria-hidden width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          </div>
+          <h1 className="au-h1">{t('authpage.passwordChanged')}</h1>
+          <p className="au-sub" style={{ marginBottom: 28 }}>{t('authpage.signedInRedirect')}</p>
+          <PrimaryPill onClick={() => { window.location.href = '/' }}>{t('authpage.enterApp')}</PrimaryPill>
         </div>
-
-        {success ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: 80, height: 80, margin: '0 auto 24px', borderRadius: '50%',
-              background: 'rgba(16,185,129,0.15)', border: '2px solid rgba(16,185,129,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              animation: 'scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-            }}>
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                <path d="M8 18l7 7 13-14" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
-              {t('authpage.passwordChanged')}
-            </h3>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', fontFamily: 'var(--font-body)' }}>
-              {t('authpage.signedInRedirect')}
-            </p>
-            <button onClick={() => { window.location.href = '/' }} style={primaryBtn}>
-              {t('authpage.enterApp')}
-            </button>
-          </div>
-        ) : linkState === 'checking' ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14, fontFamily: 'var(--font-body)' }}>
-            {t('authpage.resetChecking')}
-          </p>
-        ) : linkState === 'invalid' ? (
-          <div style={{ textAlign: 'center' }}>
-            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
-              {t('authpage.resetLinkInvalid')}
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-              {linkError}
-            </p>
-            <button onClick={() => router.replace('/auth')} style={primaryBtn}>
-              {t('authpage.resetAskNewLink')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 8px', textAlign: 'center', fontFamily: 'var(--font-display)' }}>
-              {t('authpage.newPassword')}
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-              {t('authpage.chooseSecurePassword')}
-            </p>
-
-            <AuthInput label={t('authpage.newPassword')} type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
+      ) : linkState === 'checking' ? (
+        <div aria-busy="true" style={{ marginTop: 18 }}>
+          <Skeleton width="70%" height={32} />
+          <div style={{ height: 12 }} />
+          <Skeleton width="90%" height={16} />
+          <div style={{ height: 28 }} />
+          <Skeleton height={56} />
+          <div style={{ height: 14 }} />
+          <Skeleton height={56} />
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('authpage.resetChecking')}</span>
+        </div>
+      ) : linkState === 'invalid' ? (
+        <>
+          <AuthHeading title={t('authpage.resetLinkInvalid')} sub={linkError} />
+          <PrimaryPill onClick={() => router.replace('/auth')}>{t('authpage.resetAskNewLink')}</PrimaryPill>
+        </>
+      ) : (
+        <>
+          <AuthHeading title={t('authpage.newPassword')} sub={t('authpage.chooseSecurePassword')} />
+          <form noValidate onSubmit={e => { e.preventDefault(); void handleReset() }}>
+            <AuthInput label={t('authpage.newPassword')} type="password" placeholder="••••••••" value={password} onChange={setPassword}
+              showToggle autoComplete="new-password" hint={password.length < PW_MIN ? t('au.pwMin') : undefined} />
             <PasswordStrengthBar password={password} />
-            <div style={{ height: 16 }} />
-            <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
-
-            {confirm && password !== confirm && (
-              <p style={{ fontSize: 12, color: 'var(--danger)', margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>
-                {t('auth.pwMismatch')}
-              </p>
-            )}
-
+            <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirm} onChange={setConfirm}
+              showToggle autoComplete="new-password" error={confirm && password !== confirm ? t('auth.pwMismatch') : undefined} />
             <ErrorMessage error={error} />
-            <div style={{ height: 24 }} />
-
-            <button
-              onClick={handleReset}
-              disabled={loading || isDisabled}
-              style={{ ...primaryBtn, opacity: loading || isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
-            >
-              {loading ? t('authpage.updating') : t('authpage.changePasswordBtn')}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+            <div style={{ height: 8 }} />
+            <PrimaryPill type="submit" loading={loading} disabled={isDisabled}>{t('authpage.changePasswordBtn')}</PrimaryPill>
+          </form>
+        </>
+      )}
+    </AuthScreen>
   )
 }

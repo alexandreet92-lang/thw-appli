@@ -3,84 +3,138 @@ export const dynamic = 'force-dynamic'
 
 // ══════════════════════════════════════════════════════════════════
 // /bienvenue — questionnaire d'onboarding à BRANCHES (Athlète / Athlète-coach /
-// Coach) et à deux versions (complète & express). Piloté par la donnée
-// (questions.ts) ; la plupart des questions sont en choix multiple + champ
-// « Autre ». Persiste sur le profil (colonnes compat + onboarding jsonb) puis
-// pose profile_setup_done=true. À la charte (tokens).
+// Coach), versions complète & express. Piloté par la donnée (questions.ts).
+// Maquettes A3 / A4 / A5 :
+//  • en-tête = ‹ rond + barre de progression + « n / m » (+ « Plus tard ») ;
+//  • petit libellé de section cyan, grand titre 28 px, aide grise ;
+//  • choix unique = cartes blanches (emoji, titre, description, radio) qui
+//    avancent seules ~250 ms après la sélection ; choix multiple = pilules
+//    (choisie = pilule sombre) + « Continuer · N sports » ;
+//  • glissement iOS entre étapes (transform seul) + retour par glissement
+//    depuis le bord gauche ;
+//  • « Ton but principal ? » et « Ton objectif principal ? » fusionnés en un
+//    écran (cartes + objectif précis optionnel) — les deux clés de réponse
+//    (a_goalType / a_mainGoal) sont enregistrées exactement comme avant.
+// Persistance inchangée : colonnes compat + onboarding jsonb, puis
+// profile_setup_done=true (fin normale OU « Plus tard »).
 // ══════════════════════════════════════════════════════════════════
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
-import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
-import { SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
-import {
-  buildQuestionList, ATHLETE_QUESTIONS, type ObProfile, type ObVersion, type ObQuestion,
-} from './questions'
-
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
-
-// Mobile (≤ 767 px) : grammaire « Strava / Claude » — page gris chaud plein
-// écran, options en cartes blanches à filets, champs pleins sans bordure,
-// pilule cyan fixe en bas. Desktop : carte centrée historique.
-const MobileCtx = createContext(false)
-const mInputStyle: React.CSSProperties = {
-  width: '100%', minHeight: 50, boxSizing: 'border-box', background: 'var(--surface-card)', border: 'none', boxShadow: SHEET_CARD_SHADOW,
-  borderRadius: 'var(--r-md)', padding: '0 16px', color: 'var(--text)', fontFamily: FB, fontSize: 16, outline: 'none',
-}
+import { SlideView } from '@/components/ui/SlideView'
+import { SheetPill, SHEET_CARD_SHADOW } from '@/components/ui/BottomSheet'
+import { AUTH_CSS, FB, BackButton, LangPill, PrimaryPill } from '@/components/auth/AuthKit'
+import { buildQuestionList, type ObProfile, type ObVersion, type ObQuestion } from './questions'
 
 type Answers = Record<string, unknown>
+type TF = (key: string, vars?: Record<string, string | number>) => string
 
 // Champs texte affichés en zone multi-lignes (réponses longues).
 const TEXTAREA = new Set(['a_mainGoal', 'a_injuries', 'c_pricing', 'c_expectations'])
+// Questions affichées DANS l'écran d'une autre (clé enregistrée inchangée).
+const MERGED_INTO: Record<string, string> = { a_mainGoal: 'a_goalType' }
+// Délai avant l'avance automatique d'un choix unique.
+const AUTO_ADVANCE_MS = 250
+
+const SPORT_EMOJI: Record<string, string> = {
+  running: '🏃', velo: '🚴', natation: '🏊', trail: '⛰️', triathlon: '🔱', aviron: '🚣',
+  boxe: '🥊', hyrox: '⚡', force: '🏋️', crossfit: '🔥',
+}
+// Pictogrammes de présentation (aucune incidence sur les données).
+const EMOJI: Record<string, Record<string, string>> = {
+  profile: { athlete: '🏃', both: '🤝', coach: '📋' },
+  version: { full: '✨', express: '⚡' },
+  a_sports: SPORT_EMOJI,
+  c_sports: SPORT_EMOJI,
+  a_goalType: { forme: '💪', performance: '🏁', perte_poids: '⚖️', sante: '🌱', mixte: '🏅' },
+  a_level: { debutant: '🌱', intermediaire: '📈', confirme: '🎯', elite: '🏆' },
+  a_equipment: { montre_gps: '⌚', capteur_puissance: '⚡', home_trainer: '🚲', tapis: '🏃', salle: '🏋️' },
+  a_job: { sedentaire: '🪑', mixte: '🚶', physique: '🛠️' },
+  a_nutrition: { suivie: '🥗', parfois: '🍽️', non: '🤷' },
+  a_env: { indoor: '🏠', outdoor: '🌳', mixte: '🔁' },
+  c_fulltime: { plein_temps: '💼', a_cote: '⏱️' },
+  c_method: { endurance: '🫀', force: '🏋️', hybride: '⚡' },
+  c_format: { en_ligne: '💻', presentiel: '🤝', mixte: '🔁' },
+}
+// Libellé de section (petit texte cyan au-dessus du titre).
+const SECTION: Record<string, string> = {
+  profile: 'au.ob.secProfile', version: 'au.ob.secProfile',
+  a_sports: 'au.ob.secProfile', a_perSport: 'au.ob.secProfile', a_level: 'au.ob.secProfile', a_equipment: 'au.ob.secProfile',
+  a_goalType: 'au.ob.secGoal', a_mainGoal: 'au.ob.secGoal', a_timeframes: 'au.ob.secGoal',
+  a_volume: 'au.ob.secTraining', a_days: 'au.ob.secTraining', a_env: 'au.ob.secTraining', a_hadCoach: 'au.ob.secTraining',
+  a_injuries: 'au.ob.secLife', a_sleep: 'au.ob.secLife', a_job: 'au.ob.secLife', a_nutrition: 'au.ob.secLife',
+}
+
+const OB_CSS = `
+.ob-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;border:none;padding:16px;border-radius:var(--r-lg);background:var(--surface-card);font-family:var(--font-body);color:var(--text);-webkit-tap-highlight-color:transparent;transition:box-shadow .2s ease,transform .16s ease}
+.ob-card:active{transform:scale(.985)}
+.ob-pill{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:none;border-radius:var(--r-pill);font-family:var(--font-body);font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .18s ease,color .18s ease,transform .16s ease}
+.ob-pill:active{transform:scale(.96)}
+.ob-field{width:100%;min-height:56px;box-sizing:border-box;border:none;outline:none;border-radius:var(--r-md);background:var(--surface-card);box-shadow:${SHEET_CARD_SHADOW};padding:0 16px;color:var(--text);font-family:var(--font-body);font-size:16px;font-weight:600;transition:box-shadow .16s}
+.ob-field::placeholder{color:var(--text-dim);font-weight:500}
+.ob-field:focus{box-shadow:inset 0 0 0 2px var(--primary),0 0 0 4px var(--primary-dim)}
+textarea.ob-field{padding:14px 16px;line-height:1.45;resize:vertical}
+.ob-inset{background:var(--surface-page);box-shadow:none;min-height:48px}
+@keyframes obCheck{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}
+@keyframes obPop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+.ob-pop{animation:obPop .55s cubic-bezier(.16,1,.3,1) both}
+.ob-check{stroke-dasharray:40;animation:obCheck .45s ease .3s both}
+@media(prefers-reduced-motion:reduce){.ob-card,.ob-pill,.ob-field{transition:none}.ob-pop,.ob-check{animation:none!important;stroke-dashoffset:0}}
+`
+
+// Label d'option (avec repli sur la clé brute si non traduite).
+function tOpt(t: TF, qid: string, value: string): string {
+  const k = `ob.${qid}.${value}`; const r = t(k); return r === k ? value : r
+}
 
 export default function BienvenuePage() {
   const router = useRouter()
   const { t } = useI18n()
-  const m = useMobileSafe()
 
   const [profile, setProfile] = useState<ObProfile | null>(null)
   const [version, setVersion] = useState<ObVersion | null>(null)
   const [a, setA] = useState<Answers>({})
-  const [step, setStep] = useState(0)              // 0 profil · 1 version · 2..2+N-1 questions · 2+N final
-  const [dir, setDir] = useState<'r' | 'l'>('r')
+  const [cur, setCur] = useState<string>('profile')   // 'profile' · 'version' · id de question · 'final'
+  const [dir, setDir] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const touch = useRef<number | null>(null)
+  const [firstName, setFirstName] = useState('')
+  const autoTimer = useRef<number | null>(null)
 
-  const list = useMemo<ObQuestion[]>(
-    () => (profile && version ? buildQuestionList(profile, version) : []),
-    [profile, version],
-  )
-  const N = list.length
-  const STEP_VERSION = 1
-  const STEP_FIRST_Q = 2
-  const STEP_FINAL = STEP_FIRST_Q + N
-
-  // Idempotent : si l'onboarding est déjà fait → dashboard.
+  // Idempotent : si l'onboarding est déjà fait → dashboard. On récupère au
+  // passage le prénom (écran final « Tout est prêt, {prénom}. »).
   useEffect(() => {
     let cancel = false
     void (async () => {
       const sb = createClient()
       const user = await getCurrentUser()
       if (!user) { router.replace('/auth'); return }
-      const { data } = await sb.from('profiles').select('profile_setup_done').eq('id', user.id).maybeSingle()
-      if (cancel || !data) return
-      if (data.profile_setup_done) { router.replace('/') }
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+      const metaName = [meta.first_name, meta.given_name, meta.full_name, meta.name].find(v => typeof v === 'string' && v.trim()) as string | undefined
+      if (metaName && !cancel) setFirstName(metaName.trim().split(/\s+/)[0])
+      const res: { data: { profile_setup_done: boolean | null; full_name: string | null } | null } =
+        await sb.from('profiles').select('profile_setup_done, full_name').eq('id', user.id).maybeSingle()
+      if (cancel || !res.data) return
+      if (res.data.profile_setup_done) { router.replace('/'); return }
+      const fn = (res.data.full_name ?? '').trim().split(/\s+/)[0]
+      if (fn) setFirstName(fn)
     })()
     return () => { cancel = true }
   }, [router])
+
+  useEffect(() => () => { if (autoTimer.current) window.clearTimeout(autoTimer.current) }, [])
 
   // ── Accès/écriture des réponses ───────────────────────────────────
   const getStr = (id: string): string => (typeof a[id] === 'string' ? a[id] as string : '')
   const getArr = (id: string): string[] => (Array.isArray(a[id]) ? a[id] as string[] : [])
   const setStr = (id: string, v: string) => setA(p => ({ ...p, [id]: v }))
   const toggleArr = (id: string, v: string) => setA(p => {
-    const cur = Array.isArray(p[id]) ? p[id] as string[] : []
-    return { ...p, [id]: cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v] }
+    const c = Array.isArray(p[id]) ? p[id] as string[] : []
+    return { ...p, [id]: c.includes(v) ? c.filter(x => x !== v) : [...c, v] }
   })
   const getPerSport = (qid: string, sport: string, field: string): string => {
     const m = a[qid] as Record<string, Record<string, string>> | undefined
@@ -101,46 +155,72 @@ export default function BienvenuePage() {
     return { ...p, [qid]: m }
   })
 
-  // ── Question courante ─────────────────────────────────────────────
-  const qIdx = step - STEP_FIRST_Q
-  const q: ObQuestion | null = qIdx >= 0 && qIdx < N ? list[qIdx] : null
-  const isFinal = step >= STEP_FINAL && N >= 0 && step === STEP_FINAL
+  // ── Étapes visibles ───────────────────────────────────────────────
+  // Avant d'avoir choisi profil / version, le total est estimé sur le
+  // parcours le plus long (athlète, complet) — il se resserre ensuite.
+  const list = useMemo<ObQuestion[]>(
+    () => buildQuestionList(profile ?? 'athlete', version ?? 'full'),
+    [profile, version],
+  )
+  const byId = useMemo(() => new Map(list.map(q => [q.id, q])), [list])
+  // Une question masquée (showIf faux, ex. heures de coaching) ou fusionnée
+  // dans un autre écran N'EST PAS une étape : ni affichée, ni comptée.
+  const steps = useMemo<string[]>(() => [
+    'profile', 'version',
+    ...list.filter(q => !MERGED_INTO[q.id] && (q.showIf ? q.showIf(a) : true)).map(q => q.id),
+  ], [list, a])
+  const isFinal = cur === 'final'
+  const idx = Math.max(0, steps.indexOf(cur))
+  const total = steps.length
+  const q: ObQuestion | null = byId.get(cur) ?? null
+  const merged: ObQuestion[] = q ? list.filter(x => MERGED_INTO[x.id] === q.id) : []
 
-  // Une question masquée (showIf faux) est ignorée à la navigation.
-  const visible = (i: number): boolean => {
-    const qq = list[i]; return qq ? (qq.showIf ? qq.showIf(a) : true) : true
-  }
-
-  const isAnswered = (qq: ObQuestion): boolean => {
-    if (qq.optional || qq.kind === 'perSport' || qq.kind === 'timeframes') return true
+  const hasValue = (qq: ObQuestion): boolean => {
     if (qq.kind === 'multi') return getArr(qq.id).length > 0 || getStr(`${qq.id}__other`).trim().length > 0
     if (qq.kind === 'single') return getStr(qq.id).length > 0 || getStr(`${qq.id}__other`).trim().length > 0
+    if (qq.kind === 'perSport') {
+      const m = a[qq.id] as Record<string, Record<string, string>> | undefined
+      return !!m && Object.values(m).some(f => Object.values(f).some(v => !!v))
+    }
+    if (qq.kind === 'timeframes') {
+      const m = a[qq.id] as Record<string, string> | undefined
+      return !!m && Object.values(m).some(v => !!v.trim())
+    }
     return getStr(qq.id).trim().length > 0 // number, text
   }
+  const isRequiredOk = (qq: ObQuestion): boolean =>
+    qq.optional || qq.kind === 'perSport' || qq.kind === 'timeframes' ? true : hasValue(qq)
 
-  const canNext = step === 0 ? !!profile
-    : step === STEP_VERSION ? !!version
-    : q ? isAnswered(q) : true
+  const canNext = cur === 'profile' ? !!profile : cur === 'version' ? !!version : q ? isRequiredOk(q) : true
+  const lastStep = idx === steps.length - 1
+  // Choix unique « pur » (sans champ libre ni question fusionnée) → avance seule.
+  // Jamais sur la dernière étape : l'enregistrement reste un geste explicite.
+  const autoAdvance = !lastStep && (cur === 'profile' || cur === 'version'
+    || (!!q && q.kind === 'single' && !q.other && merged.length === 0))
 
-  function go(next: number, d: 'r' | 'l') { setDir(d); setStep(next); setError('') }
-
+  function go(next: string, d: 1 | -1) {
+    if (autoTimer.current) { window.clearTimeout(autoTimer.current); autoTimer.current = null }
+    setDir(d); setCur(next); setError('')
+  }
   function onNext() {
-    if (step < STEP_FIRST_Q + N - 1) {
-      // Avance jusqu'à la prochaine question visible.
-      let i = step + 1
-      while (i < STEP_FIRST_Q + N && !visible(i - STEP_FIRST_Q)) i++
-      go(i, 'r')
-    } else void finish()
+    if (saving) return
+    if (idx + 1 < steps.length) go(steps[idx + 1], 1)
+    else void finish()
   }
   function onBack() {
-    if (step === 0) return
-    let i = step - 1
-    while (i >= STEP_FIRST_Q && !visible(i - STEP_FIRST_Q)) i--
-    go(Math.max(0, i), 'l')
+    if (idx > 0) go(steps[idx - 1], -1)
   }
-  const onSkip = onNext
+  // L'avance automatique s'exécute APRÈS le rendu de la sélection : elle doit
+  // lire les étapes à jour (ex. « à côté » fait apparaître la question des heures).
+  const nextRef = useRef(onNext)
+  useEffect(() => { nextRef.current = onNext })
+  function scheduleAdvance() {
+    if (autoTimer.current) window.clearTimeout(autoTimer.current)
+    autoTimer.current = window.setTimeout(() => { autoTimer.current = null; nextRef.current() }, AUTO_ADVANCE_MS)
+  }
 
   async function finish() {
+    if (saving) return
     setSaving(true); setError('')
     const sb = createClient()
     const user = await getCurrentUser()
@@ -168,466 +248,344 @@ export default function BienvenuePage() {
     if (e) e = (await sb.from('profiles').update(legacy).eq('id', user.id)).error
     setSaving(false)
     if (e) { setError(t('welcome.saveError')); return }
-    setDir('r'); setStep(STEP_FINAL)
+    go('final', 1)
   }
 
-  // Swipe tactile (uniquement pendant les questions).
-  function onTouchStart(e: React.TouchEvent) { touch.current = e.touches[0].clientX }
-  function onTouchEnd(e: React.TouchEvent) {
-    if (touch.current == null || isFinal) return
-    const dx = e.changedTouches[0].clientX - touch.current
-    touch.current = null
-    if (dx < -55 && canNext) onNext()
-    else if (dx > 55 && step > 0) onBack()
-  }
+  function enterApp() { router.replace('/'); router.refresh() }
 
-  // Numéro/total pour la barre de progression (profil & version comptent).
-  const totalSteps = STEP_FIRST_Q + N
-  const dispNum = Math.min(step + 1, totalSteps)
+  // ── Pied : action principale selon l'étape ─────────────────────────
+  const sportCount = q && (q.id === 'a_sports' || q.id === 'c_sports')
+    ? getArr(q.id).length + (getStr(`${q.id}__other`).trim() ? 1 : 0) : 0
+  const nextLabel = lastStep ? t('q.finish')
+    : sportCount > 0 ? `${t('au.ob.continue')} · ${sportCount === 1 ? t('au.ob.oneSport') : t('au.ob.nSports', { n: sportCount })}`
+    : t('au.ob.continue')
+  // Choix unique à avance automatique : pas de bouton, sauf en revenant sur
+  // une question déjà répondue (on peut alors repartir sans re-choisir).
+  const answeredHere = cur === 'profile' ? !!profile : cur === 'version' ? !!version : q ? hasValue(q) : false
+  const showPill = !isFinal && (!autoAdvance || (dir === -1 && answeredHere))
+  const showSkip = !isFinal && !!q?.optional && !hasValue(q)
+  const showLater = !isFinal && !!profile && cur !== 'profile'
 
-  const keyframes = `
-        @keyframes qIn { from { opacity: 0; transform: translateX(var(--qx)) } to { opacity: 1; transform: translateX(0) } }
-        @keyframes qCheck { from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 } }
-        @keyframes qPop { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
-        .q-slide { animation: qIn 0.32s cubic-bezier(0.32,0.72,0,1) both }
-        @media (prefers-reduced-motion: reduce) { .q-slide { animation: none } .q-check, .q-pop { animation: none !important } }
-      `
-
-  // ── Mobile : plein écran gris chaud, en-tête rond ‹ · progression, pied fixe ──
-  if (m) {
-    const disabled = !canNext || saving
-    return (
-      <MobileCtx.Provider value>
-        <div style={{ minHeight: '100dvh', background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: FB }}>
-          <style>{keyframes}</style>
-          <LanguageDropdown />
-          {!isFinal && (
-            <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--surface-page)', display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top) + 12px) 76px 10px 16px' }}>
-              {step > 0 ? (
-                <button onClick={onBack} aria-label={t('onboarding.back')} style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, flexShrink: 0, background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={20} strokeWidth={2.2} /></button>
-              ) : <span style={{ width: 0 }} />}
-              <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(dispNum / Math.max(1, totalSteps)) * 100}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width 0.3s ease' }} />
-              </div>
-              <span className="tnum" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', flexShrink: 0 }}>{t('q.of', { n: dispNum, m: totalSteps })}</span>
-            </div>
-          )}
-
-          <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: isFinal ? 'calc(env(safe-area-inset-top) + 64px) 16px 24px' : '12px 16px 24px', overflowX: 'hidden' }}>
-            {!isFinal && (
-              <div key={step} className="q-slide" style={{ ['--qx' as string]: dir === 'r' ? '28px' : '-28px' }}>
-                {step === 0 && <ProfileStep t={t} value={profile} onChange={setProfile} />}
-                {step === STEP_VERSION && <VersionStep t={t} value={version} onChange={setVersion} />}
-                {q && <QuestionView
-                  q={q} t={t} showCoachIntro={profile === 'both' && q.block === 'coach' && qIdx === ATHLETE_LEN(version)}
-                  getStr={getStr} getArr={getArr} setStr={setStr} toggleArr={toggleArr}
-                  getPerSport={getPerSport} setPerSport={setPerSport} getTf={getTf} setTf={setTf}
-                  sportsSelected={getArr('a_sports')} />}
-              </div>
-            )}
-            {isFinal && (
-              <div style={{ textAlign: 'center' }}>
-                <svg className="q-pop" width="80" height="80" viewBox="0 0 72 72" style={{ margin: '0 auto', display: 'block', animation: 'qPop 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
-                  <circle cx="36" cy="36" r="33" fill="var(--surface-card)" />
-                  <path className="q-check" d="M22 37l9 9 19-21" fill="none" stroke="var(--primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="60" style={{ animation: 'qCheck 0.5s ease 0.25s both' }} />
-                </svg>
-                <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: '20px 0 6px' }}>{t('q.doneTitle')}</h1>
-                <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.45 }}>{t('q.doneSub')}</p>
-                <div style={{ textAlign: 'left', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden' }}>
-                  <RecapRow first label={t('ob.profile.title')} value={profile ? t('ob.profile.' + profile) : '—'} />
-                  <RecapRow label={t('ob.version.title')} value={version ? t('ob.version.' + version) : '—'} />
-                  {getArr('a_sports').length > 0 && <RecapRow label={t('onboarding.recapSports')} value={getArr('a_sports').map(s => tOpt(t, 'a_sports', s)).join(', ')} />}
-                  {getStr('a_goalType') && <RecapRow label={t('onboarding.recapGoal')} value={getStr('a_goalType') === 'autre' ? (getStr('a_goalType__other') || t('q.other')) : tOpt(t, 'a_goalType', getStr('a_goalType'))} />}
-                  {getStr('c_current') && <RecapRow label={t('ob.c_current.title')} value={getStr('c_current')} />}
-                </div>
-              </div>
-            )}
-            {error && <p style={{ color: 'var(--danger)', fontSize: 14, margin: '16px 0 0', textAlign: 'center' }}>{error}</p>}
+  // ── Contenu de l'étape ────────────────────────────────────────────
+  let body: ReactNode = null
+  if (isFinal) {
+    body = (
+      <FinalScreen t={t} firstName={firstName} profile={profile}
+        sports={getArr('a_sports').map(s => tOpt(t, 'a_sports', s))}
+        goal={getStr('a_goalType') ? (getStr('a_goalType') === 'autre' ? (getStr('a_goalType__other') || t('q.other')) : tOpt(t, 'a_goalType', getStr('a_goalType'))) : ''}
+        mainGoal={getStr('a_mainGoal').trim()}
+        volume={getStr('a_volume') ? tOpt(t, 'a_volume', getStr('a_volume')) : ''}
+        athletes={getStr('c_current')} />
+    )
+  } else if (cur === 'profile') {
+    body = (
+      <Step section={t(SECTION.profile)} title={t('ob.profile.q')}>
+        <CardList>
+          {(['athlete', 'both', 'coach'] as ObProfile[]).map(o => (
+            <ChoiceCard key={o} emoji={EMOJI.profile[o]} title={t('ob.profile.' + o)} desc={t('ob.profile.' + o + 'D')} selected={profile === o}
+              onClick={() => { setProfile(o); scheduleAdvance() }} />
+          ))}
+        </CardList>
+      </Step>
+    )
+  } else if (cur === 'version') {
+    body = (
+      <Step section={t(SECTION.version)} title={t('ob.version.q')} hint={t('ob.version.hint')}>
+        <CardList>
+          <ChoiceCard emoji={EMOJI.version.full} title={t('ob.version.full')} badge={t('ob.version.recommended')} desc={t('ob.version.fullD')}
+            selected={version === 'full'} onClick={() => { setVersion('full'); scheduleAdvance() }} />
+          <ChoiceCard emoji={EMOJI.version.express} title={t('ob.version.express')} desc={t('ob.version.expressD')}
+            selected={version === 'express'} onClick={() => { setVersion('express'); scheduleAdvance() }} />
+        </CardList>
+      </Step>
+    )
+  } else if (q) {
+    const section = q.block === 'coach' ? t('ob.blockCoach') : SECTION[q.id] ? t(SECTION[q.id]) : ''
+    const descKey = `ob.${q.id}.desc`; const desc = t(descKey)
+    const hint = desc !== descKey ? desc : q.kind === 'multi' ? t('au.ob.multiHint') : undefined
+    const title = merged.length > 0 ? t('au.ob.goalTitle') : t(`ob.${q.id}.title`)
+    body = (
+      <Step section={section} title={title} hint={hint}>
+        <QuestionBody q={q} t={t} getStr={getStr} getArr={getArr} setStr={setStr} toggleArr={toggleArr}
+          getPerSport={getPerSport} setPerSport={setPerSport} getTf={getTf} setTf={setTf}
+          sportsSelected={getArr('a_sports')} onPicked={autoAdvance ? scheduleAdvance : undefined} onEnter={canNext ? onNext : undefined} />
+        {merged.map(mq => (
+          <div key={mq.id} style={{ marginTop: 20 }}>
+            <label htmlFor={`ob-${mq.id}`} style={{ display: 'block', margin: '0 4px 6px', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
+              {t('au.ob.goalPrecise')}
+            </label>
+            <textarea id={`ob-${mq.id}`} className="ob-field" rows={2} value={getStr(mq.id)} onChange={e => setStr(mq.id, e.target.value)}
+              placeholder={t(`ob.${mq.id}.ph`)} />
           </div>
+        ))}
+      </Step>
+    )
+  }
 
-          <div style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--surface-page)', padding: '10px 16px calc(14px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {isFinal ? (
-              <SheetPill onClick={() => { router.replace('/'); router.refresh() }}>{t('q.enter')}<ArrowRight size={18} /></SheetPill>
-            ) : (
-              <>
-                <SheetPill onClick={onNext} disabled={disabled}>
-                  {saving ? t('onboarding.saving') : <>{step === totalSteps - 1 ? t('q.finish') : t('q.next')}<ArrowRight size={18} /></>}
-                </SheetPill>
-                {q?.optional && <SheetPill variant="ghost" onClick={onSkip}>{t('q.skip')}</SheetPill>}
-              </>
-            )}
+  return (
+    <div style={{ minHeight: '100dvh', background: 'var(--surface-page)', fontFamily: FB }}>
+      <style>{AUTH_CSS + OB_CSS}</style>
+
+      {!isFinal && (
+        <div style={{ position: 'sticky', top: 0, zIndex: 6, background: 'var(--surface-page)' }}>
+          <div className="au-col" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top) + 12px) 20px 8px' }}>
+            {idx > 0 ? <BackButton onClick={onBack} /> : <span aria-hidden style={{ width: 44, height: 44, flexShrink: 0 }} />}
+            <div role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={idx + 1}
+              style={{ flex: 1, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${((idx + 1) / Math.max(1, total)) * 100}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width .35s cubic-bezier(.22,1,.36,1)' }} />
+            </div>
+            <span className="tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{idx + 1} / {total}</span>
+            {showLater
+              ? <button type="button" onClick={() => void finish()} disabled={saving} style={{ flexShrink: 0, minHeight: 44, padding: '0 2px', border: 'none', background: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{t('au.ob.later')}</button>
+              : cur === 'profile' ? <LangPill /> : null}
           </div>
         </div>
-      </MobileCtx.Provider>
-    )
-  }
+      )}
 
-  return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-      <style>{`
-        @keyframes qIn { from { opacity: 0; transform: translateX(var(--qx)) } to { opacity: 1; transform: translateX(0) } }
-        @keyframes qCheck { from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 } }
-        @keyframes qPop { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
-        .q-slide { animation: qIn 0.32s cubic-bezier(0.32,0.72,0,1) both }
-        @media (prefers-reduced-motion: reduce) { .q-slide { animation: none } .q-check, .q-pop { animation: none !important } }
-      `}</style>
-      <LanguageDropdown />
+      <SlideView variant="push" screenKey={cur} direction={dir} onBack={!isFinal && idx > 0 ? onBack : undefined} background="var(--surface-page)">
+        <div className="au-col" style={{
+          minHeight: isFinal ? '100dvh' : 'calc(100dvh - 70px - env(safe-area-inset-top))',
+          padding: isFinal ? 'calc(env(safe-area-inset-top) + 56px) 20px calc(env(safe-area-inset-bottom) + 120px)' : '10px 20px calc(env(safe-area-inset-bottom) + 150px)',
+        }}>
+          {body}
+          {error && <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, margin: '16px 4px 0', textAlign: 'center' }}>{error}</p>}
+        </div>
+      </SlideView>
 
-      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{
-        width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px 22px', overflow: 'hidden',
-      }}>
-        {!isFinal && (
-          <>
-            {/* Progression + N/M + Passer (dès l'étape profil) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-              <div style={{ flex: 1, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(dispNum / Math.max(1, totalSteps)) * 100}%`, background: 'var(--primary-gradient)', borderRadius: 'var(--r-pill)', transition: 'width 0.3s ease' }} />
-              </div>
-              <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{t('q.of', { n: dispNum, m: totalSteps })}</span>
-              {q?.optional && (
-                <button onClick={onSkip} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>{t('q.skip')}</button>
-              )}
-            </div>
-
-            <div key={step} className="q-slide" style={{ ['--qx' as string]: dir === 'r' ? '28px' : '-28px' }}>
-              {step === 0 && <ProfileStep t={t} value={profile} onChange={setProfile} />}
-              {step === STEP_VERSION && <VersionStep t={t} value={version} onChange={setVersion} />}
-              {q && <QuestionView
-                q={q} t={t} showCoachIntro={profile === 'both' && q.block === 'coach' && qIdx === ATHLETE_LEN(version)}
-                getStr={getStr} getArr={getArr} setStr={setStr} toggleArr={toggleArr}
-                getPerSport={getPerSport} setPerSport={setPerSport} getTf={getTf} setTf={setTf}
-                sportsSelected={getArr('a_sports')} />}
-            </div>
-
-            {error && <p style={{ color: 'var(--charge-hard)', fontFamily: FB, fontSize: 13, margin: '14px 0 0', textAlign: 'center' }}>{error}</p>}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 22 }}>
-              {step > 0 ? (
-                <button onClick={onBack} aria-label={t('onboarding.back')} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={18} /></button>
-              ) : <span />}
-              <button onClick={onNext} disabled={!canNext || saving} style={{
-                height: 48, padding: '0 24px', borderRadius: 'var(--r-pill)', border: 'none',
-                background: (!canNext || saving) ? 'var(--bg-card2)' : 'var(--primary-gradient)',
-                color: (!canNext || saving) ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700,
-                cursor: (!canNext || saving) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
-                boxShadow: (!canNext || saving) ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(6,182,212,0.28)',
-              }}>
-                {saving ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> : <>{step === totalSteps - 1 ? t('q.finish') : t('q.next')}<ArrowRight size={17} /></>}
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* ── Écran final ── */}
-        {isFinal && (
-          <div style={{ textAlign: 'center', padding: '12px 0 4px' }}>
-            <svg className="q-pop" width="72" height="72" viewBox="0 0 72 72" style={{ margin: '0 auto', display: 'block', animation: 'qPop 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
-              <circle cx="36" cy="36" r="33" fill="var(--primary-dim)" />
-              <path className="q-check" d="M22 37l9 9 19-21" fill="none" stroke="var(--primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="60" style={{ animation: 'qCheck 0.5s ease 0.25s both' }} />
-            </svg>
-            <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '20px 0 4px' }}>{t('q.doneTitle')}</h1>
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 22px' }}>{t('q.doneSub')}</p>
-
-            <div style={{ textAlign: 'left', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 22 }}>
-              <RecapRow label={t('ob.profile.title')} value={profile ? t('ob.profile.' + profile) : '—'} />
-              <RecapRow label={t('ob.version.title')} value={version ? t('ob.version.' + version) : '—'} />
-              {getArr('a_sports').length > 0 && <RecapRow label={t('onboarding.recapSports')} value={getArr('a_sports').map(s => tOpt(t, 'a_sports', s)).join(', ')} />}
-              {getStr('a_goalType') && <RecapRow label={t('onboarding.recapGoal')} value={getStr('a_goalType') === 'autre' ? (getStr('a_goalType__other') || t('q.other')) : tOpt(t, 'a_goalType', getStr('a_goalType'))} />}
-              {getStr('c_current') && <RecapRow label={t('ob.c_current.title')} value={getStr('c_current')} />}
-            </div>
-
-            <button onClick={() => { router.replace('/'); router.refresh() }} style={{
-              width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary-gradient)', color: '#fff',
-              fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(6,182,212,0.28)',
-            }}>{t('q.enter')}<ArrowRight size={17} /></button>
+      {(showPill || showSkip || isFinal) && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 6, background: 'linear-gradient(to bottom, transparent, var(--surface-page) 26px)' }}>
+          <div className="au-col" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '26px 20px calc(env(safe-area-inset-bottom) + 18px)' }}>
+            {isFinal
+              ? <PrimaryPill onClick={enterApp}>{t('q.enter')}</PrimaryPill>
+              : <>
+                  {showPill && <PrimaryPill onClick={onNext} disabled={!canNext} loading={saving}>{nextLabel}</PrimaryPill>}
+                  {showSkip && <SheetPill variant="ghost" onClick={onNext}>{t('q.skip')}</SheetPill>}
+                </>}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
-// Nb de questions athlète présentes (pour repérer le début du bloc coach en « both »).
-function ATHLETE_LEN(version: ObVersion | null): number {
-  if (!version) return 0
-  return version === 'express' ? ATHLETE_QUESTIONS.filter(q => q.express).length : ATHLETE_QUESTIONS.length
-}
-
-type TF = (key: string, vars?: Record<string, string | number>) => string
-// Label d'option (avec repli sur la clé brute si non traduite).
-function tOpt(t: TF, qid: string, value: string): string {
-  const k = `ob.${qid}.${value}`; const r = t(k); return r === k ? value : r
-}
-
-// ── Écran « Qui es-tu ? » ─────────────────────────────────────────
-/** Titre de question : Fraunces 22 (desktop) · Inter 26/800 (mobile). */
-function QTitle({ children, mb }: { children: React.ReactNode; mb: number }) {
-  const m = useContext(MobileCtx)
-  return m
-    ? <h1 style={{ fontFamily: FB, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1.2, margin: `4px 4px ${mb}px` }}>{children}</h1>
-    : <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: mb === 20 ? 1.2 : 1.22, margin: `0 0 ${mb}px` }}>{children}</h1>
-}
-/** Conteneur des options : liste nue (desktop) · carte blanche à filets (mobile). */
-function OptionList({ children }: { children: React.ReactNode }) {
-  const m = useContext(MobileCtx)
-  return <div style={m
-    ? { display: 'flex', flexDirection: 'column', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden' }
-    : { display: 'flex', flexDirection: 'column' }}>{children}</div>
-}
-
-function ProfileStep({ t, value, onChange }: { t: TF; value: ObProfile | null; onChange: (p: ObProfile) => void }) {
-  const opts: ObProfile[] = ['athlete', 'both', 'coach']
+// ── Gabarit d'étape : section · titre · aide ───────────────────────
+function Step({ section, title, hint, children }: { section?: string; title: string; hint?: string; children: ReactNode }) {
   return (
     <div>
-      <QTitle mb={20}>{t('ob.profile.q')}</QTitle>
-      <OptionList>
-        {opts.map((o, i) => (
-          <OptionButton key={o} selected={value === o} multi={false} i={i}
-            title={t('ob.profile.' + o)} desc={t('ob.profile.' + o + 'D')} onClick={() => onChange(o)} />
-        ))}
-      </OptionList>
+      {section && <p style={{ margin: '8px 0 6px', fontFamily: FB, fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)' }}>{section}</p>}
+      <h1 className="au-h1">{title}</h1>
+      {hint ? <p className="au-sub" style={{ marginBottom: 18 }}>{hint}</p> : <div style={{ height: 18 }} />}
+      {children}
     </div>
   )
 }
 
-// ── Écran « Version » (incite au complet) ─────────────────────────
-function VersionStep({ t, value, onChange }: { t: TF; value: ObVersion | null; onChange: (v: ObVersion) => void }) {
-  const m = useContext(MobileCtx)
-  if (m) {
-    const card = (on: boolean): React.CSSProperties => ({
-      display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '16px', marginBottom: 12, border: 'none',
-      borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', fontFamily: FB,
-      boxShadow: on ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW, transition: 'box-shadow 0.2s ease',
-    })
-    return (
-      <div>
-        <QTitle mb={6}>{t('ob.version.q')}</QTitle>
-        <p style={{ fontFamily: FB, fontSize: 15, color: 'var(--text-mid)', margin: '0 4px 18px', lineHeight: 1.5 }}>{t('ob.version.hint')}</p>
-        <button onClick={() => onChange('full')} aria-pressed={value === 'full'} style={card(value === 'full')}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{t('ob.version.full')}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: '3px 10px' }}>{t('ob.version.recommended')}</span>
-          </span>
-          <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 4, lineHeight: 1.45 }}>{t('ob.version.fullD')}</span>
-        </button>
-        <button onClick={() => onChange('express')} aria-pressed={value === 'express'} style={card(value === 'express')}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t('ob.version.express')}</span>
-          <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 3 }}>{t('ob.version.expressD')}</span>
-        </button>
-      </div>
-    )
-  }
+function CardList({ children }: { children: ReactNode }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
+}
+
+// ── Carte de choix unique (emoji · titre · description · radio) ────
+function ChoiceCard({ emoji, title, desc, badge, selected, onClick }: {
+  emoji?: string; title: string; desc?: string; badge?: string; selected: boolean; onClick: () => void
+}) {
   return (
-    <div>
-      <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 6px' }}>{t('ob.version.q')}</h1>
-      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>{t('ob.version.hint')}</p>
-      {/* Complet mis en avant */}
-      <button onClick={() => onChange('full')} style={{
-        display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '16px 16px', marginBottom: 12,
-        border: 'none', borderRadius: 'var(--r-md)',
-        background: value === 'full' ? 'var(--primary-dim)' : 'var(--bg-card2)',
-        boxShadow: value === 'full' ? 'inset 0 0 0 2px var(--primary)' : 'inset 0 0 0 1px var(--border)',
-      }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: FB, fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{t('ob.version.full')}</span>
-          <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim)', borderRadius: 'var(--r-pill)', padding: '2px 8px' }}>{t('ob.version.recommended')}</span>
+    <button type="button" role="radio" aria-checked={selected} onClick={onClick} className="ob-card"
+      style={{ boxShadow: selected ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW }}>
+      {emoji && <span aria-hidden style={{ fontSize: 26, lineHeight: 1, width: 34, textAlign: 'center', flexShrink: 0 }}>{emoji}</span>}
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>{title}</span>
+          {badge && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: '3px 10px' }}>{badge}</span>}
         </span>
-        <span style={{ display: 'block', fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', marginTop: 5, lineHeight: 1.45 }}>{t('ob.version.fullD')}</span>
-      </button>
-      {/* Express discret */}
-      <button onClick={() => onChange('express')} style={{
-        display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 16px',
-        border: 'none', borderRadius: 'var(--r-md)',
-        background: value === 'express' ? 'var(--primary-dim)' : 'transparent',
-        boxShadow: value === 'express' ? 'inset 0 0 0 2px var(--primary)' : 'inset 0 0 0 1px var(--border)',
-      }}>
-        <span style={{ fontFamily: FB, fontSize: 14, fontWeight: 700, color: 'var(--text-mid)' }}>{t('ob.version.express')}</span>
-        <span style={{ display: 'block', fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', marginTop: 3 }}>{t('ob.version.expressD')}</span>
-      </button>
-    </div>
+        {desc && <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.4 }}>{desc}</span>}
+      </span>
+      <span aria-hidden style={{
+        width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+        background: selected ? 'var(--primary)' : 'transparent', boxShadow: selected ? 'none' : 'inset 0 0 0 2px var(--text-dim)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s ease',
+      }}>{selected && <Check size={14} color="var(--on-primary)" strokeWidth={3.2} />}</span>
+    </button>
+  )
+}
+
+// ── Pilule de choix multiple (choisie = pilule sombre) ──────────────
+function ChoicePill({ emoji, label, selected, onClick, muted }: { emoji?: string; label: string; selected: boolean; onClick: () => void; muted?: boolean }) {
+  const style: CSSProperties = selected
+    ? { background: 'var(--text)', color: 'var(--surface-page)' }
+    : { background: 'var(--surface-card)', color: muted ? 'var(--text-mid)' : 'var(--text)', boxShadow: SHEET_CARD_SHADOW }
+  return (
+    <button type="button" role="checkbox" aria-checked={selected} onClick={onClick} className="ob-pill" style={style}>
+      {emoji && <span aria-hidden>{emoji}</span>}
+      {label}
+    </button>
   )
 }
 
 // ── Rendu générique d'une question ────────────────────────────────
-interface QVProps {
-  q: ObQuestion; t: TF; showCoachIntro: boolean
+interface QBProps {
+  q: ObQuestion; t: TF
   getStr: (id: string) => string; getArr: (id: string) => string[]
   setStr: (id: string, v: string) => void; toggleArr: (id: string, v: string) => void
   getPerSport: (qid: string, s: string, f: string) => string; setPerSport: (qid: string, s: string, f: string, v: string) => void
   getTf: (qid: string, tf: string) => string; setTf: (qid: string, tf: string, v: string) => void
   sportsSelected: string[]
+  /** Choix unique à avance automatique : appelé après chaque sélection. */
+  onPicked?: () => void
+  /** Entrée clavier dans un champ simple → étape suivante. */
+  onEnter?: () => void
 }
-function QuestionView(p: QVProps) {
+
+function QuestionBody(p: QBProps) {
   const { q, t } = p
-  const m = useContext(MobileCtx)
-  const inputStyle = m ? mInputStyle : deskInputStyle
-  const title = t(`ob.${q.id}.title`)
-  const descKey = `ob.${q.id}.desc`; const desc = t(descKey)
-  return (
-    <div>
-      {p.showCoachIntro && (m
-        ? <p style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--primary)', margin: '0 4px 8px' }}>{t('ob.blockCoach')}</p>
-        : <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', margin: '0 0 10px' }}>{t('ob.blockCoach')}</p>
-      )}
-      <QTitle mb={6}>{title}</QTitle>
-      {desc !== descKey && <p style={{ fontFamily: FB, fontSize: m ? 15 : 13, color: 'var(--text-mid)', margin: m ? '0 4px 16px' : '0 0 16px', lineHeight: 1.5 }}>{desc}</p>}
-      {desc === descKey && <div style={{ height: 14 }} />}
+  const emo = EMOJI[q.id] ?? {}
+  const [otherOpen, setOtherOpen] = useState(() => p.getStr(`${q.id}__other`).length > 0)
+  const enter = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && p.onEnter) { e.preventDefault(); p.onEnter() } }
 
-      {(q.kind === 'single' || q.kind === 'multi') && (
-        <OptionList>
-          {q.options!.map((o, i) => {
-            const selected = q.kind === 'multi' ? p.getArr(q.id).includes(o.value) : p.getStr(q.id) === o.value
-            return (
-              <OptionButton key={o.value} selected={selected} multi={q.kind === 'multi'} i={i}
-                title={t(`ob.${q.id}.${o.value}`)} desc={o.hasDesc ? t(`ob.${q.id}.${o.value}D`) : undefined}
-                onClick={() => q.kind === 'multi' ? p.toggleArr(q.id, o.value) : p.setStr(q.id, o.value)} />
-            )
-          })}
-          {q.other && (
-            <div style={m ? { position: 'relative', padding: '10px 12px 12px' } : { borderTop: '1px solid var(--border)', padding: '14px 14px 4px' }}>
-              {m && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
-              <input value={p.getStr(`${q.id}__other`)} onChange={e => { p.setStr(`${q.id}__other`, e.target.value); if (q.kind === 'single' && e.target.value) p.setStr(q.id, 'autre') }}
-                placeholder={t('q.other')} style={m ? { ...inputStyle, background: 'var(--surface-page)', boxShadow: 'none', minHeight: 46 } : inputStyle} />
-            </div>
-          )}
-        </OptionList>
-      )}
-
-      {q.kind === 'number' && (
-        <input type="number" inputMode="numeric" value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)}
-          placeholder={q.unit || '0'} style={inputStyle} />
-      )}
-
-      {q.kind === 'text' && (
-        TEXTAREA.has(q.id)
-          ? <textarea value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)} rows={3}
-              placeholder={t(`ob.${q.id}.ph`)} style={{ ...inputStyle, height: 'auto', padding: '12px 14px', resize: 'vertical', lineHeight: 1.5 }} />
-          : <input value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)}
-              placeholder={t(`ob.${q.id}.ph`)} style={inputStyle} />
-      )}
-
-      {q.kind === 'timeframes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {q.timeframes!.map(tf => (
-            <div key={tf.id}>
-              <label style={{ display: 'block', fontFamily: FB, fontSize: m ? 15 : 12.5, fontWeight: m ? 500 : 600, color: 'var(--text-mid)', margin: m ? '0 4px 8px' : '0 0 6px' }}>{t(`ob.${q.id}.${tf.id}`)}</label>
-              <input value={p.getTf(q.id, tf.id)} onChange={e => p.setTf(q.id, tf.id, e.target.value)}
-                placeholder={t(`ob.${q.id}.ph`)} style={inputStyle} />
-            </div>
+  if (q.kind === 'single') {
+    return (
+      <>
+        <CardList>
+          {q.options!.map(o => (
+            <ChoiceCard key={o.value} emoji={emo[o.value]} title={t(`ob.${q.id}.${o.value}`)}
+              desc={o.hasDesc ? t(`ob.${q.id}.${o.value}D`) : undefined} selected={p.getStr(q.id) === o.value}
+              onClick={() => { p.setStr(q.id, o.value); p.onPicked?.() }} />
           ))}
-        </div>
-      )}
+        </CardList>
+        {q.other && (
+          <input className="ob-field" style={{ marginTop: 10 }} value={p.getStr(`${q.id}__other`)} placeholder={`${t('q.other')}…`}
+            onChange={e => { p.setStr(`${q.id}__other`, e.target.value); if (e.target.value) p.setStr(q.id, 'autre') }} />
+        )}
+      </>
+    )
+  }
 
-      {q.kind === 'perSport' && (
-        p.sportsSelected.length === 0
-          ? <p style={{ fontFamily: FB, fontSize: m ? 15 : 13, color: m ? 'var(--text-mid)' : 'var(--text-dim)' }}>{t('ob.perSport.empty')}</p>
-          : <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {p.sportsSelected.map(s => (
-                <div key={s} style={m
-                  ? { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '16px', boxShadow: SHEET_CARD_SHADOW }
-                  : { background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
-                  <div style={{ fontFamily: m ? FB : FD, fontSize: m ? 17 : 15, fontWeight: m ? 700 : 600, color: 'var(--text)', marginBottom: 10 }}>{tOpt(t, 'a_sports', s)}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {q.perSportFields!.map(f => (
-                      <div key={f.id}>
-                        <label style={{ display: 'block', fontFamily: FB, fontSize: m ? 14 : 12, fontWeight: m ? 500 : 600, color: 'var(--text-mid)', marginBottom: m ? 6 : 5 }}>{t(`ob.${q.id}.${f.id}`)}</label>
-                        {f.kind === 'single'
-                          ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                              {f.options!.map(ov => {
-                                const sel = p.getPerSport(q.id, s, f.id) === ov
-                                return (
-                                  <button key={ov} type="button" onClick={() => p.setPerSport(q.id, s, f.id, sel ? '' : ov)} aria-pressed={sel}
-                                    style={m
-                                      ? { border: 'none', background: sel ? 'var(--text)' : 'var(--surface-chip)', color: sel ? 'var(--bg)' : 'var(--text)', borderRadius: 'var(--r-pill)', minHeight: 40, padding: '0 14px', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
-                                      : { border: 'none', boxShadow: `inset 0 0 0 1px ${sel ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel ? 'var(--primary-dim)' : 'transparent', color: sel ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontFamily: FB, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                    {t(`ob.${q.id}.${f.id}.${ov}`)}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          : <input type={f.kind === 'number' ? 'number' : 'text'} inputMode={f.kind === 'number' ? 'numeric' : undefined}
-                              value={p.getPerSport(q.id, s, f.id)} onChange={e => p.setPerSport(q.id, s, f.id, e.target.value)}
-                              placeholder={f.unit || t(`ob.${q.id}.${f.id}.ph`)} style={m ? { ...inputStyle, background: 'var(--surface-page)', boxShadow: 'none', minHeight: 46 } : { ...inputStyle, height: 42 }} />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-      )}
+  if (q.kind === 'multi') {
+    const other = p.getStr(`${q.id}__other`)
+    return (
+      <>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {q.options!.map(o => (
+            <ChoicePill key={o.value} emoji={emo[o.value]} label={t(`ob.${q.id}.${o.value}`)} selected={p.getArr(q.id).includes(o.value)}
+              onClick={() => p.toggleArr(q.id, o.value)} />
+          ))}
+          {q.other && (
+            <ChoicePill label={other.trim() ? other.trim() : `+ ${t('q.other')}`} selected={!!other.trim()} muted onClick={() => setOtherOpen(v => !v || !!other)} />
+          )}
+        </div>
+        {q.other && otherOpen && (
+          <input className="ob-field au-rise" autoFocus style={{ marginTop: 14 }} value={other} placeholder={t('q.otherPh')}
+            onChange={e => p.setStr(`${q.id}__other`, e.target.value)} onKeyDown={enter} />
+        )}
+      </>
+    )
+  }
+
+  if (q.kind === 'number') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <input className="ob-field" type="number" inputMode="numeric" value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)}
+          placeholder="0" onKeyDown={enter} style={{ paddingRight: q.unit ? 80 : 16, fontVariantNumeric: 'tabular-nums' }} />
+        {q.unit && <span aria-hidden style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)' }}>{q.unit}</span>}
+      </div>
+    )
+  }
+
+  if (q.kind === 'text') {
+    return TEXTAREA.has(q.id)
+      ? <textarea className="ob-field" rows={3} value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)} placeholder={t(`ob.${q.id}.ph`)} />
+      : <input className="ob-field" value={p.getStr(q.id)} onChange={e => p.setStr(q.id, e.target.value)} placeholder={t(`ob.${q.id}.ph`)} onKeyDown={enter} />
+  }
+
+  if (q.kind === 'timeframes') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {q.timeframes!.map(tf => (
+          <div key={tf.id}>
+            <label htmlFor={`ob-${q.id}-${tf.id}`} style={{ display: 'block', margin: '0 4px 6px', fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t(`ob.${q.id}.${tf.id}`)}</label>
+            <input id={`ob-${q.id}-${tf.id}`} className="ob-field" value={p.getTf(q.id, tf.id)} onChange={e => p.setTf(q.id, tf.id, e.target.value)} placeholder={t(`ob.${q.id}.ph`)} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // perSport : une carte par sport coché.
+  if (p.sportsSelected.length === 0) {
+    return <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 4px' }}>{t('ob.perSport.empty')}</p>
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {p.sportsSelected.map(s => (
+        <div key={s} style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16, boxShadow: SHEET_CARD_SHADOW }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>
+            {SPORT_EMOJI[s] && <span aria-hidden style={{ fontSize: 22 }}>{SPORT_EMOJI[s]}</span>}
+            {tOpt(t, 'a_sports', s)}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {q.perSportFields!.map(f => (
+              <div key={f.id}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: '0 2px 6px' }}>{t(`ob.${q.id}.${f.id}`)}</div>
+                {f.kind === 'single'
+                  ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {f.options!.map(ov => {
+                        const sel = p.getPerSport(q.id, s, f.id) === ov
+                        return (
+                          <button key={ov} type="button" aria-pressed={sel} className="ob-pill" onClick={() => p.setPerSport(q.id, s, f.id, sel ? '' : ov)}
+                            style={sel ? { background: 'var(--text)', color: 'var(--surface-card)', minHeight: 40, fontSize: 14 } : { background: 'var(--surface-chip)', color: 'var(--text)', minHeight: 40, fontSize: 14 }}>
+                            {t(`ob.${q.id}.${f.id}.${ov}`)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  : <div style={{ position: 'relative' }}>
+                      <input className="ob-field ob-inset" type={f.kind === 'number' ? 'number' : 'text'} inputMode={f.kind === 'number' ? 'numeric' : undefined}
+                        value={p.getPerSport(q.id, s, f.id)} onChange={e => p.setPerSport(q.id, s, f.id, e.target.value)}
+                        placeholder={f.unit ? '0' : t(`ob.${q.id}.${f.id}.ph`)} style={{ paddingRight: f.unit ? 76 : 16 }} />
+                      {f.unit && <span aria-hidden style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, fontWeight: 600, color: 'var(--text-mid)' }}>{f.unit}</span>}
+                    </div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
-// ── Bouton d'option (radio / checkbox) réutilisable ───────────────
-function OptionButton({ selected, multi, i, title, desc, onClick }: {
-  selected: boolean; multi: boolean; i: number; title: string; desc?: string; onClick: () => void
+// ── Écran final (A5) ──────────────────────────────────────────────
+function FinalScreen({ t, firstName, profile, sports, goal, mainGoal, volume, athletes }: {
+  t: TF; firstName: string; profile: ObProfile | null; sports: string[]; goal: string; mainGoal: string; volume: string; athletes: string
 }) {
-  const m = useContext(MobileCtx)
-  if (m) {
-    // Ligne de carte blanche : filet encarté, coche cyan pleine quand choisie.
-    return (
-      <button onClick={onClick} role={multi ? 'checkbox' : 'radio'} aria-checked={selected} style={{
-        position: 'relative', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', width: '100%',
-        minHeight: 56, padding: '14px 16px', border: 'none', background: 'transparent', fontFamily: FB,
+  const rows: [string, string][] = []
+  if (profile) rows.push([t('ob.profile.title'), t('ob.profile.' + profile)])
+  if (sports.length) rows.push([t('onboarding.recapSports'), sports.join(', ')])
+  if (goal || mainGoal) rows.push([t('onboarding.recapGoal'), [goal, mainGoal].filter(Boolean).join(' · ')])
+  if (volume) rows.push([t('au.ob.recapAvail'), t('au.ob.perWeek', { v: volume })])
+  if (athletes) rows.push([t('au.ob.recapAthletes'), athletes])
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div className="ob-pop" style={{
+        width: 96, height: 96, margin: '0 auto', borderRadius: '50%', color: 'var(--success)',
+        background: 'color-mix(in srgb, var(--success) 16%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 16, fontWeight: selected ? 700 : 600, color: 'var(--text)', lineHeight: 1.3 }}>{title}</span>
-          {desc && <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 3, lineHeight: 1.45 }}>{desc}</span>}
-        </span>
-        <span aria-hidden style={{
-          width: 26, height: 26, borderRadius: multi ? 'var(--r-sm)' : '50%', flexShrink: 0,
-          background: selected ? 'var(--primary)' : 'transparent', boxShadow: selected ? 'none' : 'inset 0 0 0 2px var(--text-dim)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s ease',
-        }}>{selected && <Check size={15} color="var(--on-primary)" strokeWidth={3} />}</span>
-      </button>
-    )
-  }
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', width: '100%',
-      padding: '14px 14px', border: 'none', borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-      borderRadius: selected ? 'var(--r-md)' : 0,
-      background: selected ? 'var(--primary-dim)' : 'transparent',
-      boxShadow: selected ? 'inset 0 0 0 1px var(--primary)' : 'none', transition: 'background 0.15s',
-    }}>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: FB, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
-        {desc && <span style={{ display: 'block', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', marginTop: 3, lineHeight: 1.45 }}>{desc}</span>}
-      </span>
-      <span style={{
-        width: 22, height: 22, borderRadius: multi ? 6 : '50%', flexShrink: 0,
-        border: `2px solid ${selected ? 'var(--primary)' : 'var(--border-mid)'}`,
-        background: selected ? 'var(--primary)' : 'transparent',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-      }}>{selected && <Check size={13} color="#fff" strokeWidth={3} />}</span>
-    </button>
-  )
-}
-
-const deskInputStyle: React.CSSProperties = {
-  width: '100%', height: 46, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
-  borderRadius: 'var(--r-sm)', padding: '0 14px', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none',
-}
-
-function RecapRow({ label, value, first }: { label: string; value: string; first?: boolean }) {
-  const m = useContext(MobileCtx)
-  if (m) {
-    return (
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, minHeight: 52, padding: '12px 16px' }}>
-        {!first && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
-        <span style={{ fontFamily: FB, fontSize: 15, color: 'var(--text-mid)', flexShrink: 0 }}>{label}</span>
-        <span style={{ fontFamily: FB, fontSize: 15, fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+        <svg aria-hidden width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+          <path className="ob-check" d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
       </div>
-    )
-  }
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '5px 0' }}>
-      <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+      <h1 className="au-h1 au-rise" style={{ marginTop: 22, ['--d' as string]: '220ms' }}>
+        {firstName ? t('au.ob.doneName', { name: firstName }) : t('q.doneTitle')}
+      </h1>
+      <p className="au-sub au-rise" style={{ ['--d' as string]: '300ms' }}>{t('q.doneSub')}</p>
+      {rows.length > 0 && (
+        <div className="au-rise" style={{ ['--d' as string]: '420ms', textAlign: 'left', marginTop: 26, padding: '4px 18px', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW }}>
+          {rows.map(([label, value], i) => (
+            <div key={label} style={{ padding: '13px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+              <div style={{ fontSize: 14, color: 'var(--text-mid)' }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginTop: 2, overflowWrap: 'anywhere' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

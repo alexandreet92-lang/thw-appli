@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { MobileSheet, SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 interface Props { onClose: () => void }
 
@@ -29,6 +30,8 @@ export default function PlanPicker({ onClose }: Props) {
   const [closing, setClosing] = useState(false)
   useEffect(() => { const r = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(r) }, [])
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(onClose, 280) }
+  const mobile = useMobileSafe()
+  const [selected, setSelected] = useState<string>(PLANS.find(p => p.popular)?.tier ?? PLANS[0].tier)
 
   async function choose(tier: string) {
     if (loading) return
@@ -46,6 +49,57 @@ export default function PlanPicker({ onClose }: Props) {
       setError(e instanceof Error ? e.message : t('w3c.error_generic'))
       setLoading(null)
     }
+  }
+
+  // Mobile (≤ 767 px) : feuille du bas — piste mensuel/annuel (pouce blanc),
+  // cartes de formule blanches à cocher, une seule pilule cyan.
+  if (mobile) {
+    const sel = PLANS.find(p => p.tier === selected) ?? PLANS[0]
+    return (
+      <MobileSheet open={shown && !closing} onClose={requestClose} locked={loading !== null} title={t('w3c.pp_title')} sub={t('w3c.pp_subtitle')} zIndex={14500}
+        footer={<>
+          {error && <p style={{ fontSize: 13, color: 'var(--danger)', textAlign: 'center', margin: 0 }}>{error}</p>}
+          <SheetPill onClick={() => void choose(sel.tier)} disabled={loading !== null}>
+            {loading ? t('w3c.redirecting') : t('w3c.choose_plan', { name: sel.name })}
+          </SheetPill>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div role="tablist" style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
+            {(['monthly', 'yearly'] as Period[]).map(p => {
+              const on = period === p
+              return (
+                <button key={p} type="button" role="tab" aria-selected={on} onClick={() => setPeriod(p)}
+                  style={{ flex: 1, minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: on ? 700 : 600,
+                    background: on ? 'var(--surface-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-mid)', boxShadow: on ? SHEET_CARD_SHADOW : 'none', transition: 'background 0.2s ease, color 0.2s ease' }}>
+                  {p === 'monthly' ? t('w3c.monthly') : t('w3c.annual_discount')}
+                </button>
+              )
+            })}
+          </div>
+          {PLANS.map(pl => {
+            const on = selected === pl.tier
+            return (
+              <button key={pl.tier} type="button" aria-pressed={on} onClick={() => setSelected(pl.tier)} disabled={loading !== null}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 76, padding: '16px', textAlign: 'left', border: 'none', cursor: 'pointer',
+                  borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', fontFamily: 'var(--font-body)',
+                  boxShadow: on ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW, transition: 'box-shadow 0.2s ease' }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{pl.name}</span>
+                    {pl.popular && <span style={{ padding: '3px 10px', borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600 }}>{t('w3c.popular')}</span>}
+                  </span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 14, color: 'var(--text-mid)' }}>{pl.coach}</span>
+                </span>
+                <span aria-hidden style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: on ? 'var(--primary)' : 'transparent', boxShadow: on ? 'none' : 'inset 0 0 0 2px var(--text-dim)' }}>
+                  {on && <Check size={16} strokeWidth={3} color="var(--on-primary)" />}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </MobileSheet>
+    )
   }
 
   return (

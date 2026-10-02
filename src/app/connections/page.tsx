@@ -12,6 +12,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CONNECTIONS_ONBOARDING } from '@/onboarding/configs/connections.config'
 import { useI18n } from '@/lib/i18n'
 import { ConnectWithStrava, PoweredByStrava } from '@/components/strava/StravaBranding'
+import { MobileSheet, SheetPill, useMobileSafe } from '@/components/ui/BottomSheet'
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string
 
@@ -495,6 +496,41 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
   const { t } = useI18n()
   const [cancelHov, setCancelHov] = useState(false)
   const [continueHov, setContinueHov] = useState(false)
+  const mobile = useMobileSafe()
+  const [sheetOpen, setSheetOpen] = useState(true)
+  // Mobile (≤ 767 px) : feuille du bas grise — logo, titre gras, texte gris,
+  // pilule cyan « Continuer » + « Annuler » en texte.
+  if (mobile) {
+    const cancel = () => { setSheetOpen(false); setTimeout(onCancel, 300) }
+    const loading = modal.step === 'loading'
+    return (
+      <MobileSheet open={sheetOpen} onClose={cancel} locked={loading} hideClose={loading} zIndex={14500} label={t('connections.connectingTo', { name: app.name })}
+        footer={loading ? undefined : <>
+          <SheetPill onClick={onContinue}>
+            {t('connections.continue')}
+            <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+          </SheetPill>
+          <SheetPill variant="ghost" onClick={cancel}>{t('connections.cancel')}</SheetPill>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '8px 8px 4px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+          <span style={{ width: 76, height: 76, borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AppLogo app={app} size={52} logoErrors={logoErrors} onError={onLogoError} />
+          </span>
+          {loading ? (
+            <>
+              <Spinner size={30} color="var(--primary)" />
+              <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: 'var(--text-mid)' }}>{t('connections.redirecting', { name: app.name })}</p>
+            </>
+          ) : (
+            <div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.25 }}>{t('connections.connectingTo', { name: app.name })}</h2>
+              <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('connections.modalDescription', { name: app.name })}</p>
+            </div>
+          )}
+        </div>
+      </MobileSheet>
+    )
+  }
   return (
     <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -544,6 +580,19 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
 function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 'info' | 'success' | 'error'; onDismiss: () => void }) {
   useEffect(() => { const t = setTimeout(onDismiss, 4500); return () => clearTimeout(t) }, [onDismiss])
   const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : ACCENT
+  const mobile = useMobileSafe()
+  // Mobile : capsule blanche flottante (le conteneur parent la positionne).
+  if (mobile) {
+    const dot = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--primary)'
+    return (
+      <div role="status" onClick={onDismiss}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, maxWidth: '100%', boxSizing: 'border-box', padding: '12px 18px', borderRadius: 'var(--r-pill)',
+          background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--text)', animation: 'fadeUp 0.2s ease forwards' }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+        <span style={{ minWidth: 0 }}>{message}</span>
+      </div>
+    )
+  }
   return (
     <div style={{ position: 'fixed', bottom: 28, right: 24, zIndex: 2000, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', padding: '11px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.20)', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.2s ease forwards', maxWidth: 360 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}` }} />

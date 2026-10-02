@@ -299,30 +299,152 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     </div>
   )
 
-  // ── MOBILE : bottom sheet animé (iOS style) ──
+  // ── MOBILE : feuille du bas « Strava / Claude » ──
+  // Panneau gris chaud radius 24, poignée, titre gras + bouton rond ×, blocs
+  // en cartes blanches (la couleur ne porte que sur l'icône), champ capsule,
+  // pilule cyan « Enregistrer », « Supprimer » en texte rouge.
   if (!isDesktop) {
+    const canSend = !!input.trim() && !isStreaming
+    const card: React.CSSProperties = { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 12, boxShadow: M_CARD_SHADOW }
     return (
       <>
         <div
           onClick={handleClose}
           style={{
-            position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)',
+            position: 'fixed', inset: 0, zIndex: 999, background: 'var(--scrim)',
             animation: `${isClosing ? 'fadeOutOverlay' : 'fadeInOverlay'} 320ms ease-out`,
           }}
         />
         <div
-          className="comp-modal-fullscreen"
+          role="dialog" aria-modal="true" aria-label={competence.nom}
           style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0, height: '92vh', zIndex: 1000,
-            borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - max(48px, env(safe-area-inset-top)) - 8px)', zIndex: 1000,
+            background: 'var(--surface-page)', borderRadius: 'calc(var(--r-lg) + 4px) calc(var(--r-lg) + 4px) 0 0',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-float)', fontFamily: 'var(--font-body)',
             animation: `${isClosing ? 'slideDownMobile' : 'slideUpMobile'} 320ms cubic-bezier(0.32,0.72,0,1)`,
           }}
         >
-          {/* Handle */}
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.20)', margin: '8px auto 0', flexShrink: 0 }} />
-          {headerNode(handleClose)}
-          {body}
-          {footer(handleClose)}
+          <div aria-hidden style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, flexShrink: 0 }}>
+            <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
+          </div>
+          {/* En-tête : titre gras · sous-titre gris · pastilles · rond × */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 16px 12px', flexShrink: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.2 }}>{competence.nom}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 3 }}>{subtitle}</div>
+              {(isActive || conflicts.length > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {isActive && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)', background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: '4px 10px' }}>
+                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)' }} />{t('competences.active')}
+                    </span>
+                  )}
+                  {conflicts.map(c => (
+                    <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--danger)', padding: '4px 2px' }}>
+                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--danger)' }} />{c.nom}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={handleClose} aria-label={t('competences.close')}
+              style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, background: 'var(--float-bg)', color: 'var(--text)', boxShadow: 'var(--shadow-capsule)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={20} strokeWidth={2.4} />
+            </button>
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '4px 16px 16px' }}>
+            {hasStructured ? (
+              sections.filter(sec => sec.text).map(sec => (
+                <div key={sec.key} className={sec.cls} style={{ ...card, background: 'var(--surface-card)', border: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span className="cmp-section-icon"><sec.Icon size={16} /></span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{sec.label}</span>
+                  </div>
+                  <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{sec.text}</div>
+                </div>
+              ))
+            ) : (
+              <div style={card}>
+                <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{currentPrompt}</div>
+              </div>
+            )}
+
+            {/* Remodeler */}
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'flex', color: 'var(--text-mid)' }}><MessageSquare size={16} /></span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t('competences.editThisSkill')}</span>
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text-mid)', margin: '4px 0 12px', lineHeight: 1.45 }}>{t('competences.editHint')}</div>
+
+              {messages.map((msg, i) => {
+                const isLast = i === messages.length - 1
+                if (msg.role === 'user') {
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                      <div style={{ maxWidth: '82%', background: 'var(--surface-chip)', color: 'var(--text)', borderRadius: 'calc(var(--r-lg) - 2px)', padding: '10px 14px', fontSize: 15, lineHeight: 1.45 }}>{msg.content}</div>
+                    </div>
+                  )
+                }
+                const proposed = extractProposed(msg.content)
+                const visible = stripPromptTag(msg.content)
+                return (
+                  <div key={i} style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                      {visible}
+                      {isLast && isStreaming && <span style={{ color: 'var(--text-dim)' }}>▋</span>}
+                    </div>
+                    {proposed && (
+                      <div style={{ marginTop: 8, background: 'var(--surface-page)', borderRadius: 'var(--r-md)', padding: 14 }}>
+                        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 10 }}>{proposed}</div>
+                        <button type="button" onClick={() => setCurrentPrompt(proposed)}
+                          style={{ minHeight: 44, padding: '0 18px', fontSize: 15, fontWeight: 700, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                          {t('competences.applyThisVersion')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Champ capsule (plein, sans bordure) */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginTop: 4, background: 'var(--surface-page)', borderRadius: 'calc(var(--r-lg) + 2px)', padding: '6px 6px 6px 14px' }}>
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px' }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
+                  placeholder={t('competences.reshapePlaceholder')}
+                  rows={1}
+                  style={{ flex: 1, alignSelf: 'center', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 16, lineHeight: 1.4, color: 'var(--text)', fontFamily: 'var(--font-body)', minHeight: 24, maxHeight: 100, padding: '8px 0' }}
+                />
+                <MicButton onTranscript={setInput} iconSize={20} boxSize={40} />
+                <button type="button" onClick={() => void send()} disabled={!canSend} aria-label={t('competences.send')}
+                  style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: canSend ? 'pointer' : 'default',
+                    background: canSend ? 'var(--primary)' : 'var(--surface-chip)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ArrowUp size={20} strokeWidth={2.4} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Pied : Supprimer (texte rouge) · Enregistrer (pilule cyan) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px calc(12px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
+            {isCustom && (
+              <button type="button" onClick={() => { if (confirm(t('competences.deleteConfirm'))) onDelete() }}
+                style={{ minHeight: 52, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--danger)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                {t('competences.delete')}
+              </button>
+            )}
+            <button type="button" onClick={() => onSave(currentPrompt)} disabled={!dirty}
+              style={{ flex: 1, minHeight: 52, borderRadius: 'var(--r-pill)', border: 'none', fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-body)',
+                background: 'var(--primary)', color: 'var(--on-primary)', opacity: dirty ? 1 : 0.45, cursor: dirty ? 'pointer' : 'default' }}>
+              {t('competences.save')}
+            </button>
+          </div>
         </div>
       </>
     )
@@ -354,6 +476,8 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     </div>
   )
 }
+
+const M_CARD_SHADOW = '0 1px 3px rgba(0,0,0,0.05)' // design-allow-color — ombre douce de carte (mobile)
 
 const avatarStyle: React.CSSProperties = {
   width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.12)',

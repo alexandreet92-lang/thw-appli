@@ -4,6 +4,9 @@
 // Même langage que l'écran « Abonnements disponibles » d'Apple/Claude :
 // cartes larges à cocher (nom + prix), une seule sélection, un bouton.
 // La logique (prix Apple, achat, restauration) vit dans IapStoreHost.
+// Mobile (≤ 767 px) : feuille gris chaud radius 24, poignée, bouton rond ×,
+// pistes segmentées grises à pouce blanc, cartes blanches à cocher (anneau
+// cyan), pilule cyan pleine largeur. iPad / large : rendu historique.
 // ══════════════════════════════════════════════════════════════════
 import type { CSSProperties, ReactNode } from 'react'
 import { Check, X } from 'lucide-react'
@@ -12,6 +15,8 @@ import { Button } from '@/components/shadcn/button'
 import { useSwipeBack, useSwipeDown } from '@/hooks/useSwipeBack'
 import type { AthleteTier } from '@/lib/iap/products'
 import type { BillingPeriod, CoachPackKey } from '@/lib/subscriptions/coach-packs'
+import { SegTrack } from '@/components/ai/mobile/MobileKit'
+import { SheetCloseBtn, SheetPill, SHEET_RADIUS, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 export type StoreTab = 'athlete' | 'coach' | 'tokens'
 
@@ -76,15 +81,16 @@ function Radio({ on }: { on: boolean }) {
   )
 }
 
-function OptionCard({ title, subs, on, onClick, disabled }: { title: string; subs: string[]; on: boolean; onClick: () => void; disabled?: boolean }) {
+function OptionCard({ title, subs, on, onClick, disabled, m }: { title: string; subs: string[]; on: boolean; onClick: () => void; disabled?: boolean; m?: boolean }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} aria-pressed={on} style={{
       width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
-      padding: 'var(--space-5)', minHeight: 88, borderRadius: 'var(--r-lg)', border: 'none', cursor: disabled ? 'default' : 'pointer',
-      background: on ? 'var(--primary-dim)' : 'var(--bg-card2)', opacity: disabled ? 0.5 : 1,
+      padding: m ? 'var(--space-4)' : 'var(--space-5)', minHeight: m ? 76 : 88, borderRadius: 'var(--r-lg)', border: 'none', cursor: disabled ? 'default' : 'pointer',
+      background: m ? 'var(--surface-card)' : on ? 'var(--primary-dim)' : 'var(--bg-card2)', opacity: disabled ? 0.5 : 1,
+      ...(m ? { boxShadow: on ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW, transition: 'box-shadow 0.2s ease' } : null),
     }}>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.25 }}>{title}</span>
+        <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: m ? 800 : 600, color: 'var(--text)', lineHeight: 1.25 }}>{title}</span>
         {subs.map((line, i) => (
           <span key={i} style={{ ...num, display: 'block', marginTop: i === 0 ? 4 : 2, fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)' }}>{line}</span>
         ))}
@@ -94,7 +100,8 @@ function OptionCard({ title, subs, on, onClick, disabled }: { title: string; sub
   )
 }
 
-function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
+function Segmented<T extends string>({ value, options, onChange, m }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; m?: boolean }) {
+  if (m) return <SegTrack<T> value={value} onChange={onChange} options={options.map(o => ({ v: o.id, l: o.label }))} />
   return (
     <Tabs value={value} onValueChange={v => onChange(v as T)}>
       <TabsList>
@@ -104,7 +111,8 @@ function Segmented<T extends string>({ value, options, onChange }: { value: T; o
   )
 }
 
-function Label({ children }: { children: ReactNode }) {
+function Label({ children, m }: { children: ReactNode; m?: boolean }) {
+  if (m) return <p style={{ margin: 'var(--space-6) var(--space-4) var(--space-2)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 500, color: 'var(--text-mid)' }}>{children}</p>
   return <p style={{ margin: 'var(--space-5) 0 var(--space-3)', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)' }}>{children}</p>
 }
 
@@ -115,6 +123,7 @@ const linkBtn: CSSProperties = {
 
 export function IapStoreSheet(p: IapStoreSheetProps) {
   const L = p.labels
+  const m = useMobileSafe()
   // Gestes : glisser du bord gauche vers la droite, ou tirer vers le bas → ferme la feuille.
   const back = useSwipeBack(p.onClose)
   const down = useSwipeDown(p.onClose)
@@ -135,7 +144,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
 
   const skeleton = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      {[0, 1, 2].map(i => <div key={i} style={{ height: 88, borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }} />)}
+      {[0, 1, 2].map(i => <div key={i} style={{ height: m ? 76 : 88, borderRadius: 'var(--r-lg)', background: m ? 'var(--surface-chip)' : 'var(--bg-card2)' }} />)}
     </div>
   )
 
@@ -145,25 +154,32 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
       opacity: p.shown ? 1 : 0, transition: 'opacity 0.26s ease',
     }}>
       <div onClick={e => e.stopPropagation()} {...back.handlers} style={{
-        width: 'min(560px, 100%)', height: '94dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)',
-        borderRadius: 'var(--r-lg) var(--r-lg) 0 0', touchAction: 'pan-y',
+        width: 'min(560px, 100%)', height: '94dvh', display: 'flex', flexDirection: 'column', background: m ? 'var(--surface-page)' : 'var(--bg)',
+        borderRadius: m ? SHEET_RADIUS : 'var(--r-lg) var(--r-lg) 0 0', touchAction: 'pan-y', overflow: m ? 'hidden' : undefined, fontFamily: m ? 'var(--font-body)' : undefined,
         transform: p.shown ? `translate(${back.dragX}px, ${down.dragY}px)` : 'translateY(100%)',
         transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
       }}>
         {/* En-tête */}
+        {m ? (
+          <div {...down.handlers} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', padding: 'var(--space-5) var(--space-4) 0', minHeight: 64 }}>
+            <span aria-hidden style={{ position: 'absolute', top: 8, left: '50%', width: 38, height: 5, marginLeft: -19, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
+            <SheetCloseBtn onClick={p.onClose} label={L.close} />
+          </div>
+        ) : (
         <div {...down.handlers} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', padding: 'var(--space-4) var(--space-4) 0', minHeight: 60 }}>
           <span aria-hidden style={{ position: 'absolute', top: 'var(--space-2)', left: '50%', width: 36, height: 5, marginLeft: -18, borderRadius: 3, background: 'var(--text-dim)', opacity: 0.5 }} />
           <Button type="button" variant="secondary" size="icon" onClick={p.onClose} aria-label={L.close}><X size={20} strokeWidth={2.4} /></Button>
         </div>
+        )}
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--space-5) var(--space-5)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: m ? '0 var(--space-4) var(--space-5)' : '0 var(--space-5) var(--space-5)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="" width={72} height={72} style={{ display: 'block', margin: 'var(--space-2) auto var(--space-5)', borderRadius: 'var(--r-lg)' }} />
-          <h2 style={{ margin: '0 0 var(--space-5)', textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>
+          <h2 style={{ margin: '0 0 var(--space-5)', textAlign: 'center', fontFamily: m ? 'var(--font-body)' : 'var(--font-display)', fontSize: 26, fontWeight: m ? 800 : 600, letterSpacing: m ? '-0.02em' : undefined, color: 'var(--text)', lineHeight: 1.2 }}>
             {p.tab === 'tokens' ? 'Recharger des tokens' : 'Abonnements disponibles'}
           </h2>
 
-          <Segmented<StoreTab> value={p.tab} onChange={p.onTab} options={[
+          <Segmented<StoreTab> m={m} value={p.tab} onChange={p.onTab} options={[
             { id: 'athlete', label: 'Athlète' }, { id: 'coach', label: 'Coach' }, { id: 'tokens', label: 'Tokens' },
           ]} />
 
@@ -180,13 +196,13 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
           {p.tab === 'athlete' && (
             <>
               <div style={{ height: 'var(--space-4)' }} />
-              <Segmented<BillingPeriod> value={p.period} onChange={p.onPeriod} options={[{ id: 'monthly', label: L.monthly }, { id: 'yearly', label: L.yearly }]} />
+              <Segmented<BillingPeriod> m={m} value={p.period} onChange={p.onPeriod} options={[{ id: 'monthly', label: L.monthly }, { id: 'yearly', label: L.yearly }]} />
               <div style={{ height: 'var(--space-4)' }} />
               {p.loading ? skeleton : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {p.athleteTiers.map(t => {
                     const price = priceOf(p.athleteId(t.tier, p.period))
-                    return <OptionCard key={t.tier} title={`Athlète ${t.name}`} subs={[price ? `${price} ${perLabel}` : t.subtitle]}
+                    return <OptionCard m={m} key={t.tier} title={`Athlète ${t.name}`} subs={[price ? `${price} ${perLabel}` : t.subtitle]}
                       on={p.selectedTier === t.tier} onClick={() => p.onSelectTier(t.tier)} disabled={!price} />
                   })}
                 </div>
@@ -197,22 +213,22 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
           {/* ── Coach (option athlète intégrée) ───────────────── */}
           {p.tab === 'coach' && (
             <>
-              <Label>Capacité d’athlètes</Label>
+              <Label m={m}>Capacité d’athlètes</Label>
               {p.loading ? skeleton : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {p.coachPacks.map(k => {
                     const price = priceOf(p.coachId(k.key, p.coachTier))
-                    return <OptionCard key={k.key} title={`Coach ${k.name}`} subs={[k.label, price ? `${price} ${perLabel}` : '—']}
+                    return <OptionCard m={m} key={k.key} title={`Coach ${k.name}`} subs={[k.label, price ? `${price} ${perLabel}` : '—']}
                       on={p.coachPack === k.key} onClick={() => p.onCoachPack(k.key)} disabled={!price} />
                   })}
                 </div>
               )}
-              <Label>Option athlète incluse</Label>
-              <Segmented<AthleteTier> value={p.coachTier} onChange={p.onCoachTier} options={[
+              <Label m={m}>Option athlète incluse</Label>
+              <Segmented<AthleteTier> m={m} value={p.coachTier} onChange={p.onCoachTier} options={[
                 { id: 'premium', label: 'Sans option' }, { id: 'pro', label: 'Pro' }, { id: 'expert', label: 'Expert' },
               ]} />
               <div style={{ height: 'var(--space-3)' }} />
-              <Segmented<BillingPeriod> value={p.period} onChange={p.onPeriod} options={[{ id: 'monthly', label: L.monthly }, { id: 'yearly', label: L.yearly }]} />
+              <Segmented<BillingPeriod> m={m} value={p.period} onChange={p.onPeriod} options={[{ id: 'monthly', label: L.monthly }, { id: 'yearly', label: L.yearly }]} />
               {!p.loading && !noPrices && !selectedPrice && (
                 <p style={{ margin: 'var(--space-4) 0 0', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>Cette formule n’est pas disponible à l’achat dans l’app.</p>
               )}
@@ -231,7 +247,7 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {p.tokens.map(t => {
                     const price = priceOf(t.id)
-                    return <OptionCard key={t.id} title={`${t.amount.toLocaleString('fr-FR')} tokens`} subs={[price ?? '—']}
+                    return <OptionCard m={m} key={t.id} title={`${t.amount.toLocaleString('fr-FR')} tokens`} subs={[price ?? '—']}
                       on={p.selectedToken === t.id} onClick={() => p.onSelectToken(t.id)} disabled={!price} />
                   })}
                 </div>
@@ -257,11 +273,19 @@ export function IapStoreSheet(p: IapStoreSheetProps) {
         </div>
 
         {/* Bouton d'achat fixe */}
+        {m ? (
+          <div style={{ padding: 'var(--space-3) var(--space-4)', paddingBottom: 'calc(var(--space-3) + env(safe-area-inset-bottom))', background: 'var(--surface-page)' }}>
+            <SheetPill disabled={!canBuy} onClick={() => { if (productId) p.onBuy(productId, kind) }}>
+              {cta}{selectedPrice && p.tab !== 'tokens' ? ` · ${selectedPrice} ${perLabel}` : selectedPrice ? ` · ${selectedPrice}` : ''}
+            </SheetPill>
+          </div>
+        ) : (
         <div style={{ padding: 'var(--space-3) var(--space-5)', paddingBottom: 'calc(var(--space-4) + env(safe-area-inset-bottom))', background: 'var(--bg)' }}>
           <Button type="button" size="lg" className="w-full" disabled={!canBuy} onClick={() => productId && p.onBuy(productId, kind)}>
             {cta}{selectedPrice && p.tab !== 'tokens' ? ` · ${selectedPrice} ${perLabel}` : selectedPrice ? ` · ${selectedPrice}` : ''}
           </Button>
         </div>
+        )}
       </div>
     </div>
   )

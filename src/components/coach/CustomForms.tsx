@@ -11,6 +11,7 @@ import {
   type CustomForm, type FormField, type FieldType,
 } from '@/lib/coach/custom-forms'
 import { useI18n } from '@/lib/i18n'
+import { MobileSheet, SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 const TYPES: { v: FieldType; l: string }[] = [
   { v: 'text', l: 'Texte court' }, { v: 'textarea', l: 'Texte long' }, { v: 'number', l: 'Nombre' },
@@ -19,6 +20,8 @@ const TYPES: { v: FieldType; l: string }[] = [
 const uid = () => Math.random().toString(36).slice(2, 9)
 const card: React.CSSProperties = { borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16 }
 const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 13.5, outline: 'none', fontFamily: 'var(--font-body)' }
+// Mobile (≤ 767 px) : champ plein sans bordure, radius 14, ≥ 48 px, 16 px (pas de zoom iOS).
+const mInp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '12px 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--surface-card)', boxShadow: SHEET_CARD_SHADOW, color: 'var(--text)', fontSize: 16, outline: 'none', fontFamily: 'var(--font-body)' }
 const fmtDate = (d: string | null) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return '' } }
 
 // ── Builder (modale) ──────────────────────────────────────────
@@ -135,7 +138,35 @@ export function AthleteFormsCard() {
   const load = () => { void listMyForms().then(setForms) }
   useEffect(() => { load() }, [])
   const pending = forms.filter(f => f.status === 'sent')
+  const mobile = useMobileSafe()
   if (forms.length === 0) return null
+
+  // Mobile : carte blanche radius 20 sans bordure, liste à filets, pilules 44 px.
+  if (mobile) {
+    return (
+      <div style={{ background: 'var(--dash-card, var(--surface-card))', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
+        <div style={{ padding: '16px 16px 10px' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('w2d.coachForms')}</div>
+          <div style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 2 }}>{pending.length > 0 ? t(pending.length > 1 ? 'w2d.formsToFillPlural' : 'w2d.formsToFillSingular', { n: pending.length }) : t('w2d.allUpToDate')}</div>
+        </div>
+        {forms.map(f => {
+          const filled = f.status === 'filled'
+          return (
+            <div key={f.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 60, padding: '8px 12px 8px 16px' }}>
+              <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.title}</span>
+                <span style={{ display: 'block', fontSize: 13, color: filled ? 'var(--text-mid)' : 'var(--primary)', marginTop: 1 }}>{filled ? t('w2d.filledThanks') : t(f.fields.length > 1 ? 'w2d.questionsCountPlural' : 'w2d.questionsCountSingular', { n: f.fields.length })}</span>
+              </span>
+              <button type="button" onClick={() => setFill(f)} style={{ minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', flexShrink: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700,
+                background: filled ? 'var(--surface-chip)' : 'var(--primary)', color: filled ? 'var(--text)' : 'var(--on-primary)' }}>{filled ? t('w2d.view') : t('w2d.fill')}</button>
+            </div>
+          )
+        })}
+        {fill && <FillModal form={fill} onClose={() => setFill(null)} onDone={() => { setFill(null); load() }} />}
+      </div>
+    )
+  }
 
   return (
     <div style={{ ...card }}>
@@ -167,6 +198,45 @@ function FillModal({ form, onClose, onDone }: { form: CustomForm; onClose: () =>
   const requestClose = () => { setShown(false); setTimeout(onClose, 280) }
   const set = (id: string, v: string | number | boolean) => setVals(s => ({ ...s, [id]: v }))
   async function submit() { if (busy) return; setBusy(true); const ok = await submitFormResponses(form.id, vals); setBusy(false); if (ok) onDone() }
+  const mobile = useMobileSafe()
+  if (mobile) {
+    // Mobile : feuille du bas grise, champs pleins blancs, choix en piste
+    // segmentée (pouce blanc), pilule cyan + action secondaire en texte.
+    const seg = (opts: (string | number)[], id: string) => (
+      <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)' }}>
+        {opts.map(o => {
+          const on = vals[id] === o
+          return (
+            <button key={String(o)} type="button" aria-pressed={on} onClick={() => set(id, o)}
+              style={{ flex: 1, minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: on ? 700 : 600, fontVariantNumeric: 'tabular-nums',
+                background: on ? 'var(--surface-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-mid)', boxShadow: on ? SHEET_CARD_SHADOW : 'none' }}>{o}</button>
+          )
+        })}
+      </div>
+    )
+    return (
+      <MobileSheet open={shown} onClose={requestClose} title={form.title} zIndex={12000}
+        footer={<>
+          <SheetPill onClick={() => void submit()} disabled={busy}>{form.status === 'filled' ? t('w2d.update') : t('w2d.send')}</SheetPill>
+          <SheetPill variant="ghost" onClick={requestClose}>{t('w2d.close')}</SheetPill>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingTop: 4 }}>
+          {form.fields.map(f => (
+            <div key={f.id}>
+              <label style={{ display: 'block', fontSize: 15, fontWeight: 500, color: 'var(--text-mid)', margin: '0 4px 8px' }}>{f.label}</label>
+              {f.type === 'textarea' ? <textarea value={String(vals[f.id] ?? '')} onChange={e => set(f.id, e.target.value)} rows={4} placeholder={f.placeholder} style={{ ...mInp, resize: 'none', lineHeight: 1.45 }} />
+                : f.type === 'number' ? <input type="number" inputMode="decimal" value={String(vals[f.id] ?? '')} onChange={e => set(f.id, e.target.value)} style={mInp} />
+                : f.type === 'bool' ? seg(['Oui', 'Non'], f.id)
+                : f.type === 'scale' ? seg([1, 2, 3, 4, 5], f.id)
+                : f.type === 'select' ? (
+                  <select value={String(vals[f.id] ?? '')} onChange={e => set(f.id, e.target.value)} style={{ ...mInp, cursor: 'pointer', appearance: 'none' }}><option value="">—</option>{(f.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}</select>
+                ) : <input value={String(vals[f.id] ?? '')} onChange={e => set(f.id, e.target.value)} placeholder={f.placeholder} style={mInp} />}
+            </div>
+          ))}
+        </div>
+      </MobileSheet>
+    )
+  }
   if (!mounted) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-body)' }}>

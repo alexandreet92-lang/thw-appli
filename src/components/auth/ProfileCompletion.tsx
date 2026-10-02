@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
+import { SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 interface Props { onDone: () => void }
 
@@ -12,21 +13,21 @@ function hexRgb(hex: string) {
 }
 
 const SPORTS = [
-  { id: 'cycling',   labelKey: 'sport.cycling',        color: '#06B6D4' },
-  { id: 'running',   labelKey: 'sport.running',        color: '#10B981' },
-  { id: 'trail',     labelKey: 'sport.trail',          color: '#F59E0B' },
-  { id: 'swimming',  labelKey: 'q.sport.natation',     color: '#3B82F6' },
-  { id: 'strength',  labelKey: 'authpage.sportStrength', color: '#8B5CF6' },
-  { id: 'triathlon', labelKey: 'sport.triathlon',      color: '#EC4899' },
-  { id: 'ski',       labelKey: 'authpage.sportSki',    color: '#06B6D4' },
-  { id: 'other',     labelKey: 'q.other',              color: '#8C8C8C' },
+  { id: 'cycling',   labelKey: 'sport.cycling',        color: '#06B6D4' }, // design-allow-color — teinte sport/objectif
+  { id: 'running',   labelKey: 'sport.running',        color: '#10B981' }, // design-allow-color — teinte sport/objectif
+  { id: 'trail',     labelKey: 'sport.trail',          color: '#F59E0B' }, // design-allow-color — teinte sport/objectif
+  { id: 'swimming',  labelKey: 'q.sport.natation',     color: '#3B82F6' }, // design-allow-color — teinte sport/objectif
+  { id: 'strength',  labelKey: 'authpage.sportStrength', color: '#8B5CF6' }, // design-allow-color — teinte sport/objectif
+  { id: 'triathlon', labelKey: 'sport.triathlon',      color: '#EC4899' }, // design-allow-color — teinte sport/objectif
+  { id: 'ski',       labelKey: 'authpage.sportSki',    color: '#06B6D4' }, // design-allow-color — teinte sport/objectif
+  { id: 'other',     labelKey: 'q.other',              color: '#8C8C8C' }, // design-allow-color — teinte sport/objectif
 ]
 
 const OBJECTIVES = [
-  { id: 'performance', labelKey: 'authpage.objPerfLabel',   descKey: 'authpage.objPerfDesc',   color: '#06B6D4' },
-  { id: 'health',      labelKey: 'authpage.objHealthLabel', descKey: 'authpage.objHealthDesc', color: '#10B981' },
-  { id: 'weight',      labelKey: 'goal.perte_poids',        descKey: 'authpage.objWeightDesc', color: '#F59E0B' },
-  { id: 'endurance',   labelKey: 'authpage.objEventLabel',  descKey: 'authpage.objEventDesc',  color: '#8B5CF6' },
+  { id: 'performance', labelKey: 'authpage.objPerfLabel',   descKey: 'authpage.objPerfDesc',   color: '#06B6D4' }, // design-allow-color — teinte sport/objectif
+  { id: 'health',      labelKey: 'authpage.objHealthLabel', descKey: 'authpage.objHealthDesc', color: '#10B981' }, // design-allow-color — teinte sport/objectif
+  { id: 'weight',      labelKey: 'goal.perte_poids',        descKey: 'authpage.objWeightDesc', color: '#F59E0B' }, // design-allow-color — teinte sport/objectif
+  { id: 'endurance',   labelKey: 'authpage.objEventLabel',  descKey: 'authpage.objEventDesc',  color: '#8B5CF6' }, // design-allow-color — teinte sport/objectif
 ]
 
 const inputStyle: React.CSSProperties = {
@@ -46,6 +47,7 @@ export function ProfileCompletion({ onDone }: Props) {
   const [primarySport,  setPrimarySport] = useState('')
   const [objective,     setObjective]    = useState('')
   const [saving,        setSaving]       = useState(false)
+  const mobile = useMobileSafe()
 
   const isDisabled =
     (step === 1 && !firstName.trim()) ||
@@ -82,6 +84,94 @@ export function ProfileCompletion({ onDone }: Props) {
   const handleNext = () => {
     if (step < 3) setStep(s => s + 1)
     else handleComplete()
+  }
+
+  // Mobile (≤ 767 px) : page gris chaud plein écran, titres Inter gras,
+  // champ plein blanc, puces pilule, objectifs en carte blanche à filets,
+  // pilule cyan fixe en bas + « Passer » en texte.
+  if (mobile) {
+    const head: React.CSSProperties = { fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: '0 0 8px', textAlign: 'center', lineHeight: 1.2 }
+    const sub: React.CSSProperties = { fontSize: 15, color: 'var(--text-mid)', margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5 }
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)' }}>
+        <div style={{ display: 'flex', gap: 6, padding: 'calc(env(safe-area-inset-top) + 16px) 20px 0' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: i <= step ? 'var(--primary)' : 'var(--surface-chip)', transition: 'background 400ms' }} />
+          ))}
+        </div>
+
+        <div style={{ flex: 1, padding: '36px 16px 24px', width: '100%', maxWidth: 480, margin: '0 auto', boxSizing: 'border-box' }}>
+          {step === 1 && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 96, height: 96, margin: '0 auto 28px', borderRadius: '50%', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: 'var(--text)', fontWeight: 800 }}>
+                {firstName ? firstName[0]?.toUpperCase() : '?'}
+              </div>
+              <h2 style={head}>{t('welcome.t0')}</h2>
+              <p style={sub}>{t('authpage.step1Sub')}</p>
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={t('authpage.firstNamePh')} autoFocus autoComplete="given-name"
+                onKeyDown={e => { if (e.key === 'Enter' && firstName.trim()) handleNext() }}
+                style={{ width: '100%', minHeight: 56, boxSizing: 'border-box', border: 'none', borderRadius: 'var(--r-md)', background: 'var(--surface-card)', boxShadow: SHEET_CARD_SHADOW,
+                  padding: '0 20px', color: 'var(--text)', fontSize: 22, fontWeight: 600, textAlign: 'center', outline: 'none', fontFamily: 'var(--font-body)' }} />
+            </div>
+          )}
+
+          {step === 2 && (
+            <div>
+              <h2 style={head}>{t('authpage.step2Title')}</h2>
+              <p style={sub}>{t('authpage.step2Sub')}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {SPORTS.map(sp => {
+                  const on = primarySport === sp.id
+                  return (
+                    <button key={sp.id} type="button" onClick={() => setPrimarySport(sp.id)} aria-pressed={on}
+                      style={{ minHeight: 52, padding: '0 12px', borderRadius: 'var(--r-pill)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: on ? 700 : 600,
+                        background: on ? 'var(--text)' : 'var(--surface-card)', color: on ? 'var(--bg)' : 'var(--text)', boxShadow: on ? 'none' : SHEET_CARD_SHADOW,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.2s ease, color 0.2s ease' }}>
+                      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                      {t(sp.labelKey)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div>
+              <h2 style={head}>{t('authpage.step3Title')}</h2>
+              <p style={sub}>{t('authpage.step3Sub')}</p>
+              <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden' }}>
+                {OBJECTIVES.map((o, i) => {
+                  const on = objective === o.id
+                  return (
+                    <button key={o.id} type="button" role="radio" aria-checked={on} onClick={() => setObjective(o.id)}
+                      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 64, padding: '14px 16px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                      {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 16, fontWeight: on ? 700 : 600, color: 'var(--text)' }}>{t(o.labelKey)}</span>
+                        <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 2, lineHeight: 1.4 }}>{t(o.descKey)}</span>
+                      </span>
+                      <span aria-hidden style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: on ? 'var(--primary)' : 'transparent', boxShadow: on ? 'none' : 'inset 0 0 0 2px var(--text-dim)' }}>
+                        {on && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ position: 'sticky', bottom: 0, background: 'var(--surface-page)', padding: '10px 16px calc(14px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 4, width: '100%', maxWidth: 480, margin: '0 auto', boxSizing: 'border-box' }}>
+          <SheetPill onClick={handleNext} disabled={isDisabled || saving}>
+            {saving ? t('common.saving') : step < 3 ? t('common.continue') : t('common.finish')}
+          </SheetPill>
+          <SheetPill variant="ghost" onClick={handleSkip}>{t('authpage.skipStep')}</SheetPill>
+        </div>
+      </div>
+    )
   }
 
   return (

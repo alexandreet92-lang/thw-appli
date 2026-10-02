@@ -1731,6 +1731,33 @@ function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => v
     }
   }
 
+  // Mobile (≤ 767 px) : feuille du bas avec poignée — titre gras centré, champ
+  // plein sans bordure, action destructive en texte rouge, « Annuler » gris.
+  const narrow = useNarrow(767)
+  if (narrow) {
+    const ok = confirmText.trim().toUpperCase() === 'SUPPRIMER' && !busy
+    return (
+      <MSheet open={open} onClose={() => { if (!busy) onClose() }} full={false} zIndex={2147483000} label="Supprimer ton compte ?">
+        <div style={{ flex: '1 1 auto', minHeight: 0, padding: '14px 20px calc(16px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 14, fontFamily: FB, overflowY: 'auto' }}>
+          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', textAlign: 'center' }}>Supprimer ton compte ?</h3>
+          <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5, textAlign: 'center' }}>
+            Cette action est <strong style={{ color: 'var(--text)' }}>définitive</strong>. Ton compte et toutes tes données (entraînements, conversations, plans, messages…) seront <strong style={{ color: 'var(--text)' }}>supprimés immédiatement</strong> et ne pourront pas être récupérés.
+          </p>
+          <p style={{ margin: '4px 4px 0', fontSize: 13, color: 'var(--text-mid)' }}>Pour confirmer, écris <strong style={{ color: 'var(--text)' }}>SUPPRIMER</strong> ci-dessous :</p>
+          <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoFocus placeholder="SUPPRIMER" autoCapitalize="characters"
+            style={{ minHeight: 48, padding: '0 14px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 16, outline: 'none', fontFamily: FB }} />
+          {err && <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>{err}</p>}
+          <PillButton variant="white" onClick={() => void doDelete()} disabled={!ok}
+            style={{ marginTop: 4, background: 'var(--surface-chip)', boxShadow: 'none', color: 'var(--danger)' }}>
+            {busy ? 'Suppression…' : 'Supprimer définitivement'}
+          </PillButton>
+          <button type="button" onClick={onClose} disabled={busy}
+            style={{ minHeight: 44, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: FB }}>Annuler</button>
+        </div>
+      </MSheet>
+    )
+  }
+
   if (!open) return null
   return (
     <div onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

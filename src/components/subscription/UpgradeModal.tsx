@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { hidePricing } from '@/lib/native/platform'
 import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
+import { MobileSheet, SheetCard, SheetPill, useMobileSafe } from '@/components/ui/BottomSheet'
 
 const EVT = 'thw:upgrade'
 
@@ -26,6 +27,7 @@ export function UpgradeModalHost() {
   const [shown, setShown] = useState(false)
   const [closing, setClosing] = useState(false)
   const hidePrice = hidePricing()
+  const mobile = useMobileSafe()
 
   useEffect(() => {
     const on = (e: Event) => {
@@ -42,6 +44,35 @@ export function UpgradeModalHost() {
   }, [open])
 
   const requestClose = () => { setClosing(true); setShown(false); setTimeout(() => setOpen(false), 280) }
+
+  // Mobile (≤ 767 px) : feuille du bas — titre, raison, avantages en carte
+  // blanche à filets, bouton pilule cyan + action secondaire en texte.
+  if (mobile) {
+    const mPerks = [t('w3c.upgrade_perk_1'), t('w3c.upgrade_perk_2'), t('w3c.upgrade_perk_3'), t('w3c.upgrade_perk_4')]
+    return (
+      <MobileSheet open={open} onClose={() => setOpen(false)} label={t('w3c.upgrade_title')} zIndex={14500}
+        footer={<>
+          <SheetPill onClick={() => { setOpen(false); openSubscriptionChange('athlete') }}>{t('w3c.upgrade_see_offers')}</SheetPill>
+          <SheetPill variant="ghost" onClick={() => setOpen(false)}>{hidePrice ? t('w3c.close') : t('w3c.later')}</SheetPill>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', fontFamily: 'var(--font-body)' }}>
+          <div style={{ textAlign: 'center', padding: '0 var(--space-2)' }}>
+            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.2, textWrap: 'balance' as const }}>{t('w3c.upgrade_title')}</h2>
+            <p style={{ margin: '8px 0 0', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{reason ?? t('w3c.upgrade_default_reason')}</p>
+          </div>
+          <SheetCard>
+            {mPerks.map((p, i) => (
+              <div key={p} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, padding: '12px 16px' }}>
+                {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6 9 17l-5-5" /></svg>
+                <span style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.4 }}>{p}</span>
+              </div>
+            ))}
+          </SheetCard>
+        </div>
+      </MobileSheet>
+    )
+  }
 
   if (!open) return null
 

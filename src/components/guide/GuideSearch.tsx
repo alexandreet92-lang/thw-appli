@@ -6,11 +6,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { GUIDE_ACTIONS, searchActions, EXPRESS_TOUR, FULL_TOUR, type GuideStep } from './guideRegistry'
+import { MobileSheet, SheetCard, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (steps: GuideStep[]) => void }) {
   const { t } = useI18n()
   const [q, setQ] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const mobile = useMobileSafe()
   useEffect(() => { if (open) { setQ(''); setTimeout(() => inputRef.current?.focus(), 60) } }, [open])
   useEffect(() => {
     if (!open) return
@@ -24,6 +26,44 @@ export function GuideSearch({ open, onClose, onPick }: { open: boolean; onClose:
   function askAi() {
     onClose()
     window.dispatchEvent(new CustomEvent('thw:open-coach', { detail: { prompt: t('w3g.guide_search_ai_prompt', { q }) } }))
+  }
+
+  // Mobile (≤ 767 px) : feuille du bas — champ plein blanc, résultats en
+  // liste groupée à filets, visites guidées en pilules.
+  if (mobile) {
+    const mRow = (key: string, label: string, sub: string, onClick: () => void, first: boolean, accent?: boolean) => (
+      <button key={key} type="button" onClick={onClick}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 60, padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+        {!first && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{label}</span>
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>{sub}</span>
+        </span>
+        <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent ? 'var(--primary)' : 'var(--text-dim)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+      </button>
+    )
+    const pill: React.CSSProperties = { flex: 1, minHeight: 44, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-card)', boxShadow: SHEET_CARD_SHADOW, color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }
+    return (
+      <MobileSheet open={open} onClose={onClose} full zIndex={99000} title={t('w3g.guide_tour')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-card)', boxShadow: SHEET_CARD_SHADOW }}>
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+            <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder={t('w3g.guide_search_placeholder')} enterKeyHint="search"
+              style={{ flex: 1, minWidth: 0, minHeight: 44, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font-body)' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={() => onPick(EXPRESS_TOUR)} style={pill}>{t('w3g.guide_search_express')}</button>
+            <button type="button" onClick={() => onPick(FULL_TOUR)} style={pill}>{t('w3g.guide_search_full')}</button>
+          </div>
+          {(results.length > 0 || noMatch) && (
+            <SheetCard>
+              {results.map((a, i) => mRow(a.id, a.label, a.category, () => onPick(a.steps), i === 0))}
+              {noMatch && mRow('ai', t('w3g.guide_search_ask_ai', { q }), t('w3g.guide_search_ai_hint'), askAi, true, true)}
+            </SheetCard>
+          )}
+        </div>
+      </MobileSheet>
+    )
   }
 
   if (!open || typeof document === 'undefined') return null

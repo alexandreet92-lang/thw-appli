@@ -11,6 +11,8 @@ import { openIapStore } from '@/lib/iap/store-events'
 import { openSubscriptionChange, openSubscriptionManage } from '@/lib/subscriptions/startSubscriptionChange'
 import { refreshEntitlements } from '@/hooks/useEntitlements'
 import { TIER_FEATURES } from '@/lib/subscriptions/tier-features'
+import { useMobileSafe } from '@/components/ui/BottomSheet'
+import { MobileSubscription } from './MobileSubscription'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -188,6 +190,7 @@ export default function SubscriptionPage() {
   const canceled     = searchParams.get('canceled') === 'true'
   const sessionId    = searchParams.get('session_id')
   const hidePrice    = hidePricing()
+  const mobile       = useMobileSafe()
 
   const featureLabels: Record<string, string> = {
     'Messages IA / mois':          t('misc.featMessages'),
@@ -275,6 +278,48 @@ export default function SubscriptionPage() {
     ? new Date(data.subscription.current_period_end).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
     : null
   const subStatus   = data?.subscription?.status ?? null
+
+  // ── Render mobile (≤ 767 px) — cartes blanches sur fond gris chaud ──
+  if (mobile) {
+    const trialNote = !loading && !isUnlimited && (currentTier === 'trial' || currentTier === 'free')
+      ? (currentTier === 'trial'
+          ? (typeof data?.trial_days_left === 'number'
+              ? `Essai premium — il te reste ${data.trial_days_left} jour${data.trial_days_left > 1 ? 's' : ''}. Ensuite, l'app passe en mode Gratuit (fonctions IA limitées). Choisis une offre pour tout garder.`
+              : "Essai premium en cours. À la fin, l'app passe en mode Gratuit (fonctions IA limitées) — choisis une offre pour tout garder.")
+          : "Tu es en mode Gratuit : l'app reste utilisable (planning, activités, suivi), mais les fonctions IA sont limitées. Passe à une offre pour débloquer l'IA complète.")
+      : null
+    const usageRows = (Object.entries(USAGE_LABELS) as [UsageType, string][]).flatMap(([type, label]) => {
+      const stat = data?.usage?.[type]
+      return stat ? [{ key: type, label: usageLabels[type] ?? label, used: stat.used, limit: stat.limit, resetAt: stat.reset_at }] : []
+    })
+    return (
+      <MobileSubscription
+        loading={loading}
+        isUnlimited={isUnlimited}
+        currentTier={currentTier}
+        planTitle={isUnlimited ? t('misc.creatorAccount') : `${t('misc.plan')} ${TIER_LABEL[currentTier as TierName] ?? currentTier}`}
+        subStatus={isUnlimited ? null : subStatus}
+        periodLine={isUnlimited ? t('misc.unlimitedAccess') : periodEnd ? t('misc.nextBilling', { date: periodEnd }) : t('misc.noActiveSub')}
+        trialNote={trialNote}
+        hasBilling={hasBilling}
+        banner={banner}
+        onCloseBanner={() => setBanner(null)}
+        canceled={canceled}
+        usage={usageRows}
+        plans={PLANS.map(pl => ({ tier: pl.tier, name: pl.name, subtitle: planSubtitles[pl.tier] ?? pl.subtitle }))}
+        features={FEATURES.map(f => ({ label: featureLabels[f.label] ?? f.label, values: f.values }))}
+        onManage={() => openSubscriptionManage('athlete')}
+        onChoose={tier => {
+          const pl = PLANS.find(x => x.tier === tier)
+          if (!pl) return
+          if (hidePrice) openIapStore('athlete')
+          else openSubscriptionChange('athlete', pl.tier)
+        }}
+        resetLabel={date => t('misc.resetOn', { date })}
+        locale={currentLocale()}
+      />
+    )
+  }
 
   // ── Render ────────────────────────────────────────────────────
   return (

@@ -2,9 +2,17 @@
 // ══════════════════════════════════════════════════════════════════
 // SlideSheet — surpage coulissante plein écran (entre par la droite).
 // createPortal sur document.body. Fermeture : bouton, backdrop, Échap.
+//  • Desktop : rendu historique (en-tête translucide flottant).
+//  • Mobile (≤ 767 px) : page gris chaud (--surface-page), en-tête collant
+//    bouton rond blanc ‹ · titre centré gras, glisser depuis le bord gauche
+//    pour revenir. --bg-card2 / --dash-card valent --surface-card dans la
+//    surpage : les blocs du contenu deviennent des cartes blanches.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSwipeBack } from '@/hooks/useSwipeBack'
+import { useI18n } from '@/lib/i18n'
+import { SheetCloseBtn, useMobileSafe } from '@/components/ui/BottomSheet'
 
 interface Props {
   open: boolean
@@ -14,6 +22,9 @@ interface Props {
 }
 
 export default function SlideSheet({ open, onClose, title, children }: Props) {
+  const { t } = useI18n()
+  const mobile = useMobileSafe()
+  const swipe = useSwipeBack(onClose)
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)   // pilote la transition
 
@@ -38,6 +49,34 @@ export default function SlideSheet({ open, onClose, title, children }: Props) {
   }, [open, onClose])
 
   if (!mounted || typeof document === 'undefined') return null
+
+  if (mobile) {
+    const dragging = swipe.dragX > 0
+    return createPortal(
+      <div style={{ position: 'fixed', inset: 0, zIndex: 14000 }}>
+        <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', opacity: shown ? 1 : 0, transition: 'opacity 240ms ease' }} />
+        <div data-slide-sheet="m" {...swipe.handlers} style={{
+          position: 'absolute', inset: 0, background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)',
+          transform: shown ? `translateX(${swipe.dragX}px)` : 'translateX(100%)',
+          transition: dragging ? 'none' : 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)',
+          boxShadow: 'var(--shadow-float)', touchAction: 'pan-y',
+        }}>
+          {/* En-tête collant : rond ‹ · titre centré gras · espace. */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 16px 10px', background: 'var(--surface-page)' }}>
+            <SheetCloseBtn back onClick={onClose} label={t('common.back')} />
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'center', fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {title}
+            </div>
+            <div aria-hidden style={{ width: 44, flexShrink: 0 }} />
+          </div>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+            {children}
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )
+  }
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 14000 }}>

@@ -844,6 +844,53 @@ button:active { transform: scale(0.97); }
   color:            var(--text) !important;
 }
 
+/* Feuilles / surpages MOBILES (BottomSheet, MobileSheet, SlideSheet — mobile
+   uniquement, cf. src/components/ui/BottomSheet.tsx) : panneau gris chaud,
+   les blocs --bg-card2 / --dash-card du contenu deviennent des cartes blanches. */
+[data-sheet-panel="m"],
+[data-slide-sheet="m"] {
+  background-color: var(--surface-page) !important;
+  --bg-card2:  var(--surface-card);
+  --dash-card: var(--surface-card);
+  --dash-chip: var(--surface-chip);
+  --dash-bar:  var(--surface-bar);
+  --dash-line: var(--border);
+  --dash-soft: var(--surface-soft);
+}
+[data-sheet-panel="mc"] {
+  background-color: var(--surface-card) !important;
+  --dash-card: var(--surface-card);
+  --dash-chip: var(--surface-chip);
+  --dash-bar:  var(--surface-bar);
+  --dash-line: var(--border);
+  --dash-soft: var(--surface-soft);
+}
+[data-slide-sheet="m"] { --bg: var(--surface-page); }
+
+/* Segmented (src/components/ui/Segmented.tsx) — mobile : piste grise, pouce
+   blanc ombré, cibles 44 px. Desktop : rendu shadcn inchangé. */
+@media (max-width: 767px) {
+  [data-seg] {
+    background: var(--surface-chip);
+    padding: 3px;
+    gap: 2px;
+  }
+  [data-seg] > [data-slot="tabs-trigger"] {
+    min-height: 44px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--text-mid);
+  }
+  [data-seg="sm"] > [data-slot="tabs-trigger"] { font-size: 13px; padding-left: 14px; padding-right: 14px; }
+  [data-seg="md"] > [data-slot="tabs-trigger"] { font-size: 15px; }
+  [data-seg] > [data-slot="tabs-trigger"][data-state="active"] {
+    background: var(--surface-card);
+    color: var(--text);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  }
+}
+
 /* ── Animation shuriken : tourne, s'arrête, reprend ── */
 @keyframes spinPause {
   0%   { transform: rotate(0deg);   }

@@ -14,6 +14,7 @@ import { EXPRESS_TOUR, FULL_TOUR } from './guideRegistry'
 import { GuideSearch } from './GuideSearch'
 import { setGuideDemoId } from './guideDemo'
 import { useCoachAccess } from '@/hooks/useCoachAccess'
+import { MobileSheet, SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 
 export const GUIDE_FIRSTRUN_KEY = 'thw:guide-firstrun'
 export const GUIDE_SEEN_KEY = 'thw:guide-seen'
@@ -82,6 +83,7 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [firstRun, setFirstRun] = useState(false)
+  const mobile = useMobileSafe()
   const router = useRouter()
   const pathname = usePathname()
   const pollRef = useRef<number | null>(null)
@@ -189,7 +191,24 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{ startSteps, openSearch, active: !!steps }}>
       {children}
       <GuideSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={(s) => { setSearchOpen(false); startSteps(s) }} />
-      {mounted && firstRun && createPortal(
+      {/* Mobile (≤ 767 px) : proposition de visite en feuille du bas. */}
+      {mounted && mobile && (
+        <MobileSheet open={firstRun} onClose={closeFirstRun} zIndex={99500} label={t('w3g.guide_welcome')}
+          footer={<>
+            <SheetPill onClick={() => { closeFirstRun(); startSteps(EXPRESS_TOUR) }}>{t('w3g.guide_express')}</SheetPill>
+            <SheetPill variant="white" onClick={() => { closeFirstRun(); startSteps(FULL_TOUR) }}>{t('w3g.guide_full')}</SheetPill>
+            <SheetPill variant="ghost" onClick={closeFirstRun}>{t('w3g.guide_later')}</SheetPill>
+          </>}>
+          <div style={{ textAlign: 'center', padding: '8px 8px 0', fontFamily: 'var(--font-body)' }}>
+            <span aria-hidden style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 14px', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" /></svg>
+            </span>
+            <p style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>{t('w3g.guide_welcome')}</p>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, color: 'var(--text-mid)' }}>{t('w3g.guide_welcome_msg')}</p>
+          </div>
+        </MobileSheet>
+      )}
+      {mounted && !mobile && firstRun && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 99500, background: 'rgba(8,10,14,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ width: '100%', maxWidth: 360, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 20px 60px rgba(0,0,0,0.35)', padding: 22, textAlign: 'center', fontFamily: 'var(--font-body, DM Sans, sans-serif)' }}>
             <p style={{ margin: '0 0 6px', fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{t('w3g.guide_welcome')}</p>
@@ -296,6 +315,9 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
 
   const lastOfPage = !!pageInfo && pageInfo.posInPage >= pageInfo.pageCount
   const eyebrow = pageInfo ? `${t('w3g.guide_page')} ${pageInfo.pageNum}/${pageInfo.totalPages} · ${pageInfo.label}` : `${t('w3g.guide_tour')} · ${index + 1}/${total}`
+  // Mobile (≤ 767 px) : bulle blanche radius 20 sans bordure ni liseré, libellé
+  // gris en casse normale, boutons pilule ≥ 44 px (Suivant en cyan).
+  const m = vw <= 767
 
   return (
     // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
@@ -324,6 +346,51 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
       )}
 
       {/* Bulle — colonne flex : corps scrollable + PIED FIXE (boutons toujours visibles) */}
+      {m ? (
+      <div ref={cardRef} key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH, display: 'flex', flexDirection: 'column', background: 'var(--surface-card)', color: 'var(--text)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-float)', pointerEvents: 'auto', fontFamily: 'var(--font-body)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
+        <div style={{ padding: '16px 16px 8px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: rect && step.advanceOn === 'click' ? 'var(--primary)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {rect && step.advanceOn === 'click' ? t('w3g.guide_click_here') : eyebrow}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}/{total}</span>
+          </div>
+          <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden', marginBottom: 12 }}>
+            <div style={{ height: '100%', width: `${((index + 1) / total) * 100}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width .35s cubic-bezier(0.4,0,0.2,1)' }} />
+          </div>
+          {step.title && <p style={{ margin: '0 0 6px', fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{step.title}</p>}
+          {step.message && <p style={{ margin: '0 0 10px', fontSize: 15, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
+          {step.lines && step.lines.length > 0 && (
+            <ul key={index} style={{ listStyle: 'none', margin: '0 0 6px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {step.lines.map((ln, i) => (
+                <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 15, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 100}ms` }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, marginTop: 2, display: 'flex' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  </span>
+                  <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div style={{ flexShrink: 0, padding: '6px 12px 12px' }}>
+          {lastOfPage && pageInfo?.nextLabel && (
+            <p style={{ margin: '0 4px 8px', fontSize: 13, color: 'var(--text-mid)' }}>
+              {t('w3g.guide_next_page')} : <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{pageInfo.nextLabel}</strong>
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={onSkip} style={{ minHeight: 44, padding: '0 10px', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>{t('w3g.guide_skip')}</button>
+            <span style={{ flex: 1 }} />
+            {index > 0 && <button type="button" onClick={onPrev} style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>{t('w3g.guide_prev')}</button>}
+            <button type="button" onClick={onNext} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)', boxShadow: SHEET_CARD_SHADOW }}>
+              {index + 1 >= total ? t('w3g.guide_finish') : t('w3g.guide_next')}
+              {index + 1 < total && <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+            </button>
+          </div>
+        </div>
+      </div>
+      ) : (
       <div ref={cardRef} key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 18px 50px rgba(0,0,0,0.38)', pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
         {/* Liseré dégradé */}
         <div style={{ height: 4, background: GRAD, flexShrink: 0 }} />
@@ -376,6 +443,7 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

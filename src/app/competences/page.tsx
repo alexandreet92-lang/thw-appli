@@ -19,6 +19,7 @@ import MobileSidebar from './components/MobileSidebar'
 import CompetenceCard from './components/CompetenceCard'
 import CompetenceDetailModal from './components/CompetenceDetailModal'
 import { SPORTS_ORDER, SPORT_LABELS, sportIcon, type SportFilter, type CompetenceTab } from './constants'
+import { MobileSheet, SheetCard, SheetPill, SHEET_CARD_SHADOW } from '@/components/ui/BottomSheet'
 
 export default function CompetencesPage() {
   useTheme()
@@ -181,7 +182,42 @@ export default function CompetencesPage() {
           onDelete={handleDeleteDetail}
         />
       )}
-      {limitModal && (
+      {!isDesktop && (
+        // Mobile : feuille du bas — pastille cadenas, titre gras, pilule cyan.
+        <MobileSheet open={limitModal} onClose={() => setLimitModal(false)} zIndex={1200} label={t('competences.limitReachedTitle')}
+          footer={<>
+            <SheetPill onClick={() => router.push('/settings/subscription')}>{t('competences.discoverPlans')}</SheetPill>
+            <SheetPill variant="white" onClick={() => { setActiveTab('actives'); setLimitModal(false) }}>{t('competences.viewActiveSkills')}</SheetPill>
+          </>}>
+          <div style={{ textAlign: 'center', padding: '8px 8px 0', fontFamily: 'var(--font-body)' }}>
+            <span aria-hidden style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 14px', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Lock size={26} />
+            </span>
+            <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>{t('competences.limitReachedTitle')}</h3>
+            <p style={{ margin: '6px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--text-mid)' }}>
+              {limit.limit > 1
+                ? t('competences.limitPlanLinePlural', { plan: limit.planLabel, n: limit.limit })
+                : t('competences.limitPlanLineSingular', { plan: limit.planLabel, n: limit.limit })}
+            </p>
+            <p style={{ margin: '10px 0 0', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('competences.limitBody')}</p>
+          </div>
+        </MobileSheet>
+      )}
+      {!isDesktop && conflictState && (
+        // Mobile : carte flottante blanche (sans bordure) au-dessus du champ de création.
+        <div style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 112px)', zIndex: 110, display: 'flex', justifyContent: 'center' }}>
+          <SheetCard style={{ width: '100%', maxWidth: 480, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-capsule)' }}>
+            <span style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.45 }}>{t('competences.conflictBar', { nom: conflictState.blocker.nom })}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => setConflictState(null)}
+                style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('competences.cancel')}</button>
+              <button type="button" onClick={() => void resolveConflict()}
+                style={{ flex: 1, minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('competences.deactivateOtherActivateThis')}</button>
+            </div>
+          </SheetCard>
+        </div>
+      )}
+      {isDesktop && limitModal && (
         <div
           onClick={() => setLimitModal(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}
@@ -228,7 +264,7 @@ export default function CompetencesPage() {
           </div>
         </div>
       )}
-      {conflictState && (
+      {isDesktop && conflictState && (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
           maxWidth: 480, width: 'calc(100% - 28px)',
@@ -249,64 +285,74 @@ export default function CompetencesPage() {
   )
 
   // ══════════════════ MOBILE ══════════════════
+  // Grammaire « Strava / Claude » : page gris chaud, en-tête rond · titre
+  // centré gras · rond, puces pilule, cartes blanches sans bordure.
   if (!isDesktop) {
+    const roundBtn: React.CSSProperties = {
+      width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+      background: 'var(--float-bg)', color: 'var(--text)', boxShadow: 'var(--shadow-capsule)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }
     return (
-      <div className="competences-mobile-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--bg-card)' }}>
+      <div className="competences-mobile-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--surface-page)', fontFamily: 'var(--font-body)' }}>
         {/* Header dédié — sticky (le header global app est masqué sur /competences) */}
         <div style={{
           position: 'sticky', top: 0, zIndex: 5,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          padding: 'calc(14px + env(safe-area-inset-top)) 16px 14px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: 'calc(8px + env(safe-area-inset-top)) 16px 10px', background: 'var(--surface-page)',
         }}>
-          <button onClick={() => setMobileOpen(true)} aria-label={t('competences.filters')}
-            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Menu size={16} color="var(--text)" />
+          <button onClick={() => setMobileOpen(true)} aria-label={t('competences.filters')} style={roundBtn}>
+            <Menu size={20} strokeWidth={2.2} />
           </button>
-          <div style={{ textAlign: 'center', minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t('competences.title')}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-mid)' }}>{t('competences.subtitleMobile')}</div>
+          <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('competences.title')}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('competences.subtitleMobile')}</div>
           </div>
-          <button onClick={goBack} aria-label={t('competences.backToCoach')}
-            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--bg-alt)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <X size={16} color="var(--text)" />
+          <button onClick={goBack} aria-label={t('competences.backToCoach')} style={roundBtn}>
+            <X size={20} strokeWidth={2.4} />
           </button>
         </div>
 
-        {/* Chips sports */}
-        <div className="comp-chips-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 16px 12px' }}>
+        {/* Puces sports (pilules ; active = sombre) */}
+        <div className="comp-chips-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 16px 12px' }}>
           {SPORTS_ORDER.map(s => {
             const a = activeSport === s
             return (
-              <button key={s} onClick={() => setActiveSport(s)}
+              <button key={s} onClick={() => setActiveSport(s)} aria-pressed={a}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                  fontSize: 12, padding: '6px 14px', borderRadius: 'var(--r-lg)', cursor: 'pointer',
-                  fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
-                  border: `0.5px solid ${a ? 'rgba(6,182,212,0.4)' : 'var(--border)'}`,
-                  background: a ? 'rgba(6,182,212,0.12)' : 'var(--bg-card)',
-                  color: a ? '#06B6D4' : 'var(--text-mid)',
-                  fontWeight: a ? 500 : 400,
+                  display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, minHeight: 44,
+                  fontSize: 15, padding: '0 16px', borderRadius: 'var(--r-pill)', cursor: 'pointer', border: 'none',
+                  fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', fontWeight: a ? 700 : 600,
+                  background: a ? 'var(--text)' : 'var(--surface-card)', color: a ? 'var(--bg)' : 'var(--text)',
+                  boxShadow: a ? 'none' : SHEET_CARD_SHADOW, transition: 'background 0.2s ease, color 0.2s ease',
                 }}>
-                {sportIcon(s, 12)}{t(SPORT_LABELS[s])}
+                {sportIcon(s, 16)}{t(SPORT_LABELS[s])}
               </button>
             )
           })}
         </div>
 
-        {/* Compteur sous les chips */}
-        <div style={{ fontSize: 12, color: 'var(--text-mid)', padding: '0 16px 12px' }}>
-          <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
+        {/* Compteur sous les puces */}
+        <div style={{ fontSize: 15, color: 'var(--text-mid)', padding: '0 20px 14px', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ color: 'var(--text)', fontWeight: 700 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
         </div>
 
         {/* Notice */}
-        {notice && <div style={noticeStyle}>{notice}</div>}
+        {notice && (
+          <div style={{ padding: '0 16px 12px' }}>
+            <SheetCard style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px' }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
+              <span style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.4 }}>{notice}</span>
+            </SheetCard>
+          </div>
+        )}
 
         {/* Liste */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 120px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px calc(140px + env(safe-area-inset-bottom))' }}>
           {loading ? (
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>{t('competences.loading')}</p>
+            [0, 1, 2].map(i => <div key={i} aria-hidden style={{ height: 132, borderRadius: 'var(--r-lg)', background: 'var(--surface-chip)', opacity: 0.7 }} />)
           ) : filtered.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>{t('competences.emptyFilter')}</p>
+            <p style={{ fontSize: 15, color: 'var(--text-mid)', padding: '28px 8px', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>{t('competences.emptyFilter')}</p>
           ) : (
             filtered.map(c => (
               <CompetenceCard key={c.id} competence={c} conflicts={conflictsFor(c)} compact

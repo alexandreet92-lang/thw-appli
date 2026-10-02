@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
+import { MobileSheet, SheetCard, useMobileSafe } from '@/components/ui/BottomSheet'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -68,6 +69,7 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { t } = useI18n()
+  const mobile = useMobileSafe()
 
   useEffect(() => { if (open) setMounted(true) }, [open])
   useEffect(() => { const t = setTimeout(() => setShown(open), 10); return () => clearTimeout(t) }, [open])
@@ -102,6 +104,53 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
     })()
     return () => { cancelled = true }
   }, [open])
+
+  // Mobile (≤ 767 px) : feuille du bas, liste groupée blanche à filets.
+  if (mobile) {
+    return (
+      <MobileSheet open={open} onClose={onClose} title={t('shared.notifications')} zIndex={14500}>
+        {loading ? (
+          <SheetCard>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ position: 'relative', padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                <span aria-hidden style={{ height: 14, width: '55%', borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)' }} />
+                <span aria-hidden style={{ height: 12, width: '85%', borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)', opacity: 0.7 }} />
+              </div>
+            ))}
+          </SheetCard>
+        ) : notifs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 'var(--space-8) var(--space-4)' }}>
+            <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: 'var(--text)' }}>{t('shared.nothingNew')}</p>
+            <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.5 }}>{t('shared.alertsHint')}</p>
+          </div>
+        ) : (
+          <SheetCard>
+            <AnimatedList>
+              {notifs.map((n, i) => (
+                <AnimatedItem key={n.id} index={i}>
+                  <button type="button"
+                    onClick={() => { if (n.link) { onClose(); router.push(n.link) } }}
+                    style={{ position: 'relative', display: 'flex', gap: 12, width: '100%', minHeight: 56, textAlign: 'left', cursor: n.link ? 'pointer' : 'default',
+                      background: 'transparent', border: 'none', padding: '14px 16px', fontFamily: 'var(--font-body)' }}>
+                    {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+                    <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read ? 'transparent' : 'var(--primary)' }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: n.read ? 600 : 700, color: 'var(--text)', lineHeight: 1.3 }}>{n.title}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-dim)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{timeAgo(n.created_at, t)}</span>
+                      </span>
+                      {n.body && <span style={{ display: 'block', marginTop: 3, fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.45 }}>{n.body}</span>}
+                    </span>
+                  </button>
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
+          </SheetCard>
+        )}
+      </MobileSheet>
+    )
+  }
 
   if ((!mounted && !open) || typeof document === 'undefined') return null
 

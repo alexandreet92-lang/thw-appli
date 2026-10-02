@@ -9,18 +9,28 @@ export const dynamic = 'force-dynamic'
 // pose profile_setup_done=true. À la charte (tokens).
 // ══════════════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
+import { SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
 import {
   buildQuestionList, ATHLETE_QUESTIONS, type ObProfile, type ObVersion, type ObQuestion,
 } from './questions'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
+
+// Mobile (≤ 767 px) : grammaire « Strava / Claude » — page gris chaud plein
+// écran, options en cartes blanches à filets, champs pleins sans bordure,
+// pilule cyan fixe en bas. Desktop : carte centrée historique.
+const MobileCtx = createContext(false)
+const mInputStyle: React.CSSProperties = {
+  width: '100%', minHeight: 50, boxSizing: 'border-box', background: 'var(--surface-card)', border: 'none', boxShadow: SHEET_CARD_SHADOW,
+  borderRadius: 'var(--r-md)', padding: '0 16px', color: 'var(--text)', fontFamily: FB, fontSize: 16, outline: 'none',
+}
 
 type Answers = Record<string, unknown>
 
@@ -30,6 +40,7 @@ const TEXTAREA = new Set(['a_mainGoal', 'a_injuries', 'c_pricing', 'c_expectatio
 export default function BienvenuePage() {
   const router = useRouter()
   const { t } = useI18n()
+  const m = useMobileSafe()
 
   const [profile, setProfile] = useState<ObProfile | null>(null)
   const [version, setVersion] = useState<ObVersion | null>(null)
@@ -174,6 +185,83 @@ export default function BienvenuePage() {
   const totalSteps = STEP_FIRST_Q + N
   const dispNum = Math.min(step + 1, totalSteps)
 
+  const keyframes = `
+        @keyframes qIn { from { opacity: 0; transform: translateX(var(--qx)) } to { opacity: 1; transform: translateX(0) } }
+        @keyframes qCheck { from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 } }
+        @keyframes qPop { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
+        .q-slide { animation: qIn 0.32s cubic-bezier(0.32,0.72,0,1) both }
+        @media (prefers-reduced-motion: reduce) { .q-slide { animation: none } .q-check, .q-pop { animation: none !important } }
+      `
+
+  // ── Mobile : plein écran gris chaud, en-tête rond ‹ · progression, pied fixe ──
+  if (m) {
+    const disabled = !canNext || saving
+    return (
+      <MobileCtx.Provider value>
+        <div style={{ minHeight: '100dvh', background: 'var(--surface-page)', display: 'flex', flexDirection: 'column', fontFamily: FB }}>
+          <style>{keyframes}</style>
+          <LanguageDropdown />
+          {!isFinal && (
+            <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--surface-page)', display: 'flex', alignItems: 'center', gap: 12, padding: 'calc(env(safe-area-inset-top) + 12px) 76px 10px 16px' }}>
+              {step > 0 ? (
+                <button onClick={onBack} aria-label={t('onboarding.back')} style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', padding: 0, flexShrink: 0, background: 'var(--float-bg)', boxShadow: 'var(--shadow-capsule)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={20} strokeWidth={2.2} /></button>
+              ) : <span style={{ width: 0 }} />}
+              <div style={{ flex: 1, height: 6, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(dispNum / Math.max(1, totalSteps)) * 100}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width 0.3s ease' }} />
+              </div>
+              <span className="tnum" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', flexShrink: 0 }}>{t('q.of', { n: dispNum, m: totalSteps })}</span>
+            </div>
+          )}
+
+          <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: isFinal ? 'calc(env(safe-area-inset-top) + 64px) 16px 24px' : '12px 16px 24px', overflowX: 'hidden' }}>
+            {!isFinal && (
+              <div key={step} className="q-slide" style={{ ['--qx' as string]: dir === 'r' ? '28px' : '-28px' }}>
+                {step === 0 && <ProfileStep t={t} value={profile} onChange={setProfile} />}
+                {step === STEP_VERSION && <VersionStep t={t} value={version} onChange={setVersion} />}
+                {q && <QuestionView
+                  q={q} t={t} showCoachIntro={profile === 'both' && q.block === 'coach' && qIdx === ATHLETE_LEN(version)}
+                  getStr={getStr} getArr={getArr} setStr={setStr} toggleArr={toggleArr}
+                  getPerSport={getPerSport} setPerSport={setPerSport} getTf={getTf} setTf={setTf}
+                  sportsSelected={getArr('a_sports')} />}
+              </div>
+            )}
+            {isFinal && (
+              <div style={{ textAlign: 'center' }}>
+                <svg className="q-pop" width="80" height="80" viewBox="0 0 72 72" style={{ margin: '0 auto', display: 'block', animation: 'qPop 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
+                  <circle cx="36" cy="36" r="33" fill="var(--surface-card)" />
+                  <path className="q-check" d="M22 37l9 9 19-21" fill="none" stroke="var(--primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="60" style={{ animation: 'qCheck 0.5s ease 0.25s both' }} />
+                </svg>
+                <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: '20px 0 6px' }}>{t('q.doneTitle')}</h1>
+                <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.45 }}>{t('q.doneSub')}</p>
+                <div style={{ textAlign: 'left', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden' }}>
+                  <RecapRow first label={t('ob.profile.title')} value={profile ? t('ob.profile.' + profile) : '—'} />
+                  <RecapRow label={t('ob.version.title')} value={version ? t('ob.version.' + version) : '—'} />
+                  {getArr('a_sports').length > 0 && <RecapRow label={t('onboarding.recapSports')} value={getArr('a_sports').map(s => tOpt(t, 'a_sports', s)).join(', ')} />}
+                  {getStr('a_goalType') && <RecapRow label={t('onboarding.recapGoal')} value={getStr('a_goalType') === 'autre' ? (getStr('a_goalType__other') || t('q.other')) : tOpt(t, 'a_goalType', getStr('a_goalType'))} />}
+                  {getStr('c_current') && <RecapRow label={t('ob.c_current.title')} value={getStr('c_current')} />}
+                </div>
+              </div>
+            )}
+            {error && <p style={{ color: 'var(--danger)', fontSize: 14, margin: '16px 0 0', textAlign: 'center' }}>{error}</p>}
+          </div>
+
+          <div style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--surface-page)', padding: '10px 16px calc(14px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {isFinal ? (
+              <SheetPill onClick={() => { router.replace('/'); router.refresh() }}>{t('q.enter')}<ArrowRight size={18} /></SheetPill>
+            ) : (
+              <>
+                <SheetPill onClick={onNext} disabled={disabled}>
+                  {saving ? t('onboarding.saving') : <>{step === totalSteps - 1 ? t('q.finish') : t('q.next')}<ArrowRight size={18} /></>}
+                </SheetPill>
+                {q?.optional && <SheetPill variant="ghost" onClick={onSkip}>{t('q.skip')}</SheetPill>}
+              </>
+            )}
+          </div>
+        </div>
+      </MobileCtx.Provider>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       <style>{`
@@ -274,23 +362,63 @@ function tOpt(t: TF, qid: string, value: string): string {
 }
 
 // ── Écran « Qui es-tu ? » ─────────────────────────────────────────
+/** Titre de question : Fraunces 22 (desktop) · Inter 26/800 (mobile). */
+function QTitle({ children, mb }: { children: React.ReactNode; mb: number }) {
+  const m = useContext(MobileCtx)
+  return m
+    ? <h1 style={{ fontFamily: FB, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1.2, margin: `4px 4px ${mb}px` }}>{children}</h1>
+    : <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: mb === 20 ? 1.2 : 1.22, margin: `0 0 ${mb}px` }}>{children}</h1>
+}
+/** Conteneur des options : liste nue (desktop) · carte blanche à filets (mobile). */
+function OptionList({ children }: { children: React.ReactNode }) {
+  const m = useContext(MobileCtx)
+  return <div style={m
+    ? { display: 'flex', flexDirection: 'column', background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: SHEET_CARD_SHADOW, overflow: 'hidden' }
+    : { display: 'flex', flexDirection: 'column' }}>{children}</div>
+}
+
 function ProfileStep({ t, value, onChange }: { t: TF; value: ObProfile | null; onChange: (p: ObProfile) => void }) {
   const opts: ObProfile[] = ['athlete', 'both', 'coach']
   return (
     <div>
-      <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 20px' }}>{t('ob.profile.q')}</h1>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <QTitle mb={20}>{t('ob.profile.q')}</QTitle>
+      <OptionList>
         {opts.map((o, i) => (
           <OptionButton key={o} selected={value === o} multi={false} i={i}
             title={t('ob.profile.' + o)} desc={t('ob.profile.' + o + 'D')} onClick={() => onChange(o)} />
         ))}
-      </div>
+      </OptionList>
     </div>
   )
 }
 
 // ── Écran « Version » (incite au complet) ─────────────────────────
 function VersionStep({ t, value, onChange }: { t: TF; value: ObVersion | null; onChange: (v: ObVersion) => void }) {
+  const m = useContext(MobileCtx)
+  if (m) {
+    const card = (on: boolean): React.CSSProperties => ({
+      display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '16px', marginBottom: 12, border: 'none',
+      borderRadius: 'var(--r-lg)', background: 'var(--surface-card)', fontFamily: FB,
+      boxShadow: on ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW, transition: 'box-shadow 0.2s ease',
+    })
+    return (
+      <div>
+        <QTitle mb={6}>{t('ob.version.q')}</QTitle>
+        <p style={{ fontFamily: FB, fontSize: 15, color: 'var(--text-mid)', margin: '0 4px 18px', lineHeight: 1.5 }}>{t('ob.version.hint')}</p>
+        <button onClick={() => onChange('full')} aria-pressed={value === 'full'} style={card(value === 'full')}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{t('ob.version.full')}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: '3px 10px' }}>{t('ob.version.recommended')}</span>
+          </span>
+          <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 4, lineHeight: 1.45 }}>{t('ob.version.fullD')}</span>
+        </button>
+        <button onClick={() => onChange('express')} aria-pressed={value === 'express'} style={card(value === 'express')}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t('ob.version.express')}</span>
+          <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 3 }}>{t('ob.version.expressD')}</span>
+        </button>
+      </div>
+    )
+  }
   return (
     <div>
       <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 6px' }}>{t('ob.version.q')}</h1>
@@ -333,19 +461,22 @@ interface QVProps {
 }
 function QuestionView(p: QVProps) {
   const { q, t } = p
+  const m = useContext(MobileCtx)
+  const inputStyle = m ? mInputStyle : deskInputStyle
   const title = t(`ob.${q.id}.title`)
   const descKey = `ob.${q.id}.desc`; const desc = t(descKey)
   return (
     <div>
-      {p.showCoachIntro && (
-        <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', margin: '0 0 10px' }}>{t('ob.blockCoach')}</p>
+      {p.showCoachIntro && (m
+        ? <p style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--primary)', margin: '0 4px 8px' }}>{t('ob.blockCoach')}</p>
+        : <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', margin: '0 0 10px' }}>{t('ob.blockCoach')}</p>
       )}
-      <h1 style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.22, margin: '0 0 6px' }}>{title}</h1>
-      {desc !== descKey && <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{desc}</p>}
+      <QTitle mb={6}>{title}</QTitle>
+      {desc !== descKey && <p style={{ fontFamily: FB, fontSize: m ? 15 : 13, color: 'var(--text-mid)', margin: m ? '0 4px 16px' : '0 0 16px', lineHeight: 1.5 }}>{desc}</p>}
       {desc === descKey && <div style={{ height: 14 }} />}
 
       {(q.kind === 'single' || q.kind === 'multi') && (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <OptionList>
           {q.options!.map((o, i) => {
             const selected = q.kind === 'multi' ? p.getArr(q.id).includes(o.value) : p.getStr(q.id) === o.value
             return (
@@ -355,12 +486,13 @@ function QuestionView(p: QVProps) {
             )
           })}
           {q.other && (
-            <div style={{ borderTop: '1px solid var(--border)', padding: '14px 14px 4px' }}>
+            <div style={m ? { position: 'relative', padding: '10px 12px 12px' } : { borderTop: '1px solid var(--border)', padding: '14px 14px 4px' }}>
+              {m && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
               <input value={p.getStr(`${q.id}__other`)} onChange={e => { p.setStr(`${q.id}__other`, e.target.value); if (q.kind === 'single' && e.target.value) p.setStr(q.id, 'autre') }}
-                placeholder={t('q.other')} style={inputStyle} />
+                placeholder={t('q.other')} style={m ? { ...inputStyle, background: 'var(--surface-page)', boxShadow: 'none', minHeight: 46 } : inputStyle} />
             </div>
           )}
-        </div>
+        </OptionList>
       )}
 
       {q.kind === 'number' && (
@@ -380,7 +512,7 @@ function QuestionView(p: QVProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {q.timeframes!.map(tf => (
             <div key={tf.id}>
-              <label style={{ display: 'block', fontFamily: FB, fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 6 }}>{t(`ob.${q.id}.${tf.id}`)}</label>
+              <label style={{ display: 'block', fontFamily: FB, fontSize: m ? 15 : 12.5, fontWeight: m ? 500 : 600, color: 'var(--text-mid)', margin: m ? '0 4px 8px' : '0 0 6px' }}>{t(`ob.${q.id}.${tf.id}`)}</label>
               <input value={p.getTf(q.id, tf.id)} onChange={e => p.setTf(q.id, tf.id, e.target.value)}
                 placeholder={t(`ob.${q.id}.ph`)} style={inputStyle} />
             </div>
@@ -390,22 +522,26 @@ function QuestionView(p: QVProps) {
 
       {q.kind === 'perSport' && (
         p.sportsSelected.length === 0
-          ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{t('ob.perSport.empty')}</p>
+          ? <p style={{ fontFamily: FB, fontSize: m ? 15 : 13, color: m ? 'var(--text-mid)' : 'var(--text-dim)' }}>{t('ob.perSport.empty')}</p>
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {p.sportsSelected.map(s => (
-                <div key={s} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
-                  <div style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{tOpt(t, 'a_sports', s)}</div>
+                <div key={s} style={m
+                  ? { background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '16px', boxShadow: SHEET_CARD_SHADOW }
+                  : { background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
+                  <div style={{ fontFamily: m ? FB : FD, fontSize: m ? 17 : 15, fontWeight: m ? 700 : 600, color: 'var(--text)', marginBottom: 10 }}>{tOpt(t, 'a_sports', s)}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {q.perSportFields!.map(f => (
                       <div key={f.id}>
-                        <label style={{ display: 'block', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 5 }}>{t(`ob.${q.id}.${f.id}`)}</label>
+                        <label style={{ display: 'block', fontFamily: FB, fontSize: m ? 14 : 12, fontWeight: m ? 500 : 600, color: 'var(--text-mid)', marginBottom: m ? 6 : 5 }}>{t(`ob.${q.id}.${f.id}`)}</label>
                         {f.kind === 'single'
                           ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                               {f.options!.map(ov => {
                                 const sel = p.getPerSport(q.id, s, f.id) === ov
                                 return (
-                                  <button key={ov} type="button" onClick={() => p.setPerSport(q.id, s, f.id, sel ? '' : ov)}
-                                    style={{ border: 'none', boxShadow: `inset 0 0 0 1px ${sel ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel ? 'var(--primary-dim)' : 'transparent', color: sel ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontFamily: FB, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                  <button key={ov} type="button" onClick={() => p.setPerSport(q.id, s, f.id, sel ? '' : ov)} aria-pressed={sel}
+                                    style={m
+                                      ? { border: 'none', background: sel ? 'var(--text)' : 'var(--surface-chip)', color: sel ? 'var(--bg)' : 'var(--text)', borderRadius: 'var(--r-pill)', minHeight: 40, padding: '0 14px', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+                                      : { border: 'none', boxShadow: `inset 0 0 0 1px ${sel ? 'var(--primary)' : 'var(--border-mid)'}`, background: sel ? 'var(--primary-dim)' : 'transparent', color: sel ? 'var(--primary)' : 'var(--text-mid)', borderRadius: 'var(--r-pill)', padding: '5px 11px', fontFamily: FB, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                                     {t(`ob.${q.id}.${f.id}.${ov}`)}
                                   </button>
                                 )
@@ -413,7 +549,7 @@ function QuestionView(p: QVProps) {
                             </div>
                           : <input type={f.kind === 'number' ? 'number' : 'text'} inputMode={f.kind === 'number' ? 'numeric' : undefined}
                               value={p.getPerSport(q.id, s, f.id)} onChange={e => p.setPerSport(q.id, s, f.id, e.target.value)}
-                              placeholder={f.unit || t(`ob.${q.id}.${f.id}.ph`)} style={{ ...inputStyle, height: 42 }} />}
+                              placeholder={f.unit || t(`ob.${q.id}.${f.id}.ph`)} style={m ? { ...inputStyle, background: 'var(--surface-page)', boxShadow: 'none', minHeight: 46 } : { ...inputStyle, height: 42 }} />}
                       </div>
                     ))}
                   </div>
@@ -429,6 +565,27 @@ function QuestionView(p: QVProps) {
 function OptionButton({ selected, multi, i, title, desc, onClick }: {
   selected: boolean; multi: boolean; i: number; title: string; desc?: string; onClick: () => void
 }) {
+  const m = useContext(MobileCtx)
+  if (m) {
+    // Ligne de carte blanche : filet encarté, coche cyan pleine quand choisie.
+    return (
+      <button onClick={onClick} role={multi ? 'checkbox' : 'radio'} aria-checked={selected} style={{
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', width: '100%',
+        minHeight: 56, padding: '14px 16px', border: 'none', background: 'transparent', fontFamily: FB,
+      }}>
+        {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 16, fontWeight: selected ? 700 : 600, color: 'var(--text)', lineHeight: 1.3 }}>{title}</span>
+          {desc && <span style={{ display: 'block', fontSize: 14, color: 'var(--text-mid)', marginTop: 3, lineHeight: 1.45 }}>{desc}</span>}
+        </span>
+        <span aria-hidden style={{
+          width: 26, height: 26, borderRadius: multi ? 'var(--r-sm)' : '50%', flexShrink: 0,
+          background: selected ? 'var(--primary)' : 'transparent', boxShadow: selected ? 'none' : 'inset 0 0 0 2px var(--text-dim)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s ease',
+        }}>{selected && <Check size={15} color="var(--on-primary)" strokeWidth={3} />}</span>
+      </button>
+    )
+  }
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', width: '100%',
@@ -451,12 +608,22 @@ function OptionButton({ selected, multi, i, title, desc, onClick }: {
   )
 }
 
-const inputStyle: React.CSSProperties = {
+const deskInputStyle: React.CSSProperties = {
   width: '100%', height: 46, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
   borderRadius: 'var(--r-sm)', padding: '0 14px', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none',
 }
 
-function RecapRow({ label, value }: { label: string; value: string }) {
+function RecapRow({ label, value, first }: { label: string; value: string; first?: boolean }) {
+  const m = useContext(MobileCtx)
+  if (m) {
+    return (
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, minHeight: 52, padding: '12px 16px' }}>
+        {!first && <span aria-hidden style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: 'var(--border)' }} />}
+        <span style={{ fontFamily: FB, fontSize: 15, color: 'var(--text-mid)', flexShrink: 0 }}>{label}</span>
+        <span style={{ fontFamily: FB, fontSize: 15, fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '5px 0' }}>
       <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>

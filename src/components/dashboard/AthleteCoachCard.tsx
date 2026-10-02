@@ -11,6 +11,7 @@ import { Avatar } from '@/components/shared/Sidebar'
 import { CodeInput } from '@/components/coach/CodeCells'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { useI18n } from '@/lib/i18n'
+import { SheetPill, useMobileSafe } from '@/components/ui/BottomSheet'
 
 interface CoachRow { linkId: string; coachId: string; since: string | null; name: string; avatar: string | null }
 
@@ -24,6 +25,7 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
   const [busy, setBusy] = useState(false)
   const [adding, setAdding] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const mobile = useMobileSafe()
 
   const reload = useCallback(async () => {
     try {
@@ -74,13 +76,15 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('w2d.myCoach')}</span>
           </div>
           <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.45 }}>{t('w2d.linkCoachHint')}</p>
-          <button onClick={() => { setAdding(true); setMsg(null) }} className="thw-press" style={{ marginTop: 14, padding: '9px 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
+          <button onClick={() => { setAdding(true); setMsg(null) }} className="thw-press" style={{ marginTop: 14, padding: '9px 16px', minHeight: mobile ? 44 : undefined, fontSize: mobile ? 15 : 14, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('w2d.coachConnect')}</button>
         </div>
       )}
       {/* Coach(s) lié(s) */}
       {hasCoach && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: adding ? 20 : 0 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em' }}>{t('w2d.myCoach')}</div>
+          {mobile
+            ? <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('w2d.myCoach')}</div>
+            : <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em' }}>{t('w2d.myCoach')}</div>}
           {coaches.map(c => (
             <div key={c.linkId} style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -91,7 +95,7 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{c.since ? t('w2d.coachSince', { date: since(c.since) }) : t('w2d.yourCoach')}</div>
               </div>
-              <button onClick={() => remove(c.linkId)} aria-label={t('w2d.breakLink')} style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .14s, color .14s' }}
+              <button onClick={() => remove(c.linkId)} aria-label={t('w2d.breakLink')} style={{ width: mobile ? 44 : 32, height: mobile ? 44 : 32, marginRight: mobile ? -10 : undefined, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .14s, color .14s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-alt)'; (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -99,7 +103,9 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
             </div>
           ))}
           {!adding && (
-            <button onClick={() => { setAdding(true); setMsg(null) }} style={{ alignSelf: 'flex-start', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            <button onClick={() => { setAdding(true); setMsg(null) }} style={mobile
+              ? { alignSelf: 'flex-start', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }
+              : { alignSelf: 'flex-start', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
               {t('w2d.addAnotherCoach')}
             </button>
@@ -111,6 +117,21 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
 
       {/* Surpage de connexion (code) */}
       <SlideSheet open={adding} onClose={() => { setAdding(false); setCode(''); setResetKey(k => k + 1); setMsg(null) }} title={t('w2d.coachConnect')}>
+        {mobile ? (
+          // Mobile : pastille ronde blanche, titre gras, code, pilule cyan pleine largeur.
+          <div style={{ maxWidth: 440, margin: '0 auto', padding: '20px 16px 32px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+            <span aria-hidden style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'var(--surface-card)', boxShadow: 'var(--shadow-capsule)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
+            </span>
+            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', margin: '0 0 6px', lineHeight: 1.2 }}>{t('w2d.connectToCoach')}</h2>
+            <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.5 }}>{t('w2d.enterCoachCode')}</p>
+            <CodeInput key={resetKey} onChange={setCode} onComplete={() => { /* prêt à valider */ }} />
+            <div style={{ marginTop: 24 }}>
+              <SheetPill onClick={() => void add()} disabled={code.length !== 8 || busy}>{busy ? t('w2d.connecting') : t('w2d.connect')}</SheetPill>
+            </div>
+            {msg && <p style={{ fontSize: 14, color: msg.ok ? 'var(--success)' : 'var(--danger)', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
+          </div>
+        ) : (
         <div style={{ maxWidth: 420, margin: '0 auto', padding: '24px clamp(16px,4vw,32px) 64px', textAlign: 'center' }}>
           <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', margin: '0 auto 14px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M19 8l2 2 3-3" /></svg>
@@ -124,6 +145,7 @@ export function AthleteCoachCard({ onlyLinked = false }: { onlyLinked?: boolean 
           </button>
           {msg && <p style={{ fontSize: 13, color: msg.ok ? '#22c55e' : 'var(--danger)', margin: '14px 0 0', fontWeight: 600 }}>{msg.text}</p>}
         </div>
+        )}
       </SlideSheet>
     </div>
   )

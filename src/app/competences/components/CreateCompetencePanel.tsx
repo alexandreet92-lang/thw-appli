@@ -46,6 +46,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   }
 
   const hasConversation = conv.messages.length > 0
+  const m = variant === 'mobile'
 
   const insertExample = (ex: string) => {
     setText(ex)
@@ -109,9 +110,11 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
 
       {/* Preview compétence générée */}
       {conv.generatedMetadata && conv.generatedPrompt && (
-        <div style={{ background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 14, marginTop: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{conv.generatedMetadata.nom}</div>
-          <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>{conv.generatedMetadata.description_courte}</p>
+        <div style={m
+          ? { background: 'var(--surface-page)', borderRadius: 'var(--r-md)', padding: 14, marginTop: 10 }
+          : { background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: 14, marginTop: 10 }}>
+          <div style={{ fontSize: m ? 16 : 13, fontWeight: m ? 700 : 600, color: 'var(--text)' }}>{conv.generatedMetadata.nom}</div>
+          <p style={{ margin: '4px 0 0', fontSize: m ? 14 : 11.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>{conv.generatedMetadata.description_courte}</p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
             {conv.generatedMetadata.bullets.map((b, i) => (
               <li key={i} style={{ position: 'relative', paddingLeft: 12, fontSize: 11.5, color: 'var(--text-mid)', lineHeight: 1.6 }}>
@@ -126,12 +129,21 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
               </span>
             ))}
           </div>
+          {m ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={() => inputRef.current?.focus()} style={{ minHeight: 44, padding: '0 16px', fontSize: 15, fontWeight: 600, background: 'var(--surface-card)', color: 'var(--text)', border: 'none', borderRadius: 'var(--r-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('competences.refine')}</button>
+              <button type="button" onClick={() => void doSave()} disabled={saving} style={{ flex: 1, minHeight: 44, padding: '0 16px', fontSize: 15, fontWeight: 700, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', borderRadius: 'var(--r-pill)', cursor: saving ? 'wait' : 'pointer', fontFamily: 'var(--font-body)', opacity: saving ? 0.6 : 1 }}>
+                {saving ? t('competences.saving') : t('competences.saveThisSkill')}
+              </button>
+            </div>
+          ) : (
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: 'pointer' }}>{t('competences.refine')}</button>
             <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
               {saving ? t('competences.saving') : t('competences.saveThisSkill')}
             </button>
           </div>
+          )}
         </div>
       )}
 
@@ -166,19 +178,45 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   )
 
   if (variant === 'mobile') {
+    // Mobile : capsule de saisie flottante blanche (sans bordure) + fil de
+    // conversation dans une carte blanche au-dessus ; bouton rond cyan.
+    const canSend = !!text.trim() && !conv.isStreaming
     return (
       <div style={{
-        position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 20,
-        display: 'flex', flexDirection: 'column', maxHeight: '60vh',
+        position: 'fixed', bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))', left: 12, right: 12, zIndex: 20,
+        display: 'flex', flexDirection: 'column', maxHeight: '60vh', fontFamily: 'var(--font-body)',
       }}>
         {(hasConversation || conv.generatedMetadata) && (
           <div style={{
-            flex: 1, overflowY: 'auto', padding: 12, marginBottom: 8,
-            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            flex: 1, overflowY: 'auto', padding: 14, marginBottom: 8,
+            background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-capsule)',
           }}>{chat}</div>
         )}
-        {inputBar}
+        <div style={{ background: 'var(--float-bg)', borderRadius: 'calc(var(--r-lg) + 4px)', boxShadow: 'var(--shadow-capsule)', padding: '12px 10px 10px 16px' }}>
+          <textarea
+            ref={inputRef}
+            id="create-competence-input"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend() } }}
+            placeholder={t('competences.placeholderIdea')}
+            rows={1}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 16, lineHeight: 1.4, color: 'var(--text)', fontFamily: 'var(--font-body)', minHeight: 24, maxHeight: 120, padding: 0 }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', background: 'var(--surface-chip)', borderRadius: 'var(--r-pill)', padding: '5px 12px', whiteSpace: 'nowrap' }}>Athéna</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MicButton onTranscript={setText} iconSize={20} boxSize={44} />
+              <button type="button" onClick={doSend} disabled={!canSend} aria-label={t('competences.send')}
+                style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: canSend ? 'pointer' : 'default',
+                  background: canSend ? 'var(--primary)' : 'var(--surface-chip)', color: canSend ? 'var(--on-primary)' : 'var(--text-dim)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s ease' }}>
+                <ArrowUp size={20} strokeWidth={2.4} />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

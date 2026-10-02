@@ -46,7 +46,7 @@ import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
-import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
+import { ActivityCard, type ActivityCardData, type ActivityCardAthlete } from '@/components/activity/ActivityCard'
 import { ViewOnStrava, PoweredByStrava } from '@/components/strava/StravaBranding'
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
@@ -210,7 +210,7 @@ interface TrainingZoneRow {
 
 interface ParsedZone { label: string; color: string; min: number; max: number }
 
-interface Profile { weight_kg: number | null; birth_date: string | null }
+interface Profile { weight_kg: number | null; birth_date: string | null; full_name?: string | null; avatar_url?: string | null }
 
 // ─────────────────────────────────────────────────────────────
 // SPORT CONFIG (no emojis)
@@ -492,7 +492,7 @@ function useProfile() {
     const sb = createClient()
     void resolvePlanningUid(sb).then(uid => {
       if (!uid) return
-      sb.from('profiles').select('weight_kg,birth_date').eq('id', uid).single()
+      sb.from('profiles').select('weight_kg,birth_date,full_name,avatar_url').eq('id', uid).single()
         .then(({ data }) => { if (data) setProfile(data as Profile) })
     })
   }, [])
@@ -9818,7 +9818,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
         </div>
         {view === 'calendar'
           ? <CalendarGrid activities={filtered} onSelect={setSelected} />
-          : <CardsView activities={filtered} onSelect={setSelected} sentinelRef={sentinelRef} loadingMore={!!loadingMore} highlightId={highlightId} newRef={newRef} groupByWeek />}
+          : <CardsView activities={filtered} onSelect={setSelected} sentinelRef={sentinelRef} loadingMore={!!loadingMore} highlightId={highlightId} newRef={newRef} groupByWeek athlete={{ name: profile.full_name ?? null, avatarUrl: profile.avatar_url ?? null }} />}
       </div>
     )
   }
@@ -9927,6 +9927,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
           loadingMore={!!loadingMore}
           highlightId={highlightId}
           newRef={newRef}
+          athlete={{ name: profile.full_name ?? null, avatarUrl: profile.avatar_url ?? null }}
         />
       )}
     </div>
@@ -10045,7 +10046,7 @@ function WeekHeader({ weekStart, acts }: { weekStart: string; acts: Activity[] }
   )
 }
 
-function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId, newRef, groupByWeek }: {
+function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId, newRef, groupByWeek, athlete }: {
   activities:  Activity[]
   onSelect:    (a: Activity) => void
   sentinelRef: React.RefObject<HTMLDivElement | null>
@@ -10054,6 +10055,8 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
   newRef?:     React.RefObject<HTMLDivElement | null>
   /** Mobile : en-tête par semaine (« Cette semaine · 2 h 10 · 2 séances »). */
   groupByWeek?: boolean
+  /** Athlète affiché dans l'en-tête des cartes (avatar + nom), façon Strava. */
+  athlete?:    ActivityCardAthlete | null
 }) {
   const { t } = useI18n()
   const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
@@ -10190,6 +10193,9 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
         moving_time_s:    a.moving_time_s ? Number(a.moving_time_s) : null,
         elevation_gain_m: a.elevation_gain_m ? Number(a.elevation_gain_m) : null,
         avgHr:            (a as { avg_hr?: number | null }).avg_hr != null ? Number((a as { avg_hr?: number | null }).avg_hr) : null,
+        avgPaceSKm:       a.avg_pace_s_km != null ? Number(a.avg_pace_s_km) : null,
+        avgSpeedMs:       a.avg_speed_ms != null ? Number(a.avg_speed_ms) : null,
+        avgWatts:         a.avg_watts != null ? Number(a.avg_watts) : null,
         sm:               smsn.sm,
         sn:               smsn.sn,
         encodedPolyline:  encoded,
@@ -10232,16 +10238,18 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
             <div
               key={c.id}
               ref={isNew ? newRef : undefined}
-              style={isNew ? { position: 'relative', borderLeft: '4px solid #06B6D4' } : undefined} // design-allow-color
+              style={{ position: 'relative', minWidth: 0 }}
             >
-              {isNew && <NewActivityBadge />}
               <ActivityCard
                 data={c}
+                athlete={athlete}
+                highlight={isNew}
                 onClick={() => {
                   const act = activities.find(a => a.id === c.id)
                   if (act) onSelect(act)
                 }}
               />
+              {isNew && <NewActivityBadge />}
             </div>
             </Fragment>
           )
@@ -10252,21 +10260,26 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId
         <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>{t('actp.loading')}</div>
       )}
       <style>{`
+        /* minmax(0, 1fr) : un titre/une ligne « nowrap » ne peut plus élargir la
+           colonne au-delà de l'écran (ancien bug : colonne trop large → carte
+           décalée à droite et coupée). */
         .thw-cards-grid {
           display: grid;
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
           gap: 12px;
           max-width: 1200px;
           margin: 0 auto;
         }
         @media (min-width: 768px) {
-          .thw-cards-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+          .thw-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+          .thw-activity-card { border-radius: var(--r-lg); }
         }
-        /* Mobile : la carte GPS de chaque activité déborde jusqu'aux bords de
-           l'écran (pleine largeur). Les marges négatives annulent exactement le
-           padding horizontal de la page → aucun scroll horizontal. */
+        /* Mobile : chaque carte d'activité (et donc sa carte GPS) va d'un bord à
+           l'autre de l'écran, façon Strava. --bleed-l est mesuré en JS
+           (ActivityCard) ; repli : calc(50% - 50vw). <main> masque l'overflow X
+           → aucun scroll horizontal. */
         @media (max-width: 767px) {
-          .thw-card-carousel { margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+          .thw-card-bleed { width: 100vw; max-width: 100vw; margin-left: var(--bleed-l, calc(50% - 50vw)); margin-right: 0; border-radius: 0; }
         }
       `}</style>
     </>

@@ -2,7 +2,8 @@
 // ══════════════════════════════════════════════════════════════════
 // ProfileSheet — « Mon Profil » en SUR-PAGE coulissante (bas → haut),
 // par-dessus la page courante. Se replie haut → bas (drag de la poignée ou
-// tap sur le fond). Réutilise ProfileContent (liste façon Claude + drill-down).
+// tap sur le fond, ou rond × de la liste). Réutilise ProfileContent (réglages
+// façon Claude iOS : liste groupée + sous-pages, fond --surface-page).
 // Mobile uniquement — monté globalement dans MobileShell, ouvert par l'event
 // `thw:open-profile`.
 // ══════════════════════════════════════════════════════════════════
@@ -66,7 +67,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
 
       {/* Scrim — tap pour replier */}
       <div onClick={handleClose} style={{
-        position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+        position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(3px)',
         animation: closing ? 'profScrimIn 0.28s reverse forwards' : 'profScrimIn 0.24s ease forwards',
       }} />
 
@@ -76,8 +77,8 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0,
           top: 'max(56px, calc(env(safe-area-inset-top, 0px) + 44px))',
-          background: 'var(--bg)', borderTopLeftRadius: 26, borderTopRightRadius: 26,
-          boxShadow: '0 -10px 50px rgba(0,0,0,0.28)',
+          background: 'var(--surface-page)', borderTopLeftRadius: 26, borderTopRightRadius: 26,
+          boxShadow: 'var(--shadow-float)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           animation: closing ? 'profSheetOut 0.28s cubic-bezier(0.32,0.72,0,1) forwards'
                              : 'profSheetIn 0.34s cubic-bezier(0.2,0.8,0.2,1) forwards',
@@ -86,13 +87,13 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         {/* Poignée (drag pour replier) */}
         <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4, flexShrink: 0, cursor: 'grab', touchAction: 'none' }}>
-          <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)' }} />
+          <div style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
         </div>
 
         {/* Corps scrollable — la liste / le drill-down */}
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>{t('profile.loading')}</div>}>
-            <ProfileContent />
+            <ProfileContent onClose={handleClose} />
           </Suspense>
         </div>
       </div>

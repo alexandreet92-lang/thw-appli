@@ -5,14 +5,13 @@ export const dynamic = 'force-dynamic'
 import { Switch } from '@/components/shadcn/switch'
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2, Trash2 } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, Palette, Sun, Monitor, Check, Ruler, Users, UserCog, Heart, Wand2, Trash2 } from 'lucide-react'
 import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getMyActivityVisibility, setActivityVisibility, getMyHiddenData, setMyHiddenData, HIDDEN_DATA_CATS, type ActivityVisibility, type HiddenDataCat } from '@/lib/profile/activityShowcase'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
-import PressPop from '@/components/ui/PressPop'
 import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
@@ -23,6 +22,13 @@ import NativeBilling from '@/components/iap/NativeBilling'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
 import { useNarrow } from '@/lib/hooks/useNarrow'
+import { LANGS } from '@/lib/i18n/dictionaries'
+import { MCard, SegTrack, PillButton, Dot, MSheet, SheetHeader, RoundBtn, TILE, MODEL_DOT, Ico, ICON } from '@/components/ai/mobile/MobileKit'
+import {
+  ProfileMobileCtx, useProfileMobile, type ProfileMobileState, FB, PAGE_BG, CARD_BG,
+  MSection, MHelper, MIntro, MGroup, MLine, MRowText, MIcon, MNavRow, MCheckRow, MFieldRow, MTextBtn, MChip, MAvatar,
+  SaveCheckBtn, MSettingsHeader, MTile, M_FIELD, M_VALUE,
+} from '@/components/profile/mobile/SettingsKit'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -127,7 +133,6 @@ function AppLogo({ id, size=28 }: { id:string; size?:number }) {
 
 // Bulles légèrement grisées sur un fond quasi blanc (façon Claude).
 const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
-const GREY_PAGE = 'color-mix(in srgb, var(--text) 1.5%, var(--bg))'
 
 function Card({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
   // Calme par soustraction : séparation par le fond, pas par la bordure (design system).
@@ -169,8 +174,8 @@ function Line({ first, onClick, align='center', children }: { first?:boolean; on
 function Intro({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.6, margin:'0 0 18px 2px' }}>{children}</p>
 }
-function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
-  return <Switch checked={value} onCheckedChange={onChange} />
+function Toggle({ value, onChange, disabled }: { value:boolean; onChange:(v:boolean)=>void; disabled?:boolean }) {
+  return <Switch checked={value} onCheckedChange={onChange} disabled={disabled} />
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
   return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius: 'var(--r-lg)', border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-body)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius: 'var(--r-sm)', padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
@@ -388,6 +393,7 @@ const ZERO_STATS: GearStatsT = { total_sessions: 0, total_km: 0, total_hours: 0 
 
 function GearBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const statsLine = (s: GearStatsT) => t('profile.gearStats', {
     sessions: fmtFR(s.total_sessions), s: s.total_sessions > 1 ? 's' : '',
     km: fmtFR(s.total_km), hours: fmtFR(s.total_hours),
@@ -455,6 +461,105 @@ function GearBloc() {
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', marginBottom: 10 }
 
+  const addModal = (
+    <>
+      {/* Modal d'ajout */}
+      {modal && (
+        <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)', padding: 24 }}>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
+              {modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}
+            </h3>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('profile.namePh')} style={inputStyle} />
+            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder={t('profile.brandPh')} style={inputStyle} />
+            {modal === 'bike' && <>
+              <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder={t('profile.modelPh')} style={inputStyle} />
+              <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder={t('profile.weightPh')} inputMode="decimal" style={inputStyle} />
+            </>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
+              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: form.name.trim() && !saving ? 'var(--primary)' : 'var(--border)', color: form.name.trim() && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13, fontWeight: 600, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', opacity: saving ? 0.7 : 1 }}>
+                {saving ? '…' : t('profile.add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </>
+  )
+  const confirmModal = (
+    <>
+      {/* Confirmation suppression */}
+      {confirmDel && (
+        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)', padding: 22 }}>
+            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>{t('profile.confirmDeleteGear', { label: confirmDel.label })}</p>
+            <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{t('profile.gearRemovedInfo')}</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
+              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.delete')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+  const overlays = <>{addModal}{confirmModal}</>
+
+  if (pm.mobile) {
+    const gearLines = <T extends { id: string; name: string; stats?: GearStatsT }>(items: T[], type: 'bike' | 'shoes', icon: React.ReactNode, title: (x: T) => string, empty: string) =>
+      items.length === 0
+        ? <MLine first><span style={{ fontSize: 17, color: 'var(--text-mid)' }}>{empty}</span></MLine>
+        : items.map((x, i) => (
+            <MLine key={x.id} first={i === 0}>
+              <MIcon>{icon}</MIcon>
+              <MRowText title={title(x)} sub={statsLine(x.stats ?? ZERO_STATS)} />
+              <MTextBtn onClick={() => setConfirmDel({ type, id: x.id, label: x.name })} color="var(--text-dim)" label={t('profile.delete')}>
+                <Ico d={ICON.trash} size={19} />
+              </MTextBtn>
+            </MLine>
+          ))
+    const addLine = (label: string, onClick: () => void) => (
+      <MLine onClick={onClick}>
+        <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--primary)' }}>{label}</span>
+      </MLine>
+    )
+    return (
+      <div>
+        <MIntro>{t('profile.gearIntro')}</MIntro>
+        <MSection label={t('profile.bikes')}>
+          <MGroup>
+            {gearLines(bikes, 'bike', <Bike size={20} />, b => `${b.name}${b.weight_kg ? `  ·  ${String(b.weight_kg).replace('.', ',')} kg` : ''}`, t('profile.noBike'))}
+            {addLine(t('profile.addBike'), () => openAdd('bike'))}
+          </MGroup>
+        </MSection>
+        <MSection label={t('profile.runningShoes')}>
+          <MGroup>
+            {gearLines(shoes, 'shoes', <Footprints size={20} />, s => `${s.name}${s.brand ? `  ·  ${s.brand}` : ''}`, t('profile.noShoes'))}
+            {addLine(t('profile.addShoes'), () => openAdd('shoes'))}
+          </MGroup>
+        </MSection>
+        <MSheet open={modal !== null} onClose={() => setModal(null)} full={false} label={modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}>
+          <SheetHeader leftLabel={t('profile.cancel')} onLeft={() => setModal(null)}
+            title={modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}
+            rightLabel={saving ? '…' : t('profile.add')} onRight={() => void submit()} rightDisabled={!form.name.trim() || saving} />
+          <div style={{ padding: '8px 16px calc(24px + env(safe-area-inset-bottom))' }}>
+            <MGroup style={{ background: PAGE_BG, boxShadow: 'none' }}>
+              <MLine first><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('profile.namePh')} style={{ ...M_FIELD, flex: 1, textAlign: 'left' }} /></MLine>
+              <MLine><input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder={t('profile.brandPh')} style={{ ...M_FIELD, flex: 1, textAlign: 'left' }} /></MLine>
+              {modal === 'bike' && <>
+                <MLine><input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder={t('profile.modelPh')} style={{ ...M_FIELD, flex: 1, textAlign: 'left' }} /></MLine>
+                <MLine><input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder={t('profile.weightPh')} inputMode="decimal" style={{ ...M_FIELD, flex: 1, textAlign: 'left' }} /></MLine>
+              </>}
+            </MGroup>
+          </div>
+        </MSheet>
+        {confirmModal}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.gearIntro')}</Intro>
@@ -489,42 +594,7 @@ function GearBloc() {
         {addBtn(t('profile.addShoes'), () => openAdd('shoes'))}
       </Section>
 
-      {/* Modal d'ajout */}
-      {modal && (
-        <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)', padding: 24 }}>
-            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
-              {modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}
-            </h3>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('profile.namePh')} style={inputStyle} />
-            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder={t('profile.brandPh')} style={inputStyle} />
-            {modal === 'bike' && <>
-              <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder={t('profile.modelPh')} style={inputStyle} />
-              <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder={t('profile.weightPh')} inputMode="decimal" style={inputStyle} />
-            </>}
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
-              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: form.name.trim() && !saving ? 'var(--primary)' : 'var(--border)', color: form.name.trim() && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13, fontWeight: 600, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', opacity: saving ? 0.7 : 1 }}>
-                {saving ? '…' : t('profile.add')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation suppression */}
-      {confirmDel && (
-        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)', padding: 22 }}>
-            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>{t('profile.confirmDeleteGear', { label: confirmDel.label })}</p>
-            <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{t('profile.gearRemovedInfo')}</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
-              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.delete')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {overlays}
     </div>
   )
 }
@@ -535,7 +605,9 @@ function GearBloc() {
 
 function ProfilIdentityBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const { data: profileData, setData: setProfileData, save: saveProfile, uploadAvatar } = useProfile()
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const saveRef = useRef<() => Promise<void>>(async () => {})
 
@@ -576,8 +648,11 @@ function ProfilIdentityBloc() {
 
   async function handleSave() {
     const err = await saveProfile()
-    if (err) { setToast({ msg:t('profile.photoUploadError'), ok:false }); setTimeout(()=>setToast(null), 4000) }
+    if (err) { setToast({ msg:t('profile.photoUploadError'), ok:false }); setTimeout(()=>setToast(null), 4000); return }
     // Succès : l'animation « Enregistré » globale (GlobalSaveToast) suffit — pas de second bandeau.
+    // Mobile : le ✓ redevient gris puis la sous-page se referme (façon Claude).
+    pm.setDirty?.(false)
+    pm.onSaved?.()
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
@@ -588,6 +663,73 @@ function ProfilIdentityBloc() {
     { label:t('profile.weight'),     val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
     { label:t('profile.imc'),        val:imc,                        key:'',               unit:'',   ph:'', readonly:true },
   ]
+
+  // ── MOBILE (façon réglages Claude) : grande photo centrée, « Modifier la
+  // photo », carte Nom complet / E-mail, mensurations, bio, suppression. ──
+  if (pm.mobile) {
+    const edit = (patch: Partial<typeof profileData>) => { setProfileData(p => ({ ...p, ...patch })); pm.setDirty?.(true) }
+    const initial = (profileData.full_name || profileData.email || '?').trim().charAt(0).toUpperCase()
+    return (
+      <div>
+        {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
+
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'8px 0 24px' }}>
+          <button type="button" onClick={()=>fileRef.current?.click()} aria-label={t('prf.editPhoto')}
+            style={{ position:'relative', border:'none', padding:0, background:'transparent', borderRadius:'50%', cursor:'pointer', opacity: uploading ? 0.6 : 1, transition:'opacity 0.2s' }}>
+            <MAvatar url={photo} initial={initial} size={120} alt={t('profile.profileAlt')} />
+          </button>
+          <button type="button" onClick={()=>fileRef.current?.click()} disabled={uploading}
+            style={{ minHeight:44, padding:'0 20px', borderRadius:'var(--r-pill)', border:'none', background:CARD_BG, boxShadow:'var(--shadow-capsule)', color:'var(--text)', fontFamily:FB, fontSize:17, fontWeight:700, cursor: uploading ? 'default' : 'pointer' }}>
+            {uploading ? '…' : t('prf.editPhoto')}
+          </button>
+        </div>
+
+        <MSection helper={t('profile.photoHint')}>
+          <MGroup>
+            <MFieldRow first label={t('w1a.nomComplet')}>
+              <input value={profileData.full_name} onChange={e=>edit({ full_name:e.target.value })} placeholder={t('profile.namePlaceholder')}
+                style={{ ...M_FIELD, flex:1, width:'100%', textAlign:'left', fontWeight:500 }}/>
+            </MFieldRow>
+            <MFieldRow label={t('onboarding.email')}>
+              <span style={{ flex:1, minWidth:0, fontSize:17, color:'var(--text-mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email || '—'}</span>
+            </MFieldRow>
+          </MGroup>
+        </MSection>
+
+        <MSection label={t('profile.measurements')}>
+          <MGroup>
+            {STATS.map((f, i) => (
+              <MFieldRow key={f.label} first={i===0} label={f.label}>
+                {f.readonly
+                  ? <span style={{ ...M_VALUE, color:'var(--text)', fontWeight:600 }}>{f.val || '—'}</span>
+                  : <>
+                      <input type="number" inputMode="decimal" value={f.val} onChange={e=>edit({ [f.key]: e.target.value } as Partial<typeof profileData>)} placeholder={f.ph}
+                        aria-label={f.label} style={{ ...M_FIELD, width:72, fontWeight:600, fontVariantNumeric:'tabular-nums' }}/>
+                      {f.unit && <span style={{ fontSize:15, color:'var(--text-mid)' }}>{f.unit}</span>}
+                    </>}
+              </MFieldRow>
+            ))}
+          </MGroup>
+        </MSection>
+
+        <MSection label={t('profile.bio')}>
+          <MGroup>
+            <textarea value={profileData.bio} onChange={e=>edit({ bio:e.target.value })} placeholder={t('profile.bioPlaceholder')} rows={3}
+              style={{ width:'100%', minHeight:96, padding:'16px', border:'none', background:'transparent', color:'var(--text)', fontSize:17, outline:'none', resize:'none', fontFamily:FB, lineHeight:1.45, boxSizing:'border-box', display:'block' }}/>
+          </MGroup>
+        </MSection>
+
+        <MGroup>
+          <MLine first onClick={() => setConfirmDelete(true)}>
+            <MIcon danger><Trash2 size={22} strokeWidth={1.8} /></MIcon>
+            <span style={{ flex:1, fontSize:17, fontWeight:600, color:'var(--danger)' }}>{t('profile.deleteAccount')}</span>
+          </MLine>
+        </MGroup>
+        <DeleteAccountModal open={confirmDelete} onClose={() => setConfirmDelete(false)} />
+      </div>
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -663,9 +805,50 @@ function ProfilIdentityBloc() {
 
 function SportsBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const { sports, add: addSport, remove: removeSport } = useAthleteSports()
   const [newSport, setNewSport] = useState('run')
   const [newSince, setNewSince] = useState('')
+
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.sportsIntro')}</MIntro>
+        <MSection label={t('profile.mySports')}>
+          <MGroup>
+            {sports.length === 0 && (
+              <MLine first><span style={{ fontSize:17, color:'var(--text-mid)' }}>{t('profile.noSports')}</span></MLine>
+            )}
+            {sports.map((s,i)=>(
+              <MLine key={s.id} first={i===0}>
+                <Dot color={SPORT_COLOR[s.sport]||'var(--text-dim)'} size={10} />
+                <MRowText title={SPORT_LABEL[s.sport] ? t('profile.sportName.'+s.sport) : s.sport}
+                  sub={s.since_date ? `${t('profile.since')} ${sinceDate(s.since_date, t)}` : undefined} />
+                <MTextBtn onClick={()=>removeSport(s.id)} color="var(--text-dim)" label={t('profile.remove')}>
+                  <Ico d={ICON.close} size={18} />
+                </MTextBtn>
+              </MLine>
+            ))}
+          </MGroup>
+        </MSection>
+
+        <MSection label={t('profile.addSport')}>
+          <MGroup>
+            <MFieldRow first label={t('profile.discipline')}>
+              <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ ...M_FIELD, color:'var(--text-mid)', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }}>
+                {Object.keys(SPORT_LABEL).map(k=><option key={k} value={k}>{t('profile.sportName.'+k)}</option>)}
+              </select>
+              <span style={{ color:'var(--text-dim)', display:'flex', transform:'rotate(90deg)' }}><Ico d={ICON.chev} size={16} /></span>
+            </MFieldRow>
+            <MFieldRow label={t('profile.since')}>
+              <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ ...M_FIELD, color:'var(--text-mid)' }}/>
+            </MFieldRow>
+          </MGroup>
+          <PillButton onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ marginTop:14 }}>{t('profile.addThisSport')}</PillButton>
+        </MSection>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -717,6 +900,7 @@ function ConnexionsBloc() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { connections, connect, disconnect, sync, reload: reloadConn } = useConnections()
+  const pm = useProfileMobile()
   const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null)
 
   useEffect(() => {
@@ -731,6 +915,35 @@ function ConnexionsBloc() {
   }, [searchParams, router, reloadConn, t])
 
   const availableConns = connections.filter(c=>c.available)
+
+  if (pm.mobile) {
+    return (
+      <div>
+        {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
+        <MIntro>{t('profile.connIntro')}</MIntro>
+        <MSection label={t('profile.applications')}>
+          <MGroup>
+            {availableConns.map((c,i)=>(
+              <MLine key={c.id} first={i===0}>
+                <span style={{ flexShrink:0, display:'flex' }}><AppLogo id={c.id} size={32}/></span>
+                <MRowText title={c.label}
+                  sub={c.loading ? '…' : c.connected ? (c.lastSync ? t('profile.connectedSync', { date: c.lastSync }) : t('profile.connected')) : t('profile.notConnected')}
+                  subColor={c.connected ? 'var(--success)' : undefined} />
+                {c.connected && (
+                  <MTextBtn onClick={()=>sync(c)} disabled={c.loading} color="var(--text-mid)" label={t('prf.sync')}>
+                    <Ico d={<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>} size={20} />
+                  </MTextBtn>
+                )}
+                <MTextBtn onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} color={c.connected ? 'var(--danger)' : 'var(--primary)'}>
+                  {c.loading ? '…' : c.connected ? t('profile.disconnect') : t('profile.connect')}
+                </MTextBtn>
+              </MLine>
+            ))}
+          </MGroup>
+        </MSection>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -879,6 +1092,7 @@ const NOTIF_DEFAULTS: Record<string, boolean> = (() => {
 // push du navigateur/appareil courant (permission + souscription serveur).
 function DevicePushSection() {
   const [state, setState] = useState<PushState | 'loading'>('loading')
+  const pm = useProfileMobile()
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -911,6 +1125,19 @@ function DevicePushSection() {
 
   const disabled = state === 'loading' || state === 'denied' || state === 'unconfigured' || busy
 
+  if (pm.mobile) {
+    return (
+      <MSection label="Cet appareil">
+        <MGroup>
+          <MLine first>
+            <MRowText title="Notifications sur cet appareil" sub={sub} />
+            <Toggle value={state === 'on'} onChange={() => { if (!disabled) void toggle() }}/>
+          </MLine>
+        </MGroup>
+      </MSection>
+    )
+  }
+
   return (
     <Section label="Cet appareil">
       <Group>
@@ -928,6 +1155,7 @@ function DevicePushSection() {
 
 function NotificationsBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const [globalOn, setGlobalOn] = useState(true)
   const [prefs, setPrefs] = useState<Record<string, boolean>>(NOTIF_DEFAULTS)
   // Bandeaux de notif au bureau (clé locale lue par NotificationBanners).
@@ -991,6 +1219,40 @@ function NotificationsBloc() {
     patch({ global_enabled: next })
   }
 
+  if (pm.mobile) {
+    return (
+      <div>
+        <DevicePushSection />
+        <MSection>
+          <MGroup>
+            <MLine first>
+              <MRowText title={t('profile.allNotifications')} sub={t('profile.allNotificationsSub')} />
+              <Toggle value={globalOn} onChange={toggleGlobal}/>
+            </MLine>
+            <MLine>
+              <MRowText title={t('profile.deskBanners')} sub={t('profile.deskBannersSub')} />
+              <Toggle value={bannersOn} onChange={toggleBanners}/>
+            </MLine>
+          </MGroup>
+        </MSection>
+        <div style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
+          {NOTIF_CATEGORIES.map(sec=>(
+            <MSection key={sec.id} label={t('profile.notifCat.'+sec.id)}>
+              <MGroup>
+                {sec.items.map((item, idx)=>(
+                  <MLine key={item.key} first={idx===0}>
+                    <MRowText title={t('profile.notif.'+item.key+'.label')} sub={t('profile.notif.'+item.key+'.sub')} />
+                    <Toggle value={prefs[item.key] ?? NOTIF_DEFAULTS[item.key]} onChange={()=>toggleItem(item.key)}/>
+                  </MLine>
+                ))}
+              </MGroup>
+            </MSection>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {/* Push sur cet appareil (Web Push) */}
@@ -1047,6 +1309,7 @@ type ThemePref = 'light' | 'dark' | 'system'
 
 function ApparenceBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const [pref, setPref] = useState<ThemePref>('system')
 
   useEffect(() => {
@@ -1081,6 +1344,22 @@ function ApparenceBloc() {
     { id: 'system', label: t('profile.themeSystem'), sub: t('profile.themeSystemSub'), Icon: Monitor },
   ]
 
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.appearanceIntro')}</MIntro>
+        <MSection label={t('profile.theme')}>
+          <MGroup>
+            {OPTIONS.map((o, i) => (
+              <MCheckRow key={o.id} first={i === 0} active={pref === o.id} onClick={() => choose(o.id)}
+                icon={<MIcon><o.Icon size={22} strokeWidth={1.8} /></MIcon>} title={o.label} sub={o.sub} />
+            ))}
+          </MGroup>
+        </MSection>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.appearanceIntro')}</Intro>
@@ -1114,7 +1393,22 @@ function ApparenceBloc() {
 
 // ── Bulle Langue : traduit toute l'application (FR / EN / ES) ──────
 function LangueBloc() {
-  const { t } = useI18n()
+  const { t, lang, setLang } = useI18n()
+  const pm = useProfileMobile()
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.langDesc')}</MIntro>
+        <MSection label={t('profile.langTitle')}>
+          <MGroup>
+            {LANGS.map((l, i) => (
+              <MCheckRow key={l.code} first={i === 0} active={lang === l.code} onClick={() => setLang(l.code)} title={l.label} />
+            ))}
+          </MGroup>
+        </MSection>
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.langDesc')}</Intro>
@@ -1133,6 +1427,7 @@ const GEO_GRANTED_AT_KEY = 'thw-geo-at'  // horodatage de l'octroi (pour le mode
 
 function LocalisationBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const [pref, setPref] = useState<GeoPref>('off')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -1191,6 +1486,28 @@ function LocalisationBloc() {
     { id: 'always',      label: t('profile.geoAlways'),    sub: t('profile.geoAlwaysSub'), Icon: MapPin },
   ]
 
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.geoIntro')}</MIntro>
+        <MSection label={t('profile.authorization')} helper={msg ?? undefined}>
+          <MGroup>
+            {OPTIONS.map((o, i) => (
+              <MCheckRow key={o.id} first={i === 0} active={pref === o.id} disabled={busy} onClick={() => void choose(o.id)} title={o.label} sub={o.sub} />
+            ))}
+          </MGroup>
+        </MSection>
+        {pref !== 'off' && (
+          <MGroup>
+            <MLine first onClick={() => void choose('off')}>
+              <span style={{ flex: 1, fontSize: 17, fontWeight: 600, color: 'var(--danger)' }}>{t('profile.geoDisable')}</span>
+            </MLine>
+          </MGroup>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.geoIntro')}</Intro>
@@ -1230,6 +1547,7 @@ function LocalisationBloc() {
 
 // ── Confidentialité des activités (qui peut les voir sur mon profil) ──
 function ActivityVisibilitySection() {
+  const pm = useProfileMobile()
   const [vis, setVis] = useState<ActivityVisibility>('public')
   useEffect(() => { void getMyActivityVisibility().then(setVis).catch(() => {}) }, [])
   const OPTS: { k: ActivityVisibility; label: string; sub: string }[] = [
@@ -1238,6 +1556,15 @@ function ActivityVisibilitySection() {
     { k: 'private', label: 'Personne', sub: 'Toi seul(e) les vois' },
   ]
   const choose = (v: ActivityVisibility) => { setVis(v); void setActivityVisibility(v).catch(() => {}) }
+  if (pm.mobile) {
+    return (
+      <MSection label="Mes activités">
+        <MGroup>
+          {OPTS.map((o, i) => <MCheckRow key={o.k} first={i === 0} active={vis === o.k} onClick={() => choose(o.k)} title={o.label} sub={o.sub} />)}
+        </MGroup>
+      </MSection>
+    )
+  }
   return (
     <Section label="Mes activités">
       <Group>
@@ -1266,11 +1593,27 @@ const HIDDEN_DATA_LABELS: Record<HiddenDataCat, { label: string; sub: string }> 
   kcal:  { label: 'Calories',            sub: 'Dépense énergétique' },
 }
 function HiddenDataSection() {
+  const pm = useProfileMobile()
   const [cats, setCats] = useState<HiddenDataCat[]>([])
   useEffect(() => { void getMyHiddenData().then(setCats).catch(() => {}) }, [])
   const toggle = (c: HiddenDataCat) => {
     const next = cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c]
     setCats(next); void setMyHiddenData(next).catch(() => {})
+  }
+  if (pm.mobile) {
+    return (
+      <MSection label="Masquer certaines données"
+        helper="Ces données seront masquées pour les autres athlètes, partout où ils voient tes activités. Tu peux affiner le masquage sur chaque activité.">
+        <MGroup>
+          {HIDDEN_DATA_CATS.map((c, i) => (
+            <MLine key={c} first={i === 0}>
+              <MRowText title={HIDDEN_DATA_LABELS[c].label} sub={HIDDEN_DATA_LABELS[c].sub} />
+              <Toggle value={cats.includes(c)} onChange={() => toggle(c)} />
+            </MLine>
+          ))}
+        </MGroup>
+      </MSection>
+    )
   }
   return (
     <Section label="Masquer certaines données">
@@ -1301,6 +1644,7 @@ function HiddenDataSection() {
 
 // ── Utilisateurs bloqués (messagerie privée) ──────────────────────
 function BlockedUsersSection() {
+  const pm = useProfileMobile()
   const [users, setUsers] = useState<BlockedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -1311,6 +1655,26 @@ function BlockedUsersSection() {
     const ok = await unblockUser(id)
     setBusy(null)
     if (ok) setUsers(u => u.filter(x => x.id !== id))
+  }
+  if (pm.mobile) {
+    return (
+      <MSection label="Utilisateurs bloqués"
+        helper={!loading && users.length === 0 ? 'Personne n’est bloqué. Depuis une conversation, appuie sur un message reçu pour signaler ou bloquer son auteur.' : undefined}>
+        {loading ? (
+          <MGroup><MLine first><span aria-hidden style={{ flex: 1, height: 16, borderRadius: 'var(--r-sm)', background: 'var(--surface-chip)' }} /></MLine></MGroup>
+        ) : users.length > 0 && (
+          <MGroup>
+            {users.map((u, i) => (
+              <MLine key={u.id} first={i === 0}>
+                <Avatar url={u.avatar} name={u.name} size={36} />
+                <MRowText title={u.name} sub="Bloqué" />
+                <MTextBtn onClick={() => void unblock(u.id)} disabled={busy === u.id}>Débloquer</MTextBtn>
+              </MLine>
+            ))}
+          </MGroup>
+        )}
+      </MSection>
+    )
   }
   return (
     <Section label="Utilisateurs bloqués">
@@ -1390,7 +1754,19 @@ function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => v
 
 // Ligne « Supprimer mon compte » de la section Confidentialité (variante Line).
 function DeleteAccountRow() {
+  const pm = useProfileMobile()
   const [open, setOpen] = useState(false)
+  if (pm.mobile) {
+    return (
+      <>
+        <MLine onClick={() => setOpen(true)}>
+          <MIcon danger><Trash2 size={22} strokeWidth={1.8} /></MIcon>
+          <MRowText danger title="Supprimer mon compte" sub="Suppression définitive de toutes tes données" />
+        </MLine>
+        <DeleteAccountModal open={open} onClose={() => setOpen(false)} />
+      </>
+    )
+  }
   return (
     <>
       <Line onClick={() => setOpen(true)}>
@@ -1405,14 +1781,66 @@ function DeleteAccountRow() {
   )
 }
 
+// ── Mobile : ligne-lien (navigation interne) et lien externe « En savoir plus ». ──
+function MLinkRow({ first, href, icon, title, sub }: { first?: boolean; href: string; icon: React.ReactNode; title: string; sub?: string }) {
+  return (
+    <a href={href} style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
+      <MLine first={first}>
+        <MIcon>{icon}</MIcon>
+        <MRowText title={title} sub={sub} />
+        <span style={{ color: 'var(--text-dim)', display: 'flex' }}><Ico d={ICON.chev} size={18} /></span>
+      </MLine>
+    </a>
+  )
+}
+function MExternalLink({ href, label }: { href: string; label: string }) {
+  return (
+    <MGroup style={{ marginTop: 4 }}>
+      <a href={href} target="_blank" rel="noopener" style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
+        <MLine first>
+          <span style={{ flex: 1, fontSize: 17, fontWeight: 500 }}>{label}</span>
+          <span style={{ color: 'var(--text-dim)', display: 'flex' }}>
+            <Ico d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14 21 3" /></>} size={18} />
+          </span>
+        </MLine>
+      </a>
+    </MGroup>
+  )
+}
+
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const PRIVACY_LINKS: { label: string; sub: string; href: string }[] = [
     { label: t('profile.privacyPolicy'), sub: t('profile.privacyPolicySub'), href: '/site/confidentialite.html' },
     { label: t('profile.terms'),     sub: t('profile.termsSub'), href: '/site/conditions-utilisation.html' },
     { label: t('profile.legalNotice'), sub: t('profile.legalNoticeSub'), href: '/site/mentions-legales.html' },
   ]
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.privacyIntro')}</MIntro>
+        <ActivityVisibilitySection />
+        <HiddenDataSection />
+        <BlockedUsersSection />
+        <MSection label={t('profile.documents')}>
+          <MGroup>
+            {PRIVACY_LINKS.map((l, i) => (
+              <MLinkRow key={l.label} first={i === 0} href={l.href} icon={<Shield size={22} strokeWidth={1.8} />} title={l.label} sub={l.sub} />
+            ))}
+          </MGroup>
+        </MSection>
+        <MSection label={t('profile.myData')}>
+          <MGroup>
+            <MLinkRow first href="/site/exporter-mes-donnees.html" icon={<BarChart3 size={22} strokeWidth={1.8} />} title={t('profile.exportData')} sub={t('profile.exportDataSub')} />
+            <DeleteAccountRow />
+          </MGroup>
+        </MSection>
+        <LearnMoreAppLink />
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.privacyIntro')}</Intro>
@@ -1465,6 +1893,8 @@ function ConfidentialiteBloc() {
 // sections Confidentialité et Autorisations (demande produit).
 function LearnMoreAppLink() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
+  if (pm.mobile) return <MExternalLink href="/site/compte.html" label={t('profile.learnMoreApp')} />
   return (
     <a href="/site/compte.html" target="_blank" rel="noopener"
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 20, padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 'var(--r-md)', color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
@@ -1479,6 +1909,7 @@ type PermState = 'granted' | 'denied' | 'prompt' | 'unsupported'
 
 function AutorisationsBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const [geo, setGeo] = useState<PermState>('prompt')
   const [notif, setNotif] = useState<PermState>('prompt')
 
@@ -1523,6 +1954,29 @@ function AutorisationsBloc() {
     { label: t('profile.permNotifications'), sub: t('profile.permNotificationsSub'), Icon: Bell, state: notif, ask: notif === 'prompt' ? () => void askNotif() : undefined },
   ]
 
+  if (pm.mobile) {
+    const stateColor: Record<PermState, string> = { granted: 'var(--success)', denied: 'var(--danger)', prompt: 'var(--text-mid)', unsupported: 'var(--text-mid)' }
+    return (
+      <div>
+        <MIntro>{t('profile.permIntro')}</MIntro>
+        <MSection label={t('profile.access')}>
+          <MGroup>
+            {rows.map((r, i) => (
+              <MLine key={r.label} first={i === 0}>
+                <MIcon><r.Icon size={22} strokeWidth={1.8} /></MIcon>
+                <MRowText title={r.label} sub={r.sub} />
+                {r.ask
+                  ? <MTextBtn onClick={r.ask}>{t('profile.authorize')}</MTextBtn>
+                  : <span style={{ ...M_VALUE, fontSize: 15, color: stateColor[r.state] }}>{STATE_META[r.state].label}</span>}
+              </MLine>
+            ))}
+          </MGroup>
+        </MSection>
+        <LearnMoreAppLink />
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>{t('profile.permIntro')}</Intro>
@@ -1555,6 +2009,7 @@ function AutorisationsBloc() {
 // ── Bulle Utilisation : consommation IA (tokens) ──────────────────
 function UtilisationBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const [details, setDetails] = useState<SubDetails | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -1570,6 +2025,48 @@ function UtilisationBloc() {
     details?.monthly    && { label: t('profile.weekly'),            gauge: details.monthly,   color: 'var(--primary)' },
     details?.rolling_6h && { label: t('profile.rolling6h'), gauge: details.rolling_6h, color: 'var(--primary)' },
   ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[])
+
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.usageIntro')}</MIntro>
+        {loading ? (
+          <MGroup><div aria-hidden style={{ height: 112, background: 'var(--surface-chip)', opacity: 0.6 }} /></MGroup>
+        ) : gauges.length === 0 ? (
+          <MHelper style={{ textAlign: 'center', margin: '24px 16px' }}>{t('profile.noUsageData')}</MHelper>
+        ) : (
+          <MSection label={t('profile.limits')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {gauges.map(g => {
+                const pctRaw = g.gauge.limit > 0 ? Math.min(100, (g.gauge.used / g.gauge.limit) * 100) : 0
+                const barW = g.gauge.used > 0 ? Math.max(pctRaw, 2) : 0
+                const pct = pctRaw === 0 ? '0' : pctRaw < 1 ? pctRaw.toFixed(1).replace('.', ',') : String(Math.round(pctRaw))
+                const remaining = g.gauge.limit - g.gauge.used
+                return (
+                  <MCard key={g.label} style={{ padding: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                      <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{g.label}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{fmtTokens(g.gauge.used)}</span>
+                        <span style={{ fontSize: 14, color: 'var(--text-mid)' }}> / {fmtTokens(g.gauge.limit)}</span>
+                      </span>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden', marginBottom: 10 }}>
+                      <div style={{ height: '100%', width: `${barW}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width 0.9s ease' }}/>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14 }}>
+                      <span style={{ color: 'var(--text-mid)' }}>{t('profile.pctUsed', { pct })}</span>
+                      <span style={{ color: 'var(--text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('profile.remaining', { n: fmtTokens(remaining), s: remaining > 1 ? 's' : '' })}</span>
+                    </div>
+                  </MCard>
+                )
+              })}
+            </div>
+          </MSection>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1894,6 +2391,7 @@ function RuleCreator({ addRule, onClose }: {
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const { rules, saveInstruction } = useAiRules()
   const presets = INSTRUCTION_PRESET_KEYS.map(k => ({ label: t(`profile.preset_${k}_label`), text: t(`profile.preset_${k}_text`) }))
 
@@ -1906,6 +2404,26 @@ function RulesCard() {
   async function handleSaveInstruction() {
     await saveInstruction(instr)
     setInstrDirty(false); setInstrSaved(true); setTimeout(() => setInstrSaved(false), 1800)
+  }
+
+  // Mobile : section « Instructions » façon Claude — puces de style, champ
+  // blanc arrondi, aide grise, bouton Enregistrer actif seulement si modifié.
+  if (pm.mobile) {
+    return (
+      <MSection label={t('profile.instructions')} helper={instrSaved ? `✓ ${t('profile.saved')}` : t('profile.instructions_desc')}>
+        <div style={{ display:'flex', gap:8, overflowX:'auto', scrollbarWidth:'none', margin:'0 -16px 12px', padding:'2px 16px 6px' }}>
+          {presets.map(p => <MChip key={p.label} onClick={() => { setInstr(p.text); setInstrDirty(true) }}>{p.label}</MChip>)}
+        </div>
+        <MGroup>
+          <textarea value={instr} onChange={e => { setInstr(e.target.value); setInstrDirty(true) }} placeholder={t('profile.coachInstrPlaceholder')} rows={4}
+            style={{ width:'100%', minHeight:120, padding:16, border:'none', background:'transparent', color:'var(--text)', fontSize:17, lineHeight:1.45, fontFamily:FB, resize:'vertical', outline:'none', boxSizing:'border-box', display:'block' }} />
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'0 8px 8px 16px' }}>
+            <span style={{ fontSize:14, color:'var(--text-mid)', fontVariantNumeric:'tabular-nums' }}>{t('profile.chars_count', { n: instr.length })}</span>
+            <MTextBtn onClick={() => void handleSaveInstruction()} disabled={!instrDirty}>{t('profile.save')}</MTextBtn>
+          </div>
+        </MGroup>
+      </MSection>
+    )
   }
 
   return (
@@ -2004,6 +2522,7 @@ function fmtAmount(amount: number, currency: string): string {
 
 function AbonnementContent() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const hidePrice = hidePricing()
   const [details,  setDetails]  = useState<SubDetails | null>(null)
   const [loading,  setLoading]  = useState(true)
@@ -2092,6 +2611,148 @@ function AbonnementContent() {
   if (hidePrice) return <NativeBilling planName={planName} isCoach={subPlan === 'coach'} loading={loading} />
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
+  const cancelModal = cancelConfirm ? (
+        <div
+          onClick={() => setCancelConfirm(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 24px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border-mid)', padding: '24px 24px 20px', maxWidth: 400, width: 'calc(100% - 32px)' }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
+              {t('profile.cancelSubscriptionInfo')}
+            </p>
+            {cancelError && (
+              <p style={{ fontSize: 12, color: 'var(--danger)', textAlign: 'center', lineHeight: 1.5, margin: '0 0 16px' }}>
+                {cancelError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setCancelConfirm(false)}
+                style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('profile.cancel')}
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
+              >
+                {cancelling ? '…' : t('profile.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+  ) : null
+
+  // ── MOBILE : carte plan blanche + listes groupées (mêmes actions). ──
+  // NB : « Changer d'abonnement » / « Résilier » ouvrent toujours
+  // SubscriptionEmailModal (lien e-mail) — handlers inchangés.
+  if (pm.mobile) {
+    const statusLine = isCancelling
+      ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{t('profile.cancellingExpires', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}</span>
+      : hasStripe && details?.stripe?.nextBillingDate
+        ? <>{t('profile.nextPayment')} · {fmtDate(details.stripe.nextBillingDate)}{details.stripe.amount != null && details.stripe.currency ? ` · ${fmtAmount(details.stripe.amount, details.stripe.currency)}` : ''}</>
+        : tier === 'trial' && details?.current_period_end
+          ? <>{t('profile.expiresOn')} {fmtDate(details.current_period_end)}</>
+          : t('profile.fullAccess')
+    return (
+      <div>
+        <MIntro>{t('profile.planCreditsBilling')}</MIntro>
+        {loading ? (
+          <MGroup><div aria-hidden style={{ height: 96, background: 'var(--surface-chip)', opacity: 0.6 }} /></MGroup>
+        ) : (
+          <>
+            <MSection>
+              <MCard style={{ padding: 18 }}>
+                <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>THW {planName}</p>
+                <p style={{ fontSize: 15, color: 'var(--text-mid)', margin: '4px 0 0', lineHeight: 1.4 }}>{statusLine}</p>
+                {tier === 'trial' && details?.current_period_end && (() => {
+                  const leftMs = Math.max(0, new Date(details.current_period_end).getTime() - Date.now())
+                  const pct = Math.min(100, Math.round((leftMs / (14 * 24 * 3600 * 1000)) * 100))
+                  return (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ height: 8, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden', marginBottom: 8 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                        <span style={{ color: 'var(--text-mid)' }}>{t('profile.trialInProgress')}</span>
+                        <span style={{ color: 'var(--text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('profile.daysRemaining', { n: Math.ceil(leftMs / (24 * 3600 * 1000)) })}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </MCard>
+            </MSection>
+
+            {isCancelling && (
+              <MSection>
+                <MGroup>
+                  <MLine first>
+                    <MRowText danger title={t('profile.cancellationScheduled')}
+                      sub={t('profile.accessActiveUntil', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })} />
+                  </MLine>
+                </MGroup>
+              </MSection>
+            )}
+
+            {details?.invoices && details.invoices.length > 0 && (
+              <MSection label={`${t('profile.lastPayments')}${details.invoices.length > 2 ? ` · ${details.invoices.length}` : ''}`}>
+                <MGroup>
+                  {details.invoices.map((inv, i) => (
+                    <MLine key={i} first={i === 0}>
+                      <MRowText title={fmtDate(inv.date)} sub={inv.status === 'paid' ? t('profile.paid') : t('profile.pending')}
+                        subColor={inv.status === 'paid' ? 'var(--success)' : undefined} />
+                      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                        <span style={{ ...M_VALUE, color: 'var(--text)', fontWeight: 600 }}>{fmtAmount(inv.amount, inv.currency)}</span>
+                        {inv.url && (
+                          <a href={inv.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', minHeight: 28, display: 'inline-flex', alignItems: 'center' }}>
+                            {t('profile.viewInvoice')}
+                          </a>
+                        )}
+                      </span>
+                    </MLine>
+                  ))}
+                </MGroup>
+              </MSection>
+            )}
+
+            {details?.paymentMethod && (
+              <MSection label={t('profile.paymentMethod')}>
+                <MGroup>
+                  <MLine first>
+                    <MIcon><Ico d={ICON.card} size={22} /></MIcon>
+                    <MRowText title={`${details.paymentMethod.brand.toUpperCase()} •••• ${details.paymentMethod.last4}`}
+                      sub={`${t('profile.expiresShort')} ${details.paymentMethod.exp_month.toString().padStart(2, '0')}/${details.paymentMethod.exp_year}`} />
+                    <MTextBtn onClick={handlePortal} disabled={portalLoading}>{t('profile.modify')}</MTextBtn>
+                  </MLine>
+                </MGroup>
+              </MSection>
+            )}
+
+            {!isCancelling && (
+              <MSection>
+                <MGroup>
+                  <MNavRow first label={"Changer d'abonnement"} onClick={() => setSubEmail('change')} />
+                  <MNavRow danger label={"Résilier l'abonnement"} onClick={() => setSubEmail('cancel')} />
+                </MGroup>
+              </MSection>
+            )}
+
+            <MExternalLink href="/site/decouvrir.html" label={t('profile.learnMoreApp')} />
+            {subEmail && <SubscriptionEmailModal action={subEmail} plan={subPlan} onClose={() => setSubEmail(null)} />}
+          </>
+        )}
+        {cancelModal}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -2261,45 +2922,7 @@ function AbonnementContent() {
       )}
 
       {/* ── Modal confirmation résiliation ──────────── */}
-      {cancelConfirm && (
-        <div
-          onClick={() => setCancelConfirm(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 24px' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border-mid)', padding: '24px 24px 20px', maxWidth: 400, width: 'calc(100% - 32px)' }}
-          >
-            <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            </div>
-            <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
-            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
-              {t('profile.cancelSubscriptionInfo')}
-            </p>
-            {cancelError && (
-              <p style={{ fontSize: 12, color: 'var(--danger)', textAlign: 'center', lineHeight: 1.5, margin: '0 0 16px' }}>
-                {cancelError}
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setCancelConfirm(false)}
-                style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                {t('profile.cancel')}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                style={{ flex: 1, padding: '11px', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
-              >
-                {cancelling ? '…' : t('profile.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {cancelModal}
     </>
   )
 }
@@ -2348,6 +2971,32 @@ const MODELES: ModeleCard[] = [
 
 function ModelesContent() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>{t('profile.threeLevels')}</MIntro>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {MODELES.map(m => (
+            <MCard key={m.id} style={{ padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Dot color={MODEL_DOT[m.id]} size={10} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 19, fontWeight: 700, color: 'var(--text)' }}>{m.name}</span>
+                <span style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>× {m.multiplier}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-mid)' }}>{t('profile.modelSub.'+m.id)}</span>
+                {m.recommended && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim)', borderRadius: 'var(--r-pill)', padding: '2px 10px' }}>{t('profile.recommended')}</span>}
+              </div>
+              <p style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--text-mid)', margin: 0 }}>{t('profile.modelDesc.'+m.id)}</p>
+            </MCard>
+          ))}
+        </div>
+        <MHelper style={{ margin: '14px 16px 22px' }}>{t('profile.modelsNote')}</MHelper>
+        <MExternalLink href="/site/theme.html#coach-ia" label={t('profile.learnMoreModels')} />
+      </div>
+    )
+  }
   return (
     <>
       <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>{t('profile.threeLevels')}</p>
@@ -2453,6 +3102,7 @@ function ModelesContent() {
 
 export function IASettingsBloc() {
   const { t } = useI18n()
+  const pm = useProfileMobile()
   const hidePrice = hidePricing()
   // Overlays
   const [modelsPageOpen, setModelsPageOpen] = useState(false)
@@ -2531,6 +3181,62 @@ export function IASettingsBloc() {
       localStorage.setItem('thw_ai_web_search_default', String(!next))
       console.error('[ai-settings] web search default toggle', err)
     }
+  }
+
+  // ── MOBILE : listes groupées façon Claude. Les sous-pages Modèles /
+  // Abonnement s'ouvrent dans une feuille du bas (MSheet, au-dessus de la
+  // sur-page profil — le BottomSheet historique passait dessous). ──
+  if (pm.mobile) {
+    const behavior = [
+      { label:t('profile.creditSaving'), sub:t('profile.creditSavingSub'), val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
+      { label:t('profile.allowSuggestions'), sub:t('profile.allowSuggestionsSub'), val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
+      { label:t('profile.webSearchDefault'), sub:t('profile.webSearchDefaultSub'), val:webSearchDefault, onChange:(v:boolean)=>{ void handleWebSearchToggle(v) } },
+    ]
+    const subSheet = (open: boolean, onClose: () => void, title: string, body: React.ReactNode) => (
+      <MSheet open={open} onClose={onClose} label={title}>
+        <SheetHeader leftLabel={t('w1a.fermer')} onLeft={onClose} title={title} />
+        <div style={{ flex:1, minHeight:0, overflowY:'auto', background:PAGE_BG, padding:'16px 16px calc(32px + env(safe-area-inset-bottom))' }}>{body}</div>
+      </MSheet>
+    )
+    return (
+      <div>
+        {subSheet(modelsPageOpen, () => setModelsPageOpen(false), t('profile.aiModels'), <ModelesContent />)}
+        {subSheet(subPageOpen, () => setSubPageOpen(false), t('profile.subscription'), <AbonnementContent />)}
+
+        <MSection label={t('profile.coachingAi')}>
+          <MGroup>
+            <MNavRow first icon={<MIcon><Zap size={22} strokeWidth={1.8} /></MIcon>} label={t('profile.models')} sub={t('profile.modelsSub')} onClick={()=>setModelsPageOpen(true)} />
+            <MNavRow icon={<MIcon><CreditCard size={22} strokeWidth={1.8} /></MIcon>} label={t('profile.subscription')} sub={t('profile.subscriptionSub')} onClick={()=>setSubPageOpen(true)} />
+            <MNavRow icon={<MIcon><Target size={22} strokeWidth={1.8} /></MIcon>} label={t('profile.myCompetences')}
+              sub={t('profile.competencesActive', { n: activeComp ?? 0, s: (activeComp ?? 0) > 1 ? 's' : '' })} onClick={()=>router.push('/competences')} />
+          </MGroup>
+        </MSection>
+
+        <MSection label={t('profile.behavior')}>
+          <MGroup>
+            {behavior.map((item, idx) => (
+              <MLine key={item.label} first={idx===0}>
+                <MRowText title={item.label} sub={item.sub} />
+                <Toggle value={item.val} onChange={item.onChange}/>
+              </MLine>
+            ))}
+          </MGroup>
+        </MSection>
+
+        <MSection label={t('profile.defaultModel')}>
+          <SegTrack<THWModel>
+            value={defaultModel}
+            onChange={id => { setDefaultModel(id); save('thw_ai_default_model', id) }}
+            options={([['hermes','Hermès'],['athena','Athéna'],['zeus','Zeus']] as const).map(([id, label]) => ({
+              v: id, l: <><Dot color={MODEL_DOT[id]} size={8} />{label}</>,
+            }))}
+          />
+          <MHelper>{defaultModel==='hermes'?t('profile.speedFast'):defaultModel==='athena'?t('profile.speedBalanced'):t('profile.speedAdvanced')}</MHelper>
+        </MSection>
+
+        <RulesCard />
+      </div>
+    )
   }
 
   return (
@@ -2660,36 +3366,6 @@ export function IASettingsBloc() {
 }
 
 // ══════════════════════════════════════════════════
-// PAGE PRINCIPALE — Navigation entre onglets
-// ══════════════════════════════════════════════════
-
-// ── Ligne « bulle » de la liste (icône + libellé + valeur + chevron) ──
-// Ligne de réglage façon Claude : icône fine monochrome (sans tuile),
-// libellé sobre, séparateur encarté (commence après l'icône).
-function ListRow({ Icon, label, value, danger, last, onClick }: {
-  Icon: typeof User; label: string; value?: string; danger?: boolean; last?: boolean; onClick: () => void
-}) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 16, width: '100%', textAlign: 'left' as const,
-      padding: '0 20px', minHeight: 64, background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s',
-    }}
-      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
-      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-    >
-      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? 'var(--danger)' : 'var(--text-mid)' }}>
-        <Icon size={22} strokeWidth={1.7} />
-      </span>
-      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '18px 0' }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 500, color: danger ? 'var(--danger)' : 'var(--text)' }}>{label}</span>
-        {value && <span style={{ fontSize: 15, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
-        {!danger && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
-      </span>
-    </button>
-  )
-}
-
-// ══════════════════════════════════════════════════
 // UNITÉS DE MESURE (bulle « Unités »)
 // ══════════════════════════════════════════════════
 
@@ -2714,6 +3390,7 @@ function UnitSegmented({ value, options, onChange }: { value: string; options: {
 }
 
 function UnitesBloc() {
+  const pm = useProfileMobile()
   const supabase = createClient()
   const [prefs, setPrefs] = useState<{ distance: string; temperature: string; weight: string }>({ distance: 'km', temperature: 'c', weight: 'kg' })
 
@@ -2748,6 +3425,19 @@ function UnitesBloc() {
     { key: 'weight',      label: 'Poids',       opts: [{ v: 'kg', label: 'Kilogrammes' }, { v: 'lb', label: 'Livres (lb)' }] },
   ]
 
+  if (pm.mobile) {
+    return (
+      <div>
+        <MIntro>Choisis les unités de mesure affichées dans l&apos;application.</MIntro>
+        {ROWS.map(r => (
+          <MSection key={r.key} label={r.label}>
+            <SegTrack value={prefs[r.key]} options={r.opts.map(o => ({ v: o.v, l: o.label }))} onChange={v => void update(r.key, v)} />
+          </MSection>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Intro>Choisis les unités de mesure affichées dans l&apos;application.</Intro>
@@ -2760,8 +3450,8 @@ function UnitesBloc() {
   )
 }
 
-export function ProfileContent() {
-  const { t } = useI18n()
+export function ProfileContent({ onClose }: { onClose?: () => void } = {}) {
+  const { t, lang } = useI18n()
   const router = useRouter()
   const { data: profile } = useProfile()
   const narrow = useNarrow()
@@ -2771,6 +3461,14 @@ export function ProfileContent() {
   const [planLabel, setPlanLabel] = useState<string | null>(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Mobile : ✓ de la sous-page Profil (gris tant que rien n'a changé) + valeurs
+  // affichées à droite des lignes de la liste racine.
+  const [dirty, setDirty] = useState(false)
+  const [themePref, setThemePref] = useState<ThemePref | null>(null)
+  const mRootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    try { const v = localStorage.getItem('thw-theme'); setThemePref(v === 'light' || v === 'dark' ? v : 'system') } catch { /* ignore */ }
+  }, [active])
 
   // Libellé d'abonnement affiché dans le menu : détecté depuis le tier réel.
   useEffect(() => {
@@ -2782,8 +3480,10 @@ export function ProfileContent() {
     return () => { alive = false }
   }, [])
 
-  function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
-  function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
+  // Remonte en haut : fenêtre (page /profile) ET conteneur défilant de la sur-page.
+  function toTop() { window.scrollTo({ top: 0 }); mRootRef.current?.scrollIntoView({ block: 'start' }) }
+  function open(id: string) { setDir(1); setDirty(false); setActive(id); toTop() }
+  function back() { setDir(-1); setDirty(false); setActive(null); toTop() }
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -2940,73 +3640,84 @@ export function ProfileContent() {
     )
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // MOBILE — réglages façon Claude iOS : liste groupée (carte profil puis
+  // sections) qui ouvre chaque bulle en sous-page poussée ; en-tête rond
+  // retour · titre centré · rond ✓ (Profil) ou × (racine).
+  // ══════════════════════════════════════════════════════════════════
+  const mobileCtx: ProfileMobileState = { mobile: true, setDirty, onSaved: back }
+  const TILE_OF: Record<string, string> = {
+    profil: TILE.blue, abonnement: TILE.cyan, utilisation: TILE.green, notifications: TILE.red,
+    confidentialite: TILE.grey, autorisations: TILE.indigo, sports: TILE.orange, materiel: TILE.violet,
+    connexions: TILE.indigo, ia: TILE.violet, langue: TILE.blue, unites: TILE.green, localisation: TILE.cyan, apparence: TILE.orange,
+  }
+  const rowValue = (id: string, fallback?: string): string | undefined =>
+    id === 'langue' ? LANGS.find(l => l.code === lang)?.label
+    : id === 'apparence' && themePref ? t(themePref === 'light' ? 'profile.themeLight' : themePref === 'dark' ? 'profile.themeDark' : 'profile.themeSystem')
+    : fallback
+  const ellipsis: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+
+  const root = (
+    <div>
+      <MCard onClick={() => open('profil')} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, marginBottom: 26 }}>
+        <MAvatar url={profile.avatar_url || null} initial={initial} size={60} alt={t('profile.profileAlt')} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 20, fontWeight: 800, color: 'var(--text)', ...ellipsis }}>{profile.full_name || t('profile.myProfile')}</span>
+          <span style={{ display: 'block', fontSize: 15, color: 'var(--text-mid)', marginTop: 2, ...ellipsis }}>{profile.email || '—'}</span>
+        </span>
+        <span style={{ color: 'var(--text-dim)', display: 'flex' }}><Ico d={ICON.chev} size={20} /></span>
+      </MCard>
+
+      {GROUPS.map(g => {
+        // « Profil » est ouvert par la carte d'identité ci-dessus : pas de doublon.
+        const rows = g.rows.filter(r => r.id !== 'profil')
+        return (
+          <MSection key={g.title} label={g.title}>
+            <MGroup>
+              {rows.map((r, i) => (
+                <MNavRow key={r.id} first={i === 0} label={r.label} value={rowValue(r.id, r.value)} onClick={() => open(r.id)}
+                  icon={<MTile color={TILE_OF[r.id] ?? TILE.grey}><r.Icon size={20} strokeWidth={2} /></MTile>} />
+              ))}
+            </MGroup>
+          </MSection>
+        )
+      })}
+
+      {/* Se déconnecter + Supprimer mon compte (découvrabilité Apple 5.1.1(v)) */}
+      <MGroup>
+        <MNavRow first danger icon={<MIcon danger><LogOut size={22} strokeWidth={1.8} /></MIcon>}
+          label={signingOut ? t('profile.signingOut') : t('profile.signOut')} onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
+        <MNavRow danger icon={<MIcon danger><Trash2 size={22} strokeWidth={1.8} /></MIcon>}
+          label={t('profile.deleteAccount')} onClick={() => setConfirmDelete(true)} />
+      </MGroup>
+    </div>
+  )
+
   return (
-    <div style={{ width: '100%', minHeight: '100dvh', background: GREY_PAGE, boxSizing: 'border-box' }}>
-    <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '20px 16px 40px', boxSizing: 'border-box' }}>
-      <style>{`
-        .profile-notif-grid { display: flex; flex-direction: column; }
-      `}</style>
+    <ProfileMobileCtx.Provider value={mobileCtx}>
+      <div ref={mRootRef} style={{ width: '100%', minHeight: '100%', background: PAGE_BG, fontFamily: FB, boxSizing: 'border-box' }}>
+        <MSettingsHeader
+          title={active ? CONTENT[active]?.label : t('w1a.parametres')}
+          onBack={active ? back : undefined}
+          backLabel={t('profile.back')}
+          right={active === 'profil'
+            ? <SaveCheckBtn disabled={!dirty} label={t('profile.save')} onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} />
+            : !active && onClose
+              ? <RoundBtn label={t('w1a.fermer')} onClick={onClose}><Ico d={ICON.close} size={20} sw={2.2} /></RoundBtn>
+              : undefined}
+        />
+        <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '4px 16px calc(40px + env(safe-area-inset-bottom))', boxSizing: 'border-box' }}>
+          {/* Swipe-back : glisser depuis le bord gauche fait suivre la page et revient en arrière. */}
+          <SlideView screenKey={active ?? '__list__'} direction={dir} variant="push" onBack={active ? back : undefined} background={PAGE_BG}>
+            {active ? <div style={{ minHeight: '70dvh', paddingTop: 4 }}>{CONTENT[active]?.node}</div> : root}
+          </SlideView>
+        </div>
 
-      <SlideView screenKey={active ?? '__list__'} direction={dir} variant="push" onBack={active ? back : undefined} background={GREY_PAGE}>
-        {active ? (
-          // ── Drill-down : titre centré + boutons ronds flottants (façon Claude) ──
-          // Swipe-back : glisser depuis le bord gauche fait suivre la page et revient en arrière.
-          <div style={{ minHeight: '80dvh' }}>
-            <div style={{ position: 'sticky', top: 0, zIndex: 5, background: GREY_PAGE, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
-              <PressPop onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: -2, width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }}>
-                <ChevronLeft size={22} />
-              </PressPop>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
-              {active === 'profil' && (
-                <PressPop onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label={t('profile.save')} style={{ position: 'absolute', right: 16, top: -2, width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--text) 10%, var(--bg))', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.20)' }}>
-                  <Check size={20} />
-                </PressPop>
-              )}
-            </div>
-            {CONTENT[active]?.node}
-          </div>
-        ) : (
-          // ── Liste façon Claude ─────────────────────────────────────
-          <div>
-            {/* En-tête : avatar + nom + email */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 4px 22px' }}>
-              <div style={{ width: 58, height: 58, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {profile.avatar_url
-                  ? <img src={profile.avatar_url} alt={t('profile.profileAlt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || t('profile.myProfile')}</p>
-                <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.email || '—'}</p>
-              </div>
-            </div>
-
-            {/* Groupes de bulles */}
-            {GROUPS.map(g => (
-              <div key={g.title} style={{ marginBottom: 22 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{g.title}</p>
-                <div style={{ background: GREY_CARD, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-                  {g.rows.map((r, i) => (
-                    <ListRow key={r.id} Icon={r.Icon} label={r.label} value={r.value} last={i === g.rows.length - 1} onClick={() => open(r.id)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Se déconnecter + Supprimer mon compte (découvrabilité Apple 5.1.1(v)) */}
-            <div style={{ background: GREY_CARD, borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
-              <ListRow Icon={Trash2} label="Supprimer mon compte" danger last onClick={() => setConfirmDelete(true)} />
-            </div>
-          </div>
-        )}
-      </SlideView>
-
-      {/* Confirmation de déconnexion (partagée) */}
-      {logoutModal}
-      <DeleteAccountModal open={confirmDelete} onClose={() => setConfirmDelete(false)} />
-    </div>
-    </div>
+        {/* Confirmation de déconnexion (partagée) */}
+        {logoutModal}
+        <DeleteAccountModal open={confirmDelete} onClose={() => setConfirmDelete(false)} />
+      </div>
+    </ProfileMobileCtx.Provider>
   )
 }
 

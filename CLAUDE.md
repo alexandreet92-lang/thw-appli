@@ -74,3 +74,6 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
+token_meta_temporaire.txt : [REDACTED]
+instagram business id : 17841449112603067
+clé secrète : [REDACTED]

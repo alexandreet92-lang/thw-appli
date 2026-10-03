@@ -104,8 +104,9 @@ export default function DecouverteAdminPage() {
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 'var(--space-8) var(--space-4) var(--space-10)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, margin: 0 }}>Découverte — QR Hybrid</h1>
       <p style={{ margin: 'var(--space-3) 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)' }}>
-        Crée un QR par établissement partenaire. Le QR ouvre le test physique gratuit sur le site
-        (jamais l’app). Pour un restaurant, indique le nombre de tables : tu auras un QR par table.
+        Crée un QR par établissement partenaire. Le QR ouvre, sur le site (jamais l’app), une page
+        qui présente le test CADENCES et invite à créer un compte gratuit. Pour un restaurant,
+        indique le nombre de tables : tu auras un QR par table.
       </p>
 
       {/* ── Créer ───────────────────────────────────────────────── */}
@@ -152,9 +153,9 @@ export default function DecouverteAdminPage() {
 
                 {/* Stats : entonnoir ouvert → commencé → terminé */}
                 <div style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
-                  <Stat n={s.stats.ouvertures} label="ouvertures" />
-                  <Stat n={s.stats.commence} label="commencés" />
-                  <Stat n={s.stats.termine} label="terminés" />
+                  <Stat n={s.stats.ouvertures} label="scans / ouvertures" />
+                  <Stat n={s.stats.commence} label="clics « compte »" />
+                  <Stat n={s.commentaires.length} label="commentaires" />
                 </div>
 
                 <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>

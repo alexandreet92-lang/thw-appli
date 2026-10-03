@@ -33,7 +33,8 @@ export async function middleware(request: NextRequest) {
   // si THW_DEV_BYPASS=1. Jamais actif en production (NODE_ENV === 'production' sur Vercel).
   if (process.env.NODE_ENV !== 'production' && process.env.THW_DEV_BYPASS === '1') return response
   // Routes publiques (vitrines /c, tarifs coach, programmes, auth…).
-  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/defi', '/site', '/c/', '/coach/tarifs', '/programmes', '/pour-les-coachs', '/styleguide']
+  // /live/ : lien de suivi en direct partagé par WhatsApp / Messages — ouvert SANS compte.
+  const publicRoutes = ['/login', '/auth', '/onboarding', '/access-expired', '/legal', '/decouvrir', '/defi', '/site', '/c/', '/coach/tarifs', '/programmes', '/pour-les-coachs', '/styleguide', '/live/']
   if (publicRoutes.some(r => path.startsWith(r))) return response
   // Routes API — jamais bloquées + CORS pour l'app native.
   // L'app native (origine capacitor://) appelle /api en CROSS-ORIGIN avec un

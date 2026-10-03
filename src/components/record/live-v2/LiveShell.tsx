@@ -31,6 +31,7 @@ import {
 } from './liveMachine'
 import ConfigDataPage from './ConfigDataPage'
 import { subscribeSensors, getSensorState, type SensorState } from '@/lib/sensors/bluetooth'
+import { currentLiveShareId, pushPosition, stopLiveShare } from '@/lib/community/liveShare'
 import type { DataPage } from '@/types/cycling'
 import { DEFAULT_PAGES } from '@/types/cycling'
 import ExitSheet from './ExitSheet'
@@ -237,6 +238,24 @@ export default function LiveShell({
     if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; notify(t('w2c.gpsLost')) }
     if (!lost) gpsWasOkRef.current = true
   }, [gps.status, eff, settings.alerts.gpsLost, notify])
+
+  // ── Partage de position en direct : durée + distance poussées toutes les
+  // 10 s (la position seule part déjà via liveShare.ts). Sans partage actif :
+  // rien. Le suivi public (/live/<id>) affiche ainsi les vraies stats. ──
+  const liveShareRef = useRef({ dur: 0, dist: 0, lat: null as number | null, lng: null as number | null })
+  liveShareRef.current = { dur: durationSec, dist: gps.distance, lat: gps.currentLat, lng: gps.currentLng }
+  useEffect(() => {
+    if (!started) return
+    const push = () => {
+      const id = currentLiveShareId()
+      const c = liveShareRef.current
+      if (!id || c.lat == null || c.lng == null) return
+      void pushPosition(id, c.lat, c.lng, c.dur, c.dist)
+    }
+    push()
+    const iv = setInterval(push, 10000)
+    return () => clearInterval(iv)
+  }, [started])
 
   // ── Snapshot + backup local (10 s pendant l'enregistrement + à l'arrêt) ──
   const buildSnapshot = useCallback((): LiveSnapshot | null => {
@@ -455,6 +474,8 @@ export default function LiveShell({
   // parcours, ou écran verrouillé, le dock du shell reste visible.
   const mapOwnsControls = onMapPage && hasRoute && !locked
   const [mapSheetH, setMapSheetH] = useState(260)
+  // Liste des virages ouverte sur la carte (grande feuille) → pagination masquée.
+  const [mapOverlay, setMapOverlay] = useState(false)
   const dotsBottom = mapOwnsControls ? null : (machine.phase === 'idle' ? 222 : machine.phase === 'paused' ? 172 : 150)
   const currentPos = gps.currentLat != null && gps.currentLng != null
     ? { lat: gps.currentLat, lng: gps.currentLng }
@@ -539,6 +560,7 @@ export default function LiveShell({
                 swap={swap}
                 onClose={!locked && (machine.phase === 'idle' || machine.phase === 'paused') ? handleClose : undefined}
                 onBottomInset={setMapSheetH}
+                onOverlayChange={setMapOverlay}
               />
             ) : (
               <ConfigDataPage
@@ -639,8 +661,8 @@ export default function LiveShell({
         </div>
       )}
 
-      {/* ── Pagination : pilule active ── */}
-      <RkPageDots
+      {/* ── Pagination : pilule active (masquée sous la liste des virages) ── */}
+      {!(onMapPage && mapOverlay) && <RkPageDots
         count={livePages.length}
         index={pageIndex}
         onSelect={i => { const el = pagesRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }) }}
@@ -649,7 +671,7 @@ export default function LiveShell({
           bottom: dotsBottom == null ? `${mapSheetH + 6}px` : `calc(env(safe-area-inset-bottom) + ${dotsBottom}px)`,
           transition: 'bottom 0.3s cubic-bezier(0.22,1,0.36,1)',
         }}
-      />
+      />}
 
       {/* ── Zone contrôles (transitions ressort entre états) ── */}
       {!mapOwnsControls && (
@@ -752,7 +774,11 @@ export default function LiveShell({
           onAddPhoto={() => photoRef.current?.pick()}
           onBack={() => send({ type: 'REOPEN_SESSION' })}
           onUploadStart={() => send({ type: 'UPLOAD' })}
-          onUploadDone={() => send({ type: 'UPLOAD_DONE' })}
+          onUploadDone={() => {
+            send({ type: 'UPLOAD_DONE' })
+            // Sortie enregistrée → fin du suivi en direct (« Sortie terminée »).
+            if (currentLiveShareId()) void stopLiveShare()
+          }}
           onUploadFail={() => send({ type: 'UPLOAD_FAIL' })}
           onDiscard={handleDiscardSummary}
           flushPhotos={async sessionId => {

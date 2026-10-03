@@ -1,8 +1,8 @@
 'use client'
 // ════════════════════════════════════════════════════════════════════
-// GuidePanel — panneau de guidage déplié (spec §4, maquette L6) : feuille
-// glissable flottante ENTRE le bandeau de virage et la feuille de données,
-// bouton ✕ ; en-tête icône 44 + « Suivez l'itinéraire », liste des
+// GuidePanel — panneau de guidage déplié (spec §4, maquette L6) : grande
+// feuille glissable (~85 % de l'écran) sous le bandeau de virage, par-dessus
+// la carte (la feuille de données est masquée pendant ce temps), bouton ✕ ; en-tête icône 44 + « Suivez l'itinéraire », liste des
 // manœuvres À VENIR (icône 40, distance 27/800, libellé 15/600, badge route,
 // chip de sortie ORS), opacité dégressive 1/1/1/.72/.5/.34, chevron de repli.
 // SANS manœuvres ORS : jamais vide — DÉTAIL DU PARCOURS (nom, distance,
@@ -12,7 +12,7 @@
 // maneuverKind, detectRoadBadge, RoadBadge, exitChipLabel.
 // Aucune donnée inventée : badge / chip absents si ORS ne les fournit pas.
 // ════════════════════════════════════════════════════════════════════
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { NavStep } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
 import SnapSheet from '../kit/SnapSheet'
@@ -154,12 +154,12 @@ export function exitChipLabel(n: number): string {
   return n === 1 ? '1re sortie' : `${n}e sortie`
 }
 
-// ── Panneau de guidage : FEUILLE GLISSABLE (SnapSheet du kit) ──────────
-// Flotte ENTRE le bandeau de virage (en haut) et la feuille de données (en
-// bas) : ses marges viennent des hauteurs RÉELLES mesurées par MapPage
-// (bandeau + safe-area, feuille du bas) → aucun chevauchement. Deux crans
-// (en-tête seul / liste complète), tirer vers le bas sous le cran réduit
-// ou le bouton ✕ ferment.
+// ── Panneau de guidage : GRANDE FEUILLE (SnapSheet du kit, ~85 % de haut) ─
+// S'ouvre PAR-DESSUS la carte, juste sous le bandeau de virage (qui reste
+// visible) et jusqu'en bas de l'écran : l'appelant MASQUE sa feuille de
+// données tant que la liste est ouverte (jamais trois panneaux empilés).
+// La feuille occupe toute la hauteur disponible (fill) ; tirer vers le bas
+// ou le bouton ✕ la ferment (sortie animée), la feuille de données revient.
 interface Props {
   /** Toutes les manœuvres ORS du parcours (vide si guidage détaillé indisponible). */
   steps: NavStep[]
@@ -184,7 +184,7 @@ interface Props {
   onClose: () => void
   /** Espace réservé en haut (bandeau de virage), px sous la safe-area. */
   topGap?: number
-  /** Bas de la feuille au-dessus du bas de l'écran (feuille de données), px. */
+  /** Bas de la feuille au-dessus du bas de l'écran, px (0 = bord bas). */
   bottomOffset?: number
 }
 
@@ -193,13 +193,22 @@ const ROW_OPACITY = [1, 1, 1, 0.72, 0.5, 0.34]
 export default function GuidePanel({
   steps, stepDistM, nextIdx, fmtDist,
   routeName, distLabel, gainLabel, line, cum, traveledM, onClose,
-  topGap = 120, bottomOffset = 160,
+  topGap = 120, bottomOffset = 0,
 }: Props) {
   const { t } = useI18n()
   const hasSteps = steps.length > 0
   const upcoming = nextIdx >= 0 ? steps.slice(nextIdx) : []
   const upcomingDist = nextIdx >= 0 ? stepDistM.slice(nextIdx) : []
-  const [snap, setSnap] = useState(1)
+  const [snap, setSnap] = useState(0)
+  // ✕ : sortie animée (la feuille glisse vers le bas) puis fermeture.
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    closeTimer.current = setTimeout(onClose, 220)
+  }
 
   // ── Virages géométriques (repli sans ORS) : liste des tournants à venir ──
   const geoTurns = useMemo(() => (hasSteps ? [] : deriveTurns(line, cum)), [hasSteps, line, cum])
@@ -224,7 +233,7 @@ export default function GuidePanel({
           {gainLabel != null && ` · ${gainLabel}`}
         </div>
       </div>
-      <RkFab label={t('w2c.close')} onClick={onClose} size={40} variant="ghost"><RkIco d={RK_ICON.close} size={17} sw={2.4} /></RkFab>
+      <RkFab label={t('w2c.close')} onClick={requestClose} size={40} variant="ghost"><RkIco d={RK_ICON.close} size={17} sw={2.4} /></RkFab>
     </div>
   )
 
@@ -253,20 +262,20 @@ export default function GuidePanel({
 
   return (
     <SnapSheet
-      snaps={[0, 'full']}
+      snaps={['full']}
       index={snap}
       onIndexChange={setSnap}
       onDismiss={onClose}
       header={header}
-      floating
-      inset={12}
+      fill
+      closing={closing}
       bottomOffset={bottomOffset}
       topGap={topGap}
       surface="var(--float-bg)"
-      zIndex={42}
+      zIndex={46}
       ariaLabel={t('w3a.follow_route')}
     >
-      <div style={{ padding: '0 18px 10px' }}>
+      <div style={{ padding: '0 18px calc(16px + env(safe-area-inset-bottom))' }}>
         {hasSteps ? (
           upcoming.length === 0 ? (
             <EmptyNote text={t('w3a.no_upcoming_maneuver')} />

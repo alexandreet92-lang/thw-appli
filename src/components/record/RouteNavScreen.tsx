@@ -7,8 +7,9 @@
 // on tire VERS LE HAUT pour ouvrir le profil altimétrique avec la progression.
 // Disponible même sans parcours (carte plein écran + vitesse) ; guidage virage
 // par virage (ORS) + bip + vibration uniquement si un parcours est chargé.
-// Même langage que la navigation vélo (maquette L6) : bandeau sombre, pilule
-// « puis … », feuille de données glissable (SnapSheet), parcouru en gris.
+// Même langage que la navigation vélo (maquette L6) : bandeau verre aux
+// couleurs du thème (✕ intégré), pilule « puis … », feuille de données
+// glissable (SnapSheet) masquée sous la grande liste des virages, parcouru gris.
 // Mobile — overlay (portal).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -124,7 +125,10 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
   const safeTop = useSafeTop()
   const [bannerRef, bannerH] = useMeasure<HTMLDivElement>()
   const [statsRef, statsH] = useMeasure<HTMLDivElement>()
-  const [sheetSnap, setSheetSnap] = useState(1)
+  // Cran par défaut = aperçu (ligne live + Restant / Arrivée / D+) ; la
+  // feuille y revient à la fermeture de la liste des virages.
+  const [sheetSnap, setSheetSnap] = useState(0)
+  useEffect(() => { if (bannerOpen) setSheetSnap(0) }, [bannerOpen])
   const [sheetSettledH, setSheetSettledH] = useState(220)
   const [recenterKey, setRecenterKey] = useState(0)
   const line = route?.snapped_points ?? []
@@ -261,22 +265,19 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         </MapContainer>
       </div>
 
-      {/* Bandeau de virage sombre + « puis … » ; ✕ à gauche en overlay plein écran */}
+      {/* Bandeau de virage (verre aux couleurs du thème) + « puis … » ;
+          ✕ intégré au bandeau (bord gauche) en overlay plein écran */}
       <div ref={bannerRef} style={{
-        position: 'absolute', top: embedded ? 8 : 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 30,
+        position: 'absolute', top: embedded ? 8 : 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 50,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', pointerEvents: 'auto' }}>
-          {!embedded && onClose && (
-            <RkFab label={t('record.routeNavClose')} onClick={onClose} size={48}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <TurnBanner big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub} kind={banner.kind} pending={banner.pending}
-              onOpen={hasRoute ? () => setBannerOpen(o => !o) : undefined} open={bannerOpen} openLabel={t('record.routeNavFollowRoute')} />
-          </div>
+        <div style={{ width: '100%', pointerEvents: 'auto' }}>
+          <TurnBanner big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub} kind={banner.kind} pending={banner.pending}
+            onOpen={hasRoute ? () => setBannerOpen(o => !o) : undefined} open={bannerOpen} openLabel={t('record.routeNavFollowRoute')}
+            onClose={!embedded && onClose ? onClose : undefined} closeLabel={t('record.routeNavClose')} />
         </div>
-        {afterStep && afterGap != null && nextStep && (
-          <div style={{ marginLeft: !embedded && onClose ? 70 : 10, pointerEvents: 'auto' }}>
+        {afterStep && afterGap != null && nextStep && !bannerOpen && (
+          <div style={{ marginLeft: 10, pointerEvents: 'auto' }}>
             <ThenPill>
               <span>{t('w2c.then')}</span>
               <ManeuverIcon kind={maneuverKind(afterStep.type)} size={16} />
@@ -293,7 +294,8 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         </div>
       )}
 
-      {/* Liste des virages (feuille glissable entre le bandeau et la feuille du bas) */}
+      {/* Liste des virages : grande feuille (~85 %) sous le bandeau, par-dessus
+          la carte — la feuille de données est masquée tant qu'elle est ouverte. */}
       {bannerOpen && hasRoute && (
         <GuidePanel
           steps={steps}
@@ -307,13 +309,13 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
           cum={cum}
           traveledM={traveledM}
           onClose={() => setBannerOpen(false)}
-          topGap={bannerH + 16}
-          bottomOffset={sheetSettledH + 8}
+          topGap={(embedded ? 0 : 8) + bannerH + 8}
+          bottomOffset={0}
         />
       )}
 
       {/* Feuille de données glissable : live · Restant / Arrivée / D+ restant · profil */}
-      {hasRoute ? (
+      {hasRoute ? (bannerOpen ? null : (
         <SnapSheet snaps={[statsH, 'full']} index={sheetSnap} onIndexChange={setSheetSnap} onSettle={setSheetSettledH}
           zIndex={40} topGap={140} ariaLabel={t('record.routeNavRemaining')}
           footer={<div style={{ height: 'calc(10px + env(safe-area-inset-bottom))' }} />}>
@@ -326,7 +328,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
             </div>
           </div>
         </SnapSheet>
-      ) : (
+      )) : (
         <div className="rk-banner rk-glass rk-num" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: embedded ? 20 : 'calc(20px + env(safe-area-inset-bottom))', zIndex: 30, animation: 'none', fontSize: 16, minHeight: 44, letterSpacing: 0 }}>
           {speedKmh.toFixed(1).replace('.', ',')} km/h
           {hr != null && <> · <span className="rk-dot" style={{ background: 'var(--danger)' }} />{Math.round(hr)} bpm</>}

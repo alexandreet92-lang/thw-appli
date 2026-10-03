@@ -11,7 +11,7 @@
 //  Sous-pages (glissent depuis la droite) : Commandes vocales, Changer
 //  l'itinéraire (parcours enregistré OU adresse).
 // ════════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MotionValue } from 'motion/react'
 import { haptic } from '@/lib/haptics'
 import { useI18n } from '@/lib/i18n'
@@ -37,6 +37,8 @@ interface Props {
   canLap: boolean
   swap?: boolean
   canStart: boolean
+  /** Explication sous « Démarrer » désactivé (défaut : « Recherche GPS… »). */
+  startHint?: string
   onStart: () => void
   onPauseToggle: () => void
   onFinish: () => void
@@ -63,12 +65,19 @@ export default function RouteSheet(p: Props) {
   const { t } = useI18n()
   const view = p.view
   const setView = p.onSetView
-  const [snap, setSnap] = useState(1)
+  // Cran par défaut = APERÇU (ligne live + Restant / Arrivée / D+) : la carte
+  // reste dégagée ; on tire vers le haut pour le profil puis les réglages.
+  const [snap, setSnap] = useState(() => (p.view === 'main' ? 0 : 2))
   const [statsRef, statsH] = useMeasure<HTMLDivElement>()
   const [profRef, profH] = useMeasure<HTMLDivElement>()
 
   // Sous-page ouverte → feuille entièrement dépliée ; retour → cran moyen.
-  useEffect(() => { setSnap(view === 'main' ? 1 : 2) }, [view])
+  const prevView = useRef(view)
+  useEffect(() => {
+    if (prevView.current === view) return
+    prevView.current = view
+    setSnap(view === 'main' ? 1 : 2)
+  }, [view])
   useEffect(() => { if (p.collapseKey) setSnap(0) }, [p.collapseKey])
 
   const Seg = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) => (
@@ -104,7 +113,15 @@ export default function RouteSheet(p: Props) {
   const footer = (
     <div style={{ padding: '6px 16px calc(12px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center' }}>
       {p.phase === 'idle' && (
-        <RkStartButton label={t('w2c.start')} onClick={p.onStart} disabled={!p.canStart} size={84} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <RkStartButton label={t('w2c.start')} onClick={p.onStart} disabled={!p.canStart} size={84} />
+          {!p.canStart && (
+            <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
+              <span className="rk-dot" data-live="1" style={{ width: 7, height: 7, background: 'var(--text-dim)' }} />
+              {p.startHint ?? t('w2c.gpsSearching')}
+            </span>
+          )}
+        </div>
       )}
       {p.phase === 'rec' && (
         <RkControlRow

@@ -3,16 +3,18 @@
 // NavUI — briques de présentation PARTAGÉES par la navigation live
 // (vélo : MapPage / RouteSheet ; course & trail : RouteNavScreen),
 // maquette L6 :
-//  • TurnBanner : bandeau sombre arrondi en haut (grosse distance,
-//    instruction + nom de voie, tuile icône cyan, ▾ = liste des virages) ;
+//  • TurnBanner : bandeau verre arrondi en haut, aux couleurs du thème
+//    (grosse distance, instruction + nom de voie, tuile icône cyan,
+//    ✕ intégré à gauche, ▾ = liste des virages) ;
 //  • ThenPill   : petite pilule blanche « puis … » (manœuvre suivante) ;
 //  • NavStats   : ligne live W / bpm / km/h + 3 colonnes Restant /
 //    Arrivée / D+ restant (avec « fait … ») ;
 //  • NavProfile : profil altimétrique, partie déjà parcourue en gris.
 // Aucune logique de navigation ici : tout arrive formaté.
 // ════════════════════════════════════════════════════════════════════
-import { forwardRef, useMemo, type ReactNode } from 'react'
+import { forwardRef, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { ManeuverIcon, type ManeuverKind } from './GuidePanel'
+import { RkFab, RkIco, RK_ICON } from '../kit/RecordKit'
 
 export interface TurnBannerProps {
   /** Gros chiffre (« 350 m ») — absent en mode texte seul. */
@@ -30,19 +32,23 @@ export interface TurnBannerProps {
   onOpen?: () => void
   open?: boolean
   openLabel?: string
+  /** ✕ intégré au bandeau (bord gauche) — quitter l'écran. Absent = masqué. */
+  onClose?: () => void
+  closeLabel?: string
 }
 
-/** Bandeau de guidage sombre (identique dans les deux thèmes). */
-export function TurnBanner({ big, instruction, road, sub, kind, pending, onOpen, open, openLabel }: TurnBannerProps) {
+/** Bandeau de guidage : carte verre qui SUIT LE THÈME (blanche en clair,
+ *  sombre en sombre), ✕ optionnel intégré à gauche, ▾ liste des virages. */
+export function TurnBanner({ big, instruction, road, sub, kind, pending, onOpen, open, openLabel, onClose, closeLabel }: TurnBannerProps) {
   const inner = (
     <>
       <span aria-hidden style={{
         width: 52, height: 52, borderRadius: 'var(--r-md)', flexShrink: 0,
-        background: pending ? 'color-mix(in srgb, var(--rk-nav-ink) 14%, transparent)' : 'var(--primary)',
+        background: pending ? 'color-mix(in srgb, var(--rk-nav-ink) 10%, transparent)' : 'var(--primary)',
         color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {pending
-          ? <span className="rk-dot" data-live="1" style={{ width: 12, height: 12, background: 'var(--rk-nav-ink)' }} />
+          ? <span className="rk-dot" data-live="1" style={{ width: 12, height: 12, background: 'var(--text-dim)' }} />
           : <ManeuverIcon kind={kind} size={28} />}
       </span>
       <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
@@ -50,28 +56,42 @@ export function TurnBanner({ big, instruction, road, sub, kind, pending, onOpen,
         <span style={{
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           fontSize: big ? 16 : 18, fontWeight: big ? 500 : 800, lineHeight: 1.25, marginTop: big ? 3 : 0,
-          color: big ? 'color-mix(in srgb, var(--rk-nav-ink) 86%, transparent)' : 'var(--rk-nav-ink)',
+          color: big ? 'var(--text-mid)' : 'var(--rk-nav-ink)',
         }}>
           {instruction}
           {road && <> · <b style={{ fontWeight: 800, color: 'var(--rk-nav-ink)' }}>{road}</b></>}
         </span>
-        {sub && <span className="rk-num" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginTop: 2, letterSpacing: 0, color: 'color-mix(in srgb, var(--rk-nav-ink) 66%, transparent)' }}>{sub}</span>}
+        {sub && <span className="rk-num" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginTop: 2, letterSpacing: 0, color: 'var(--text-mid)' }}>{sub}</span>}
       </span>
       {onOpen && (
-        <span aria-hidden style={{ flexShrink: 0, opacity: 0.7, display: 'flex', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 260ms cubic-bezier(0.22,1,0.36,1)' }}>
+        <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-mid)', display: 'flex', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 260ms cubic-bezier(0.22,1,0.36,1)' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
         </span>
       )}
     </>
   )
-  const style: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 80, padding: '14px 16px',
-    borderRadius: 'calc(var(--r-lg) + 4px)', border: 'none',
+  const card: CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 76,
+    padding: onClose ? '12px 14px 12px 10px' : '12px 14px',
+    borderRadius: 'calc(var(--r-lg) + 4px)',
     background: 'var(--rk-nav-bg)', color: 'var(--rk-nav-ink)', boxShadow: 'var(--shadow-float)',
   }
-  return onOpen
-    ? <button type="button" onClick={onOpen} aria-expanded={open} aria-label={openLabel} className="rk-press" style={{ ...style, cursor: 'pointer', fontFamily: 'inherit' }}>{inner}</button>
-    : <div role="status" style={style}>{inner}</div>
+  const main: CSSProperties = {
+    flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 14,
+    padding: 0, border: 'none', background: 'transparent', color: 'inherit', fontFamily: 'inherit',
+  }
+  return (
+    <div className="rk-nav-banner" role={onOpen ? undefined : 'status'} style={card}>
+      {onClose && (
+        <RkFab label={closeLabel ?? '×'} onClick={onClose} size={40} variant="ghost">
+          <RkIco d={RK_ICON.close} size={17} sw={2.4} />
+        </RkFab>
+      )}
+      {onOpen
+        ? <button type="button" onClick={onOpen} aria-expanded={open} aria-label={openLabel} className="rk-press" style={{ ...main, cursor: 'pointer' }}>{inner}</button>
+        : <div style={main}>{inner}</div>}
+    </div>
+  )
 }
 
 /** Pilule « puis … » sous le bandeau. */

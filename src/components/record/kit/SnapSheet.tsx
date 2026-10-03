@@ -66,6 +66,11 @@ export interface SnapSheetProps {
   noEnter?: boolean
   /** Remet le contenu en haut de son défilement quand on quitte le cran le plus haut. */
   resetScroll?: boolean
+  /** Le cran 'full' occupe TOUTE la hauteur disponible (feuille plein écran sous
+   *  `topGap`), même si le contenu est plus court. */
+  fill?: boolean
+  /** Vrai = la feuille glisse hors de l'écran (sortie animée avant démontage). */
+  closing?: boolean
 }
 
 const SPRING = { type: 'spring' as const, stiffness: 420, damping: 42, mass: 0.9 }
@@ -139,7 +144,7 @@ export function useSafeTop(): number {
 export default function SnapSheet({
   snaps, index, onIndexChange, onSettle, heightMV, header, footer, children, onDismiss,
   bottomOffset = 0, topGap = 56, inset = 0, floating = false, surface = 'var(--surface-card)',
-  zIndex = 120, className, style, ariaLabel, handleLabel, noEnter, resetScroll = true,
+  zIndex = 120, className, style, ariaLabel, handleLabel, noEnter, resetScroll = true, fill = false, closing = false,
 }: SnapSheetProps) {
   const reduce = useReducedMotion()
   const vh = useViewportHeight()
@@ -157,8 +162,10 @@ export default function SnapSheet({
   // Hauteur max visible : écran − safe-area − espace haut − décalage bas.
   const maxVisible = Math.max(120, vh - safeTop - topGap - bottomOffset)
   const chrome = grabH + footH
-  const bodyH = Math.min(chrome + contentH, maxVisible)
-  const visibles = snaps.map(s => Math.min(bodyH, chrome + (s === 'full' ? contentH : Math.min(s, contentH))))
+  const bodyH = fill ? maxVisible : Math.min(chrome + contentH, maxVisible)
+  const visibles = snaps.map(s => (s === 'full' && fill)
+    ? bodyH
+    : Math.min(bodyH, chrome + (s === 'full' ? contentH : Math.min(s, contentH))))
   const measured = grabH > 0
 
   // y = translation de la feuille (0 = cran le plus haut possible = bodyH visible).
@@ -203,10 +210,17 @@ export default function SnapSheet({
     const dH = bodyH - st.current.prevBodyH
     st.current.prevBodyH = bodyH
     if (dH !== 0) y.set(y.get() + dH)
-    if (st.current.dragging) return
+    if (st.current.dragging || closing) return
     goTo(index)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, measured])
+
+  // Sortie animée : la feuille glisse sous le bord de l'écran.
+  useEffect(() => {
+    if (!closing || !measured) return
+    anim.current?.stop()
+    anim.current = animate(y, st.current.bodyH + bottomOffset + 40, reduce ? { duration: 0.14 } : { ...SPRING, stiffness: 520 })
+  }, [closing, measured, y, reduce, bottomOffset])
 
   // Remet le contenu en haut quand on quitte le cran le plus haut.
   const atTop = index === snaps.length - 1

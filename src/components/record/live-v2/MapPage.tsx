@@ -216,14 +216,18 @@ interface Props {
   onClose?: () => void
   /** Hauteur occupée en bas par la feuille de données (px) → pagination du shell. */
   onBottomInset?: (h: number) => void
+  /** Liste des virages ouverte (grande feuille) → le shell masque sa pagination. */
+  onOverlayChange?: (open: boolean) => void
 }
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
   points, currentPos, route, defaultLayer, units, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
-  onStart, canStart, onLock, swap, onClose, onBottomInset,
+  onStart, canStart, onLock, swap, onClose, onBottomInset, onOverlayChange,
 }: Props) {
   const { t } = useI18n()
+  // Repli FR tant qu'une clé récente n'est pas au dictionnaire.
+  const tf = (key: string, fr: string) => { const v = t(key); return v === key ? fr : v }
   const safeTop = useSafeTop()
   const [bannerRef, bannerH] = useMeasure<HTMLDivElement>()
   const [sheetSettledH, setSheetSettledH] = useState(260)
@@ -297,6 +301,10 @@ export default function MapPage({
 
   // Le verrouillage prime : panneaux repliés tant que l'écran est verrouillé.
   useEffect(() => { if (locked) { setGuideOpen(false); setSheetView('main') } }, [locked])
+  // Liste des virages ouverte = grande feuille seule (feuille de données masquée).
+  const guideShown = guideOpen && hasRoute && !locked
+  useEffect(() => { onOverlayChange?.(guideShown) }, [guideShown, onOverlayChange])
+  useEffect(() => () => { onOverlayChange?.(false) }, [onOverlayChange])
 
   // Progression le long du tracé : projection segment + mémoire de la
   // progression précédente (désambiguïsation boucle) — remise à 0 à l'arrêt.
@@ -522,30 +530,29 @@ export default function MapPage({
       {/* Scrims (thème sombre uniquement) */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, background: 'var(--live-scrim-top)', pointerEvents: 'none', zIndex: 10 }} />
 
-      {/* Bandeau de guidage sombre + « puis … » (+ ✕ avant départ / en pause) */}
+      {/* Bandeau de guidage (verre aux couleurs du thème) + « puis … ».
+          Le ✕ (avant départ / en pause) est INTÉGRÉ au bandeau, bord gauche. */}
       <div ref={bannerRef} style={{
-        position: 'absolute', top: 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 30,
+        position: 'absolute', top: 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 50,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
       }}>
-        <div className="rk-fade-up" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', pointerEvents: 'auto' }}>
-          {onClose && !locked && (
-            <RkFab label={t('w2c.close')} onClick={onClose} size={48}><RkIco d={RK_ICON.close} size={20} sw={2.2} /></RkFab>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <TurnBanner
-              big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub}
-              kind={banner.kind} pending={banner.pending}
-              onOpen={hasRoute && !locked ? () => { setGuideOpen(o => !o); setCollapseKey(k => k + 1) } : undefined}
-              open={guideOpen}
-              openLabel={t('w3a.follow_route')}
-            />
-          </div>
+        <div className="rk-fade-up" style={{ width: '100%', pointerEvents: 'auto' }}>
+          <TurnBanner
+            big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub}
+            kind={banner.kind} pending={banner.pending}
+            onOpen={hasRoute && !locked ? () => { setGuideOpen(o => !o); setCollapseKey(k => k + 1) } : undefined}
+            open={guideOpen}
+            openLabel={t('w3a.follow_route')}
+            onClose={onClose && !locked ? onClose : undefined}
+            closeLabel={t('w2c.close')}
+          />
         </div>
-        {thenPill && <div style={{ marginLeft: onClose && !locked ? 70 : 10, pointerEvents: 'auto' }}>{thenPill}</div>}
+        {thenPill && !guideShown && <div style={{ marginLeft: 10, pointerEvents: 'auto' }}>{thenPill}</div>}
       </div>
 
-      {/* Panneau de guidage déplié : entre le bandeau et la feuille du bas. */}
-      {guideOpen && hasRoute && (
+      {/* Liste des virages : grande feuille (~85 %) sous le bandeau, par-dessus
+          la carte ; la feuille de données est masquée tant qu'elle est ouverte. */}
+      {guideShown && (
         <GuidePanel
           steps={steps ?? []}
           stepDistM={stepDistM}
@@ -559,7 +566,7 @@ export default function MapPage({
           traveledM={traveledOnRouteM}
           onClose={() => setGuideOpen(false)}
           topGap={bannerH + 16}
-          bottomOffset={bottomInset + 8}
+          bottomOffset={0}
         />
       )}
 
@@ -578,8 +585,9 @@ export default function MapPage({
         </div>
       )}
 
-      {/* Feuille de données glissable (façon Apple Plans) */}
-      {hasRoute && !locked && (
+      {/* Feuille de données glissable (façon Apple Plans) — revient (cran
+          « aperçu ») à la fermeture de la liste des virages. */}
+      {hasRoute && !locked && !guideShown && (
         <RouteSheet
           ep={ep}
           totalM={totalM}
@@ -590,6 +598,7 @@ export default function MapPage({
           canLap={!paused}
           swap={swap}
           canStart={canStart}
+          startHint={tf('w2c.waitingGps', 'En attente du GPS…')}
           onStart={onStart}
           onPauseToggle={onCenter}
           onFinish={onFlag}

@@ -1,14 +1,20 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════════════
-// Partage de position en direct (v1). L'athlète démarre un partage vers des
-// proches choisis (personnes qu'il suit) : chacun reçoit un MP avec un lien
-// /live/<id>, et suit la position en temps réel (Supabase Realtime). La position
-// est poussée toutes les ~8 s via geolocation.watchPosition, indépendamment de
-// l'écran d'enregistrement (tourne tant que le partage est actif).
+// Partage de position en direct (façon Strava Beacon / Garmin LiveTrack).
+// L'athlète démarre un partage : une session `live_shares` est créée et son
+// LIEN PUBLIC (/live/<id> sur le site déployé) est envoyé par la feuille de
+// partage native (WhatsApp, Messages…). La page /live/<id> s'ouvre SANS compte :
+// elle lit la session via /api/live/<id> (service role, champs minimaux — l'id
+// UUID v4 non devinable fait office de jeton). En option, le lien peut aussi
+// partir en MP à des membres suivis dans l'app (live_share_recipients).
+// La position est poussée toutes les ~8 s via geolocation.watchPosition,
+// indépendamment de l'écran d'enregistrement (tourne tant que le partage est
+// actif) ; l'écran live ajoute durée + distance (pushPosition).
 // ══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getOrCreateDirectThread, sendGroupMessage } from '@/lib/messages/groups'
+import { authRedirectBase } from '@/lib/auth/redirect'
 
 export interface LiveShareRow {
   id: string; owner_id: string; sport: string | null; active: boolean
@@ -22,28 +28,48 @@ let lastPush = 0
 
 export function currentLiveShareId(): string | null { return activeShareId }
 
-/** Démarre un partage : crée la ligne + les destinataires, envoie le lien en MP,
- *  puis pousse la position toutes les ~8 s. Renvoie l'id du partage (ou null). */
-export async function startLiveShare(sport: string | null, recipientIds: string[]): Promise<string | null> {
+/** Lien PUBLIC de suivi : toujours sur le site déployé (jamais capacitor://
+ *  localhost, inaccessible au destinataire). NEXT_PUBLIC_SITE_URL >
+ *  NEXT_PUBLIC_API_BASE > origine web > domaine de production. */
+export function liveShareUrl(id: string): string {
+  return `${authRedirectBase()}/live/${id}`
+}
+
+/** Démarre un partage : crée la ligne (+ destinataires in-app éventuels, qui
+ *  reçoivent le lien en MP), puis pousse la position toutes les ~8 s.
+ *  `recipientIds` vide = partage par lien uniquement. Renvoie l'id (ou null). */
+export async function startLiveShare(sport: string | null, recipientIds: string[] = []): Promise<string | null> {
   const sb = createClient()
   const user = await getCurrentUser(); if (!user) return null
   const { data, error } = await sb.from('live_shares').insert({ owner_id: user.id, sport, active: true }).select('id').single()
   if (error || !data) return null
   const id = (data as { id: string }).id
-  if (recipientIds.length) {
-    await sb.from('live_share_recipients').insert(recipientIds.map(uid => ({ share_id: id, user_id: uid })))
-  }
   activeShareId = id
-  // Lien de suivi envoyé en message privé à chaque proche.
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const link = `${origin}/live/${id}`
-  void (async () => {
-    for (const uid of recipientIds) {
-      try { const gid = await getOrCreateDirectThread(uid); if (gid) await sendGroupMessage(gid, `📍 Je partage ma position en direct : ${link}`) } catch { /* best-effort */ }
-    }
-  })()
   startWatch(id)
+  if (recipientIds.length) void addLiveShareRecipients(id, recipientIds)
   return id
+}
+
+/** Envoie AUSSI le lien en message privé à des membres suivis dans l'app
+ *  (accès en lecture via RLS + MP). Renvoie le nombre de MP envoyés. */
+export async function addLiveShareRecipients(id: string, recipientIds: string[]): Promise<number> {
+  if (!recipientIds.length) return 0
+  const sb = createClient()
+  try {
+    await sb.from('live_share_recipients').upsert(
+      recipientIds.map(uid => ({ share_id: id, user_id: uid })),
+      { onConflict: 'share_id,user_id', ignoreDuplicates: true },
+    )
+  } catch { /* best-effort : le lien reste public */ }
+  const link = liveShareUrl(id)
+  let sent = 0
+  for (const uid of recipientIds) {
+    try {
+      const gid = await getOrCreateDirectThread(uid)
+      if (gid && await sendGroupMessage(gid, `📍 Je partage ma position en direct : ${link}`)) sent++
+    } catch { /* best-effort */ }
+  }
+  return sent
 }
 
 function startWatch(id: string) {

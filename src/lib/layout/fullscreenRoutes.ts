@@ -12,6 +12,7 @@
 // Elle ne passe pas par le routeur, donc pas par ici.)
 export function isFullscreenRoute(pathname: string | null | undefined): boolean {
   if (!pathname) return false
-  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs', '/defi']
+  // /live : page publique de suivi en direct (lien partagé hors app, sans compte).
+  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs', '/defi', '/live']
   return routes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }

@@ -18,6 +18,7 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-l
 import { useReducedMotion } from 'motion/react'
 import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
 import { useI18n, currentLocale } from '@/lib/i18n'
+import { watchPosition } from '@/lib/native/geo'
 import { rkScope, RkFab, RkIco, RK_ICON, rkTileUrl } from './kit/RecordKit'
 import SnapSheet, { useMeasure, useSafeTop } from './kit/SnapSheet'
 import GuidePanel, { ManeuverIcon, maneuverKind, type ManeuverKind } from './live-v2/GuidePanel'
@@ -155,8 +156,8 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
 
   // Position live + vitesse.
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    const id = navigator.geolocation.watchPosition(
+    // Hub GPS partagé (natif : plugin Capacitor ; web : navigator.geolocation).
+    const h = watchPosition(
       p => {
         const next = { lat: p.coords.latitude, lng: p.coords.longitude }
         setPos(next)
@@ -167,7 +168,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
       },
       () => {}, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
     )
-    return () => navigator.geolocation.clearWatch(id)
+    return () => h.clear()
   }, [])
 
   const nearestIdx = useMemo(() => {

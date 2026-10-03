@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getOrCreateDirectThread, sendGroupMessage } from '@/lib/messages/groups'
 import { authRedirectBase } from '@/lib/auth/redirect'
+import { watchPosition, type GeoHandle } from '@/lib/native/geo'
 
 export interface LiveShareRow {
   id: string; owner_id: string; sport: string | null; active: boolean
@@ -22,7 +23,7 @@ export interface LiveShareRow {
   started_at: string; updated_at: string; ended_at: string | null
 }
 
-let watchId: number | null = null
+let watchHandle: GeoHandle | null = null
 let activeShareId: string | null = null
 let lastPush = 0
 
@@ -73,9 +74,9 @@ export async function addLiveShareRecipients(id: string, recipientIds: string[])
 }
 
 function startWatch(id: string) {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) return
-  if (watchId != null) navigator.geolocation.clearWatch(watchId)
-  watchId = navigator.geolocation.watchPosition(
+  // Hub GPS partagé (natif : plugin Capacitor ; web : navigator.geolocation).
+  watchHandle?.clear()
+  watchHandle = watchPosition(
     pos => { void pushPosition(id, pos.coords.latitude, pos.coords.longitude) },
     () => { /* position indisponible : on réessaiera au prochain fix */ },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
@@ -99,7 +100,7 @@ export async function pushPosition(id: string, lat: number, lng: number, elapsed
 /** Arrête le partage : coupe le suivi GPS et marque la ligne inactive. */
 export async function stopLiveShare(id?: string): Promise<void> {
   const target = id ?? activeShareId
-  if (watchId != null && typeof navigator !== 'undefined') { navigator.geolocation.clearWatch(watchId); watchId = null }
+  if (watchHandle) { watchHandle.clear(); watchHandle = null }
   activeShareId = null
   if (!target) return
   try { await createClient().from('live_shares').update({ active: false, ended_at: new Date().toISOString() }).eq('id', target) } catch { /* ignore */ }

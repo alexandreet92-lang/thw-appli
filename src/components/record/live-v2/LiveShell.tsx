@@ -42,6 +42,7 @@ import {
 } from './useLocalBackup'
 
 const MapPage = dynamic(() => import('./MapPage'), { ssr: false })
+const SensorSheet = dynamic(() => import('../SensorSheet'), { ssr: false })
 
 const HOLD_LAP_MS = 2000
 const RING_CIRC = 2 * Math.PI * 58 // anneau 132⌀, r 58
@@ -80,6 +81,7 @@ export default function LiveShell({
   const [pendingBackup, setPendingBackup] = useState<LiveBackup | null>(null)
   const [flash, setFlash] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [sensorSheetOpen, setSensorSheetOpen] = useState(false)
   const [hold, setHold] = useState<{ active: boolean; progress: number }>({ active: false, progress: 0 })
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   // Vignettes des photos prises (affichées dans le résumé, envoyées après la séance).
@@ -463,7 +465,11 @@ export default function LiveShell({
     ? { color: RK_DOT.ok, text: t('w2c.gpsGood', { acc: acc ?? 2 }) }
     : gps.status === GPSStatus.approximate
       ? { color: RK_DOT.warn, text: t('w2c.gpsMedium', { acc: acc ?? 12 }) }
-      : { color: 'var(--danger)', text: t('w2c.gpsSearching') }
+      : gps.status === GPSStatus.poor
+        ? { color: RK_DOT.warn, text: t('w2c.gpsWeak', { acc: acc ?? 100 }) }
+        : gps.status === GPSStatus.denied
+          ? { color: 'var(--danger)', text: t(gps.gpsError === 'disabled' ? 'w2c.gpsDisabled' : 'w2c.gpsDenied') }
+          : { color: 'var(--danger)', text: t('w2c.gpsSearching') }
 
   // Garde-fou : au moins une page (repli sur les défauts si config vide).
   const livePages = pages.length > 0 ? pages : DEFAULT_PAGES
@@ -580,7 +586,7 @@ export default function LiveShell({
                 gpsAccuracy={gps.accuracy}
                 hrDevice={sensors.hrDevice}
                 powerDevice={sensors.powerDevice}
-                onSensorChipTap={() => showToast(t('w2c.sensorPairingSoon'))}
+                onSensorChipTap={() => setSensorSheetOpen(true)}
               />
             )}
           </section>
@@ -787,6 +793,9 @@ export default function LiveShell({
           onFinished={onFinished}
         />
       )}
+
+      {/* ── Capteurs (ceinture cardio, puissance, cadence) ── */}
+      {sensorSheetOpen && <SensorSheet isDark={isDark} onClose={() => setSensorSheetOpen(false)} />}
     </div>
   )
 }

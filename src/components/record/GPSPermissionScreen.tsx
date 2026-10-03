@@ -1,7 +1,10 @@
 'use client'
 // Écran affiché quand l'accès GPS a été REFUSÉ : étapes pour le réactiver
 // (iOS), puis « J'ai activé » recharge l'écran. Langage RecordKit.
+// App native : bouton « Ouvrir les réglages » (page Réglages de l'app iOS).
 import { useI18n } from '@/lib/i18n'
+import { isNativeApp } from '@/lib/native/platform'
+import { openAppSettings } from '@/lib/native/appSettings'
 import { rkScope, RkScreenIn, RkCta } from './kit/RecordKit'
 
 interface Props {
@@ -16,9 +19,18 @@ const IOS_STEP_KEYS = [
   'record.gpsPermStep5',
 ]
 
+// App iOS native : Réglages › Hybrid › Position › « Lorsque l'app est active ».
+const NATIVE_STEP_KEYS = [
+  'record.gpsPermNativeStep1',
+  'record.gpsPermNativeStep2',
+  'record.gpsPermNativeStep3',
+]
+
 export default function GPSPermissionScreen({ isDark = false }: Props) {
   const { t } = useI18n()
-  const IOS_STEPS = IOS_STEP_KEYS.map(k => t(k))
+  // App native : les réglages de position sont ceux de l'app (pas de Safari).
+  const native = isNativeApp()
+  const IOS_STEPS = (native ? NATIVE_STEP_KEYS : IOS_STEP_KEYS).map(k => t(k))
 
   return (
     <RkScreenIn className={rkScope(isDark)} style={{
@@ -56,11 +68,14 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
         ))}
       </div>
 
-      <div style={{ width: '100%', maxWidth: 380 }}>
-        <RkCta variant="primary" onClick={() => window.location.reload()}>{t('record.gpsPermActivated')}</RkCta>
+      <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {native && (
+          <RkCta variant="primary" onClick={() => { void openAppSettings() }}>{t('record.gpsPermOpenSettings')}</RkCta>
+        )}
+        <RkCta variant={native ? 'text' : 'primary'} onClick={() => window.location.reload()}>{t('record.gpsPermActivated')}</RkCta>
       </div>
 
-      <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-mid)', maxWidth: 320, lineHeight: 1.5 }}>{t('record.gpsPermAndroid')}</p>
+      {!native && <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-mid)', maxWidth: 320, lineHeight: 1.5 }}>{t('record.gpsPermAndroid')}</p>}
     </RkScreenIn>
   )
 }

@@ -35,6 +35,9 @@ export interface GPSState {
   gradient: number
   currentLat: number | null
   currentLng: number | null
+  /** Raison du refus quand status = denied : autorisation refusée ou
+   *  Service de localisation désactivé (Réglages › Confidentialité). */
+  gpsError?: 'denied' | 'disabled'
 }
 
 const INITIAL_STATE: GPSState = {
@@ -63,9 +66,15 @@ function haversine(a: GPSPoint, b: GPSPoint): number {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
 }
 
+// Seuils calibrés sur les précisions renvoyées par CoreLocation (iOS) :
+// GNSS en extérieur 3–16 m ; Wi-Fi / cache 30–65 m (65 m est la valeur
+// typique d'un premier fix iOS) ; antenne relais ≥ 100 m. Avant, tout ce qui
+// dépassait 50 m était « poor » et l'écran restait sur « Recherche GPS… ».
+export const GPS_GOOD_M = 20
+export const GPS_APPROX_M = 100
 function accuracyToStatus(accuracy: number): GPSStatus {
-  if (accuracy < 20) return GPSStatus.good
-  if (accuracy <= 50) return GPSStatus.approximate
+  if (accuracy < GPS_GOOD_M) return GPSStatus.good
+  if (accuracy <= GPS_APPROX_M) return GPSStatus.approximate
   return GPSStatus.poor
 }
 
@@ -213,11 +222,15 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
         lastPointRef.current = point
 
         setState(prev => {
-          const newStatus = prev.status === GPSStatus.requesting
-            ? GPSStatus.acquiring
-            : (accuracy != null ? accuracyToStatus(accuracy) : prev.status)
+          // Statut dès le 1er fix (avant : le 1er point ne faisait passer qu'à
+          // « acquiring » et il fallait un 2e point pour sortir de « Recherche »).
+          const newStatus = accuracy != null && Number.isFinite(accuracy)
+            ? accuracyToStatus(accuracy)
+            : (prev.status === GPSStatus.requesting ? GPSStatus.acquiring : prev.status)
 
           return {
+            ...prev,
+            gpsError: undefined,
             status: newStatus,
             accuracy: accuracy ?? prev.accuracy,
             points: [...prev.points, point],
@@ -233,12 +246,19 @@ export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): 
         })
       },
       (err) => {
-        const code = (err as { code?: number }).code
-        const msg = String((err as { message?: string }).message ?? '').toLowerCase()
-        if (code === 1 || msg.includes('denied') || msg.includes('permission')) {
-          setState(s => ({ ...s, status: GPSStatus.denied }))
+        // Refus / service désactivé → écran d'autorisation. Timeout ou position
+        // momentanément indisponible : transitoire (la couche geo relance le
+        // suivi) → on reste « en recherche » tant qu'aucun fix n'est arrivé,
+        // et on garde le dernier statut sinon (pas de fausse alerte « GPS perdu »).
+        if (err.kind === 'denied' || err.kind === 'disabled') {
+          const reason: 'denied' | 'disabled' = err.kind
+          setState(s => ({ ...s, status: GPSStatus.denied, gpsError: reason }))
+        } else if (err.kind === 'timeout' || err.kind === 'unavailable') {
+          setState(s => (s.status === GPSStatus.requesting || s.status === GPSStatus.idle
+            ? { ...s, status: GPSStatus.acquiring }
+            : s))
         } else {
-          setState(s => ({ ...s, status: GPSStatus.error }))
+          setState(s => (s.currentLat == null ? { ...s, status: GPSStatus.error } : s))
         }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

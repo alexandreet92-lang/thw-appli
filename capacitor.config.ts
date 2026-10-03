@@ -41,6 +41,16 @@ const config: CapacitorConfig = {
       resize: 'native' as KeyboardResize,
       autoBackdropColor: 'dom',
     },
+    // Capteurs BLE natifs (src/lib/ble/nativeBle.ts) : textes du sélecteur iOS
+    // (requestDevice) — remplacés à l'exécution selon la langue de l'app.
+    BluetoothLe: {
+      displayStrings: {
+        scanning: 'Recherche…',
+        cancel: 'Annuler',
+        availableDevices: 'Capteurs disponibles',
+        noDeviceFound: 'Aucun capteur trouvé',
+      },
+    },
     // Écran de démarrage : court, sans spinner (le bundle local démarre vite).
     SplashScreen: {
       launchShowDuration: 600,

@@ -4,10 +4,10 @@ import { haptic } from '@/lib/haptics'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel, getSportColor } from '@/components/record/SportSelector'
-import { stopLiveShare } from '@/lib/community/liveShare'
+import { stopLiveShare, currentLiveShareId } from '@/lib/community/liveShare'
 import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'motion/react'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
-import { subscribeSensors, getSensorState, type SensorState } from '@/lib/sensors/bluetooth'
+import { subscribeSensors, getSensorState, autoReconnectSensors, type SensorState } from '@/lib/sensors/bluetooth'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
@@ -185,7 +185,12 @@ export default function RecordPage() {
   const [autoPauseSpeed, setAutoPauseSpeed] = useState(3)
   useEffect(() => {
     try {
-      setLiveShare(localStorage.getItem('thw-rec-liveshare') === 'true')
+      // Partage en direct : « activé » seulement s'il existe VRAIMENT un partage
+      // en cours (id en mémoire). Après un redémarrage, l'ancien 'true' mémorisé
+      // donnait un interrupteur fantôme allumé sans partage actif.
+      const activeId = currentLiveShareId()
+      if (localStorage.getItem('thw-rec-liveshare') === 'true' && activeId) { setLiveShare(true); setLiveShareId(activeId) }
+      else { setLiveShare(false); localStorage.setItem('thw-rec-liveshare', 'false') }
       setAudioAlerts(localStorage.getItem('thw-rec-audio') === 'true')
       setAutoPause(localStorage.getItem('thw-rec-autopause') === 'true')
       const sp = parseInt(localStorage.getItem('thw-rec-autopause-speed') ?? '3', 10)
@@ -231,6 +236,8 @@ export default function RecordPage() {
   // ── Capteurs BLE (puces Cardio / Puissance) ──
   const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
   useEffect(() => subscribeSensors(() => setSensors(getSensorState())), [])
+  // App native : reconnecte les capteurs mémorisés dès l'ouverture de l'écran.
+  useEffect(() => { autoReconnectSensors() }, [])
 
   // ── Séance du jour (planning) pour le sport choisi ──
   interface TodaySession { id: string; title: string; durationMin: number | null; blocks: unknown[] }
@@ -517,7 +524,12 @@ export default function RecordPage() {
 
   const settingRows = ([
     { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare, color: 'var(--primary)', icon: RK_ICON.live,
-      set: (v: boolean) => { if (v) { setLiveShareSheetOpen(true) } else { setLiveShare(false); void stopLiveShare(liveShareId ?? undefined); setLiveShareId(null) } } },
+      // Activé → la ligne ROUVRE la feuille (lien, arrêt) au lieu de couper le
+      // partage. Seul cas de coupure directe : état fantôme sans id de partage.
+      set: (v: boolean) => {
+        if (!v && !liveShareId) { setLiveShare(false); persist('thw-rec-liveshare', false); void stopLiveShare(); return }
+        setLiveShareSheetOpen(true)
+      } },
     { key: 'audio', label: t('record.pageAudioLabel'), sub: t('record.pageAudioSub'), on: audioAlerts, color: 'var(--sport-gym)', icon: RK_ICON.sound,
       set: (v: boolean) => { setAudioAlerts(v); persist('thw-rec-audio', v) } },
     { key: 'autopause', label: t('record.pageAutoPauseLabel'), sub: t('record.pageAutoPauseSub'), on: autoPause, color: 'var(--sport-run)', icon: RK_ICON.pause,
@@ -758,6 +770,7 @@ export default function RecordPage() {
       {liveShareSheetOpen && (
         <LiveShareSheet isDark={isDark} sport={sport}
           onStarted={id => { setLiveShareId(id); setLiveShare(true); persist('thw-rec-liveshare', true) }}
+          onStopped={() => { setLiveShare(false); setLiveShareId(null); persist('thw-rec-liveshare', false) }}
           onClose={() => setLiveShareSheetOpen(false)} />
       )}
 

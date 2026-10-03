@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import GlobalSaveToast from '@/components/ui/GlobalSaveToast'
+import NativePushHost from '@/components/push/NativePushHost'
 import { ReauthGate } from '@/components/auth/ReauthGate'
 import { I18nProvider } from '@/lib/i18n'
 import { CallProvider } from '@/components/community/call/CallProvider'
@@ -29,6 +30,8 @@ export function ClientShell({ children }: ClientShellProps) {
   useEffect(() => {
     // App native : redirige les appels /api vers Vercel + ajoute le token (no-op en web).
     installNativeApiFetch()
+    // App native : portrait uniquement (jamais de paysage). No-op en web.
+    void import('@/lib/native/orientation').then(m => m.lockPortrait()).catch(() => {})
     // Toute fenêtre / feuille / menu qui apparaît est animée (jamais d'apparition sèche).
     const stopMotion = installOverlayMotion()
     // Débloque l'audio (iOS) au 1er geste → la sonnerie d'appel entrant sonnera.
@@ -171,6 +174,7 @@ export function ClientShell({ children }: ClientShellProps) {
         <CallBubble />
         <IncomingCallWatcher />
         <GlobalSaveToast />
+        <NativePushHost />
         <ReauthGate />
         <IapStoreHost />
         <TokenPurchaseHost />

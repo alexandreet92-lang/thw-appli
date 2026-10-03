@@ -13,6 +13,7 @@
  * (value) → SessionEditor.tsx importe shared values qui sont déjà déclarés
  * en haut du module planning/page.tsx avant le call site.
  */
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
@@ -7611,7 +7612,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       ? buildParcoursBlocks()
                       : blocks ?? []
                   const _savedParcours = parcoursDataWithConfig()
-                  await sb.from('planned_sessions').update({
+                  // Bouton « ✓ Enregistré » = confirmation unique (pas de pastille globale).
+                  await withLocalSaveFeedback(() => sb.from('planned_sessions').update({
                     sport, title, time,
                     duration_min: _saveDur,
                     rpe: rpe ?? null,
@@ -7621,7 +7623,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     parcours_data: _savedParcours ?? null,
                     nutrition_data: nutritionItems.length > 0 ? nutritionItems : null,
                     updated_at: new Date().toISOString(),
-                  }).eq('id', session.id)
+                  }).eq('id', session.id))
                   onAutoSave?.({
                     ...session,
                     sport, title, time,

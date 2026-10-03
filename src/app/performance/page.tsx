@@ -38,6 +38,7 @@ import { analyzeYear, saveSnapshot, loadSnapshots, type Snapshots, type AnalyzeR
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
 import { currentLocale } from '@/lib/i18n'
+import { withLocalSaveFeedback, emitSaveError } from '@/lib/ui/saveToast'
 import { MBlock, MRow, MRowText, MField, MPills, MTag, MSheetFrame, MSkeleton, SKELETON_CSS, MTextBtn, PillButton, SegTrack, SoftInput, SoftPill, SoftSelect, Ico, ICON, NUM as MNUM, SOFT_SHADOW } from '@/app/injuries/components/mobileUi'
 
 // ── Types ───────────────────────────────────────────────────────
@@ -417,7 +418,9 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       const cParts = p.css.split(':').map(Number)
       const cssSec = cParts.length === 2 ? cParts[0] * 60 + (cParts[1] || 0) : 0
 
-      await Promise.all([
+      // Confirmation SUR PLACE (bouton « Enregistré » / ✓) → la pastille globale
+      // ne double pas ; un échec reste signalé par la pastille rouge.
+      const { errored } = await withLocalSaveFeedback(() => Promise.all([
         sb.from('athlete_performance_profile').upsert({
           user_id:              uid,
           ftp_watts:            p.ftp,
@@ -433,7 +436,8 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           updated_at:           new Date().toISOString(),
         }, { onConflict: 'user_id' }),
         sb.from('profiles').upsert({ id: uid, weight_kg: p.weight }, { onConflict: 'id' }),
-      ])
+      ]))
+      if (errored) { emitSaveError(undefined, { unclaimed: true }); return }
       // Zones modifiées → planning / éditeur rechargent leurs zones immédiatement.
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('thw:zones-changed'))
       setSavedOk(true)
@@ -1132,7 +1136,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate, mobile }: { open: O
                       </MField>
                     )}
 
-                    <PillButton onClick={() => { void handleSave() }} disabled={saving}
+                    <PillButton onClick={() => { void withLocalSaveFeedback(handleSave) }} disabled={saving}
                       style={saved ? { background: 'var(--surface-chip)', color: 'var(--success)', opacity: 1 } : undefined}>
                       {saved ? t('performance.resultsSaved') : saving ? t('performance.saving') : t('performance.saveThisTest')}
                     </PillButton>
@@ -1450,7 +1454,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate, mobile }: { open: O
                     )}
 
                     <button
-                      onClick={() => { void handleSave() }}
+                      onClick={() => { void withLocalSaveFeedback(handleSave) }}
                       disabled={saving}
                       style={{ marginTop:12, width:'100%', padding:'10px', borderRadius: 'var(--r-sm)', background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily: 'var(--font-body)', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
                     >

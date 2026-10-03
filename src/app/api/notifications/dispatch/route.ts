@@ -52,8 +52,14 @@ export async function GET(req: NextRequest) {
 
   // Seuls les utilisateurs avec au moins un appareil abonné (ou qui verront
   // la cloche) comptent. On part des abonnements push pour borner la charge.
+  // Web Push (push_subscriptions) + iPhone (native_push_tokens, APNs).
   const { data: subs } = await sb.from('push_subscriptions').select('user_id')
-  const userIds = Array.from(new Set(((subs ?? []) as Array<{ user_id: string }>).map(s => s.user_id))).filter(Boolean)
+  let nativeSubs: Array<{ user_id: string }> = []
+  try {
+    const { data, error } = await sb.from('native_push_tokens').select('user_id')
+    if (!error) nativeSubs = (data ?? []) as Array<{ user_id: string }>
+  } catch { /* table absente (migration non appliquée) → web seul */ }
+  const userIds = Array.from(new Set([...((subs ?? []) as Array<{ user_id: string }>), ...nativeSubs].map(s => s.user_id))).filter(Boolean)
   if (userIds.length === 0) return NextResponse.json({ ok: true, users: 0, sent: 0 })
 
   let sent = 0

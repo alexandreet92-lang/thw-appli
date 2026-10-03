@@ -6,6 +6,7 @@
 // native mobile qui glisse de la droite (mêmes calculs que les onglets desktop).
 // ══════════════════════════════════════════════════════════════
 
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { DashCard, Metric, Ring } from '@/components/dashboard/primitives'
@@ -56,7 +57,7 @@ function CheckinBlock({ inj, onLog }: { inj: Injury; onLog: (r: number, e: numbe
       <Stepper label={t('injuries.m.painRest')} value={r} onChange={v => { setR(v); setState('idle') }} />
       <Stepper label={t('injuries.m.painEffort')} value={e} onChange={v => { setE(v); setState('idle') }} />
       <button type="button" disabled={state === 'saving'} className="thw-press"
-        onClick={async () => { setState('saving'); await onLog(r, e); setState('done') }}
+        onClick={async () => { setState('saving'); await withLocalSaveFeedback(() => onLog(r, e)); setState('done') }}
         style={{ width: '100%', minHeight: 46, marginTop: 6, borderRadius: 'var(--r-pill)', border: 'none', background: state === 'done' ? 'var(--dash-chip, var(--bg-hover))' : 'var(--primary)', color: state === 'done' ? 'var(--success)' : 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
         {state === 'done' ? `✓ ${t('injuries.m.saved')}` : state === 'saving' ? '…' : t('injuries.m.save')}
       </button>

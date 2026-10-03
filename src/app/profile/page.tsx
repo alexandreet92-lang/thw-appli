@@ -15,8 +15,10 @@ import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
-import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
-import { hidePricing, openWebsite } from '@/lib/native/platform'
+import { getDevicePushState, enableDevicePush, disableDevicePush, sendTestPush, type DevicePushState } from '@/lib/push/device'
+import { SaveButton } from '@/components/ui/SaveButton'
+import { hidePricing, openWebsite, isNativeApp } from '@/lib/native/platform'
+import { openAppSettings } from '@/lib/native/appSettings'
 import { openIapStore } from '@/lib/iap/store-events'
 import NativeBilling from '@/components/iap/NativeBilling'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
@@ -1242,67 +1244,147 @@ const NOTIF_DEFAULTS: Record<string, boolean> = (() => {
   return d
 })()
 
-// ── Notifications push sur CET appareil (Web Push) ────────────────
-// Toggle distinct des préférences par catégorie : il gère l'abonnement
-// push du navigateur/appareil courant (permission + souscription serveur).
+// ── Notifications push sur CET appareil ───────────────────────────
+// App iPhone → APNs natif ; navigateur / PWA → Web Push (src/lib/push/device).
+// Toggle distinct des préférences par catégorie : il gère l'enregistrement de
+// l'appareil courant (permission + jeton côté serveur). + envoi d'un VRAI push
+// de test vers cet appareil, avec la cause exacte en cas d'échec.
+type TestState = { phase: 'idle' | 'sending' | 'sent' | 'failed'; msg?: string }
+
 function DevicePushSection() {
-  const [state, setState] = useState<PushState | 'loading'>('loading')
+  const { t } = useI18n()
+  // Libellés : clé i18n si présente, sinon texte FR par défaut.
+  const tt = (k: string, fr: string, vars?: Record<string, string | number>) => { const v = t(k, vars); return v === k ? fr : v }
+  const [state, setState] = useState<DevicePushState | 'loading'>('loading')
   const pm = useProfileMobile()
   const [busy, setBusy] = useState(false)
+  const [test, setTest] = useState<TestState>({ phase: 'idle' })
+  const native = isNativeApp()
 
   useEffect(() => {
     let alive = true
-    void (async () => {
-      const s = await getPushState()
-      if (alive) setState(s)
-    })()
-    return () => { alive = false }
+    const refresh = () => { void getDevicePushState().then(s => { if (alive) setState(s) }) }
+    refresh()
+    // Retour des Réglages iOS (permission modifiée) → on relit l'état.
+    const onVis = () => { if (!document.hidden) refresh() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { alive = false; document.removeEventListener('visibilitychange', onVis) }
   }, [])
 
   const toggle = async () => {
     if (busy) return
     setBusy(true)
     try {
-      const next = state === 'on' ? await disablePush() : await enablePush()
+      const next = state === 'on' ? await disableDevicePush() : await enableDevicePush()
       setState(next)
+      setTest({ phase: 'idle' })
     } finally {
       setBusy(false)
     }
   }
 
-  // N'affiche rien si le navigateur ne supporte pas le push.
+  const reasonText = (r?: string): string => {
+    switch (r) {
+      case 'apns_not_configured': return tt('profile.push.err.apns', 'Le serveur n’est pas encore relié à Apple (clé APNs manquante).')
+      case 'table_missing': return tt('profile.push.err.table', 'Stockage des appareils absent côté serveur (migration à appliquer).')
+      case 'no_device': case 'Unregistered': case 'BadDeviceToken':
+        return tt('profile.push.err.device', 'Appareil non reconnu. Désactive puis réactive l’interrupteur ci-dessus.')
+      case 'InvalidProviderToken': case 'ExpiredProviderToken': case 'MissingProviderToken':
+        return tt('profile.push.err.key', 'Clé APNs refusée par Apple (vérifie APNS_KEY_ID, APNS_TEAM_ID, APNS_KEY).')
+      case 'TopicDisallowed': case 'DeviceTokenNotForTopic': case 'BadTopic':
+        return tt('profile.push.err.topic', 'Identifiant d’app différent (APNS_BUNDLE_ID doit valoir com.thehybridway.app).')
+      case 'network': return tt('profile.push.err.network', 'Pas de connexion. Réessaie dans un instant.')
+      default: return tt('profile.push.err.other', 'Échec de l’envoi ({r}).', { r: r ?? '?' })
+    }
+  }
+
+  const runTest = async () => {
+    if (test.phase === 'sending') return
+    setTest({ phase: 'sending' })
+    const res = await sendTestPush(
+      tt('profile.push.testTitle', 'Notification de test'),
+      tt('profile.push.testBody', 'Tout fonctionne : tes rappels arriveront ici.'),
+    )
+    setTest(res.ok
+      ? { phase: 'sent', msg: tt('profile.push.testSent', 'Envoyée. Elle arrive dans quelques secondes.') }
+      : { phase: 'failed', msg: reasonText(res.reason) })
+    setTimeout(() => setTest(cur => (cur.phase === 'sending' ? cur : { phase: 'idle' })), 6000)
+  }
+
+  // Navigateur sans Web Push : rien à proposer ici.
   if (state === 'unsupported') return null
 
   const sub =
-    state === 'denied'       ? 'Notifications bloquées par le navigateur. Autorise-les dans les réglages du site.'
-    : state === 'unconfigured' ? 'Bientôt disponible sur ce serveur.'
-    : 'Reçois une notification quand ton coach a fini de répondre, même app fermée.'
+    state === 'denied'
+      ? native
+        ? tt('profile.push.subDeniedNative', 'Notifications refusées. Active-les dans Réglages › Hybrid › Notifications.')
+        : tt('profile.push.subDeniedWeb', 'Notifications bloquées par le navigateur. Autorise-les dans les réglages du site.')
+    : state === 'unconfigured' ? tt('profile.push.subUnconfigured', 'Les notifications web ne sont pas encore activées. L’app iPhone Hybrid les reçoit.')
+    : state === 'unavailable' ? tt('profile.push.subUnavailable', 'Mets à jour l’app Hybrid pour activer les notifications.')
+    : tt('profile.push.sub', 'Séance du jour, messages du coach, records… même app fermée.')
 
-  const disabled = state === 'loading' || state === 'denied' || state === 'unconfigured' || busy
+  const disabled = state === 'loading' || state === 'unconfigured' || state === 'unavailable' || busy || (state === 'denied' && !native)
+  const title = tt('profile.push.title', 'Notifications sur cet appareil')
+  const testTitle = tt('profile.push.test', 'Envoyer une notification de test')
+  const testSub = test.phase === 'sending' ? tt('profile.push.testSending', 'Envoi…')
+    : test.msg ?? tt('profile.push.testSub', 'Un vrai push vers ce téléphone, pour vérifier.')
+  const testColor = test.phase === 'sent' ? 'var(--success)' : test.phase === 'failed' ? 'var(--danger)' : undefined
+  const testIcon = (
+    <span aria-hidden style={{ display:'flex', flexShrink:0, color: testColor ?? 'var(--text-mid)' }}>
+      {test.phase === 'sent'
+        ? <Check size={22} strokeWidth={2.2} />
+        : <Bell size={22} strokeWidth={1.8} style={{ transformOrigin:'50% 10%', animation: test.phase === 'sending' ? 'pushRing .9s ease-in-out infinite' : undefined }} />}
+    </span>
+  )
+  const ringCss = <style>{`@keyframes pushRing { 0%,100% { transform: rotate(0) } 25% { transform: rotate(14deg) } 75% { transform: rotate(-14deg) } } @media (prefers-reduced-motion: reduce) { @keyframes pushRing { to { transform: none } } }`}</style>
+  const onToggle = () => {
+    if (state === 'denied' && native) { void openAppSettings(); return }
+    if (!disabled) void toggle()
+  }
 
   if (pm.mobile) {
     return (
-      <MSection label="Cet appareil">
+      <MSection label={tt('profile.push.device', 'Cet appareil')}>
+        {ringCss}
         <MGroup>
           <MLine first>
-            <MRowText title="Notifications sur cet appareil" sub={sub} />
-            <Toggle value={state === 'on'} onChange={() => { if (!disabled) void toggle() }}/>
+            <MRowText title={title} sub={sub} />
+            <Toggle value={state === 'on'} onChange={onToggle} disabled={disabled && !(state === 'denied' && native)} />
           </MLine>
+          {state === 'denied' && native && (
+            <MNavRow label={tt('profile.push.openSettings', 'Ouvrir les Réglages')} onClick={() => void openAppSettings()} />
+          )}
+          {state === 'on' && (
+            <MLine onClick={() => void runTest()} disabled={test.phase === 'sending'} label={testTitle}>
+              {testIcon}
+              <MRowText title={testTitle} sub={testSub} subColor={testColor} />
+            </MLine>
+          )}
         </MGroup>
       </MSection>
     )
   }
 
   return (
-    <Section label="Cet appareil">
+    <Section label={tt('profile.push.device', 'Cet appareil')}>
+      {ringCss}
       <Group>
         <Line first>
           <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
-            <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>Notifications sur cet appareil</p>
+            <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{title}</p>
             <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{sub}</p>
           </div>
-          <Toggle value={state === 'on'} onChange={() => { if (!disabled) void toggle() }}/>
+          <Toggle value={state === 'on'} onChange={onToggle} disabled={disabled && !(state === 'denied' && native)} />
         </Line>
+        {state === 'on' && (
+          <Line onClick={() => void runTest()}>
+            {testIcon}
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{testTitle}</p>
+              <p style={{ fontSize:11.5, color: testColor ?? 'var(--text-dim)', margin:0, lineHeight:1.5 }}>{testSub}</p>
+            </div>
+          </Line>
+        )}
       </Group>
     </Section>
   )
@@ -2581,18 +2663,19 @@ function RulesCard() {
   const instrRule = rules.find(r => r.category === 'instruction')
   const [instr, setInstr] = useState('')
   const [instrDirty, setInstrDirty] = useState(false)
-  const [instrSaved, setInstrSaved] = useState(false)
   useEffect(() => { if (!instrDirty) setInstr(instrRule?.rule_text ?? '') }, [instrRule?.rule_text, instrDirty])
+  // Confirmation UNIQUE : le bouton se transforme en coche (SaveButton) — plus
+  // de « ✓ Enregistré » textuel ni de pastille globale en doublon.
   async function handleSaveInstruction() {
     await saveInstruction(instr)
-    setInstrDirty(false); setInstrSaved(true); setTimeout(() => setInstrSaved(false), 1800)
+    setInstrDirty(false)
   }
 
   // Mobile : section « Instructions » façon Claude — puces de style, champ
   // blanc arrondi, aide grise, bouton Enregistrer actif seulement si modifié.
   if (pm.mobile) {
     return (
-      <MSection label={t('profile.instructions')} helper={instrSaved ? `✓ ${t('profile.saved')}` : t('profile.instructions_desc')}>
+      <MSection label={t('profile.instructions')} helper={t('profile.instructions_desc')}>
         <div style={{ display:'flex', gap:8, overflowX:'auto', scrollbarWidth:'none', margin:'0 -16px 12px', padding:'2px 16px 6px' }}>
           {presets.map(p => <MChip key={p.label} onClick={() => { setInstr(p.text); setInstrDirty(true) }}>{p.label}</MChip>)}
         </div>
@@ -2601,7 +2684,7 @@ function RulesCard() {
             style={{ width:'100%', minHeight:120, padding:16, border:'none', background:'transparent', color:'var(--text)', fontSize:17, lineHeight:1.45, fontFamily:FB, resize:'vertical', outline:'none', boxSizing:'border-box', display:'block' }} />
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'0 8px 8px 16px' }}>
             <span style={{ fontSize:14, color:'var(--text-mid)', fontVariantNumeric:'tabular-nums' }}>{t('profile.chars_count', { n: instr.length })}</span>
-            <MTextBtn onClick={() => void handleSaveInstruction()} disabled={!instrDirty}>{t('profile.save')}</MTextBtn>
+            <SaveButton variant="text" onSave={handleSaveInstruction} disabled={!instrDirty} label={t('profile.save')} savedLabel={t('profile.saved')} errorLabel={t('ui.saveError')} />
           </div>
         </MGroup>
       </MSection>
@@ -2642,14 +2725,10 @@ function RulesCard() {
           style={{ width:'100%', boxSizing:'border-box' as const, padding:'11px 12px', borderRadius: 'var(--r-md)', border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13.5, lineHeight:1.5, fontFamily: 'var(--font-body)', resize:'vertical' as const, outline:'none' }}
         />
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10 }}>
-          <span style={{ fontSize:11, color: instrSaved ? '#22c55e' : 'var(--text-dim)' }}>
-            {instrSaved ? `✓ ${t('profile.saved')}` : t('profile.chars_count', { n: instr.length })}
+          <span style={{ fontSize:11, color:'var(--text-dim)' }}>
+            {t('profile.chars_count', { n: instr.length })}
           </span>
-          <button
-            onClick={() => void handleSaveInstruction()}
-            disabled={!instrDirty}
-            style={{ padding:'8px 18px', borderRadius: 'var(--r-sm)', border:'none', background: instrDirty ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color:'#fff', fontSize:12.5, fontWeight:700, cursor: instrDirty ? 'pointer' : 'default' }}
-          >{t('profile.save')}</button>
+          <SaveButton onSave={handleSaveInstruction} disabled={!instrDirty} label={t('profile.save')} savedLabel={t('profile.saved')} errorLabel={t('ui.saveError')} style={{ minHeight:36, fontSize:13 }} />
         </div>
       </Card>
     </>

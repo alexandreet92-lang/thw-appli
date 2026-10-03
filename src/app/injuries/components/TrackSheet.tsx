@@ -2,6 +2,7 @@
 // Feuille « Suivi » — refonte : relevé du jour par sliders (repos/effort), courbe
 // de douleur agrandie avec SURVOL (date · repos · effort) + badge de TENDANCE,
 // stepper de phases, impact, rééducation (adhérence), journal. Tokens uniquement.
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { useRef, useState } from 'react'
 import { Sheet, primaryBtn } from './Sheet'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
@@ -135,7 +136,7 @@ function MobileCheckin({ inj, onAddLog }: { inj: Injury; onAddLog: (l: Omit<Inju
       <SliderRow label={t('injuries.rest')} value={r} onChange={v => { setR(v); setDone(false) }} color={C_REST} />
       <SliderRow label={t('injuries.effort')} value={e} onChange={v => { setE(v); setDone(false) }} color={C_EFFORT} />
       <PillButton style={{ marginTop: 6, ...(done ? { background: 'var(--surface-chip)', color: 'var(--success)' } : null) }}
-        onClick={() => { onAddLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e }); setDone(true) }}>
+        onClick={() => { void withLocalSaveFeedback(() => onAddLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })); setDone(true) }}>
         {done ? `✓ ${t('injuries.m.saved')}` : t('injuries.save')}
       </PillButton>
     </div>

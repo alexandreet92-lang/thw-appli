@@ -7,6 +7,7 @@
 // nutrition_meal_logs n'accorde au coach qu'une lecture) — on n'affiche donc
 // aucune UI de logging côté coach, seulement les objectifs.
 // ══════════════════════════════════════════════════════════════════
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { useState } from 'react'
 import type { NutritionPlanData } from '@/hooks/useNutrition'
 import { useI18n } from '@/lib/i18n'
@@ -47,7 +48,8 @@ export default function CoachTargetsPanel({ athleteName, activePlan, onSave }: {
     const k = parseInt(kcal) || 0, p = parseInt(prot) || 0
     if (k <= 0 || p <= 0) return
     setSaving(true); setSaved(false)
-    try { await onSave(buildPlanData(k, p, pd), 'manuel'); setSaved(true); setTimeout(() => setSaved(false), 2500) }
+    // Confirmation sur le bouton uniquement (pas de pastille globale en doublon).
+    try { const { errored } = await withLocalSaveFeedback(() => onSave(buildPlanData(k, p, pd), 'manuel')); if (!errored) { setSaved(true); setTimeout(() => setSaved(false), 2500) } }
     finally { setSaving(false) }
   }
 

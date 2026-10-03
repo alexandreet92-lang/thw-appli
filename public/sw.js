@@ -25,16 +25,18 @@ self.addEventListener('push', (event) => {
   let payload = {}
   try { payload = event.data ? event.data.json() : {} } catch (e) { payload = {} }
 
-  const title = payload.title || 'THW Coaching'
+  const title = payload.title || 'Hybrid'
   const body  = payload.body || 'Ta réponse est prête.'
   const url   = payload.url || '/'
   const tag   = payload.tag || 'coach-done'
+  // `force` (notification de test) : on l'affiche même app au premier plan.
+  const force = payload.force === true
 
   event.waitUntil((async () => {
     // Si une fenêtre de l'app est déjà au premier plan → ne pas notifier.
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     const focused = clientList.some((c) => c.focused || c.visibilityState === 'visible')
-    if (focused) return
+    if (focused && !force) return
 
     await self.registration.showNotification(title, {
       body,

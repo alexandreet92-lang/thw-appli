@@ -20,7 +20,9 @@ import {
   DEFAULT_COACH_SETTINGS, type CoachAgentSettings,
   COACH_TON_OPTS, COACH_PRIORITE_OPTS, COACH_BILANS_OPTS, COACH_LANGUE_OPTS, COACH_SPECIALITE_OPTS,
 } from '@/lib/ai/agent-settings'
-import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
+// Façade appareil : APNs natif sur l'app iPhone, Web Push ailleurs.
+import { getDevicePushState as getPushState, enableDevicePush as enablePush, disableDevicePush as disablePush, type DevicePushState as PushState } from '@/lib/push/device'
+import { emitSaved, emitSaveError } from '@/lib/ui/saveToast'
 import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 import PressPop from '@/components/ui/PressPop'
@@ -180,20 +182,11 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [showNav, setShowNav] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [shown, setShown] = useState(false)
-  const [savedAt, setSavedAt] = useState(0)
-  const [errorAt, setErrorAt] = useState(0)
-  const flashSaved = useCallback(() => { setErrorAt(0); setSavedAt(Date.now()) }, [])
-  const flashError = useCallback(() => { setSavedAt(0); setErrorAt(Date.now()) }, [])
-  useEffect(() => {
-    if (!savedAt) return
-    const id = setTimeout(() => setSavedAt(0), 1700)
-    return () => clearTimeout(id)
-  }, [savedAt])
-  useEffect(() => {
-    if (!errorAt) return
-    const id = setTimeout(() => setErrorAt(0), 2600)
-    return () => clearTimeout(id)
-  }, [errorAt])
+  // Confirmation UNIQUE : la pastille globale (GlobalSaveToast). Les écritures
+  // Supabase l'émettent déjà ; les réglages locaux (voix, modèle) et les appels
+  // API l'émettent ici. Les doublons rapprochés fusionnent en une seule pastille.
+  const flashSaved = useCallback(() => { emitSaved() }, [])
+  const flashError = useCallback(() => { emitSaveError() }, [])
 
   // À l'ouverture sur mobile : on montre d'abord la LISTE des réglages (image 3).
   // Choisir un réglage fait ensuite glisser sa sous-page (drill-down horizontal).
@@ -369,23 +362,6 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     { group: t('w1a.navCompte'), items: [ { id: 'connecteurs', label: t('w1a.navConnecteurs') }, { id: 'abonnement', label: t('w1a.navAbonnement') } ] },
   ]
 
-  // Toasts « Enregistré » / « Échec » — partagés desktop & mobile.
-  const toasts = (
-    <>
-        {/* Toast « Enregistré » */}
-        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          {t('w1a.enregistre')}
-        </div>
-
-        {/* Toast « Échec de l'enregistrement » */}
-        <div aria-live="assertive" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${errorAt ? 0 : 12}px)`, opacity: errorAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 'var(--r-pill)', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-          {t('w1a.echecEnregistrement')}
-        </div>
-    </>
-  )
-
   const sectionLabel = NAV.flatMap(g => g.items).find(it => it.id === section)?.label ?? t('w1a.parametres')
   const sectionPane = (
     <>
@@ -526,7 +502,6 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               : <MobilePaneCtx.Provider value={true}><div style={{ paddingTop: 8 }}>{sectionPane}</div></MobilePaneCtx.Provider>}
           </SlideView>
         </div>
-        {toasts}
         {routinesOpen && createPortal(
           <SlideOverlay onClosed={() => { setRoutinesOpen(false); loadRoutineCount() }}>
             {close => <RoutinesView onClose={close} />}
@@ -580,7 +555,6 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
           </div>
         )}
 
-        {toasts}
       </div>
     </div>
   )

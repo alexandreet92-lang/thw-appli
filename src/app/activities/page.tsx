@@ -7393,7 +7393,6 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
   const [localSensation, setLocalSensation] = useState<number | null>(sensation)
 
   // ── Jauges Ressenti / Difficulté (single source of truth dans ActivityDetail) ──
-  const { showToast: fdToast } = useToast()
   const [localFeeling,    setLocalFeeling]    = useState<number | null>(typeof a.feeling    === 'number' ? a.feeling    : null)
   const [localDifficulty, setLocalDifficulty] = useState<number | null>(typeof a.difficulty === 'number' ? a.difficulty : null)
   // Entraînement (false) ou Course (true) — tag is_race, éditable via le sélecteur.
@@ -7420,13 +7419,11 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
     const { data, error } = await sb.from('activities').update({ [kind]: v }).eq('id', a.id).select()
     // eslint-disable-next-line no-console
     console.log('[JAUGES] Save result:', { data, error })
-    if (error) {
-      fdToast(`${t('actp.failed')} : ${error.message}`)
-      return
-    }
+    // Confirmation / échec : pastille globale « Enregistré » (émise par le
+    // client Supabase) — plus de second toast local en doublon.
+    if (error) return
     if (kind === 'feeling') setLocalFeeling(v); else setLocalDifficulty(v)
     setFdEditing(null)
-    fdToast(t('actp.saved'))
   }
 
   const powerTimesZ = useMemo(() => {

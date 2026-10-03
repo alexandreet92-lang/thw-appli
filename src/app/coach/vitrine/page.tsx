@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 // vidéo de présentation, galerie, diplômes, palmarès, coordonnées…).
 // La vitrine se partage via /c/[slug].
 // ══════════════════════════════════════════════════════════════════
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { Switch } from '@/components/shadcn/switch'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -110,8 +111,10 @@ export default function CoachVitrinePage() {
     setSaving(true)
     try {
       const slug = (p.slug && p.slug.trim()) ? slugify(p.slug) : slugify(p.display_name || 'coach')
-      const next = await upsertMyCoachProfile({ ...p, slug })
-      setP(next); setSaved(true)
+      // Le bouton passe à « Enregistré ✓ » : pas de pastille globale en doublon.
+      const out = await withLocalSaveFeedback(() => upsertMyCoachProfile({ ...p, slug }))
+      if (out.error) throw out.error
+      if (out.value) { setP(out.value); setSaved(true) }
     } catch (e) { alert(e instanceof Error ? e.message : t('w1h.save_failed')) }
     finally { setSaving(false) }
   }

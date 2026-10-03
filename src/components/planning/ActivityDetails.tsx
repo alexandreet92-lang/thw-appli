@@ -27,6 +27,7 @@ import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/com
 import { toBars, treadmillGainM, totalDistance, barHeightPct, type MBlock } from './mobile/blocks'
 import { zColor, paceToSec, secToPace } from './mobile/editorial'
 import { useAthleteRefs } from '@/hooks/useAthleteRefs'
+import { RouteMapImage } from '@/components/activity/RouteMapImage'
 
 // ── Modèle ────────────────────────────────────────────────────────
 export interface StrengthGroup {
@@ -128,12 +129,12 @@ function parseStrength(detail: unknown): StrengthDetail | null {
 }
 
 // ── Références athlète (FTP / seuil course / CSS) — un fetch par session ──
-interface AthleteRefsLite { ftp: number; runThr: number; css: number }
+export interface AthleteRefsLite { ftp: number; runThr: number; css: number }
 // Cache par utilisateur effectif (self OU athlète consulté par le coach) : sans
 // clé par uid, les refs du coach « collaient » aux activités de l'athlète.
 const refsCache: Record<string, AthleteRefsLite> = {}
 const refsPromise: Record<string, Promise<AthleteRefsLite>> = {}
-async function loadAthleteRefs(): Promise<AthleteRefsLite> {
+export async function loadAthleteRefs(): Promise<AthleteRefsLite> {
   const sb = createClient()
   const uid = await resolvePlanningUid(sb)
   const key = uid ?? '_none'
@@ -159,7 +160,7 @@ async function loadAthleteRefs(): Promise<AthleteRefsLite> {
 }
 
 /** Zone RÉALISÉE d'un échantillon (vitesse ou watts vs références athlète). */
-function sampleZone(sport: string, vMs: number | null, w: number | null, refs: AthleteRefsLite): number | null {
+export function sampleZone(sport: string, vMs: number | null, w: number | null, refs: AthleteRefsLite): number | null {
   if (sport === 'bike' || sport === 'elliptique') {
     if (w == null || w <= 0) return null
     const f = refs.ftp
@@ -254,7 +255,8 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
             .gte('started_at', new Date(t0 - 3 * 3600_000).toISOString())
             .lte('started_at', new Date(t0 + 3 * 3600_000).toISOString())
             .not('exercises_detail', 'is', null)
-          const best = (ws ?? [])
+          type WsRow = { started_at: string; exercises_detail: unknown; total_volume_kg: number | null; sets_completed: number | null }
+          const best = ((ws ?? []) as WsRow[])
             .slice()
             .sort((a, b) => Math.abs(new Date(a.started_at).getTime() - t0) - Math.abs(new Date(b.started_at).getTime() - t0))[0]
           if (best) {
@@ -435,7 +437,7 @@ export function PlannedIntensityBars({ session, height = 56 }: { session: Sessio
   )
 }
 
-interface LapBar { zone: number; label: string; weight: number; heightPct: number; f0: number; f1: number }
+export interface LapBar { zone: number; label: string; weight: number; heightPct: number; f0: number; f1: number }
 
 /** Hauteur CONTINUE (%) d'un lap : intensité rapportée au seuil → 12 %…100 %. */
 function lapHeightPct(sport: string, vMs: number | null, w: number | null, refs: AthleteRefsLite): number {
@@ -449,7 +451,7 @@ function lapHeightPct(sport: string, vMs: number | null, w: number | null, refs:
 
 /** Une barre par LAP (appui montre/compteur) : largeur ∝ durée, hauteur ∝ intensité,
  *  couleur = zone. Sans lap (ou un seul) → un unique bloc sur toute la séance. */
-function buildLapBars(full: FullActivity, sport: string, refs: AthleteRefsLite): LapBar[] {
+export function buildLapBars(full: FullActivity, sport: string, refs: AthleteRefsLite): LapBar[] {
   const laps = full.laps
   const paceLabel = (vMs: number | null, w: number | null) =>
     (sport === 'bike' || sport === 'elliptique') ? (w != null ? `${Math.round(w)} W` : '—')
@@ -525,14 +527,14 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHove
 }
 
 // ── Stats par BLOC D'INTENSITÉ (lap) pour le tooltip du profil altimétrique ──
-interface ElevLapStat {
+export interface ElevLapStat {
   f0: number; f1: number
   distanceM: number; timeS: number
   hr: number | null; watts: number | null
   paceS: number | null; speedKmh: number | null
   gainM: number; vapS: number | null   // vapS = allure ajustée à la pente (course)
 }
-function buildElevLapStats(full: FullActivity, sport: string): ElevLapStat[] {
+export function buildElevLapStats(full: FullActivity, sport: string): ElevLapStat[] {
   const samples = full.samples ?? []
   const isPower = sport === 'bike' || sport === 'elliptique'
   const isSwim = sport === 'swim'
@@ -713,56 +715,21 @@ export function sampleLLAtFraction(full: FullActivity | null, frac: number | nul
   return full.samples[i]?.ll ?? null
 }
 
-// ── Carte GPS (image Mapbox ou SVG) + curseur synchronisé ─────────
-// Projection Mercator ajustée aux bornes du tracé — réplique le cadrage
-// « auto » de l'API Static (padding identique) pour positionner le curseur.
-function mercatorFit(points: [number, number][], w: number, h: number, pad: number) {
-  const proj = (lat: number, lng: number) => ({
-    x: (lng + 180) / 360,
-    y: (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2)) / Math.PI) / 2,
-  })
-  const ps = points.map(p => proj(p[0], p[1]))
-  const minX = Math.min(...ps.map(p => p.x)), maxX = Math.max(...ps.map(p => p.x))
-  const minY = Math.min(...ps.map(p => p.y)), maxY = Math.max(...ps.map(p => p.y))
-  const dx = maxX - minX || 1e-9, dy = maxY - minY || 1e-9
-  const scale = Math.min((w - pad * 2) / dx, (h - pad * 2) / dy)
-  const ox = (w - dx * scale) / 2, oy = (h - dy * scale) / 2
-  return (lat: number, lng: number) => {
-    const p = proj(lat, lng)
-    return { x: ox + (p.x - minX) * scale, y: oy + (p.y - minY) * scale }
-  }
-}
-
-export function ActivityMap({ latlng, width, height, color, cursorLL }: {
-  latlng: [number, number][]; width: number; height: number; color?: string
-  cursorLL?: [number, number] | null
+// ── Carte GPS (vraie carte + tracé) + curseur synchronisé ─────────
+// Composant partagé RouteMapImage : image statique Mapbox → repli tuiles →
+// repli fond SVG, tracé SVG aligné (même projection) → le curseur suit
+// EXACTEMENT le tracé au survol / au toucher du profil.
+export function ActivityMap({ latlng, width, height, color, cursorLL, radius = 'var(--r-md)' }: {
+  latlng: [number, number][]; width?: number; height: number; color?: string
+  cursorLL?: [number, number] | null; radius?: string
 }) {
-  // Tracé SVG propre (pas d'image statique) : même projection pour le tracé ET le
-  // curseur → le point suit EXACTEMENT le tracé au survol du profil. Plus lisible
-  // et cohérent avec le thème que l'ancienne image Mapbox.
-  const stroke = color ? (color.startsWith('#') ? color : `#${color}`) : 'var(--primary)'
-  const fit = mercatorFit(latlng, width, height, 18)
-  let d = ''
-  latlng.forEach((p, i) => {
-    const q = fit(p[0], p[1])
-    d += `${i === 0 ? 'M' : 'L'}${q.x.toFixed(1)},${q.y.toFixed(1)}`
-  })
-  const start = latlng[0] ? fit(latlng[0][0], latlng[0][1]) : null
-  const last = latlng[latlng.length - 1]
-  const end = last ? fit(last[0], last[1]) : null
-  const cursor = cursorLL ? fit(cursorLL[0], cursorLL[1]) : null
+  const stroke = color ? (color.startsWith('#') || color.startsWith('var(') ? color : `#${color}`) : 'var(--primary)'
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
-      style={{ display: 'block', maxWidth: width, background: 'var(--bg-alt)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-      {/* Casing (halo) + trait couleur du sport */}
-      <path d={d} fill="none" stroke="var(--bg-card)" strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
-      <path d={d} fill="none" stroke={stroke} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
-      {/* Départ (vert) / arrivée (rouge) */}
-      {start && <circle cx={start.x} cy={start.y} r={5} fill="var(--sport-run)" stroke="var(--bg-card)" strokeWidth={2.5} />}
-      {end && <circle cx={end.x} cy={end.y} r={5} fill="var(--danger)" stroke="var(--bg-card)" strokeWidth={2.5} />}
-      {/* Curseur synchronisé avec le profil */}
-      {cursor && <circle cx={cursor.x} cy={cursor.y} r={6.5} fill={stroke} stroke="var(--bg-card)" strokeWidth={3} />}
-    </svg>
+    <div style={{ width: '100%', maxWidth: width }}>
+      <RouteMapImage latlng={latlng} color={stroke} height={height} cursor={cursorLL ?? null} radius={radius}
+        strokeWidth={height < 130 ? 3 : 4.5}
+        padding={height < 130 ? { top: 14, right: 14, bottom: 14, left: 14 } : undefined} />
+    </div>
   )
 }
 

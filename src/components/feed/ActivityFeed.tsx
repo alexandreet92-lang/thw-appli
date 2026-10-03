@@ -14,7 +14,7 @@ import { ChevronLeft, UserPlus, GraduationCap, MessageCircle, Check, Trophy, Use
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import { PeopleSearchSheet } from './PeopleSearchSheet'
 import { CommentsSheet } from './CommentsSheet'
-import { staticRouteMapUrl } from '@/lib/staticMap'
+import { RouteMapImage } from '@/components/activity/RouteMapImage'
 import { getActivityFeed, getCombinedFeed, decodePolyline, polylineToSvgPath, sportFamily, sportMeta, type FeedActivity } from '@/lib/profile/activityShowcase'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { getFollowingIds, toggleFollow } from '@/lib/social/follows'
@@ -211,7 +211,7 @@ function FeedCard({ a, index, onOpen, canFollow, isFollowing, onToggleFollow, en
   const fam = sportFamily(a.sport)
   const meta = sportMeta(fam)
   const pts = decodePolyline(a.polyline).map(([lat, lng]) => ({ lat, lng }))
-  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 320, color: SPORT_HEX[fam] ?? '9ca3af', pins: false })
+  const hasRoute = pts.length >= 2
   const path = polylineToSvgPath(a.polyline, 320, 150)
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: t('w4c.feed_stat_distance'), value: dist })
@@ -264,11 +264,11 @@ function FeedCard({ a, index, onOpen, canFollow, isFollowing, onToggleFollow, en
             </div>
           )}
         </div>
-        {(mapUrl || path) && (
+        {(hasRoute || path) && (
           <div className="cm-press" style={{ position: 'relative', width: '100%', aspectRatio: '2 / 1', background: `color-mix(in srgb, ${meta.color} 10%, var(--surface-chip))`, overflow: 'hidden' }}>
-            {mapUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={mapUrl} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            {hasRoute
+              // Carte partagée : image statique → repli tuiles → repli fond SVG (tracé toujours visible).
+              ? <RouteMapImage latlng={pts.map(p => [p.lat, p.lng] as [number, number])} color={`#${SPORT_HEX[fam] ?? '9ca3af'}`} ratio={0.5} />
               : <svg viewBox="0 0 320 150" style={{ width: '100%', height: '100%', display: 'block' }}><path d={path ?? ''} fill="none" stroke={meta.color} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>}
           </div>
         )}

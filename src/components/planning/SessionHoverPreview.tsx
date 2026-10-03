@@ -14,7 +14,7 @@
 //      au niveau de Z5, ordre chronologique le long du parcours)
 //      · séance de muscu : liste des exercices à la place
 //   4. MINI-CARTE du tracé — VRAIE carte (image Mapbox Static, tuiles +
-//      relief) via staticRouteMapUrl ; repli polyline SVG sans token
+//      relief) via RouteMapImage (statique → tuiles → fond SVG)
 //   5. PROFIL ALTIMÉTRIQUE du parcours (RouteElevationProfile, statique)
 //   6. notes libres de la séance
 //
@@ -29,7 +29,7 @@ import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/bl
 import { blocksToExercises } from './mobile/strength'
 import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
-import { staticRouteMapUrl } from '@/lib/staticMap'
+import { RouteMapImage } from '@/components/activity/RouteMapImage'
 import { useAthleteRefs } from '@/hooks/useAthleteRefs'
 import { moveDef, type ComposedMove, type ComposedCircuit, type ComposedSport } from './composedSports'
 
@@ -158,34 +158,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   const estH = 150 + (trace ? 130 : 0) + (elevProfile ? 80 : 0)
   const top = Math.max(8, Math.min(anchor.top, vh - estH - 8))
 
-  // Mini-carte : vraie carte Mapbox (tuiles + relief) via l'API Static Images.
-  // Repli sur une polyline SVG si aucun token Mapbox n'est configuré.
-  const MAP_W = WIDTH - 24, MAP_H = 104
-  const mapUrl = trace
-    // pins:false → plus de gros points départ/arrivée qui masquaient le tracé ;
-    // on veut voir la LIGNE du parcours nettement.
-    ? staticRouteMapUrl(trace.map(p => ({ lat: p.lat, lng: p.lon })), { width: MAP_W, height: MAP_H, pins: false })
-    : null
-  let traceD = ''
-  if (trace && !mapUrl) {
-    const lats = trace.map(p => p.lat), lons = trace.map(p => p.lon)
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-    const minLon = Math.min(...lons), maxLon = Math.max(...lons)
-    const latR = maxLat - minLat || 0.001, lonR = maxLon - minLon || 0.001
-    // Compensation de la latitude pour un rendu moins écrasé
-    const lonScale = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)
-    const aspect = (lonR * lonScale) / latR
-    const pad = 8
-    let plotW = MAP_W - pad * 2, plotH = MAP_H - pad * 2
-    if (aspect > plotW / plotH) plotH = plotW / aspect
-    else plotW = plotH * aspect
-    const ox = (MAP_W - plotW) / 2, oy = (MAP_H - plotH) / 2
-    traceD = trace.map((p, i) => {
-      const x = ox + ((p.lon - minLon) / lonR) * plotW
-      const y = oy + (1 - (p.lat - minLat) / latR) * plotH
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-    }).join('')
-  }
+  // Mini-carte : composant partagé RouteMapImage (image statique Mapbox →
+  // repli tuiles → repli fond SVG ; tracé SVG aligné, squelette).
+  const MAP_H = 104
+  const traceLL: [number, number][] | null = trace ? trace.map(p => [p.lat, p.lon] as [number, number]) : null
 
   // Ligne d'infos : durée · km · D+ · RPE
   const infos: string[] = []
@@ -372,18 +348,10 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
       {trace && (
         <>
           <p style={sectionLabel}>{t('w3g.shp_route')}</p>
-          {mapUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img data-testid="shp-map" src={mapUrl} alt={t('w3g.shp_map_alt')} width={MAP_W} height={MAP_H}
-              style={{ display: 'block', width: MAP_W, height: MAP_H, objectFit: 'cover', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }} />
-          ) : (
-            <svg data-testid="shp-map" width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-              style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 'var(--r-sm)' }}>
-              {/* contour puis tracé bleu */}
-              <path d={traceD} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
-              <path d={traceD} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-            </svg>
-          )}
+          <div data-testid="shp-map">
+            <RouteMapImage latlng={traceLL} color="var(--primary)" height={MAP_H} radius="var(--r-sm)" strokeWidth={3}
+              padding={{ top: 14, right: 14, bottom: 14, left: 14 }} ariaLabel={t('w3g.shp_map_alt')} />
+          </div>
         </>
       )}
 

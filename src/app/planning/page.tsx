@@ -16,7 +16,11 @@ import { useRacesFull } from '@/components/planning/useRacesFull'
 import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SessionHoverPreview } from '@/components/planning/SessionHoverPreview'
-import { ActivityBubble, CompareGrid, PlannedIntensityBars, RealizedIntensityBars, ActivityElevation, ActivityMap, StrengthDone, useActivityFull, isStrengthSport, sampleLLAtFraction } from '@/components/planning/ActivityDetails'
+import { ActivityBubble, StrengthDone, useActivityFull, isStrengthSport, sampleLLAtFraction } from '@/components/planning/ActivityDetails'
+import { ActivityHeader, KpiGrid, IntensityProfile, PlannedIntensityProfile, ElevationProfile, PlanVsDone, StatusPill, SheetSkeleton, complianceOf, sportColorOf, fmtNum, useTx, type Kpi } from '@/components/planning/ActivitySheetKit'
+import { RouteMapImage } from '@/components/activity/RouteMapImage'
+import { estSmSn, isoWeekNum } from '@/components/planning/weekStats'
+import WeekDetailSheet from '@/components/planning/WeekDetailSheet'
 import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
 import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -972,11 +976,14 @@ export function InfoModal({ title, content, onClose }:{ title:string; content:Re
 }
 
 // ── Activité quick-view (clic depuis Planning) ───────────────
-// Fiche coulissante ENRICHIE : comparaison prévu/réalisé, allure moyenne,
-// carte GPS, profils altimétrique et d'intensité — exercices/circuits pour
-// muscu, boxe et hybrid. Le bouton « Voir les détails » (Training) est inchangé.
+// Fiche coulissante « Activité réalisée » : en-tête (tuile sport, titre, date),
+// tuiles KPI, vraie carte pleine largeur (RouteMapImage) avec curseur synchronisé,
+// prévu vs réalisé, profil d'intensité par tour (tap → valeurs du tour), profil
+// altimétrique (curseur + bulle verre) — exercices/circuits pour muscu, boxe et
+// hybrid. Pilule cyan « Voir les détails » vers la page de l'activité.
 export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity|null; onClose:()=>void }) {
   const { t } = useI18n()
+  const tx = useTx()
   const isMobile = useIsMobile()
   // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
   const [last, setLast] = useState<TrainingActivity|null>(activity)
@@ -994,6 +1001,11 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   },[])
   const a = activity ?? last
   const full = useActivityFull(a)
+  // En vue coach (scope athlète), on emmène vers l'activité de L'ATHLÈTE
+  // (paramètre uid) et non vers la page training du coach. On lit le scope via le
+  // CONTEXTE React (fourni de façon fiable par toutes les vues coach) plutôt que
+  // via la variable module (qui peut ne pas être posée au moment du rendu du lien).
+  const _ctxScopeUid = usePlanningScope()
   if (!a) return null
   const sp = normalizeSportType(a.sport)
   const planned = a.planned ?? null
@@ -1002,141 +1014,91 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   const isPower = sp === 'bike' || sp === 'elliptique'
   const dateObj = new Date(a.startedAt)
   const dateStr = dateObj.toLocaleDateString(currentLocale(),{ weekday:'long', day:'numeric', month:'long' })
+  const timeStr = `${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`
   const durationMin = Math.round(a.elapsedTime/60)
   const distM = full?.distanceM ?? a.distance ?? null
-  const distKm = distM && distM > 100 ? (distM/1000).toFixed(1) : null
+  const hasDist = !!distM && distM > 100
   // Allure moyenne réalisée (natation : /100m ; vélo : W moy à la place)
-  const paceStr = (() => {
-    if (isPower) return full?.avgWatts != null ? `${full.avgWatts} W` : null
-    if (isSwim) return distM && distM > 25 && a.elapsedTime > 0 ? `${fmtPaceSec(a.elapsedTime/(distM/100))}/100m` : null
+  const paceVal = (() => {
+    if (isPower) return full?.avgWatts != null ? { v:String(full.avgWatts), u:'W' } : null
+    if (isSwim) return distM && distM > 25 && a.elapsedTime > 0 ? { v:fmtPaceSec(a.elapsedTime/(distM/100)), u:'/100m' } : null
     const s = full?.paceSKm ?? (distM && distM > 100 && a.elapsedTime > 0 ? a.elapsedTime/(distM/1000) : null)
-    return s != null ? `${fmtPaceSec(s)}/km` : null
+    return s != null ? { v:fmtPaceSec(s), u:'/km' } : null
   })()
-  const col = SPORT_BORDER[sp]
-  const sectionLbl: React.CSSProperties = { fontSize: 10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
+  const col = sportColorOf(sp)
   const cursorLL = sampleLLAtFraction(full, cursor)
-  const mapColor = col.startsWith('#') ? col.slice(1) : undefined
   const hasMap = !strengthMode && !!full?.latlng
-  const hasProfiles = !strengthMode
+  const loadingFull = !full && !strengthMode
+  const hasRealizedBars = !!full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null)
+  const hasPlannedBars = !!planned && (planned.blocks ?? []).length > 0
+  const hasElev = !!full?.samples && full.samples.filter(x => x.ele != null).length > 1
+  const sheetTitle = a.name || planned?.title || t('pe4.activityDone')
+  const comp = planned ? complianceOf(planned.durationMin, durationMin) : null
+  const badge = comp ? <StatusPill color={comp.color}>{tx(comp.key, comp.fb)}</StatusPill> : null
 
-  // Bloc « métriques » (grille compacte)
-  const metrics = (
-    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
-      {[
-        { label:t('plnp.field.sport'),   value:SPORT_LABEL[sp] },
-        { label:t('plnp.field.date'),    value:dateStr, small:true },
-        { label:t('plnp.field.time'),   value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`, mono:true },
-        { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
-        ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km`, mono:true }] : []),
-        ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr, mono:true }] : []),
-        ...(full?.avgHr ? [{ label:'FC moy', value:`${full.avgHr} bpm`, mono:true }] : []),
-        ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m`, mono:true }] : []),
-        ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
-        ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
-      ].map(({ label, value, mono, small, color })=>(
-        <div key={label} style={{ background:'var(--bg-card2)',borderRadius: 'var(--r-sm)',padding:'10px 12px' }}>
-          <p style={{ fontSize: 10,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
-          <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'var(--font-body)':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
-        </div>
-      ))}
+  const kpis: Kpi[] = [
+    ...(hasDist ? [{ key:'dist', label:t('plnp.field.distance'), value: isSwim ? String(Math.round(distM!)) : fmtNum(distM!/1000, 2), unit: isSwim ? 'm' : 'km' }] : []),
+    { key:'dur', label:t('plnp.field.duration'), value:formatDur(durationMin) },
+    ...(paceVal ? [{ key:'pace', label: isPower ? tx('w3g.act_power', 'Puissance') : tx('w3g.act_pace', 'Allure'), value:paceVal.v, unit:paceVal.u }] : []),
+    ...(full?.avgHr ? [{ key:'hr', label:tx('pl.sheet.hrAvg', 'FC moy'), value:String(full.avgHr), unit:'bpm' }] : []),
+    ...(full?.elevM ? [{ key:'elev', label:'D+', value:String(full.elevM), unit:'m' }] : []),
+    ...(a.tss ? [{ key:'sm', label:'SM', value:String(Math.round(a.tss)) }] : []),
+    ...(full?.rpe != null ? [{ key:'rpe', label:'RPE', value:String(Math.round(full.rpe*10)/10) }] : []),
+    ...(full?.calories ? [{ key:'kcal', label:tx('pl.sheet.calories', 'Calories'), value:String(Math.round(full.calories)), unit:'kcal' }] : []),
+  ]
+
+  const card: React.CSSProperties = { ...M_CARD }
+  const mapCard = hasMap ? (
+    <div style={{ borderRadius:'var(--r-lg)', overflow:'hidden', background:'var(--surface-card, var(--bg-card))' }}>
+      <RouteMapImage latlng={full!.latlng!} color={col} height={wide && !isMobile ? 260 : 230} cursor={cursorLL}
+        ariaLabel={t('plnp.activity.gpsTrace')} />
     </div>
-  )
-  const comparison = planned ? (
-    <div style={{ background:'var(--bg-card2)',borderRadius: 'var(--r-md)',padding:'12px 14px' }}>
-      <p style={sectionLbl}>{t('plnp.activity.planVsDone')}</p>
-      <CompareGrid planned={planned} full={full} activity={a} />
+  ) : loadingFull ? <SheetSkeleton height={230} /> : null
+  const compareCard = planned ? (
+    <MSection label={t('plnp.activity.planVsDone')}>
+      <PlanVsDone planned={planned} full={full} activity={a} />
+    </MSection>
+  ) : null
+  const intensityCard = !strengthMode && (hasRealizedBars || hasPlannedBars) ? (
+    <div style={card}>
+      {hasRealizedBars
+        ? <IntensityProfile full={full!} sport={sp} cursor={cursor} onCursor={setCursor} />
+        : <PlannedIntensityProfile session={planned!} />}
     </div>
   ) : null
-
-  // Bloc carte (droite en desktop) + bouton « Voir les détails » compact sous la carte.
-  const mapBlock = hasMap ? (
-    <div>
-      <p style={sectionLbl}>{t('plnp.activity.gpsTrace')}</p>
-      <ActivityMap latlng={full!.latlng!} width={wide ? 340 : Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={wide ? 220 : 150} color={mapColor} cursorLL={cursorLL} />
+  const elevCard = !strengthMode && hasElev ? (
+    <div style={card}>
+      <ElevationProfile full={full!} sport={sp} cursor={cursor} onCursor={setCursor} />
     </div>
-  ) : null
+  ) : loadingFull ? <SheetSkeleton height={190} /> : null
+  const strengthCard = strengthMode && full?.strength ? <div style={card}><StrengthDone strength={full.strength} /></div> : null
 
-  // Profils (pleine largeur) — survol → curseur sur la carte.
-  const profiles = hasProfiles ? (
-    <>
-      {full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null) ? (
-        <RealizedIntensityBars full={full} sport={sp} height={64} cursor={cursor} onHover={setCursor} />
-      ) : planned && (planned.blocks ?? []).length > 0 ? (
-        <PlannedIntensityBars session={planned} height={64} />
-      ) : null}
-      {full?.samples && full.samples.some(s => s.ele != null) && (
-        <ActivityElevation full={full} height={150} cursor={cursor} onHover={setCursor} sport={sp} detailed />
-      )}
-    </>
-  ) : null
-
-  // En vue coach (scope athlète), on emmène vers l'activité de L'ATHLÈTE
-  // (paramètre uid) et non vers la page training du coach. On lit le scope via le
-  // CONTEXTE React (fourni de façon fiable par toutes les vues coach) plutôt que
-  // via la variable module (qui peut ne pas être posée au moment du rendu du lien).
-  const _ctxScopeUid = usePlanningScope()
   const _scopedUid = _ctxScopeUid ?? (isCoachScoped() ? getPlanningScopeUid() : null)
   const _detailHref = _scopedUid ? `/activities?id=${a.id}&uid=${_scopedUid}` : `/activities?id=${a.id}`
   const detailBtn = (
-    <a href={_detailHref}
-      style={{ display:'block',textAlign:'center' as const,padding:'10px 16px',borderRadius: 'var(--r-sm)',background:col,color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:12.5,textDecoration:'none',letterSpacing:'0.02em',width:'100%',boxSizing:'border-box' as const }}>
-      {t('plnp.activity.viewDetails')}
+    <a href={_detailHref} className="thw-press"
+      style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:52, borderRadius:'var(--r-pill)', background:'var(--primary)', color:'var(--on-primary)', fontSize:16, fontWeight:700, fontFamily:'var(--font-body)', textDecoration:'none', width:'100%', boxSizing:'border-box' }}>
+      {t('pe4.viewDetails')}
+      <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
     </a>
   )
+  const header = <ActivityHeader sport={sp} title={sheetTitle} meta={`${SPORT_LABEL[sp]} · ${dateStr} · ${timeStr}`} badge={badge} />
+  const kpiCard = <div style={{ ...card, padding:12 }}><KpiGrid items={kpis} cols={kpis.length === 4 ? 2 : 3} /></div>
 
-  // ── MOBILE (≤ 767 px) : feuille « cartes » — Fermer · titre, corps gris,
-  // métriques en tuiles, sections en cartes blanches, pilule cyan « détails ».
+  // ── MOBILE (≤ 767 px) : feuille « cartes » — Fermer · titre, corps gris.
   if (isMobile) {
-    const mCells: { label: string; value: string }[] = [
-      { label:t('plnp.field.time'), value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}` },
-      { label:t('plnp.field.duration'), value:formatDur(durationMin) },
-      ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km` }] : []),
-      ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr }] : []),
-      ...(full?.avgHr ? [{ label:'FC moy', value:`${full.avgHr} bpm` }] : []),
-      ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m` }] : []),
-      ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10) }] : []),
-      ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}` }] : []),
-    ]
-    const sheetTitle = a.name || planned?.title || t('pe4.activityDone')
     return (
       <MSheet open={!!activity} onClose={onClose} label={sheetTitle} zIndex={9998}>
         <SheetHeader leftLabel={t('plnp.close')} onLeft={onClose} title={t('pe4.activityDone')} />
         <div style={M_SCROLL}>
-          <div style={{ padding:'0 4px' }}>
-            <p style={{ display:'flex', alignItems:'center', gap:8, margin:0, fontSize:15, fontWeight:600, color:'var(--text-mid)' }}><MDot color={col} />{SPORT_LABEL[sp]}</p>
-            <h2 style={{ margin:'4px 0 2px', fontSize:24, fontWeight:800, letterSpacing:'-0.02em', lineHeight:1.15, color:'var(--text)', overflowWrap:'anywhere' }}>{sheetTitle}</h2>
-            <p style={{ margin:0, fontSize:15, color:'var(--text-mid)', textTransform:'capitalize' }}>{dateStr}</p>
-          </div>
-          <div style={{ ...M_CARD, display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:8, padding:12 }}>
-            {mCells.map(c => (
-              <div key={c.label} style={{ background:'var(--surface-chip)', borderRadius:'var(--r-md)', padding:'10px 12px', minWidth:0 }}>
-                <p style={{ margin:0, fontSize:12, fontWeight:600, color:'var(--text-mid)' }}>{c.label}</p>
-                <p className="tnum" style={{ margin:'2px 0 0', fontSize:19, fontWeight:800, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.value}</p>
-              </div>
-            ))}
-          </div>
-          {planned && (
-            <MSection label={t('plnp.activity.planVsDone')}>
-              <CompareGrid planned={planned} full={full} activity={a} />
-            </MSection>
-          )}
-          {strengthMode && full?.strength && <div style={M_CARD}><StrengthDone strength={full.strength} /></div>}
-          {hasMap && (
-            <MSection label={t('plnp.activity.gpsTrace')} style={{ padding:16 }}>
-              <ActivityMap latlng={full!.latlng!} width={Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={170} color={mapColor} cursorLL={cursorLL} />
-            </MSection>
-          )}
-          {hasProfiles && (
-            (full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null))
-            || (planned && (planned.blocks ?? []).length > 0)
-            || (full?.samples && full.samples.some(x => x.ele != null))
-          ) && (
-            <div style={{ ...M_CARD, display:'flex', flexDirection:'column', gap:16 }}>{profiles}</div>
-          )}
-          <a href={_detailHref} className="thw-press"
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:52, borderRadius:'var(--r-pill)', background:'var(--primary)', color:'var(--on-primary)', fontSize:16, fontWeight:700, textDecoration:'none', width:'100%', boxSizing:'border-box' }}>
-            {t('pe4.viewDetails')}
-          </a>
+          {header}
+          {kpiCard}
+          {strengthCard}
+          {mapCard}
+          {compareCard}
+          {intensityCard}
+          {elevCard}
+          {detailBtn}
         </div>
       </MSheet>
     )
@@ -1144,54 +1106,31 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
 
   return (
     <BottomSheet isOpen={!!activity} onClose={onClose}>
-      <div style={{ maxWidth: wide ? 860 : undefined, margin: wide ? '0 auto' : undefined }}>
-        {/* En-tête (sans logo sport — épuré) */}
-        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:16 }}>
-          <div style={{ flex:1,minWidth:0 }}>
-            <div style={{ marginBottom:3 }}>
-              <span style={{ fontSize: 10,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
+      <div style={{ maxWidth: wide ? 900 : undefined, margin: wide ? '0 auto' : undefined, display:'flex', flexDirection:'column', gap:16, background:'var(--surface-page, var(--bg))', borderRadius:'var(--r-lg)', padding:16 }}>
+        {header}
+        {wide ? (
+          <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1.1fr)', gap:16, alignItems:'start' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:16, minWidth:0 }}>
+              {kpiCard}
+              {compareCard}
+              {strengthCard}
             </div>
-            {/* On affiche le VRAI titre de l'activité (celui donné dans Training),
-                pas le nom de la séance planifiée : c'est l'activité réalisée. */}
-            <p style={{ fontFamily: 'var(--font-body)',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name || planned?.title}</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:16, minWidth:0 }}>
+              {mapCard}
+              {detailBtn}
+            </div>
           </div>
-        </div>
-
-        {strengthMode ? (
-          /* Muscu / boxe / hybrid : données + exercices/circuits réalisés (ni profil ni carte) */
-          <div style={{ display:'flex',flexDirection:'column' as const,gap:16 }}>
-            {metrics}
-            {comparison}
-            {full?.strength && <StrengthDone strength={full.strength} />}
-            {detailBtn}
-          </div>
-        ) : wide ? (
-          /* Desktop : gauche = données · droite = carte (+ bouton). Profils en dessous. */
-          <>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:20,alignItems:'start',marginBottom:18 }}>
-              <div style={{ display:'flex',flexDirection:'column' as const,gap:14 }}>
-                {metrics}
-                {comparison}
-              </div>
-              <div style={{ display:'flex',flexDirection:'column' as const,gap:12 }}>
-                {mapBlock}
-                {detailBtn}
-              </div>
-            </div>
-            <div style={{ display:'flex',flexDirection:'column' as const,gap:18 }}>
-              {profiles}
-            </div>
-          </>
         ) : (
-          /* Mobile : pile verticale */
-          <div style={{ display:'flex',flexDirection:'column' as const,gap:16 }}>
-            {metrics}
-            {comparison}
-            {mapBlock}
-            {profiles}
-            {detailBtn}
-          </div>
+          <>
+            {kpiCard}
+            {strengthCard}
+            {mapCard}
+            {compareCard}
+          </>
         )}
+        {intensityCard}
+        {elevCard}
+        {!wide && detailBtn}
       </div>
     </BottomSheet>
   )
@@ -2807,31 +2746,7 @@ function DayHeader({ abbr, num, intensity, isToday, onNum, plus, onPlus, open, o
   )
 }
 
-// Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs d'une séance.
-const SM_COEF_PL = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
-const SN_COEF_PL = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
-function estSmSn(blocks: Block[] | undefined, durationMin: number): { sm: number; sn: number } {
-  let sm = 0, sn = 0, acc = 0
-  for (const b of (blocks || [])) {
-    const z = Math.max(1, Math.min(7, b.zone || 1))
-    const iv = b.mode === 'interval' && b.reps && b.effortMin != null
-    const tot = iv ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
-    const eff = iv ? (b.reps as number) * (b.effortMin as number) : (b.durationMin || 0)
-    sm += tot * SM_COEF_PL[z - 1]; sn += eff * SN_COEF_PL[z - 1]; acc += tot
-  }
-  if (acc === 0 && durationMin > 0) sm = durationMin
-  return { sm: Math.round(sm), sn: Math.round(sn) }
-}
-
-// Numéro de semaine ISO depuis une date YYYY-MM-DD.
-function isoWeekNum(ds: string): number {
-  const d = new Date(ds + 'T00:00:00')
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
-  const ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
-  return Math.ceil(((t.getTime() - ys.getTime()) / 86400000 + 1) / 7)
-}
-const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe']
+// estSmSn / isoWeekNum : src/components/planning/weekStats (partagés avec la feuille semaine).
 // Couleur sport alignée sur les logos SportIcon (run=vert, muscu=orange, etc.)
 function iconColor(sp: string): string { const k = sportKeyFromType(sp); return k ? SPORT_ICON[k].color : (SPORT_BORDER[sp as SportType] ?? '#94a3b8') }
 // Type de journée (Récup / Low / Mid / Hard) — normalise les vocabulaires possibles
@@ -3258,6 +3173,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [planTick, setPlanTick] = useState(0)
   const [loadedOnce, setLoadedOnce] = useState(false)
   const [datasWeek, setDatasWeek] = useState<string|null>(null)
+  const [weekAiOpen, setWeekAiOpen] = useState(false)
   useEffect(()=>{ if(!loading) setLoadedOnce(true) },[loading])
   // Ajout externe (bibliothèque, coach IA, +) sur une semaine ≠ semaine courante :
   // le hook de la semaine courante se recharge déjà via cet event, mais la grille
@@ -3652,87 +3568,29 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     )
   }
 
-  // ── Surpage « Datas » d'une semaine ──
+  // ── Feuille « Détail de la semaine » (portail sur <body> → barre à bulles masquée) ──
   function renderDatasOverlay() {
-    if (!datasWeek) return null
-    const w = buildWeek(datasWeek, activePlan)
-    const dates = getWeekDatesFromStart(datasWeek)
-    // Datas = RÉALISÉ : minutes/séances par sport depuis les activités faites uniquement.
-    const dayBySport = w.map(d => {
-      const m: Record<string, number> = {}
-      d.activities.forEach(a => { const sp = normalizeSportType(a.sport); m[sp] = (m[sp] || 0) + Math.round(a.elapsedTime / 60) })
-      return m
-    })
-    const dayTotals = dayBySport.map(m => Object.values(m).reduce((a, b) => a + b, 0))
-    const maxDay = Math.max(1, ...dayTotals)
-    const counts: Record<string, number> = {}
-    let totalN = 0
-    w.forEach(d => { d.activities.forEach(a => { const sp = normalizeSportType(a.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }) })
-    let sm = 0, sn = 0
-    w.forEach(d => d.sessions.forEach(s => { const e = estSmSn(s.blocks, s.durationMin); sm += e.sm; sn += e.sn }))
-    const totalMin = dayTotals.reduce((a, b) => a + b, 0)
-    const GH = 120
     return (
-      <div className="thw-datas-overlay" onClick={e => { if (e.target === e.currentTarget) setDatasWeek(null) }}
-        style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex' }}>
-        <style>{`
-          .thw-datas-overlay { align-items: center; justify-content: center; padding: 16px; }
-          .thw-datas-panel { width: min(640px,96vw); max-height: 88vh; border-radius: 18px; padding: 22px 24px; animation: thwDatasPop .18s ease; }
-          .thw-datas-grab { display: none; }
-          @keyframes thwDatasPop { from { opacity: 0; transform: scale(.97) } to { opacity: 1; transform: scale(1) } }
-          @media (max-width: 640px) {
-            .thw-datas-overlay { align-items: flex-end; justify-content: center; padding: 0; }
-            .thw-datas-panel { width: 100%; max-width: 100%; max-height: 90vh; border-radius: 22px 22px 0 0; padding: 10px 18px calc(20px + env(safe-area-inset-bottom)); animation: thwDatasUp .3s cubic-bezier(0.32,0.72,0,1); }
-            .thw-datas-grab { display: block; width: 40px; height: 4px; border-radius: 999px; background: var(--border-mid); margin: 2px auto 12px; }
-          }
-          @keyframes thwDatasUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-        `}</style>
-        <div className="thw-datas-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowY: 'auto', boxShadow: 'var(--shadow)', boxSizing: 'border-box' as const }}>
-          <div className="thw-datas-grab" />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span></span>
-            <button onClick={() => setDatasWeek(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 14 }}>✕</button>
-          </div>
-          {/* Totaux */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' as const }}>
-            {[[t('plnp.sessions').toUpperCase(), String(totalN), 'var(--text)'], [t('plnp.volume').toUpperCase(), formatHM(totalMin), 'var(--text)'], ['SM', String(sm), '#06B6D4'], ['SN', String(sn), '#8B5CF6']].map((c, i) => (
-              <div key={i} style={{ flex: '1 1 110px', padding: '11px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{c[0]}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: c[2], fontFamily: 'var(--font-display)', marginTop: 2 }}>{c[1]}</div>
-              </div>
-            ))}
-          </div>
-          {/* Séances par sport */}
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 8 }}>{t('plnp.datas.sessionsBySport')}</div>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' as const, marginBottom: 20 }}>
-            {PLAN_SPORTS.filter(sp => counts[sp]).map(sp => (
-              <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <SportIcon sport={sp} size={20} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{counts[sp]}</span>
-              </div>
-            ))}
-          </div>
-          {/* Volume par jour — jauges verticales empilées par sport */}
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 10 }}>{t('plnp.datas.volumeByDay')}</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: GH + 30 }}>
-            {w.map((d, i) => {
-              const m = dayBySport[i]; const tot = dayTotals[i]
-              const barH = (tot / maxDay) * GH
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700, height: 11 }}>{tot > 0 ? formatHM(tot) : ''}</span>
-                  <div style={{ width: '70%', maxWidth: 30, height: GH, display: 'flex', flexDirection: 'column-reverse' as const, borderRadius: 'var(--r-sm)', overflow: 'hidden', background: 'var(--bg-card2)' }}>
-                    {PLAN_SPORTS.filter(sp => m[sp]).map(sp => (
-                      <div key={sp} style={{ height: `${(m[sp] / maxDay) * GH}px`, background: iconColor(sp) }} />
-                    ))}
-                  </div>
-                  <span style={{ fontSize: 10, color: i === todayIdx && datasWeek === currentWeekStart ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 700 }}>{t('plnp.dayLetters').split(',')[i]}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+      <>
+        <WeekDetailSheet
+          weekStart={datasWeek}
+          plan={activePlan}
+          onChangeWeek={ws => setDatasWeek(ws)}
+          onClose={() => setDatasWeek(null)}
+          onOpenSession={s => { setDatasWeek(null); setDetailModal(s) }}
+          onOpenActivity={a => { setDatasWeek(null); setActivityDetail(a) }}
+          onAnalyzeAI={() => { setDatasWeek(null); setWeekAiOpen(true) }}
+        />
+        {weekAiOpen && (
+          <AIPanelDynamic
+            open={weekAiOpen}
+            onClose={() => setWeekAiOpen(false)}
+            {...(isCoachScoped() && getPlanningScopeUid()
+              ? { initialAgent: 'coach' as const, initialCoachTarget: { id: getPlanningScopeUid() as string, name: t('pl.week.athlete') === 'pl.week.athlete' ? 'Athlète' : t('pl.week.athlete'), avatar: null }, prefillMessage: t('pl.week.aiCoachPrompt') === 'pl.week.aiCoachPrompt' ? 'Analyse la semaine de cet athlète : charge, respect du plan, équilibre des intensités et points de vigilance.' : t('pl.week.aiCoachPrompt') }
+              : { initialFlow: 'analyser_semaine' as const })}
+          />
+        )}
+      </>
     )
   }
 

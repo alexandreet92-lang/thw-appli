@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import SlideSheet from '@/components/ui/SlideSheet'
 import { useNarrow } from '@/lib/hooks/useNarrow'
-import { staticRouteMapUrl } from '@/lib/staticMap'
+import { RouteMapImage } from '@/components/activity/RouteMapImage'
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import type { ActivityShowcaseData, RecentActivity, RecordItem } from '@/lib/profile/activityShowcase'
 import { hoursByFamily, activeWeekStreak, sportMeta, bestRecord, recordsForSport, fmtHoursSec, polylineToSvgPath, decodePolyline } from '@/lib/profile/activityShowcase'
@@ -229,7 +229,7 @@ function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void 
   const fam = sportFamilyLocal(a.sport)
   const meta = sportMeta(fam)
   const pts = routePoints(a.polyline)
-  const mapUrl = staticRouteMapUrl(pts, { width: 640, height: 300, color: SPORT_HEX[fam] ?? '9ca3af', pins: false })
+  const hasRoute = pts.length >= 2
   const path = polylineToSvgPath(a.polyline, 320, 150)
   const stats: { label: string; value: string }[] = []
   const dist = fmtDist(a.distance_m); if (dist) stats.push({ label: t('w1j.distance'), value: dist })
@@ -241,9 +241,9 @@ function ActivityMapCard({ a, onOpen }: { a: RecentActivity; onOpen: () => void 
       style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card2)', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)', overflow: 'hidden', padding: 0 }}>
       {/* Grande carte */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 1', background: path ? meta.color : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        {mapUrl
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={mapUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {hasRoute
+          // Carte partagée : image statique → repli tuiles → repli fond SVG (tracé toujours visible).
+          ? <RouteMapImage latlng={pts.map(p => [p.lat, p.lng] as [number, number])} color={`#${SPORT_HEX[fam] ?? '9ca3af'}`} ratio={0.5} style={{ position: 'absolute', inset: 0, height: '100%', aspectRatio: 'auto' }} />
           : path
             ? <svg viewBox="0 0 320 150" style={{ width: '100%', height: '100%' }}><path d={path} fill="none" stroke="white" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>
             : <span style={{ width: 12, height: 12, borderRadius: '50%', background: meta.color }} />}

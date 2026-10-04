@@ -65,6 +65,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       age_at_start: Math.trunc(age),
       age_band: ageBand,
       body_weight_kg: bodyWeightKg,
+      share_for_calibration: body?.shareForCalibration === true,
     })
     .select('id')
     .single()

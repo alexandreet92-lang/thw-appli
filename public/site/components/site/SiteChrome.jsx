@@ -9,6 +9,7 @@ var APP_URL = 'https://thw-appli.vercel.app';
 var MENU_ITEMS = [
   { label: 'Accueil',                     href: 'index.html' },
   { label: 'Découvrir les piliers',        href: 'decouvrir.html' },
+  { label: 'Le test CADENCES',             href: 'cadences.html' },
   { label: 'Abonnement athlète',          href: 'abonnement-athlete.html', group: 'shop' },
   { label: 'Abonnement coach',            href: 'abonnement-coach.html', group: 'shop' },
   { label: 'Recharge de tokens',          href: 'recharge-tokens.html', group: 'shop' },
@@ -166,6 +167,7 @@ function SiteHeader(props) {
   var navLinks = [
     { label: 'Accueil', href: 'index.html', key: 'home' },
     { label: 'Découvrir', href: 'decouvrir.html', key: 'discover' },
+    { label: 'CADENCES', href: 'cadences.html', key: 'cadences' },
     { label: 'Plans', href: 'theme.html#abonnements', key: 'plans' },
     { label: 'Connexion', href: 'compte.html', key: 'login' },
   ];

@@ -13,6 +13,9 @@
 export function isFullscreenRoute(pathname: string | null | undefined): boolean {
   if (!pathname) return false
   // /live : page publique de suivi en direct (lien partagé hors app, sans compte).
-  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs', '/defi', '/live']
+  // /cadences : le test physique est présenté comme une page de SITE à part
+  // entière (plein écran, sans le chrome d'app), pas comme un écran du tableau
+  // de bord connecté — même esprit que /defi et /decouvrir.
+  const routes = ['/auth', '/login', '/onboarding', '/access-expired', '/bienvenue', '/c', '/pour-les-coachs', '/defi', '/cadences', '/live']
   return routes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }

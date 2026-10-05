@@ -7,12 +7,17 @@
    ════════════════════════════════════════════════════════════════ */
 (function () {
   var F = function () { return window.CadencesFormat; };
+  // Origine de l'API. Le site (the-hybridway.com) sert les fichiers statiques mais
+  // pas l'/api ; l'app (APP_URL) a l'API + l'auth. On sonde le catalogue en
+  // same-origin, sinon on bascule sur APP_URL (cross-origin, pour le contenu public).
+  var API_BASE = '';
+  var APP_URL = (typeof window !== 'undefined' && window.APP_URL) || 'https://thw-appli.vercel.app';
 
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = 'include';
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-    return fetch(path, opts);
+    return fetch(API_BASE + path, opts);
   }
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
   function frDate(iso) {
@@ -84,21 +89,34 @@
     var rp = React.useState(null); var report = rp[0], setReport = rp[1];
     var md = React.useState('general'); var mode = md[0], setMode = md[1];
     var er = React.useState(null); var error = er[0], setError = er[1];
+    var coS = React.useState(false); var crossOrigin = coS[0], setCrossOrigin = coS[1];
+    var appTestUrl = APP_URL + '/site/cadences.html';
 
-    // Catalogue (public) — avec délai de garde + bouton Réessayer (plus de « Loading » infini).
+    // Catalogue (public) — sonde same-origin, sinon cross-origin vers l'app.
+    // Délai de garde + bouton Réessayer (plus de « Loading » infini).
+    function fetchCatalog(base) {
+      var p = fetch(base + '/api/cadences/catalog').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); });
+      return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 10000); })]);
+    }
     function loadCatalog() {
       setError(null);
-      var timeout = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 12000); });
-      var req = api('/api/cadences/catalog').then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); });
-      Promise.race([req, timeout])
-        .then(function (j) { setCatalog(j); })
-        .catch(function () { setError('Le serveur n’a pas répondu. Vérifie ta connexion, puis réessaie.'); });
+      fetchCatalog('')
+        .then(function (j) { API_BASE = ''; setCrossOrigin(false); setCatalog(j); })
+        .catch(function () {
+          fetchCatalog(APP_URL)
+            .then(function (j) { API_BASE = APP_URL; setCrossOrigin(true); setCatalog(j); })
+            .catch(function () { setError('Le serveur n’a pas répondu. Vérifie ta connexion, puis réessaie.'); });
+        });
     }
     React.useEffect(loadCatalog, []);
 
-    // Campagnes de l'utilisateur dès qu'on connaît l'état de connexion.
+    // Campagnes de l'utilisateur — uniquement en same-origin (l'auth a besoin des
+    // cookies). En cross-origin (site) : on reste sur la présentation, le test part
+    // sur l'app.
     React.useEffect(function () {
-      if (account === undefined) return;      // pas encore résolu
+      if (!catalog) return;                   // attend que l'origine de l'API soit connue
+      if (crossOrigin) { setView('intro'); return; }
+      if (account === undefined) return;
       if (!loggedIn) { setView('intro'); return; }
       api('/api/cadences/campaign').then(function (r) { return r.ok ? r.json() : { campagnes: [] }; })
         .then(function (j) {
@@ -108,7 +126,7 @@
           if (cur) { loadReport(cur.id, 'test'); }
           else { setView('intro'); }
         }).catch(function () { setView('intro'); });
-    }, [account]);
+    }, [account, catalog, crossOrigin]);
 
     function loadReport(id, nextView) {
       return api('/api/cadences/report?campaignId=' + encodeURIComponent(id))
@@ -145,6 +163,7 @@
       body = <CadResults catalog={catalog} report={report} mode={mode} setMode={setMode} onBack={function () { setView('intro'); }}/>;
     } else {
       body = <CadIntro catalog={catalog} loggedIn={loggedIn} campaigns={campaigns}
+                       crossOrigin={crossOrigin} appUrl={appTestUrl}
                        onStart={function () { setView('start'); }}
                        onResume={function (id) { loadReport(id, 'test'); }}
                        onOpenResults={function (id) { loadReport(id, 'results'); }}/>;
@@ -190,7 +209,15 @@
         </div>
 
         <div style={{ marginTop: 28 }}>
-          {!props.loggedIn ? (
+          {props.crossOrigin ? (
+            <div className="cad-card">
+              <div className="t-h2">Prêt à passer le test ?</div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 14px' }}>
+                La saisie des épreuves et le score se font en étant connecté à ton compte. Clique ci-dessous pour lancer le test.
+              </p>
+              <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 20px' }} href={props.appUrl}>Démarrer le test →</a>
+            </div>
+          ) : !props.loggedIn ? (
             <div className="cad-card">
               <div className="t-h2">Connecte-toi pour passer le test</div>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 14px' }}>
@@ -238,9 +265,11 @@
         {window.CadContent.warnings(cat)}
 
         <div className="cad-section" style={{ textAlign: 'center' }}>
-          {!props.loggedIn
-            ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>
-            : <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>}
+          {props.crossOrigin
+            ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={props.appUrl}>Démarrer le test →</a>
+            : !props.loggedIn
+              ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>
+              : <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>}
         </div>
       </div>
     );

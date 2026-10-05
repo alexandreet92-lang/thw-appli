@@ -23,7 +23,7 @@ export async function GET(): Promise<NextResponse> {
     name: t.name,
     unit: t.unit,
     direction: t.direction,
-    kind: t.kind,
+    kind: t.kind,                                   // 'abs' | 'ratio'
     pts_max: t.pts_max,
     day: t.day,
     order_in_day: t.order_in_day,
@@ -34,12 +34,20 @@ export async function GET(): Promise<NextResponse> {
     hasPool: SWIM.has(t.slug),
     hasVariant: t.slug === 'hyrox_circuit',
     isAmrap: t.slug === 'amrap_20min',
+    // Barème publié (pour les tableaux Réf/Max H/F) + corrections d'équipement.
+    male: t.male,
+    female: t.female,
+    weights: t.weights,
+    equipment: t.equipment ?? null,                 // {field,applies_when,pct,rule}
+    ageTimeExponent: t.age_time_exponent ?? null,
   }))
 
   const res = NextResponse.json({
     version: CONFIG.version,
     totalPoints: CONFIG.total_points,
     totalTests: CONFIG.tests.length,
+    anchors: CONFIG.anchors,                         // {ref_pct, max_pct}
+    age: CONFIG.age,                                 // {min,max,bands,pf}
     days: DAYS,
     tests,
     protocols: PROTOCOLS,

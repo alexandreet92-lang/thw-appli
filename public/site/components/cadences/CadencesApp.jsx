@@ -25,7 +25,7 @@
   function CadStyle() {
     return (
       <style>{`
-        .cad-wrap { max-width: 880px; margin: 0 auto; padding: 96px 20px 64px; }
+        .cad-wrap { max-width: 920px; margin: 0 auto; padding: 104px 20px 80px; color: var(--text); }
         .cad-input, .cad-select {
           width: 100%; box-sizing: border-box; padding: 11px 13px;
           font-family: var(--font-mono); font-size: 16px; color: var(--text);
@@ -35,20 +35,41 @@
         .cad-select { font-family: var(--font-body); font-size: 14px; padding: 9px 11px; }
         .cad-input:focus, .cad-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,200,224,.18); }
         .cad-input::placeholder { color: var(--text-dim); }
-        .cad-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-card); }
-        .cad-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-btn); }
+        /* Cartes : bordure + ombre nettes pour ressortir en clair ET sombre. */
+        .cad-card { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 28px rgba(8,20,40,.07); }
+        html.dark .cad-card { box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.25); }
+        .cad-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-btn); }
         .cad-seg button { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; color: var(--text-mid); background: transparent; transition: all .15s; }
         .cad-seg button[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); }
         .cad-chiprow { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0; -webkit-overflow-scrolling: touch; }
-        .cad-chip { display: grid; gap: 2px; place-items: center; min-width: 94px; padding: 9px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); text-decoration: none; color: var(--text); }
-        .cad-chip.rest { opacity: .5; }
+        .cad-chip { display: grid; gap: 2px; place-items: center; min-width: 94px; padding: 9px 10px; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-md); text-decoration: none; color: var(--text); }
+        .cad-chip.rest { opacity: .55; }
         .cad-pill { flex: 1; padding: 12px 14px; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text); background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-btn); transition: all .15s; }
-        .cad-pill[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); border-color: transparent; }
+        .cad-pill[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); border-color: transparent; box-shadow: 0 3px 14px rgba(0,200,224,.3); }
         .cad-link { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--brand); }
-        .cad-proto { display: grid; gap: 6px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.55; color: var(--text-mid); border-left: 2px solid var(--border-mid); padding-left: 12px; }
+        .cad-proto { display: grid; gap: 6px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.55; color: var(--text-mid); border-left: 2px solid var(--brand); padding-left: 12px; }
         .cad-proto strong { color: var(--text); }
         .cad-err { font-family: var(--font-body); font-size: 13px; color: var(--text); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: var(--radius-sm); padding: 10px 12px; }
-        .cad-feature { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+        .cad-feature { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        /* Contenu riche */
+        .cad-section { margin-top: 60px; }
+        .cad-note-level { margin-top: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.55; color: var(--text-mid); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-left: 3px solid var(--brand); border-radius: var(--radius-sm); padding: 11px 14px; }
+        .cad-note-level strong { color: var(--text); }
+        .cad-badge-ex { position: absolute; top: 14px; right: 14px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); background: var(--bg-hover); border: 1px solid var(--border-mid); border-radius: 999px; padding: 3px 10px; }
+        .cad-preview-grid { display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 28px; align-items: center; }
+        .cad-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .cad-table { width: 100%; border-collapse: collapse; }
+        .cad-table th { font-family: var(--font-body); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border-mid); white-space: nowrap; }
+        .cad-table td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text-mid); font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; }
+        .cad-table tbody tr:hover { background: var(--bg-hover); }
+        .cad-table-sm th, .cad-table-sm td { padding: 6px 8px; font-size: 11.5px; }
+        .cad-h3 { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); margin: 0 0 10px; }
+        .cad-p { font-family: var(--font-body); font-size: 13.5px; line-height: 1.6; color: var(--text-mid); margin: 0 0 10px; }
+        .cad-p strong { color: var(--text); }
+        .cad-ul { margin: 0; padding-left: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--text-mid); display: grid; gap: 5px; }
+        .cad-ul strong { color: var(--text); }
+        .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
+        @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } }
       `}</style>
     );
   }
@@ -64,11 +85,16 @@
     var md = React.useState('general'); var mode = md[0], setMode = md[1];
     var er = React.useState(null); var error = er[0], setError = er[1];
 
-    // Catalogue (public) au montage.
-    React.useEffect(function () {
-      api('/api/cadences/catalog').then(function (r) { return r.json(); })
-        .then(function (j) { setCatalog(j); }).catch(function () { setError('Chargement impossible.'); });
-    }, []);
+    // Catalogue (public) — avec délai de garde + bouton Réessayer (plus de « Loading » infini).
+    function loadCatalog() {
+      setError(null);
+      var timeout = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 12000); });
+      var req = api('/api/cadences/catalog').then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); });
+      Promise.race([req, timeout])
+        .then(function (j) { setCatalog(j); })
+        .catch(function () { setError('Le serveur n’a pas répondu. Vérifie ta connexion, puis réessaie.'); });
+    }
+    React.useEffect(loadCatalog, []);
 
     // Campagnes de l'utilisateur dès qu'on connaît l'état de connexion.
     React.useEffect(function () {
@@ -91,8 +117,21 @@
     }
     function reload() { return report && report.campaign ? loadReport(report.campaign.id) : Promise.resolve(); }
 
-    if (!catalog || view === 'loading') {
-      return <div><CadStyle/><SiteHeader active="cadences"/><main className="cad-wrap"><p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Chargement…</p></main><SiteFooter/></div>;
+    if (!catalog) {
+      return (
+        <div><CadStyle/><SiteHeader active="cadences"/>
+          <main className="cad-wrap">
+            {error ? (
+              <div className="cad-card" style={{ textAlign: 'center', maxWidth: 440, margin: '40px auto' }}>
+                <div className="t-h2">Chargement impossible</div>
+                <p className="cad-p" style={{ margin: '10px 0 16px' }}>{error}</p>
+                <button type="button" className="thw-btn-primary" onClick={loadCatalog}>Réessayer</button>
+              </div>
+            ) : <p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Chargement…</p>}
+          </main>
+          <SiteFooter/>
+        </div>
+      );
     }
 
     var body;
@@ -131,7 +170,7 @@
     var terminees = (props.campaigns || []).filter(function (c) { return c.status === 'completed'; });
     return (
       <div>
-        <div className="t-label" style={{ color: 'var(--brand)' }}>Le test physique</div>
+        <div className="t-label" style={{ color: 'var(--brand)' }}>Test de condition générale</div>
         <h1 className="t-display" style={{ margin: '10px 0 0' }}>CADENCES</h1>
         <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, lineHeight: 1.4, margin: '14px 0 0', color: 'var(--text)' }}>
           Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.
@@ -140,6 +179,9 @@
           {cat.totalTests} épreuves réparties sur 12 jours (course, force, haltérophilie, natation, vélo, Hyrox).
           Un score sur {cat.totalPoints} et un niveau par qualité, en barème général ou ajusté à votre âge. Réservé aux 18 à 80 ans.
         </p>
+        <div className="cad-note-level">
+          <strong>Pour qui ?</strong> Un test exigeant de condition générale, conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — ce n'est pas un test pour débuter.
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 22 }}>
           <Feature t="7 qualités" d={cat.qualities.map(function (q) { return q.label; }).join(', ') + '.'}/>
@@ -186,6 +228,19 @@
             </div>
           </div>
         ) : null}
+
+        {window.CadContent.preview(cat)}
+        {window.CadContent.qualities(cat)}
+        {window.CadContent.protocol(cat)}
+        {window.CadContent.bareme(cat)}
+        {window.CadContent.scoreExplain(cat)}
+        {window.CadContent.warnings(cat)}
+
+        <div className="cad-section" style={{ textAlign: 'center' }}>
+          {!props.loggedIn
+            ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>
+            : <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>}
+        </div>
       </div>
     );
   }
@@ -594,6 +649,11 @@
             <div className="t-h3" style={{ fontSize: 15 }}>Par qualité</div>
             <CadQualityRings items={qualityItemsFrom(cat, score)}/>
           </div>
+        </section>
+
+        <section className="cad-card" style={{ marginTop: 16, display: 'grid', placeItems: 'center' }}>
+          <div className="t-h3" style={{ fontSize: 15, justifySelf: 'start' }}>Profil des 7 qualités</div>
+          <CadRadar items={qualityItemsFrom(cat, score)} color={gColor} size={320}/>
         </section>
 
         <section style={{ marginTop: 24 }}>

@@ -91,6 +91,23 @@ function Discover() {
             </div>
           </section>
 
+          <section className="section" style={{ paddingTop: 8 }}>
+            <div className="reveal" style={{
+              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20, justifyContent: 'space-between',
+              background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderLeft: '4px solid var(--brand)',
+              borderRadius: 'var(--radius-lg)', padding: '22px 24px', boxShadow: 'var(--shadow-card)',
+            }}>
+              <div style={{ minWidth: 240, flex: '1 1 320px' }}>
+                <div className="eyebrow">Nouveau · Test de condition générale</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 'clamp(20px,3vw,26px)', letterSpacing: '-0.02em', margin: '6px 0 6px', color: 'var(--text)' }}>CADENCES</div>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, lineHeight: 1.55, color: 'var(--text-mid)', margin: 0, maxWidth: 560 }}>
+                  24 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test <strong style={{ color: 'var(--text)' }}>exigeant</strong>, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
+                </p>
+              </div>
+              <a className="btn btn-cyan btn-lg" href="cadences.html" style={{ flexShrink: 0 }}><UIIcon name="spark" size={16} /> Faire le test</a>
+            </div>
+          </section>
+
           <section id="grille" className="bubbles">
             {themes.map(function (t, i) {return <Bubble key={t.slug} theme={t} i={i} />;})}
           </section>

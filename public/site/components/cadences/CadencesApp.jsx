@@ -56,8 +56,26 @@
         .cad-proto strong { color: var(--text); }
         .cad-err { font-family: var(--font-body); font-size: 13px; color: var(--text); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: var(--radius-sm); padding: 10px 12px; }
         .cad-feature { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-        /* Contenu riche */
-        .cad-section { margin-top: 60px; }
+        /* Contenu riche / navigation par onglets */
+        .cad-section { }
+        .cad-hero { max-width: 680px; }
+        .cad-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-top: 22px; position: sticky; top: 56px; z-index: 5; background: var(--bg); -webkit-overflow-scrolling: touch; }
+        .cad-tab { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: 0 0 auto; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: var(--radius-pill); cursor: pointer; color: var(--text-mid); background: var(--bg-card); border: 1px solid var(--border-mid); transition: all .15s; }
+        .cad-tab:hover { color: var(--text); border-color: var(--brand); }
+        .cad-tab.on { color: #fff; background: var(--brand-gradient); border-color: transparent; box-shadow: 0 3px 14px rgba(0,200,224,.3); }
+        .cad-tab-ico { display: inline-flex; opacity: .9; }
+        .cad-panel { margin-top: 24px; display: grid; gap: 44px; }
+        .cad-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .cad-stat { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 16px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        .cad-stat-n { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.04em; font-size: 30px; color: var(--text); line-height: 1; }
+        .cad-stat-l { font-family: var(--font-body); font-size: 11.5px; color: var(--text-mid); margin-top: 6px; }
+        .cad-dayrow { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 10px; -webkit-overflow-scrolling: touch; }
+        .cad-day { flex: 0 0 auto; display: grid; gap: 2px; place-items: center; min-width: 86px; padding: 9px 10px; border-radius: var(--radius-md); cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text); transition: all .15s; }
+        .cad-day:hover:not(.rest) { border-color: var(--brand); }
+        .cad-day.on { background: var(--brand-gradient); border-color: transparent; color: #fff; box-shadow: 0 3px 12px rgba(0,200,224,.28); }
+        .cad-day.rest { opacity: .5; cursor: default; }
+        .cad-day-n { font-family: var(--font-mono); font-size: 11px; opacity: .85; }
+        .cad-day-l { font-family: var(--font-display); font-weight: 600; font-size: 12px; white-space: nowrap; }
         .cad-note-level { margin-top: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.55; color: var(--text-mid); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-left: 3px solid var(--brand); border-radius: var(--radius-sm); padding: 11px 14px; }
         .cad-note-level strong { color: var(--text); }
         .cad-badge-ex { position: absolute; top: 14px; right: 14px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); background: var(--bg-hover); border: 1px solid var(--border-mid); border-radius: 999px; padding: 3px 10px; }
@@ -74,7 +92,7 @@
         .cad-ul { margin: 0; padding-left: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--text-mid); display: grid; gap: 5px; }
         .cad-ul strong { color: var(--text); }
         .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
-        @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } }
+        @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } }
       `}</style>
     );
   }
@@ -183,70 +201,79 @@
   }
 
   // ════════════════ INTRO / PRÉSENTATION ════════════════
+  var CAD_TABS = [
+    { k: 'apercu', label: 'Vue d’ensemble', icon: 'chart' },
+    { k: 'qualites', label: '7 qualités', icon: 'target' },
+    { k: 'protocole', label: 'Protocole', icon: 'plan' },
+    { k: 'baremes', label: 'Barèmes & charges', icon: 'card' },
+    { k: 'score', label: 'Le score', icon: 'bolt' },
+    { k: 'fiabilite', label: 'Fiabilité', icon: 'shield' },
+  ];
   function CadIntro(props) {
     var cat = props.catalog;
     var enCours = (props.campaigns || []).filter(function (c) { return c.status === 'in_progress'; })[0];
     var terminees = (props.campaigns || []).filter(function (c) { return c.status === 'completed'; });
+    var tb = React.useState('apercu'); var tab = tb[0], setTab = tb[1];
+
+    var cta = props.crossOrigin
+      ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={props.appUrl}>Démarrer le test →</a>
+      : enCours
+        ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={function () { props.onResume(enCours.id); }}>Reprendre le test →</button>
+        : props.loggedIn
+          ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>
+          : <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>;
+
+    function panel() {
+      if (tab === 'qualites') return window.CadContent.qualities(cat);
+      if (tab === 'protocole') return window.CadContent.protocol(cat);
+      if (tab === 'baremes') return window.CadContent.bareme(cat);
+      if (tab === 'score') return window.CadContent.scoreExplain(cat);
+      if (tab === 'fiabilite') return <React.Fragment>{window.CadContent.transparence(cat)}{window.CadContent.warnings(cat)}</React.Fragment>;
+      return window.CadContent.overview(cat);
+    }
+
     return (
       <div>
-        <div className="t-label" style={{ color: 'var(--brand)' }}>Test de condition générale</div>
-        <h1 className="t-display" style={{ margin: '10px 0 0' }}>CADENCES</h1>
-        <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, lineHeight: 1.4, margin: '14px 0 0', color: 'var(--text)' }}>
-          Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.
-        </p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14.5, lineHeight: 1.65, color: 'var(--text-mid)', margin: '14px 0 0' }}>
-          {cat.totalTests} épreuves réparties sur 12 jours (course, force, haltérophilie, natation, vélo, Hyrox).
-          Un score sur {cat.totalPoints} et un niveau par qualité, en barème général ou ajusté à votre âge. Réservé aux 18 à 80 ans.
-        </p>
-        <div className="cad-note-level">
-          <strong>Pour qui ?</strong> Un test exigeant de condition générale, conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — ce n'est pas un test pour débuter.
+        <div className="cad-hero">
+          <div className="t-label" style={{ color: 'var(--brand)' }}>Test de condition générale</div>
+          <h1 className="t-display" style={{ margin: '10px 0 0' }}>CADENCES</h1>
+          <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, lineHeight: 1.4, margin: '14px 0 0', color: 'var(--text)', maxWidth: 640 }}>
+            Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.6, margin: '12px 0 0', color: 'var(--text-mid)', maxWidth: 640 }}>
+            {cat.totalTests} épreuves · 12 jours · score sur {cat.totalPoints} · 7 qualités · barème général ou ajusté à l'âge · 18 à 80 ans.
+          </p>
+          <div className="cad-note-level">
+            <strong>Pour qui ?</strong> Un test exigeant, conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — pas pour débuter.
+          </div>
+          <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {cta}
+            {props.crossOrigin ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Le test se lance sur l'app.</span> : null}
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 22 }}>
-          <Feature t="7 qualités" d={cat.qualities.map(function (q) { return q.label; }).join(', ') + '.'}/>
-          <Feature t="12 jours" d="Un protocole fixe, à refaire à l'identique d'une année sur l'autre."/>
-          <Feature t="Matériel" d="Stade/piste, salle de muscu, piscine, vélo avec capteur, barre de traction."/>
-        </div>
+        <nav className="cad-tabs" aria-label="Sections">
+          {CAD_TABS.map(function (t) {
+            return (
+              <button key={t.k} type="button" className={'cad-tab' + (tab === t.k ? ' on' : '')} onClick={function () { setTab(t.k); }}>
+                <span className="cad-tab-ico"><ThemeIcon name={t.icon} size={17} /></span>
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
 
-        <div style={{ marginTop: 28 }}>
-          {props.crossOrigin ? (
-            <div className="cad-card">
-              <div className="t-h2">Prêt à passer le test ?</div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 14px' }}>
-                La saisie des épreuves et le score se font en étant connecté à ton compte. Clique ci-dessous pour lancer le test.
-              </p>
-              <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 20px' }} href={props.appUrl}>Démarrer le test →</a>
-            </div>
-          ) : !props.loggedIn ? (
-            <div className="cad-card">
-              <div className="t-h2">Connecte-toi pour passer le test</div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 14px' }}>
-                Tes résultats sont enregistrés sur ton compte pour suivre ta progression. Gratuit.
-              </p>
-              <a className="thw-btn-primary" href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter / créer un compte</a>
-            </div>
-          ) : enCours ? (
-            <div className="cad-card">
-              <div className="t-h2">Un test est en cours</div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 14px' }}>
-                Démarré le {frDate(enCours.started_on)} · barème {enCours.scale_sex === 'M' ? 'homme' : 'femme'}, {enCours.age_at_start} ans, {Math.round(enCours.body_weight_kg)} kg.
-              </p>
-              <button type="button" className="thw-btn-primary" onClick={function () { props.onResume(enCours.id); }}>Reprendre le test →</button>
-            </div>
-          ) : (
-            <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 20px' }} onClick={props.onStart}>Démarrer le test</button>
-          )}
-        </div>
+        <div className="cad-panel">{panel()}</div>
 
-        {terminees.length ? (
-          <div style={{ marginTop: 28 }}>
+        {!props.crossOrigin && terminees.length ? (
+          <div style={{ marginTop: 'var(--space-8)' }}>
             <div className="t-h2" style={{ marginBottom: 10 }}>Mes passages</div>
             <div style={{ display: 'grid', gap: 8 }}>
               {terminees.map(function (c) {
                 return (
                   <button key={c.id} type="button" onClick={function () { props.onOpenResults(c.id); }}
                           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, textAlign: 'left',
-                                   background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', cursor: 'pointer', color: 'var(--text)' }}>
+                                   background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: '12px 14px', cursor: 'pointer', color: 'var(--text)' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{frDate(c.completed_on || c.started_on)}</span>
                     <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.scale_sex === 'M' ? 'H' : 'F'} · {c.age_at_start} ans · {Math.round(c.body_weight_kg)} kg →</span>
                   </button>
@@ -255,22 +282,6 @@
             </div>
           </div>
         ) : null}
-
-        {window.CadContent.preview(cat)}
-        {window.CadContent.qualities(cat)}
-        {window.CadContent.protocol(cat)}
-        {window.CadContent.bareme(cat)}
-        {window.CadContent.scoreExplain(cat)}
-        {window.CadContent.transparence(cat)}
-        {window.CadContent.warnings(cat)}
-
-        <div className="cad-section" style={{ textAlign: 'center' }}>
-          {props.crossOrigin
-            ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={props.appUrl}>Démarrer le test →</a>
-            : !props.loggedIn
-              ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>
-              : <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>}
-        </div>
       </div>
     );
   }

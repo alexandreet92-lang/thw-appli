@@ -102,9 +102,11 @@
     var items = props.items || [];
     var n = items.length || 7;
     var size = props.size || 300;
+    var PAD = 52;                 // marge pour les libellés (hors du cercle)
     var cx = size / 2, cy = size / 2;
-    var R = size / 2 - 34;
+    var R = size / 2 - 10;
     var color = props.color || BRAND;
+    var SHORT = { 'Puissance': 'Puiss.', 'Explosivité': 'Explo.', 'Endurance': 'Endur.', 'VO2max': 'VO₂max', 'Coordination': 'Coord.' };
     function pt(i, rad) {
       var a = -Math.PI / 2 + i * (2 * Math.PI / n);
       return [cx + rad * Math.cos(a), cy + rad * Math.sin(a)];
@@ -118,7 +120,7 @@
     }).join(' ');
     return (
       <div style={{ display: 'grid', placeItems: 'center' }}>
-        <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img" aria-label="Radar des 7 qualités">
+        <svg width={size} height={size} viewBox={(-PAD) + ' ' + (-PAD) + ' ' + (size + 2 * PAD) + ' ' + (size + 2 * PAD)} role="img" aria-label="Radar des 7 qualités">
           {/* grille : anneaux de fond + repères 60 % et 100 % */}
           {[0.3, 0.6, 0.833, 1].map(function (f, i) {
             return <polygon key={i} points={polyAt(f)} fill="none" stroke={GRID} strokeWidth={f === 0.6 || f === 0.833 ? 1.1 : 0.6}
@@ -139,7 +141,7 @@
             var p = pt(i, R + 16);
             var anchor = Math.abs(p[0] - cx) < 6 ? 'middle' : (p[0] > cx ? 'start' : 'end');
             return <text key={i} x={p[0]} y={p[1] + 3} textAnchor={anchor}
-                         style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{q.label}</text>;
+                         style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{SHORT[q.label] || q.label}</text>;
           })}
         </svg>
       </div>
@@ -163,5 +165,29 @@
     );
   }
 
-  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar });
+  /* Répartition des points par famille — barres horizontales animées. */
+  function CadPointsByFamily(props) {
+    var on = useEnter();
+    var data = props.data || [];
+    var maxv = Math.max.apply(null, data.map(function (d) { return d.pts; }).concat([1]));
+    return (
+      <div style={{ display: 'grid', gap: 10 }}>
+        {data.map(function (d, i) {
+          var w = on ? Math.max(3, (d.pts / maxv) * 100) : 0;
+          return (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 46px', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
+              <svg width="100%" height={14} viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label={d.label + ' : ' + d.pts + ' points'}>
+                <rect x={0} y={3} width={100} height={8} rx={4} fill={TRACK} />
+                <rect x={0} y={3} width={w} height={8} rx={4} fill={d.color || BRAND} style={{ transition: 'width .8s cubic-bezier(.22,1,.36,1) ' + (i * 50) + 'ms' }} />
+              </svg>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--text)', textAlign: 'right' }}>{d.pts}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily });
 })();

@@ -67,29 +67,55 @@
     );
   }
 
-  // ── Aperçu animé (exemple illustratif) ──────────────────────────────
-  function preview(catalog) {
+  // ── Vue d'ensemble ──────────────────────────────────────────────────
+  var FAMILY = {
+    'Sauts': 'Sauts', 'Sprints': 'Vitesse', 'Agilité': 'Agilité',
+    '6.200': 'Course', '400 m': 'Course', '3200 m': 'Course',
+    'Natation': 'Natation', 'Force max': 'Force', 'Haltérophilie': 'Haltérophilie',
+    'Vélo': 'Vélo', 'AMRAP': 'Hybride', 'Hyrox': 'Hybride',
+  };
+  var FAM_COLOR = { 'Sauts': '#38bdf8', 'Vitesse': '#00c8e0', 'Agilité': '#5b6fff', 'Course': '#2dd4bf', 'Natation': '#22c55e', 'Force': '#f59e0b', 'Haltérophilie': '#fb923c', 'Vélo': '#a3e635', 'Hybride': '#f472b6' };
+  function familyData(catalog) {
+    var m = {};
+    catalog.tests.forEach(function (t) { var f = FAMILY[t.group] || t.group; m[f] = (m[f] || 0) + t.pts_max; });
+    return Object.keys(m).map(function (k) { return { label: k, pts: m[k], color: FAM_COLOR[k] || '#00c8e0' }; })
+      .sort(function (a, b) { return b.pts - a.pts; });
+  }
+  function Stat(props) {
+    return (
+      <div className="cad-stat">
+        <div className="cad-stat-n">{props.n}</div>
+        <div className="cad-stat-l">{props.l}</div>
+      </div>
+    );
+  }
+  function overview(catalog) {
     var ex = { vitesse: 0.62, force: 0.85, puissance: 0.70, explosivite: 0.58, endurance: 0.90, vo2max: 0.78, coordination: 0.66 };
-    var items = catalog.qualities.map(function (q) {
-      var pct = ex[q.key] != null ? ex[q.key] : 0.6;
-      var lvl = levelFor(pct, catalog.levels);
-      return { key: q.key, label: q.label, pct: pct, level: lvl, color: levelColor(catalog.palette, lvl) };
-    });
+    var items = catalog.qualities.map(function (q) { var pct = ex[q.key] != null ? ex[q.key] : 0.6; var lvl = levelFor(pct, catalog.levels); return { key: q.key, label: q.label, pct: pct, level: lvl, color: levelColor(catalog.palette, lvl) }; });
     var total = 742, glvl = levelFor(total / catalog.totalPoints, catalog.levels);
     return (
-      <section className="cad-section">
-        <SectionTitle kicker="Ce que tu obtiens" sub="À la fin, un score global sur 1000 et une lecture claire de chaque qualité — en barème général ou ajusté à ton âge.">Tes résultats, visuels</SectionTitle>
-        <div className="cad-card" style={{ position: 'relative' }}>
-          <span className="cad-badge-ex">Exemple illustratif</span>
-          <div className="cad-preview-grid">
-            <CadScoreDonut total={total} totalMax={catalog.totalPoints} level={glvl} color={levelColor(catalog.palette, glvl)} size={190}/>
-            <CadRadar items={items} color="#00c8e0" size={300}/>
-          </div>
-          <div style={{ marginTop: 'var(--space-5)' }}>
-            <CadQualityRings items={items}/>
-          </div>
+      <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+        <div className="cad-stats">
+          <Stat n={catalog.totalTests} l="épreuves" />
+          <Stat n="12" l="jours" />
+          <Stat n={catalog.totalPoints} l="points de réf." />
+          <Stat n="7" l="qualités" />
         </div>
-      </section>
+        <div className="cad-card" style={{ position: 'relative' }}>
+          <span className="cad-badge-ex">Exemple</span>
+          <SectionTitle sub="À la fin : un score global sur 1000 et une lecture claire de chaque qualité, en barème général ou ajusté à l'âge.">Tes résultats, en un coup d'œil</SectionTitle>
+          <div className="cad-preview-grid" style={{ marginTop: 'var(--space-3)' }}>
+            <CadScoreDonut total={total} totalMax={catalog.totalPoints} level={glvl} color={levelColor(catalog.palette, glvl)} size={200} />
+            <CadRadar items={items} color="#00c8e0" size={310} />
+          </div>
+          <div style={{ marginTop: 'var(--space-5)' }}><CadQualityRings items={items} /></div>
+        </div>
+        <div className="cad-card">
+          <h3 className="cad-h3">Répartition des {catalog.totalPoints} points par famille</h3>
+          <p className="cad-p">Le poids de chaque famille d'épreuves dans le score global.</p>
+          <CadPointsByFamily data={familyData(catalog)} />
+        </div>
+      </div>
     );
   }
 
@@ -113,61 +139,72 @@
   }
 
   // ── Protocole complet 12 jours ──────────────────────────────────────
-  function protocol(catalog) {
-    var byDay = function (d) { return catalog.tests.filter(function (t) { return t.day === d; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; }); };
+  function EpreuveCard(props) {
+    var t = props.t, p = props.p;
+    return (
+      <div className="cad-card" style={{ padding: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{t.name}</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-dim)' }}>{t.group} · {t.pts_max} pts</div>
+        </div>
+        {p ? (
+          <div style={{ display: 'grid', gap: 6, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)' }}>
+            <div><strong style={{ color: 'var(--text)' }}>Objectif.</strong> {p.objectif}</div>
+            <div><strong style={{ color: 'var(--text)' }}>Matériel.</strong> {p.materiel.join(', ')}.</div>
+            <ol style={{ margin: '2px 0', paddingLeft: 18, display: 'grid', gap: 2 }}>{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
+            {p.securite ? <div><strong style={{ color: 'var(--text)' }}>Sécurité.</strong> {p.securite}</div> : null}
+            {p.echauffementSpecifique ? <div><strong style={{ color: 'var(--text)' }}>Échauffement spécifique.</strong> {p.echauffementSpecifique}</div> : null}
+            {p.allure ? <div><strong style={{ color: 'var(--text)' }}>Allure.</strong> {p.allure}</div> : null}
+            {p.box ? <div><strong style={{ color: 'var(--text)' }}>Box.</strong> {p.box}</div> : null}
+            <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}</div>
+          </div>
+        ) : null}
+        {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
+        <BaremeMini test={t} />
+      </div>
+    );
+  }
+  function ProtocolSection(props) {
+    var catalog = props.catalog;
+    var firstDay = catalog.days.filter(function (d) { return !d.rest; })[0];
+    var ds = React.useState(firstDay ? firstDay.day : 1);
+    var day = ds[0], setDay = ds[1];
+    var byDay = function (dd) { return catalog.tests.filter(function (t) { return t.day === dd; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; }); };
+    var cur = catalog.days.filter(function (d) { return d.day === day; })[0] || catalog.days[0];
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. L'ordre et les jours de repos font partie du test : le but est la comparabilité, pas la perf isolée.">Le protocole, jour par jour</SectionTitle>
-        <div className="cad-card" style={{ background: 'var(--bg-card-2)', marginBottom: 'var(--space-4)' }}>
-          <strong style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text)' }}>Échauffement général.</strong>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6 }}> {catalog.echauffement}</span>
-        </div>
-        <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+        <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. Choisis un jour pour voir ses épreuves, leur schéma et leur barème.">Le protocole, jour par jour</SectionTitle>
+        <div className="cad-dayrow">
           {catalog.days.map(function (d) {
             return (
-              <div key={d.day}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 'var(--space-2)' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>JOUR {d.day}</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>{d.label}</span>
-                </div>
-                {d.rest ? (
-                  <div className="cad-card" style={{ padding: 'var(--space-3) var(--space-4)', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>Repos — fait partie du protocole. Aucune épreuve.</div>
-                ) : (
-                  <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                    {byDay(d.day).map(function (t) {
-                      var p = catalog.protocols[t.slug];
-                      return (
-                        <div key={t.slug} className="cad-card" style={{ padding: 'var(--space-4)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{t.name}</div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-dim)' }}>{t.group} · {t.pts_max} pts</div>
-                          </div>
-                          {p ? (
-                            <div style={{ display: 'grid', gap: 6, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)' }}>
-                              <div><strong style={{ color: 'var(--text)' }}>Objectif.</strong> {p.objectif}</div>
-                              <div><strong style={{ color: 'var(--text)' }}>Matériel.</strong> {p.materiel.join(', ')}.</div>
-                              <ol style={{ margin: '2px 0', paddingLeft: 18, display: 'grid', gap: 2 }}>{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
-                              {p.securite ? <div><strong style={{ color: 'var(--text)' }}>Sécurité.</strong> {p.securite}</div> : null}
-                              {p.echauffementSpecifique ? <div><strong style={{ color: 'var(--text)' }}>Échauffement spécifique.</strong> {p.echauffementSpecifique}</div> : null}
-                              {p.allure ? <div><strong style={{ color: 'var(--text)' }}>Allure.</strong> {p.allure}</div> : null}
-                              {p.box ? <div><strong style={{ color: 'var(--text)' }}>Box.</strong> {p.box}</div> : null}
-                              <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}</div>
-                            </div>
-                          ) : null}
-                          {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
-                          <BaremeMini test={t} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <button key={d.day} type="button" disabled={d.rest}
+                className={'cad-day' + (d.day === day ? ' on' : '') + (d.rest ? ' rest' : '')}
+                onClick={function () { if (!d.rest) setDay(d.day); }}>
+                <span className="cad-day-n">J{d.day}</span>
+                <span className="cad-day-l">{d.rest ? 'Repos' : d.label}</span>
+              </button>
             );
           })}
         </div>
+        <div className="cad-card" style={{ background: 'var(--bg-card-2)', margin: 'var(--space-4) 0' }}>
+          <strong style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)' }}>Échauffement général.</strong>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6 }}> {catalog.echauffement}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 'var(--space-3)' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>JOUR {cur.day}</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>{cur.label}</span>
+        </div>
+        {cur.rest ? (
+          <div className="cad-card" style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>Repos — fait partie du protocole.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            {byDay(cur.day).map(function (t) { return <EpreuveCard key={t.slug} t={t} p={catalog.protocols[t.slug]} />; })}
+          </div>
+        )}
       </section>
     );
   }
+  function protocol(catalog) { return <ProtocolSection catalog={catalog} />; }
 
   // ── Barèmes & charges ───────────────────────────────────────────────
   function bareme(catalog) {
@@ -349,7 +386,7 @@
   }
 
   window.CadContent = {
-    preview: preview, qualities: qualities, protocol: protocol,
+    overview: overview, qualities: qualities, protocol: protocol,
     bareme: bareme, scoreExplain: scoreExplain, transparence: transparence, warnings: warnings,
   };
 })();

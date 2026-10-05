@@ -7,7 +7,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { CONFIG, DAYS } from '@/lib/cadences/catalog'
-import { PROTOCOLS, ECHAUFFEMENT_GENERAL } from '@/lib/cadences/protocols'
+import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG } from '@/lib/cadences/protocols'
 import { LEVEL_COLORS } from '@/lib/cadences/palette'
 
 export const dynamic = 'force-dynamic'
@@ -52,6 +52,7 @@ export async function GET(): Promise<NextResponse> {
     tests,
     protocols: PROTOCOLS,
     echauffement: ECHAUFFEMENT_GENERAL,
+    hyroxThrusterKg: HYROX_THRUSTER_KG,
     qualities: CONFIG.qualities,
     levels: CONFIG.levels,
     palette: LEVEL_COLORS,

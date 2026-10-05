@@ -17,14 +17,35 @@
 
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
   function levelFor(pct, levels) { var lab = levels[0].label; for (var i = 0; i < levels.length; i++) if (pct >= levels[i].min_pct) lab = levels[i].label; return lab; }
+  function round1(v) { return Math.round(v * 100) / 100; }
   function fmtDur(v) { var m = Math.floor(v / 60); var s = Math.round(v - m * 60); return m + ':' + String(s).padStart(2, '0'); }
   function fmtThreshold(t, v) {
-    if (t.kind === 'ratio' && t.unit === 'kg') return v + '× pdc';
-    if (t.kind === 'ratio' && t.unit === 'W') return v + ' W/kg';
-    if (t.unit === 's') return fmtDur(v);
-    if (t.unit === 'm') return v + ' m';
-    if (t.unit === 'tours') return v + ' tours';
-    return String(v);
+    if (t.kind === 'ratio' && t.unit === 'kg') return round1(v) + '× pdc';
+    if (t.kind === 'ratio' && t.unit === 'W') return round1(v) + ' W/kg';
+    if (t.unit === 's') return v >= 60 ? fmtDur(v) : round1(v) + ' s';
+    if (t.unit === 'm') return round1(v) + ' m';
+    if (t.unit === 'tours') return round1(v) + ' tours';
+    return String(round1(v));
+  }
+  // Barème intégral 0→120 % depuis Réf (60 %) et Max (100 %) : linéaire (comme le doc).
+  var BAR_P = [0, 20, 40, 60, 80, 100, 120];
+  function baremeCols(test, sex) {
+    var b = sex === 'M' ? test.male : test.female;
+    return BAR_P.map(function (p) { return b.ref + (b.max - b.ref) * (p - 60) / 40; });
+  }
+  function BaremeMini(props) {
+    var t = props.test;
+    return (
+      <div style={{ overflowX: 'auto', marginTop: 10 }}>
+        <table className="cad-table cad-table-sm">
+          <thead><tr><th style={{ textAlign: 'left' }}>Barème</th>{BAR_P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
+          <tbody>
+            <tr><td style={{ textAlign: 'left', fontWeight: 600, color: 'var(--text)' }}>H</td>{baremeCols(t, 'M').map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>
+            <tr><td style={{ textAlign: 'left', fontWeight: 600, color: 'var(--text)' }}>F</td>{baremeCols(t, 'F').map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>
+          </tbody>
+        </table>
+      </div>
+    );
   }
   function levelRanges(levels) {
     return levels.map(function (l, i) {
@@ -127,9 +148,14 @@
                               <div><strong style={{ color: 'var(--text)' }}>Matériel.</strong> {p.materiel.join(', ')}.</div>
                               <ol style={{ margin: '2px 0', paddingLeft: 18, display: 'grid', gap: 2 }}>{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
                               {p.securite ? <div><strong style={{ color: 'var(--text)' }}>Sécurité.</strong> {p.securite}</div> : null}
-                              <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}{p.flag ? ' (protocole en cours de relecture)' : ''}</div>
+                              {p.echauffementSpecifique ? <div><strong style={{ color: 'var(--text)' }}>Échauffement spécifique.</strong> {p.echauffementSpecifique}</div> : null}
+                              {p.allure ? <div><strong style={{ color: 'var(--text)' }}>Allure.</strong> {p.allure}</div> : null}
+                              {p.box ? <div><strong style={{ color: 'var(--text)' }}>Box.</strong> {p.box}</div> : null}
+                              <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}</div>
                             </div>
                           ) : null}
+                          {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
+                          <BaremeMini test={t} />
                         </div>
                       );
                     })}
@@ -215,9 +241,28 @@
             </table>
           </div>
         </div>
-        <p className="cad-p" style={{ marginTop: 'var(--space-4)', fontSize: 12, color: 'var(--text-dim)' }}>
-          À préciser (données en cours) : charge des thrusters Hyrox, géométries exactes Square/Slalom, règle de score du Move. Affichés dès qu'ils sont fixés — jamais estimés au hasard.
-        </p>
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <h3 className="cad-h3">Charges Hyrox — thrusters</h3>
+          <p className="cad-p">Charge des thrusters selon le poids de corps. Burpees box jump : box 60 cm (H) / 40 cm (F), 12 répétitions par tour.</p>
+          <div className="cad-two">
+            {['M', 'F'].map(function (sex) {
+              var rows = (catalog.hyroxThrusterKg && catalog.hyroxThrusterKg[sex]) || [];
+              return (
+                <div key={sex}>
+                  <div className="t-label" style={{ color: 'var(--text-mid)', marginBottom: 6 }}>{sex === 'M' ? 'Hommes' : 'Femmes'}</div>
+                  <table className="cad-table cad-table-sm">
+                    <tbody>
+                      {rows.map(function (b, i) {
+                        var label = b.hi == null ? ('≥ ' + b.lo + ' kg') : (b.lo === 0 ? ('< ' + b.hi + ' kg') : (b.lo + '–' + b.hi + ' kg'));
+                        return <tr key={i}><td style={{ textAlign: 'left' }}>{label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.kg} kg</td></tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
     );
   }
@@ -269,8 +314,42 @@
     );
   }
 
+  // ── Transparence (niveaux de confiance, hypothèses) ─────────────────
+  function transparence() {
+    var conf = [
+      { l: 'Solide / moyenne', c: '#22c55e', tests: 'Sauts, sprints, force, vélo 20′, natation 50 m, 400 m', why: 'Repères publiés ou seuils fixés par Alex.' },
+      { l: 'Faible', c: '#f59e0b', tests: '6×200 m, natation 200 m, dead hang, Hyrox, 3200 m', why: 'Estimation par décomposition, jamais mesurée sur le terrain.' },
+      { l: 'Aucune donnée', c: '#ef4444', tests: 'Square, Move, Slalom', why: 'Modèle théorique pur — à calibrer en priorité (échantillon ≥ 30).' },
+    ];
+    return (
+      <section className="cad-section">
+        <SectionTitle kicker="Jouer franc-jeu" sub="D'où viennent les repères, et ce qu'il reste à valider. On préfère le dire que faire semblant.">Fiabilité & hypothèses</SectionTitle>
+        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+          {conf.map(function (r, i) {
+            return (
+              <div key={i} className="cad-card" style={{ padding: 'var(--space-4)', borderLeft: '4px solid ' + r.c }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{r.l}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', marginTop: 4 }}>{r.tests}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>{r.why}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cad-card" style={{ marginTop: 'var(--space-3)' }}>
+          <h3 className="cad-h3">Hypothèses de conversion (à ajuster avec de vraies données)</h3>
+          <ul className="cad-ul">
+            <li>Femmes — force : ~65 % des valeurs hommes ; sauts : ~80 % ; course : ~15–20 % plus lentes.</li>
+            <li>Force en 3RM : dérivée de l'ancien barème 1RM × 0,91.</li>
+            <li>Vélo : FTP estimée = 95 % de la puissance moyenne sur 20 min.</li>
+            <li>Coefficients d'âge : estimations (littérature masters), à valider sur le terrain — surtout 18–20 et 71–80 ans.</li>
+          </ul>
+        </div>
+      </section>
+    );
+  }
+
   window.CadContent = {
     preview: preview, qualities: qualities, protocol: protocol,
-    bareme: bareme, scoreExplain: scoreExplain, warnings: warnings,
+    bareme: bareme, scoreExplain: scoreExplain, transparence: transparence, warnings: warnings,
   };
 })();

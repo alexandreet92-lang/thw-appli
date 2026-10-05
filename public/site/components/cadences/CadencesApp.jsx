@@ -234,6 +234,7 @@
         {window.CadContent.protocol(cat)}
         {window.CadContent.bareme(cat)}
         {window.CadContent.scoreExplain(cat)}
+        {window.CadContent.transparence(cat)}
         {window.CadContent.warnings(cat)}
 
         <div className="cad-section" style={{ textAlign: 'center' }}>
@@ -501,6 +502,7 @@
                       return <CadTestCard key={t.slug} t={t} draft={drafts[t.slug]} setDraft={function (p) { setDraft(t.slug, p); }}
                                           result={resultBySlug[t.slug]} score={sc} proto={cat.protocols[t.slug]}
                                           palette={cat.palette} bodyWeight={camp.body_weight_kg}
+                                          hyroxTable={cat.hyroxThrusterKg} sex={camp.scale_sex}
                                           onValidate={function () { validate(t); }} onSkip={function (reason) { skip(t, reason); }} onClear={function () { clear(t); }}/>;
                     })}
                   </div>
@@ -529,6 +531,11 @@
     var agg = aggDraft(t, d);
     var derived = agg != null ? F().derivedData(t, agg, props.bodyWeight) : [];
     var scColor = sc ? levelColor(props.palette, sc.level) : 'var(--border)';
+    var hyroxKg = null;
+    if (t.slug === 'hyrox_circuit' && props.hyroxTable) {
+      var hr = props.hyroxTable[props.sex] || [];
+      for (var hi = 0; hi < hr.length; hi++) { var hb = hr[hi]; if (props.bodyWeight >= hb.lo && (hb.hi == null || props.bodyWeight < hb.hi)) { hyroxKg = hb.kg; break; } }
+    }
 
     return (
       <div className="cad-card" style={{ display: 'grid', gap: 12, borderColor: validated ? scColor : 'var(--border)' }}>
@@ -542,16 +549,28 @@
           ) : skipped ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>Non passée</span> : null}
         </div>
 
+        {hyroxKg != null ? (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text)', background: 'var(--bg-card-2)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '8px 11px' }}>
+            <strong>Thrusters : {hyroxKg} kg</strong> · box {props.sex === 'F' ? '40' : '60'} cm · 12 burpees box jump (ta tranche de poids)
+          </div>
+        ) : null}
+
         {proto ? (
           <div>
             <button type="button" className="cad-link" onClick={function () { setShowProto(!showProto); }}>{showProto ? 'Masquer le protocole' : 'Voir le protocole'}</button>
             {showProto ? (
-              <div className="cad-proto" style={{ marginTop: 8 }}>
-                <div><strong>Objectif.</strong> {proto.objectif}</div>
-                <div><strong>Matériel.</strong> {proto.materiel.join(', ')}.</div>
-                <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{proto.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
-                {proto.securite ? <div><strong>Sécurité.</strong> {proto.securite}</div> : null}
-                <div><strong>À saisir.</strong> {proto.saisie}</div>
+              <div>
+                <div className="cad-proto" style={{ marginTop: 8 }}>
+                  <div><strong>Objectif.</strong> {proto.objectif}</div>
+                  <div><strong>Matériel.</strong> {proto.materiel.join(', ')}.</div>
+                  <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{proto.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
+                  {proto.securite ? <div><strong>Sécurité.</strong> {proto.securite}</div> : null}
+                  {proto.echauffementSpecifique ? <div><strong>Échauffement spécifique.</strong> {proto.echauffementSpecifique}</div> : null}
+                  {proto.allure ? <div><strong>Allure.</strong> {proto.allure}</div> : null}
+                  {proto.box ? <div><strong>Box.</strong> {proto.box}</div> : null}
+                  <div><strong>À saisir.</strong> {proto.saisie}</div>
+                </div>
+                {proto.diagram ? <CadDiagram name={proto.diagram} /> : null}
               </div>
             ) : null}
           </div>

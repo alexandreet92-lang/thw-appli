@@ -16,8 +16,62 @@ export interface Protocol {
   echauffementSpecifique?: string  // en plus de l'échauffement général
   allure?: string                  // allures cibles indicatives
   box?: string                     // hauteur de box (Hyrox)
-  diagram?: 'square' | 'slalom' | 'move'   // schéma du parcours à plots
+  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
+}
+
+/** Profils d'échauffement : il n'est PAS le même selon la séance et le sport. */
+export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
+  haltero: {
+    titre: 'Haltérophilie',
+    texte: "Barre à vide : mobilité épaules, hanches, chevilles et quelques mouvements à vide. " +
+      "Puis montée en charge par séries courtes (50 % ×5, 70 % ×3, 85 % ×2) avant de chercher le max. Technique avant charge.",
+  },
+  force: {
+    titre: 'Force',
+    texte: "Mobilité ciblée sur l'articulation sollicitée. Montée progressive : 50 % du 3RM estimé ×8, 70 % ×5, " +
+      "85 % ×3, puis 1–2 tentatives proches du 3RM, 2–3 min de récup entre paliers. Dead hang toujours en toute fin de séance.",
+  },
+  explo: {
+    titre: 'Explosivité · vitesse · agilité',
+    texte: "10 min de footing + mobilité dynamique (montées de genoux, talons-fesses, pas chassés), puis 4 à 6 " +
+      "accélérations progressives de 20–30 m et quelques bonds légers. À froid pour l'explosivité. Agilité sur gazon, " +
+      "jamais sur bitume ; plots contournés de l'extérieur vers l'intérieur.",
+  },
+  natation: {
+    titre: 'Natation',
+    texte: "300–400 m en nage souple + quelques éducatifs, puis 4×25 m en accélération. 2 min de récup avant le départ.",
+  },
+  course: {
+    titre: 'Course / endurance',
+    texte: "10–15 min de footing facile + mobilité, puis quelques lignes progressives. Allure gérée : un départ trop " +
+      "rapide fait s'effondrer le temps final.",
+  },
+  velo: {
+    titre: 'Vélo',
+    texte: "10 min progressif, 3 min facile, 3 accélérations de 1 min proches du seuil, puis 5 min facile avant le test.",
+  },
+  hyrox: {
+    titre: 'Hyrox / circuit',
+    texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
+      "charge légère (thrusters, burpees, tractions) pour réviser la technique avant de lancer.",
+  },
+}
+
+const WARMUP_FORCE = new Set(['squat_3rm', 'bench_press_3rm', 'deadlift_3rm', 'military_press_3rm', 'weighted_pullup_3rm', 'dead_hang'])
+const WARMUP_HALTERO = new Set(['clean_2rm', 'clean_and_press_2rm', 'front_squat_3rm'])
+const WARMUP_HYROX = new Set(['hyrox_circuit', 'amrap_20min'])
+
+/** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
+export function warmupForTest(slug: string): { titre: string; texte: string } {
+  if (WARMUP_FORCE.has(slug)) return ECHAUFFEMENTS.force
+  if (WARMUP_HALTERO.has(slug)) return ECHAUFFEMENTS.haltero
+  if (WARMUP_HYROX.has(slug)) return ECHAUFFEMENTS.hyrox
+  if (slug.startsWith('swim')) return ECHAUFFEMENTS.natation
+  if (slug === 'bike_20min') return ECHAUFFEMENTS.velo
+  if (slug.startsWith('run') || slug.startsWith('repeat_200')) return ECHAUFFEMENTS.course
+  // sauts, sprints, agilité (square/move/slalom)
+  return ECHAUFFEMENTS.explo
 }
 
 /** Échauffement général commun à toutes les épreuves. */
@@ -90,6 +144,7 @@ export const PROTOCOLS: Record<string, Protocol> = {
       'Mesurer du bord de la ligne au talon le plus proche. 3 essais, le meilleur compte.',
     ],
     saisie: 'La meilleure des 3 distances (m).',
+    diagram: 'longjump',
   },
   standing_triple_jump: {
     objectif: 'Explosivité et coordination (enchaînement de 3 bonds).',
@@ -100,6 +155,7 @@ export const PROTOCOLS: Record<string, Protocol> = {
       'Mesurer jusqu\'au talon le plus proche. 3 essais, le meilleur compte.',
     ],
     saisie: 'La meilleure des 3 distances (m).',
+    diagram: 'triplejump',
   },
   sprint_30m: {
     objectif: 'Accélération pure (puissance et explosivité).',

@@ -148,6 +148,7 @@
         {/* a. Le constat */}
         <Act eye="Le constat" title="Ton corps a un pic. Puis il décline."
              lead={<span>VO₂max, muscle, hormones, os, vitesse du cerveau : chaque système culmine autour de la trentaine, puis baisse. <strong>C’est inévitable.</strong></span>}>
+          <p className="cad-act-p">Avant d’ouvrir le test, un détour : comprendre <strong>pourquoi</strong> on le fait. Commençons par ce qui nous arrive à tous — système par système.</p>
         </Act>
 
         {/* b. Comment ton corps vieillit */}
@@ -157,18 +158,20 @@
               <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
               <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
             </div>
-            {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} focusX={59} xDomain={[0, 80]} replayNonce={rp} aria="Déclin des systèmes du corps avec l'âge" /> : null}
+            {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} hover={true} focusX={59} xDomain={[0, 80]} replayNonce={rp} aria="Déclin des systèmes du corps avec l'âge" /> : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               {Legend(sys)}
               <button type="button" className="cad-link" onClick={function () { setRp(rp + 1); }}>↻ Rejouer</button>
             </div>
             <Sources />
           </div>
+          <p className="cad-act-p">Tout grimpe jusqu’à ~25-30 ans, puis redescend — mais pas au même rythme. <strong>Le VO₂max et le muscle lâchent les premiers</strong> ; l’os et la coordination tiennent plus longtemps. Passe la souris sur la courbe pour lire chaque système à l’âge voulu, et compare homme / femme (chez la femme, la chute des œstrogènes et de l’os s’accélère à la ménopause).</p>
         </Act>
 
         {/* c. Le message */}
         <Act eye="Mais" title="La vitesse du déclin n’est pas une fatalité."
              lead={<span>Un entraînement <strong>régulier et structuré</strong> — du cardio et du muscle, répétés dans le temps — ralentit extraordinairement cette baisse. On ne supprime pas le déclin : <strong>on le freine.</strong></span>}>
+          <p className="cad-act-p">La question n’est donc pas <em>si</em> on décline, mais <strong>à quelle vitesse</strong>. Et là, on a une vraie prise.</p>
         </Act>
 
         {/* d. Sédentaire vs entraîné */}
@@ -181,11 +184,13 @@
             </div>
             <Sources />
           </div>
+          <p className="cad-act-p">À 80 ans, l’entraîné garde le VO₂max que le sédentaire avait <strong>~20 ans plus tôt</strong>. L’aire grise entre les deux courbes, ce sont ces <strong>années gagnées</strong> — pas sur un exploit, mais sur la régularité.</p>
         </Act>
 
         {/* e. Les deux garçons */}
         <Act eye="Deux garçons, même départ" title="La régularité, pendant soixante ans"
              lead={<span>Même âge, même ossature, mêmes qualités de départ. Un seul détail les sépare : <strong>la constance.</strong></span>}>
+          <p className="cad-act-p">Pour rendre ça concret, suivons deux parcours de vie opposés — les mêmes gènes au départ, deux façons de les dépenser.</p>
           <Timeline />
           <div className="cad-reveal">
             <button type="button" className="cad-link" onClick={function () { setOpen(!open); }} aria-expanded={open}>
@@ -199,8 +204,9 @@
         <Act eye="Trajectoire A vs B" title="Capacité physique globale, de 5 à 80 ans">
           <div className="cad-card" style={{ marginTop: 18 }}>
             {LC ? <LC series={LIFE} markers={LIFE_MARKERS} xDomain={[5, 80]} xTicks={[10, 20, 30, 40, 50, 60, 70, 80]} aria="Capacité physique de deux parcours de vie" /> : null}
-            <p className="cad-p" style={{ margin: '12px 0 0' }}>À 80 ans, <strong>A</strong> a la capacité d’un sexagénaire ; <strong>B</strong> a basculé dans la dépendance. Le même capital de départ, dépensé de deux façons.</p>
+            <p className="cad-act-p" style={{ margin: '12px 0 0' }}>Les courbes divergent tôt et ne se rejoignent jamais. À 80 ans, <strong>A</strong> a la capacité d’un sexagénaire et vit en autonomie ; <strong>B</strong> a basculé dans la dépendance. Même capital de départ, deux façons de le dépenser.</p>
           </div>
+          <p className="cad-act-p">La différence ne s’est pas jouée à la salle un jour donné, mais sur <strong>des milliers de petites séances</strong>, répétées pendant soixante ans.</p>
         </Act>
 
         {/* g. La réponse */}

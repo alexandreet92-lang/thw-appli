@@ -253,9 +253,19 @@
     var iv = useInView(); var chartRef = iv[0], inView = iv[1];
     var caState = React.useState(focusX);
     var ca = caState[0], setCa = caState[1];
+    var hs = React.useState(null); var hoverAge = hs[0], setHoverAge = hs[1];
+    var hovering = props.hover && hoverAge != null;
+    function onHoverMove(e) {
+      if (!props.hover) return;
+      var el = chartRef.current; if (!el) return;
+      var r = el.getBoundingClientRect(); if (!r.width) return;
+      var svgX = (e.clientX - r.left) / r.width * W;
+      var age = x0 + (svgX - PADL) / (W - PADR - PADL) * (x1 - x0);
+      setHoverAge(Math.max(x0, Math.min(x1, age)));
+    }
     React.useEffect(function () {
       if (!sweep || !inView) { setCa(focusX); return; }
-      var raf, start = null, dur = 2600;
+      var raf, start = null, dur = 10400;
       setCa(x0);
       function step(ts) {
         if (start == null) start = ts;
@@ -279,12 +289,14 @@
     function fullPx(points) { return points.map(function (p) { return [sx(p[0]), sy(p[1])]; }); }
     function densePx(points) { var o = []; for (var x = x0; x <= x1 + 0.001; x += 1) o.push([sx(x), sy(valueAt(points, x))]); return o; }
 
-    var tipX = sx(ca);
-    var leftSide = sweep && tipX > (W - PADR - 10);
+    var readAge = hovering ? hoverAge : ca;
+    var cursorOn = sweep || hovering;
+    var tipX = sx(readAge);
+    var leftSide = cursorOn && tipX > (W - PADR - 10);
     var badgeX = leftSide ? tipX - 10 : tipX + 10;
 
     // Positions verticales des badges (anti-collision).
-    var bl = series.map(function (s) { return { key: s.key, y: sy(valueAt(s.points, ca)) }; });
+    var bl = series.map(function (s) { return { key: s.key, y: sy(valueAt(s.points, readAge)) }; });
     bl.sort(function (a, b) { return a.y - b.y; });
     var GAP = 17;
     for (var ii = 1; ii < bl.length; ii++) { if (bl[ii].y - bl[ii - 1].y < GAP) bl[ii].y = bl[ii - 1].y + GAP; }
@@ -305,7 +317,9 @@
     }
 
     return (
-      <svg ref={chartRef} width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Graphique'} style={{ display: 'block' }}>
+      <svg ref={chartRef} width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Graphique'}
+           onMouseMove={onHoverMove} onMouseLeave={function () { if (props.hover) setHoverAge(null); }}
+           style={{ display: 'block', cursor: props.hover ? 'crosshair' : 'default' }}>
         {yTicks.map(function (t, i) {
           return (
             <g key={'y' + i}>
@@ -320,7 +334,7 @@
         <text x={W - PADR + 4} y={H - PADB + 15} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-dim)', fontStyle: 'italic' }}>ans</text>
 
         {area ? <path d={area} fill={(props.areaBetween.color || BRAND) + '22'} stroke="none" /> : null}
-        {sweep ? <line x1={tipX} y1={PADT} x2={tipX} y2={H - PADB} stroke={BRAND} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} /> : null}
+        {cursorOn ? <line x1={tipX} y1={PADT} x2={tipX} y2={H - PADB} stroke={BRAND} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} /> : null}
         {sweep ? series.map(function (s) {
           return <path key={'g' + s.key} d={smoothPath(fullPx(s.points))} fill="none" stroke={s.color} strokeWidth={1.4} opacity={0.14} />;
         }) : null}
@@ -336,7 +350,7 @@
           );
         })}
         {series.map(function (s) {
-          var v = valueAt(s.points, ca); var ty = sy(v), by = badgeY[s.key];
+          var v = valueAt(s.points, readAge); var ty = sy(v), by = badgeY[s.key];
           return (
             <g key={'b' + s.key}>
               <line x1={tipX} y1={ty} x2={badgeX} y2={by} stroke={s.color} strokeWidth={0.8} opacity={0.5} />
@@ -347,10 +361,10 @@
             </g>
           );
         })}
-        {sweep ? (
+        {cursorOn ? (
           <text x={(PADL + (W - PADR)) / 2} y={H - PADB - 8} textAnchor="middle">
             <tspan style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-dim)' }}>Âge </tspan>
-            <tspan style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, fill: 'var(--text)' }}>{Math.round(ca)}</tspan>
+            <tspan style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, fill: 'var(--text)' }}>{Math.round(readAge)}</tspan>
           </text>
         ) : null}
       </svg>

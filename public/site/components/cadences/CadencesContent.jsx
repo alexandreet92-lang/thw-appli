@@ -15,6 +15,29 @@
     coordination: 'Enchaîner des mouvements précis et efficaces, surtout sous fatigue.',
   };
 
+  // Glossaire complet des qualités physiques (définitions d'Alex).
+  // principal = parmi les principales ; tested = évaluée par CADENCES (11).
+  var QUALITY_GLOSSARY = [
+    { t: 'Force maximale', d: 'Tension maximale développée par un muscle contre une résistance.', principal: true, tested: true },
+    { t: 'Vitesse maximale', d: 'Accomplir un mouvement ou un déplacement dans le temps le plus court possible.', principal: true, tested: true },
+    { t: 'Endurance fondamentale', d: 'Maintenir un effort d\'intensité faible à modérée sur une longue durée.', principal: true, tested: true },
+    { t: 'Coordination', d: 'Synchroniser système nerveux et muscles pour un mouvement fluide.', principal: true, tested: true },
+    { t: 'Souplesse', d: 'Réaliser des mouvements avec la plus grande amplitude articulaire possible.', principal: true, tested: false },
+    { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', tested: true },
+    { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', tested: true },
+    { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', tested: true },
+    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', tested: true },
+    { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', tested: true },
+    { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', tested: true },
+    { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', tested: true },
+    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', tested: false },
+    { t: 'Équilibre', d: 'Maintenir la stabilité du corps, à l\'arrêt comme en mouvement.', tested: false },
+    { t: 'Précision', d: 'Contrôler exactement la trajectoire d\'un geste ou d\'un projectile.', tested: false },
+    { t: 'Temps de réaction', d: 'Délai entre la perception d\'un signal et le début du mouvement.', tested: false },
+    { t: 'Dissociation segmentaire', d: 'Bouger une partie du corps indépendamment des autres.', tested: false },
+    { t: 'Rythme', d: 'Percevoir et reproduire une cadence précise dans l\'effort.', tested: false },
+  ];
+
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
   function levelFor(pct, levels) { var lab = levels[0].label; for (var i = 0; i < levels.length; i++) if (pct >= levels[i].min_pct) lab = levels[i].label; return lab; }
   function round1(v) { return Math.round(v * 100) / 100; }
@@ -119,17 +142,31 @@
     );
   }
 
-  // ── Les 7 qualités ──────────────────────────────────────────────────
+  // ── Les qualités physiques (glossaire + ce que le test mesure) ──────
   function qualities(catalog) {
+    var nTested = QUALITY_GLOSSARY.filter(function (q) { return q.tested; }).length;
+    var sorted = QUALITY_GLOSSARY.slice().sort(function (a, b) {
+      return ((b.principal ? 2 : 0) + (b.tested ? 1 : 0)) - ((a.principal ? 2 : 0) + (a.tested ? 1 : 0));
+    });
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Ce qu'on mesure" sub="Chaque épreuve nourrit une à cinq de ces qualités. La souplesse n'est pas évaluée par CADENCES.">Les 7 qualités</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'var(--space-3)' }}>
-          {catalog.qualities.map(function (q) {
+        <SectionTitle kicker="Ce qu'on mesure"
+          sub={"Les qualités physiques, définies. Cinq sont considérées comme principales ; " + nTested + " sont évaluées par CADENCES. Pour le score, elles sont regroupées en 7 familles (le radar)."}>Les qualités physiques</SectionTitle>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>
+          <span>★ principale</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <i style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 999, background: 'var(--brand)' }}></i> mesurée dans le test
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(228px, 1fr))', gap: 'var(--space-3)' }}>
+          {sorted.map(function (q, i) {
             return (
-              <div key={q.key} className="cad-card" style={{ padding: 'var(--space-4)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{q.label}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)', marginTop: 6 }}>{QUALITY_DEFS[q.key]}</div>
+              <div key={i} className="cad-card" style={{ padding: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{q.principal ? '★ ' : ''}{q.t}</div>
+                  {q.tested ? <span style={{ flex: '0 0 auto', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--brand-gradient)', borderRadius: 999, padding: '2px 8px' }}>Test</span> : null}
+                </div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)', marginTop: 6 }}>{q.d}</div>
               </div>
             );
           })}
@@ -153,7 +190,8 @@
             <div><strong style={{ color: 'var(--text)' }}>Matériel.</strong> {p.materiel.join(', ')}.</div>
             <ol style={{ margin: '2px 0', paddingLeft: 18, display: 'grid', gap: 2 }}>{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
             {p.securite ? <div><strong style={{ color: 'var(--text)' }}>Sécurité.</strong> {p.securite}</div> : null}
-            {p.echauffementSpecifique ? <div><strong style={{ color: 'var(--text)' }}>Échauffement spécifique.</strong> {p.echauffementSpecifique}</div> : null}
+            {p.warmup ? <div><strong style={{ color: 'var(--text)' }}>Échauffement — {p.warmup.titre}.</strong> {p.warmup.texte}</div> : null}
+            {p.echauffementSpecifique && (!p.warmup || (p.warmup.titre !== 'Force' && p.warmup.titre !== 'Haltérophilie')) ? <div><strong style={{ color: 'var(--text)' }}>En plus, pour cette épreuve.</strong> {p.echauffementSpecifique}</div> : null}
             {p.allure ? <div><strong style={{ color: 'var(--text)' }}>Allure.</strong> {p.allure}</div> : null}
             {p.box ? <div><strong style={{ color: 'var(--text)' }}>Box.</strong> {p.box}</div> : null}
             <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}</div>
@@ -187,8 +225,8 @@
           })}
         </div>
         <div className="cad-card" style={{ background: 'var(--bg-card-2)', margin: 'var(--space-4) 0' }}>
-          <strong style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)' }}>Échauffement général.</strong>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6 }}> {catalog.echauffement}</span>
+          <strong style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)' }}>L'échauffement n'est pas le même selon la séance.</strong>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6 }}> Chaque épreuve a le sien (indiqué sur sa fiche ci-dessous), adapté au sport et à l'effort. Règles communes : {catalog.echauffement}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 'var(--space-3)' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>JOUR {cur.day}</span>

@@ -30,7 +30,8 @@
   function CadStyle() {
     return (
       <style>{`
-        .cad-wrap { max-width: 920px; margin: 0 auto; padding: 104px 20px 80px; color: var(--text); }
+        .cad-wrap { max-width: 1100px; margin: 0 auto; padding: 104px 24px 80px; color: var(--text); }
+        @media (max-width: 640px) { .cad-wrap { padding: 92px 16px 64px; } }
         .cad-input, .cad-select {
           width: 100%; box-sizing: border-box; padding: 11px 13px;
           font-family: var(--font-mono); font-size: 16px; color: var(--text);
@@ -58,8 +59,12 @@
         .cad-feature { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
         /* Contenu riche / navigation par onglets */
         .cad-section { }
-        .cad-hero { max-width: 680px; }
-        .cad-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-top: 22px; position: sticky; top: 56px; z-index: 5; background: var(--bg); -webkit-overflow-scrolling: touch; }
+        .cad-hero { max-width: 820px; }
+        .cad-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .cad-noscroll::-webkit-scrollbar { display: none; height: 0; width: 0; }
+        .cad-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-top: 22px; position: sticky; top: 56px; z-index: 5; background: var(--bg); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+        .cad-tabs::-webkit-scrollbar, .cad-dayrow::-webkit-scrollbar, .cad-chiprow::-webkit-scrollbar, .cad-tl-row::-webkit-scrollbar { display: none; height: 0; width: 0; }
+        .cad-dayrow, .cad-chiprow, .cad-tl-row { scrollbar-width: none; -ms-overflow-style: none; }
         .cad-tab { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: 0 0 auto; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: var(--radius-pill); cursor: pointer; color: var(--text-mid); background: var(--bg-card); border: 1px solid var(--border-mid); transition: all .15s; }
         .cad-tab:hover { color: var(--text); border-color: var(--brand); }
         .cad-tab.on { color: #fff; background: var(--brand-gradient); border-color: transparent; box-shadow: 0 3px 14px rgba(0,200,224,.3); }
@@ -93,12 +98,14 @@
         .cad-ul strong { color: var(--text); }
         .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
         /* Manifeste d'ouverture (intro déroulante) */
-        .cad-manifesto { display: grid; gap: 56px; margin-top: 10px; }
-        .cad-act { max-width: 760px; }
+        .cad-manifesto { display: grid; gap: 40px; margin-top: 10px; }
+        .cad-act { max-width: none; }
         .cad-act-eye { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
         .cad-act-t { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: 26px; line-height: 1.15; color: var(--text); margin: 8px 0 0; }
-        .cad-act-lead { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.5; color: var(--text-mid); margin: 12px 0 0; max-width: 680px; }
+        .cad-act-lead { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.5; color: var(--text-mid); margin: 12px 0 0; max-width: 760px; }
         .cad-act-lead strong { color: var(--text); }
+        .cad-act-p { font-family: var(--font-body); font-size: 14.5px; line-height: 1.65; color: var(--text-mid); margin: 12px 0 0; max-width: 760px; }
+        .cad-act-p strong { color: var(--text); }
         .cad-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
         .cad-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 11.5px; color: var(--text-mid); }
         .cad-legend i { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: 0 0 auto; }
@@ -110,12 +117,21 @@
         .cad-tl { display: grid; gap: 16px; margin-top: 16px; }
         .cad-tl-h { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); }
         .cad-tl-dot { width: 10px; height: 10px; border-radius: 999px; flex: 0 0 auto; }
-        .cad-tl-row { display: flex; gap: 0; overflow-x: auto; padding: 8px 0 8px; -webkit-overflow-scrolling: touch; }
-        .cad-tl-node { flex: 0 0 auto; min-width: 116px; max-width: 150px; display: grid; gap: 3px; padding: 0 12px 0 0; position: relative; }
+        .cad-tl-row { display: flex; gap: 6px; padding: 8px 0; }
+        .cad-tl-node { flex: 1 1 0; min-width: 0; display: grid; gap: 3px; padding-right: 6px; position: relative; }
         .cad-tl-node::before { content: ''; position: absolute; left: 5px; right: 0; top: 5px; height: 2px; background: var(--border-mid); }
+        .cad-tl-node:last-child::before { right: auto; width: 11px; }
         .cad-tl-node i { width: 11px; height: 11px; border-radius: 999px; border: 2px solid var(--bg); position: relative; z-index: 1; }
         .cad-tl-age { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 5px; }
         .cad-tl-lab { font-family: var(--font-body); font-size: 11.5px; line-height: 1.35; color: var(--text-mid); }
+        @media (max-width: 640px) {
+          .cad-tl-row { flex-direction: column; gap: 0; }
+          .cad-tl-node { flex: none; padding: 7px 0 7px 20px; }
+          .cad-tl-node::before { left: 4px; right: auto; top: 11px; bottom: -11px; width: 2px; height: auto; }
+          .cad-tl-node:last-child::before { bottom: auto; height: 12px; width: 2px; }
+          .cad-tl-node i { position: absolute; left: 0; top: 9px; }
+          .cad-tl-age { margin-top: 0; }
+        }
         .cad-reveal { margin-top: 14px; }
         .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
         @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
@@ -229,7 +245,7 @@
   // ════════════════ INTRO / PRÉSENTATION ════════════════
   var CAD_TABS = [
     { k: 'apercu', label: 'Vue d’ensemble', icon: 'chart' },
-    { k: 'qualites', label: '7 qualités', icon: 'target' },
+    { k: 'qualites', label: 'Qualités', icon: 'target' },
     { k: 'protocole', label: 'Protocole', icon: 'plan' },
     { k: 'baremes', label: 'Barèmes & charges', icon: 'card' },
     { k: 'score', label: 'Le score', icon: 'bolt' },
@@ -636,7 +652,8 @@
                   <div><strong>Matériel.</strong> {proto.materiel.join(', ')}.</div>
                   <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{proto.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
                   {proto.securite ? <div><strong>Sécurité.</strong> {proto.securite}</div> : null}
-                  {proto.echauffementSpecifique ? <div><strong>Échauffement spécifique.</strong> {proto.echauffementSpecifique}</div> : null}
+                  {proto.warmup ? <div><strong>Échauffement — {proto.warmup.titre}.</strong> {proto.warmup.texte}</div> : null}
+                  {proto.echauffementSpecifique && (!proto.warmup || (proto.warmup.titre !== 'Force' && proto.warmup.titre !== 'Haltérophilie')) ? <div><strong>En plus, pour cette épreuve.</strong> {proto.echauffementSpecifique}</div> : null}
                   {proto.allure ? <div><strong>Allure.</strong> {proto.allure}</div> : null}
                   {proto.box ? <div><strong>Box.</strong> {proto.box}</div> : null}
                   <div><strong>À saisir.</strong> {proto.saisie}</div>

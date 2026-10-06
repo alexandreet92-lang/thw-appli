@@ -7,7 +7,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { CONFIG, DAYS } from '@/lib/cadences/catalog'
-import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG } from '@/lib/cadences/protocols'
+import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, warmupForTest } from '@/lib/cadences/protocols'
 import { LEVEL_COLORS } from '@/lib/cadences/palette'
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +50,10 @@ export async function GET(): Promise<NextResponse> {
     age: CONFIG.age,                                 // {min,max,bands,pf}
     days: DAYS,
     tests,
-    protocols: PROTOCOLS,
+    // Protocoles + échauffement résolu par épreuve (varie selon la séance / le sport).
+    protocols: Object.fromEntries(
+      Object.entries(PROTOCOLS).map(([k, p]) => [k, { ...p, warmup: warmupForTest(k) }]),
+    ),
     echauffement: ECHAUFFEMENT_GENERAL,
     hyroxThrusterKg: HYROX_THRUSTER_KG,
     qualities: CONFIG.qualities,

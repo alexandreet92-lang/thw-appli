@@ -14,6 +14,7 @@ import './tokens.css'
 import type { GPSState } from '@/hooks/useGPSTracking'
 import { GPSStatus } from '@/hooks/useGPSTracking'
 import { useWakeLock } from '@/hooks/useWakeLock'
+import { useBackgroundTracking } from '@/hooks/useBackgroundTracking'
 import type { CyclingSettings } from '@/hooks/useCyclingSettings'
 import type { NavRouteInput } from '../RouteNavScreen'
 import type { SessionLap } from '@/types/session'
@@ -137,6 +138,11 @@ export default function LiveShell({
 
   // ── Wake lock pendant la séance (réglage display.keepAwake) ──
   useWakeLock(started && settings.display.keepAwake)
+
+  // ── Suivi GPS en arrière-plan pendant la séance (écran verrouillé / app en
+  //    fond). ON tant que la séance tourne (pause incluse), OFF au résumé /
+  //    arrêt / suppression (started repasse à false) et au démontage. ──
+  useBackgroundTracking(started, () => showToast(t('rec.bgLockHint')))
 
   // ── Timer par timestamps : synchronisé sur l'état effectif de la machine ──
   useEffect(() => {

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
 import { useWakeLock } from '@/hooks/useWakeLock'
+import { useBackgroundTracking } from '@/hooks/useBackgroundTracking'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
 import GPSPermissionScreen from './GPSPermissionScreen'
@@ -88,6 +89,9 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
   useLapBeepSound(settings.alerts.sound)
   const vibrate = useVibrate(settings.alerts.vibration)
   const { noticeKey, showNotice } = useLiveNotice(vibrate)
+  // Suivi GPS en arrière-plan tant que la séance tourne (pause incluse) ; OFF
+  // dès le retour à l'écran de départ, la sauvegarde ou la sortie (démontage).
+  useBackgroundTracking(phase !== 'ready', () => showNotice('rec.bgLockHint'))
   const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { activeEffort, completedEfforts } = useSegmentDetection(
     gps.currentLat ?? null, gps.currentLng ?? null, 'running', phase === 'running'

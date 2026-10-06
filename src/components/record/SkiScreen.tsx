@@ -12,6 +12,7 @@ import SkiPage2 from './SkiPage2'
 import SkiPage3 from './SkiPage3'
 import SkiSettings from './SkiSettings'
 import LiveFrame from './kit/LiveFrame'
+import { useBackgroundTracking } from '@/hooks/useBackgroundTracking'
 import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
 import { primeLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
@@ -74,6 +75,8 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   useLapBeepSound(settings.alerts.sound)
   const vibrate = useVibrate(settings.alerts.vibration)
   const { noticeKey, showNotice } = useLiveNotice(vibrate)
+  // Suivi GPS en arrière-plan tant que la séance tourne (pause incluse).
+  useBackgroundTracking(phase !== 'ready', () => showNotice('rec.bgLockHint'))
   const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { stats: ski, update: skiUpdate, reset: skiReset } = useSkiTracking(phase === 'running')
 

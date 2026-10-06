@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
 import { useWakeLock } from '@/hooks/useWakeLock'
+import { useBackgroundTracking } from '@/hooks/useBackgroundTracking'
 import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
 import GPSPermissionScreen from './GPSPermissionScreen'
@@ -48,6 +49,8 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase === 'running')
+  // Suivi GPS en arrière-plan tant que la séance tourne (pause incluse).
+  useBackgroundTracking(phase !== 'ready')
   const stopwatch = useStopwatch(phase === 'running')
 
   // Suit le thème de l'app (cartes et carte claires le jour, sombres la nuit).

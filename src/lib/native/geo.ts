@@ -19,6 +19,9 @@
 // getCurrentPosition() natif servi par le hub (jamais par le plugin).
 // ══════════════════════════════════════════════════════════════════════════
 import { isNativeApp } from './platform'
+// Types seuls (aucun JS importé statiquement) : le plugin background est chargé
+// à l'exécution via registerPlugin(), uniquement en natif pendant une séance.
+import type { BackgroundGeolocationPlugin, Location as BgLocation } from '@capacitor-community/background-geolocation'
 
 export interface GeoOpts { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number }
 export interface GeoHandle { clear: () => void }
@@ -60,6 +63,20 @@ function plugin(): Promise<GeoPlugin> {
   return pluginPromise
 }
 
+// ── Plugin « background » (séance en cours) ──────────────────────────────
+// @capacitor-community/background-geolocation ne livre PAS de JS : il s'enregistre
+// via registerPlugin() de @capacitor/core. On le charge paresseusement, en natif
+// seulement ; échec d'import / plugin absent → null (repli sur le foreground).
+let bgPluginPromise: Promise<BackgroundGeolocationPlugin | null> | null = null
+function bgPlugin(): Promise<BackgroundGeolocationPlugin | null> {
+  if (!bgPluginPromise) {
+    bgPluginPromise = import('@capacitor/core')
+      .then(m => m.registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation'))
+      .catch(() => null)
+  }
+  return bgPluginPromise
+}
+
 /** Vérifie puis, si besoin, demande l'autorisation (prompt iOS « Lorsque
  *  l'app est active »). Ne bloque jamais indéfiniment côté appelant. */
 export async function ensureNativeGeoPermission(): Promise<GeoPermission> {
@@ -96,6 +113,20 @@ let lastFixAt = 0
 let restartTimer: ReturnType<typeof setTimeout> | null = null
 let resumeListener: { remove: () => Promise<void> } | null = null
 
+// Mode « arrière-plan » : activé pendant un enregistrement (setBackgroundTracking).
+// Quand il est vrai, la source des positions bascule du plugin foreground
+// (@capacitor/geolocation) vers le watcher background (CLLocationManager avec
+// « Allows Background Location Updates ») — une seule source active à la fois,
+// alimentant les MÊMES abonnés (subs). Hors séance : foreground, pour ne pas
+// demander l'autorisation « Toujours » ni afficher la bannière inutilement.
+let backgroundMode = false
+let bgWatcherId: string | null = null
+let bgStarting = false
+
+/** Bannière iOS (arrière-plan) — textes FR. */
+const BG_TITLE = 'Hybrid enregistre ta séance'
+const BG_MESSAGE = "Trajet en cours d'enregistrement"
+
 /** Délai du plugin avant TIMEOUT (qui tue le watch) : large, on redémarre ensuite. */
 const NATIVE_WATCH_TIMEOUT_MS = 60000
 
@@ -131,7 +162,8 @@ function scheduleRestart(ms: number): void {
 }
 
 async function startNativeWatch(): Promise<void> {
-  if (nativeWatchId != null || starting || !subs.size) return
+  // En mode arrière-plan, la source est le watcher background : jamais le foreground.
+  if (backgroundMode || nativeWatchId != null || starting || !subs.size) return
   starting = true
   try {
     const perm = await ensureNativeGeoPermission()
@@ -168,16 +200,85 @@ async function startNativeWatch(): Promise<void> {
   }
 }
 
-/** Retour au premier plan : si plus aucune position récente, on relance. */
+/** Retour au premier plan : si plus aucune position récente, on relance.
+ *  En mode arrière-plan, le watcher background continue de tourner (écran
+ *  verrouillé inclus) : aucun redémarrage nécessaire. */
 async function ensureResumeListener(): Promise<void> {
   if (resumeListener) return
   try {
     const { App } = await import('@capacitor/app')
     resumeListener = await App.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive || !subs.size) return
+      if (!isActive || !subs.size || backgroundMode) return
       if (nativeWatchId == null || Date.now() - lastFixAt > 15000) scheduleRestart(300)
     })
   } catch { /* plugin absent */ }
+}
+
+// ── Watcher background ────────────────────────────────────────────────────
+function bgToW3C(l: BgLocation): GeoPos {
+  return toW3C({
+    timestamp: l.time ?? Date.now(),
+    coords: {
+      latitude: l.latitude,
+      longitude: l.longitude,
+      accuracy: l.accuracy,
+      altitude: l.altitude,
+      altitudeAccuracy: l.altitudeAccuracy,
+      heading: l.bearing,
+      speed: l.speed,
+    },
+  })
+}
+
+async function stopBackgroundWatch(): Promise<void> {
+  const id = bgWatcherId
+  bgWatcherId = null
+  if (id == null) return
+  // Retire le watcher → arrête CLLocationManager ET la bannière iOS (batterie).
+  try { await (await bgPlugin())?.removeWatcher({ id }) } catch { /* ignore */ }
+}
+
+async function startBackgroundWatch(): Promise<void> {
+  if (bgWatcherId != null || bgStarting || !subs.size || !backgroundMode) return
+  bgStarting = true
+  try {
+    const p = await bgPlugin()
+    if (!p) { backgroundMode = false; void startNativeWatch(); return } // repli foreground
+    if (!subs.size || !backgroundMode) return
+    const id = await p.addWatcher(
+      // backgroundMessage défini → suivi garanti en arrière-plan (iOS active
+      // allowsBackgroundLocationUpdates et demande l'autorisation « Toujours »).
+      { backgroundTitle: BG_TITLE, backgroundMessage: BG_MESSAGE, requestPermissions: true, stale: false, distanceFilter: 5 },
+      (position, err) => {
+        if (err) {
+          broadcastErr(err.code === 'NOT_AUTHORIZED'
+            ? { kind: 'denied', code: 'NOT_AUTHORIZED', message: err.message }
+            : classifyGeoError(err))
+          return
+        }
+        if (!position) return
+        const p2 = bgToW3C(position)
+        lastFix = p2
+        lastFixAt = Date.now()
+        for (const s of subs) s.onPos(p2)
+      },
+    )
+    bgWatcherId = id
+    // Désabonnement total ou bascule coupée pendant l'await → on retire aussitôt.
+    if (!subs.size || !backgroundMode) await stopBackgroundWatch()
+  } catch (e) {
+    broadcastErr(classifyGeoError(e))
+    backgroundMode = false
+    void startNativeWatch()
+  } finally {
+    bgStarting = false
+  }
+}
+
+/** Démarre la BONNE source selon le mode (une seule active à la fois). */
+function startActiveWatch(): void {
+  if (backgroundMode) void startBackgroundWatch()
+  else void startNativeWatch()
 }
 
 function nativeSubscribe(sub: Sub): GeoHandle {
@@ -189,13 +290,14 @@ function nativeSubscribe(sub: Sub): GeoHandle {
     setTimeout(() => { if (subs.has(sub)) sub.onPos(fix) }, 0)
   }
   void ensureResumeListener()
-  void startNativeWatch()
+  startActiveWatch()
   return {
     clear: () => {
       if (!subs.delete(sub)) return
       if (!subs.size) {
         if (restartTimer) { clearTimeout(restartTimer); restartTimer = null }
         void stopNativeWatch()
+        void stopBackgroundWatch()
       }
     },
   }
@@ -236,6 +338,40 @@ export function watchPosition(onPos: (p: GeoPos) => void, onErr: (e: GeoErr) => 
       if (id != null) { try { navigator.geolocation.clearWatch(id) } catch { /* ignore */ } id = null }
     },
   }
+}
+
+/**
+ * Active / désactive le suivi en ARRIÈRE-PLAN (écran verrouillé / app en fond).
+ * À appeler par l'écran d'enregistrement : ON au démarrage de la séance, OFF à
+ * l'arrêt / sauvegarde / suppression. La source des positions bascule sous le
+ * capot vers / depuis le watcher background, SANS changer l'interface d'abonnement
+ * (watchPosition) : LiveShell / useGPSTracking lisent les positions à l'identique.
+ *
+ * Web : no-op (pas d'arrière-plan en navigateur). Retourne l'autorisation :
+ * - 'denied' / 'disabled' → impossible (l'appelant gère déjà via GPSStatus.denied) ;
+ * - 'granted' / 'prompt' → suivi (foreground + background) en place. NB : iOS ne
+ *   distingue pas « Lorsque active » de « Toujours » via ces API ; avec « Lorsque
+ *   active » l'enregistrement fonctionne app ouverte / écran verrouillé (pastille
+ *   bleue), « Toujours » étant le plus fiable sur la durée.
+ */
+export async function setBackgroundTracking(on: boolean): Promise<GeoPermission> {
+  if (!isNativeApp()) return 'unknown'
+  if (backgroundMode === on) return 'granted'
+  if (on) {
+    // On s'assure d'abord de l'autorisation « Lorsque active » (flux existant,
+    // prompt NSLocationWhenInUseUsageDescription). Le watcher background demandera
+    // ensuite « Toujours » (requestPermissions). Refus franc → on reste foreground.
+    const perm = await ensureNativeGeoPermission()
+    if (perm === 'denied' || perm === 'disabled') return perm
+    backgroundMode = true
+    await stopNativeWatch()
+    await startBackgroundWatch()
+    return perm
+  }
+  backgroundMode = false
+  await stopBackgroundWatch()
+  startActiveWatch() // reprend le foreground tant qu'il y a des abonnés
+  return 'unknown'
 }
 
 /** Position ponctuelle. En natif, servie par le hub (abonnement temporaire)

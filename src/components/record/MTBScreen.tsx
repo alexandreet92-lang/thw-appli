@@ -13,6 +13,7 @@ import MTBPage3 from './MTBPage3'
 import MTBPage4 from './MTBPage4'
 import MTBSettings from './MTBSettings'
 import LiveFrame from './kit/LiveFrame'
+import { useBackgroundTracking } from '@/hooks/useBackgroundTracking'
 import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
 import { primeLapBeep, playLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
@@ -93,6 +94,8 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
   useLapBeepSound(settings.alerts.sound)
   const vibrate = useVibrate(settings.alerts.vibration)
   const { noticeKey, showNotice } = useLiveNotice(vibrate)
+  // Suivi GPS en arrière-plan tant que la séance tourne (pause incluse).
+  useBackgroundTracking(phase !== 'ready', () => showNotice('rec.bgLockHint'))
   const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
 
   useEffect(() => { if (phase !== 'running' || autoPaused) return; const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000); return () => clearInterval(i) }, [phase, autoPaused])

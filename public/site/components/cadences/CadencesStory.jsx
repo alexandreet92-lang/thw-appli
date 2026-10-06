@@ -125,6 +125,40 @@
     );
   }
 
+  // Constat générationnel — grands chiffres + comparaison + sources.
+  var GEN_STATS = [
+    { n: '−15 %', l: 'd’endurance chez les enfants d’aujourd’hui, vs leurs parents au même âge' },
+    { n: '−16 %', l: 'de force de poigne chez les hommes de 20-34 ans, vs 1985' },
+    { n: '1 / 3', l: 'adulte dans le monde ne bouge pas assez (OMS, 2022)' },
+  ];
+  function StatCards() {
+    return (
+      <div className="cad-statrow">
+        {GEN_STATS.map(function (s, i) {
+          return <div key={i} className="cad-stat-big"><b>{s.n}</b><span>{s.l}</span></div>;
+        })}
+      </div>
+    );
+  }
+  function GripBars() {
+    var PF = window.CadPointsByFamily;
+    return (
+      <div className="cad-card" style={{ maxWidth: 580 }}>
+        <div className="cad-h3" style={{ marginBottom: 12 }}>Force de poigne — homme 20-34 ans (kg)</div>
+        {PF ? <PF data={[{ label: '1985', pts: 53, color: '#94a3b8' }, { label: 'Aujourd’hui', pts: 44, color: '#00c8e0' }]} /> : null}
+      </div>
+    );
+  }
+  function SourcesGen() {
+    return (
+      <div className="cad-note-src">
+        Sources : endurance cardio-respiratoire des enfants −5 %/décennie depuis ~1970 et ≈ 15 % sous la génération
+        précédente (méta-analyses Tomkinson) ; force de poigne des hommes 20-34 ans ~117 lb en 1985 (≈ 53 kg) → ~98 lb
+        aujourd’hui (≈ 44 kg), soit ≈ −16 % (Journal of Hand Therapy) ; 31 % des adultes sous le minimum d’activité OMS (2022).
+      </div>
+    );
+  }
+
   function Act(props) {
     var head = (
       <React.Fragment>
@@ -154,15 +188,26 @@
 
     return (
       <div className="cad-manifesto">
-        {/* a. Le constat */}
-        <Act eye="Le constat" title="Ton corps a un pic. Puis il décline."
-             lead={<span>VO₂max, muscle, hormones, os, vitesse du cerveau : chaque système culmine autour de la trentaine, puis baisse. <strong>C’est inévitable.</strong></span>}>
-          <p className="cad-act-p">Avant d’ouvrir le test, un détour : comprendre <strong>pourquoi</strong> on le fait. Commençons par ce qui nous arrive à tous — système par système.</p>
+        {/* 1. Le constat générationnel */}
+        <Act eye="Le constat" title="On vit plus vieux. Pas plus fort.">
+          <p className="cad-act-p">On n’a jamais vécu aussi longtemps. Et pourtant, en une seule génération, le <strong>niveau physique moyen a reculé</strong> — chez les enfants comme chez les adultes.</p>
+          <StatCards />
+          <p className="cad-act-p">Les enfants d’aujourd’hui mettent <strong>~1 min 30 de plus</strong> pour courir un kilomètre que leurs parents au même âge. Leur endurance baisse d’<strong>environ 5 % par décennie</strong> depuis les années 70 ; ils sont <strong>~15 % moins endurants</strong>. Plus grands, plus lourds — mais plus faibles : <strong>−10 %</strong> de force de poigne chez un garçon de 12 ans entre 1981 et 2007.</p>
+          <p className="cad-act-p">Chez l’adulte, même pente : un homme de 20-34 ans a <strong>~16 % de poigne en moins</strong> qu’en 1985. Et <strong>1 adulte sur 3</strong> dans le monde ne bouge pas assez — un chiffre qui grimpe encore.</p>
+          <GripBars />
+          <p className="cad-act-p">Le pire ? On mesure tout — poids, tension, cholestérol — <strong>sauf</strong> notre condition physique. On ne sait pas vraiment où on en est. <strong>CADENCES comble ce trou.</strong></p>
+          <SourcesGen />
         </Act>
 
-        {/* b. Comment ton corps vieillit */}
-        <Act eye="Comment ton corps vieillit" title="Chaque système, en % de son pic de vie"
-             lead={<span>Cinq grands systèmes, suivis de 0 à 80 ans, en pourcentage de leur pic de vie.</span>}
+        {/* 2. Ce que ça coûte */}
+        <Act eye="Ce que ça coûte" title="La condition physique, c’est de la santé mesurable."
+             lead={<span>Le VO₂max et la force comptent parmi les <strong>meilleurs prédicteurs</strong> de santé, d’autonomie et de longévité — souvent plus que les examens de routine.</span>}>
+          <p className="cad-act-p">Pourtant, on surveille son poids, sa tension, son cholestérol… presque jamais sa condition physique. On navigue à l’aveugle. CADENCES donne enfin <strong>un chiffre clair, à suivre dans le temps.</strong></p>
+        </Act>
+
+        {/* 3. Comment ton corps vieillit */}
+        <Act eye="Comment ton corps vieillit" title="Ton corps a un pic. Puis il décline."
+             lead={<span>VO₂max, muscle, hormones, os, vitesse du cerveau : chaque système culmine autour de la trentaine, puis baisse. <strong>C’est inévitable.</strong></span>}
              media={
                <div className="cad-card" style={{ position: 'relative' }}>
                  <div style={{ display: 'flex', gap: 8, maxWidth: 260, marginBottom: 14 }}>
@@ -180,21 +225,16 @@
           <p className="cad-act-p">Tout grimpe jusqu’à ~25-30 ans, puis redescend — mais pas au même rythme. <strong>Le VO₂max et le muscle lâchent les premiers</strong> ; l’os et la coordination tiennent plus longtemps. Passe la souris sur la courbe pour lire chaque système à l’âge voulu, et compare homme / femme (chez la femme, la chute des œstrogènes et de l’os s’accélère à la ménopause).</p>
         </Act>
 
-        {/* c. Le message */}
+        {/* 4. Pas une fatalité — sédentaire vs entraîné */}
         <Act eye="Mais" title="La vitesse du déclin n’est pas une fatalité."
-             lead={<span>Un entraînement <strong>régulier et structuré</strong> — du cardio et du muscle, répétés dans le temps — ralentit extraordinairement cette baisse. On ne supprime pas le déclin : <strong>on le freine.</strong></span>}>
-          <p className="cad-act-p">La question n’est donc pas <em>si</em> on décline, mais <strong>à quelle vitesse</strong>. Et là, on a une vraie prise.</p>
-        </Act>
-
-        {/* d. Sédentaire vs entraîné */}
-        <Act eye="Sédentaire vs entraîné" title="Ce que l’entraînement change, sur le VO₂max"
+             lead={<span>Un entraînement <strong>régulier et structuré</strong> — du cardio et du muscle, répétés dans le temps — ralentit extraordinairement cette baisse. On ne supprime pas le déclin : <strong>on le freine.</strong></span>}
              media={
                <div className="cad-card">
                  {LC ? <LC series={COMPARE} xDomain={[25, 80]} xTicks={[30, 40, 50, 60, 70, 80]} yTicks={[40, 60, 80, 100]} yDomain={[30, 100]} areaBetween={{ a: 'entr', b: 'sed', color: '#00c8e0' }} aria="VO2max : sédentaire contre entraîné" /> : null}
                  <Sources />
                </div>
              }>
-          <p className="cad-act-p">À 80 ans, l’entraîné garde le VO₂max que le sédentaire avait <strong>~20 ans plus tôt</strong>. L’aire grise entre les deux courbes, ce sont ces <strong>années gagnées</strong> — pas sur un exploit, mais sur la régularité.</p>
+          <p className="cad-act-p">La question n’est pas <em>si</em> on décline, mais <strong>à quelle vitesse</strong>. Et là, on a une vraie prise. À 80 ans, l’entraîné garde le VO₂max que le sédentaire avait <strong>~20 ans plus tôt</strong> : l’aire grise, ce sont ces <strong>années gagnées</strong> — pas sur un exploit, mais sur la régularité.</p>
           <div className="cad-callrow">
             <div className="cad-callout-big"><b>~2× plus lent</b><span>le déclin du VO₂max, entraînement maintenu vs sédentaire</span></div>
             <div className="cad-callout-big"><b>+9 ans</b><span>d’âge biologique gagnés chez les pratiquants réguliers à vie</span></div>

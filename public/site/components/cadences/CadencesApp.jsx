@@ -118,6 +118,11 @@
         .cad-callout-big { flex: 1; min-width: 190px; background: var(--bg-card-2); border: 1px solid var(--border-mid); border-left: 3px solid var(--brand); border-radius: var(--radius-md); padding: 14px 16px; }
         .cad-callout-big b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--text); letter-spacing: -0.02em; }
         .cad-callout-big span { font-family: var(--font-body); font-size: 12px; line-height: 1.45; color: var(--text-mid); }
+        .cad-statrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+        .cad-stat-big { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 18px 20px; }
+        .cad-stat-big b { display: block; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: 34px; color: var(--text); line-height: 1; }
+        .cad-stat-big span { display: block; margin-top: 8px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); }
+        @media (max-width: 720px) { .cad-statrow { grid-template-columns: 1fr; } }
         .cad-note-src { margin-top: 12px; font-family: var(--font-body); font-size: 11px; color: var(--text-dim); line-height: 1.55; }
         .cad-tl { display: grid; gap: 16px; margin-top: 16px; }
         .cad-tl-h { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); }

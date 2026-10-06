@@ -1,253 +1,249 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — schémas des mouvements & parcours (SVG brut).
-   Parcours à plots : Square 4×4, Move avant-arrière, Slalom 10.18.
-   Sauts : Standing Long Jump, Standing Triple Jump.
-   Étapes numérotées ①②③, légende, distances cotées, lisibles clair/sombre.
-   Emplacement prévu pour une photo/vidéo à venir. Publie window.CadDiagram :
-   <CadDiagram name="square|move|slalom|longjump|triplejump"/>.
+   CADENCES (site) — schémas des mouvements avec SIMULATION animée.
+   Chaque parcours/saut est un tracé continu ordonné : un point (l'athlète)
+   le parcourt au clic sur « ▶ Lancer la simulation », avec l'indication de
+   la phase en cours (Avant, Pas chassés, Sprint 30 m…). Lisible clair/sombre.
+   Publie window.CadDiagram : <CadDiagram name="square|move|slalom|longjump|triplejump"/>.
    ════════════════════════════════════════════════════════════════ */
 (function () {
   var AVANT = '#00c8e0';     // course avant
   var ARRIERE = '#5b6fff';   // course arrière
   var CHASSE = '#f59e0b';    // pas chassés
-  var SPRINT = '#22c55e';    // sprint final
-  var JUMP = '#00c8e0';      // trajectoire de saut
-  var GUIDE = 'var(--border-mid)';
+  var SPRINT = '#22c55e';    // sprint
+  var JUMP = '#00c8e0';      // saut
+  var CONNECT = '#94a3b8';   // liaison / replacement
 
-  function arrow(id, color) {
-    return (
-      <marker id={id} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-        <path d="M0,0 L6,3 L0,6 z" fill={color} />
-      </marker>
-    );
+  function reduced() {
+    try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { return false; }
   }
-  // Pastille d'étape numérotée.
-  function Step(x, y, n, color) {
-    return (
-      <g key={'s' + n + x + y}>
-        <circle cx={x} cy={y} r={9} fill={color || AVANT} />
-        <text x={x} y={y + 3.4} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 11, fill: '#fff' }}>{n}</text>
-      </g>
-    );
-  }
-  function Plot(x, y, label) {
-    return (
-      <g key={'p' + x + y}>
-        <circle cx={x} cy={y} r={5} fill="var(--text)" />
-        <circle cx={x} cy={y} r={9} fill="none" stroke="var(--text)" strokeOpacity="0.25" strokeWidth="1" />
-        {label ? <text x={x} y={y - 13} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>{label}</text> : null}
-      </g>
-    );
-  }
-  function Flag(x, y, text) {
-    return <text key={'f' + x + y} x={x} y={y} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{text}</text>;
-  }
-  function Legend(items) {
-    return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
-        {items.map(function (it, i) {
-          return (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <svg width="22" height="8"><line x1="1" y1="4" x2="21" y2="4" stroke={it.c} strokeWidth="2.6" strokeDasharray={it.d || 'none'} /></svg>
-              {it.l}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
-  function Wrap(children, legend, caption) {
+  function dist(a, b) { var dx = b[0] - a[0], dy = b[1] - a[1]; return Math.sqrt(dx * dx + dy * dy); }
+
+  // ── Le moteur de simulation : point animé sur un tracé continu ──
+  function CadCourseSim(props) {
+    var W = props.w, H = props.h, path = props.path, labels = props.labels, colors = props.colors;
+    var segLens = [], total = 0;
+    for (var i = 0; i < path.length - 1; i++) { var d = dist(path[i], path[i + 1]); segLens.push(d); total += d; }
+
+    var ps = React.useState(reduced() ? 1 : 0); var prog = ps[0], setProg = ps[1];
+    var rs = React.useState('idle'); var run = rs[0], setRun = rs[1];  // idle | playing | done
+    var raf = React.useRef(0);
+
+    function play() {
+      cancelAnimationFrame(raf.current);
+      var dur = Math.max(2600, Math.min(9000, total / 150 * 1000));
+      var start = null;
+      if (reduced()) { setProg(1); setRun('done'); return; }
+      setRun('playing'); setProg(0);
+      function step(ts) {
+        if (start == null) start = ts;
+        var p = Math.min(1, (ts - start) / dur);
+        setProg(p);
+        if (p < 1) raf.current = requestAnimationFrame(step); else setRun('done');
+      }
+      raf.current = requestAnimationFrame(step);
+    }
+    React.useEffect(function () { return function () { cancelAnimationFrame(raf.current); }; }, []);
+
+    // position + segment courant à la progression `prog`
+    function at(p) {
+      var target = p * total, acc = 0;
+      for (var k = 0; k < segLens.length; k++) {
+        if (acc + segLens[k] >= target || k === segLens.length - 1) {
+          var lt = segLens[k] ? (target - acc) / segLens[k] : 1; lt = Math.max(0, Math.min(1, lt));
+          return { k: k, x: path[k][0] + (path[k + 1][0] - path[k][0]) * lt, y: path[k][1] + (path[k + 1][1] - path[k][1]) * lt };
+        }
+        acc += segLens[k];
+      }
+      return { k: segLens.length - 1, x: path[path.length - 1][0], y: path[path.length - 1][1] };
+    }
+    var cur = at(prog);
+    var curSeg = run === 'idle' ? -1 : cur.k;
+
     return (
       <div style={{ background: 'var(--bg-card-2)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: 16, marginTop: 10 }}>
-        {children}
-        {legend ? Legend(legend) : null}
+        {/* bannière d'indication */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 24 }}>
+            {curSeg >= 0 ? (
+              <React.Fragment>
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: colors[curSeg], flex: '0 0 auto' }}></span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>Étape {curSeg + 1}/{labels.length}</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{labels[curSeg]}</span>
+              </React.Fragment>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Appuie sur « Lancer » pour voir le parcours.</span>
+            )}
+          </div>
+          <button type="button" onClick={play}
+                  style={{ flex: '0 0 auto', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--brand-gradient)', border: 'none', borderRadius: 999, padding: '7px 15px', cursor: 'pointer', boxShadow: '0 3px 12px rgba(0,200,224,.3)' }}>
+            {run === 'playing' ? 'Relancer' : run === 'done' ? '↻ Rejouer' : '▶ Lancer la simulation'}
+          </button>
+        </div>
+
+        <svg width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Schéma animé du parcours'} style={{ display: 'block' }}>
+          {props.extras}
+          {/* tracé complet, faible */}
+          {path.slice(0, -1).map(function (p, j) {
+            return <line key={'f' + j} x1={p[0]} y1={p[1]} x2={path[j + 1][0]} y2={path[j + 1][1]} stroke={colors[j]} strokeWidth={3} strokeLinecap="round" opacity={0.18} />;
+          })}
+          {/* trace parcourue, vive */}
+          {path.slice(0, -1).map(function (p, j) {
+            if (run === 'idle' || j > cur.k) return null;
+            var ex = (j < cur.k) ? path[j + 1][0] : cur.x, ey = (j < cur.k) ? path[j + 1][1] : cur.y;
+            return <line key={'t' + j} x1={p[0]} y1={p[1]} x2={ex} y2={ey} stroke={colors[j]} strokeWidth={3.4} strokeLinecap="round" />;
+          })}
+          {/* le point (athlète) */}
+          {run !== 'idle' ? (
+            <g>
+              <circle cx={cur.x} cy={cur.y} r={9} fill={colors[cur.k]} opacity={0.25} />
+              <circle cx={cur.x} cy={cur.y} r={5.5} fill={colors[cur.k]} stroke="#fff" strokeWidth={2} />
+            </g>
+          ) : null}
+        </svg>
+        {props.legend ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
+            {props.legend.map(function (it, i) {
+              return <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 16, height: 3, borderRadius: 2, background: it.c }}></span>{it.l}</span>;
+            })}
+          </div>
+        ) : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, marginTop: 8 }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.5 }}>{caption}</div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.5 }}>{props.caption}</div>
           <span style={{ flex: '0 0 auto', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-hover)', border: '1px solid var(--border-mid)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>Photo/vidéo à venir</span>
         </div>
       </div>
     );
   }
-  function footR(cx, cy) { return <g key={'fr' + cx + cy}><ellipse cx={cx - 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /><ellipse cx={cx + 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /></g>; }
-  function footOne(cx, cy) { return <ellipse key={'fo' + cx + cy} cx={cx} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" />; }
 
-  // ── SQUARE 4×4 : 2 carrés 4×4 m, 10 m de départ-à-départ, carré 2 en sens inverse ──
-  function Square() {
-    // 30 px/m ; carré de 4 m = 120 px. Axe vertical commun à x=150.
-    var cx = 150, s = 120, half = s / 2;
-    // carré 1 (bas) : départ coin bas-gauche ; carré 2 (haut) : sens inverse.
-    function box(oyTop, reverse, n0) {
-      var L = cx - half, R = cx + half, T = oyTop, B = oyTop + s;
-      // sens direct : avant (gauche, bas→haut), chassé (haut, g→d), arrière (droite, haut→bas), chassé (bas, d→g)
-      // sens inverse : avant (droite, bas→haut), chassé (haut, d→g), arrière (gauche, haut→bas), chassé (bas, g→d)
-      var av = reverse
-        ? { x1: R, y1: B, x2: R, y2: T } : { x1: L, y1: B, x2: L, y2: T };
-      var ch1 = reverse
-        ? { x1: R, y1: T, x2: L, y2: T } : { x1: L, y1: T, x2: R, y2: T };
-      var ar = reverse
-        ? { x1: L, y1: T, x2: L, y2: B } : { x1: R, y1: T, x2: R, y2: B };
-      var ch2 = reverse
-        ? { x1: L, y1: B, x2: R, y2: B } : { x1: R, y1: B, x2: L, y2: B };
-      function seg(d, color, dash, mk) { return <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke={color} strokeWidth="2.6" strokeDasharray={dash || 'none'} markerEnd={'url(#' + mk + ')'} />; }
-      return (
-        <g>
-          <rect x={L} y={T} width={s} height={s} fill="none" stroke={GUIDE} strokeWidth="1" rx="3" />
-          {seg(av, AVANT, null, 'sqA')}
-          {seg(ch1, CHASSE, '3 3', 'sqC')}
-          {seg(ar, ARRIERE, '5 3', 'sqR')}
-          {seg(ch2, CHASSE, '3 3', 'sqC')}
-          {Step((av.x1 + av.x2) / 2 + (reverse ? 14 : -14), (av.y1 + av.y2) / 2, n0, AVANT)}
-          {Step((ch1.x1 + ch1.x2) / 2, T - 13, n0 + 1, CHASSE)}
-          {Step((ar.x1 + ar.x2) / 2 + (reverse ? -14 : 14), (ar.y1 + ar.y2) / 2, n0 + 2, ARRIERE)}
-          {Step((ch2.x1 + ch2.x2) / 2, B + 13, n0 + 3, CHASSE)}
-        </g>
-      );
-    }
-    return Wrap(
-      <svg width="100%" viewBox="0 0 300 470" role="img" aria-label="Schéma du Square 4×4 : deux carrés de 4 m séparés de 10 m">
-        <defs>{arrow('sqA', AVANT)}{arrow('sqR', ARRIERE)}{arrow('sqC', CHASSE)}{arrow('sqG', 'var(--text-dim)')}</defs>
-        {/* Départ */}
-        {Flag(cx, 455, 'Départ')}
-        <line x1={cx} y1={448} x2={cx} y2={422} stroke={GUIDE} strokeWidth="1.5" strokeDasharray="3 3" markerEnd="url(#sqG)" />
-        {/* Carré 1 (bas) — sens direct */}
-        {box(300, false, 1)}
-        {Flag(cx, 362, 'Carré 1 · 4×4 m')}
-        {/* 10 m entre les deux départs de carré */}
-        <line x1={cx} y1={298} x2={cx} y2={230} stroke={GUIDE} strokeWidth="1.5" strokeDasharray="3 3" markerEnd="url(#sqG)" />
-        <text x={cx + 8} y={267} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>10 m</text>
-        {/* Carré 2 (haut) — sens inverse */}
-        {box(108, true, 5)}
-        {Flag(cx, 100, 'Carré 2 · sens inverse')}
-        {/* 10 m du départ du carré 2 à l'arrivée */}
-        <line x1={cx} y1={106} x2={cx} y2={40} stroke={GUIDE} strokeWidth="1.5" strokeDasharray="3 3" markerEnd="url(#sqG)" />
-        <text x={cx + 8} y={76} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>10 m</text>
-        {Flag(cx, 30, 'Arrivée')}
-      </svg>,
-      [{ c: AVANT, l: '① avant' }, { c: CHASSE, l: '② ④ pas chassés', d: '3 3' }, { c: ARRIERE, l: '③ arrière', d: '5 3' }],
-      "Par carré : avant → pas chassés → arrière → pas chassés (un côté chacun). Carré 1 dans un sens, carré 2 en sens inverse. 10 m entre les départs de carré, puis 10 m jusqu'à l'arrivée. Plots contournés de l'extérieur vers l'intérieur."
+  function plot(x, y, label) {
+    return (
+      <g key={'p' + x + '_' + y}>
+        <circle cx={x} cy={y} r={5} fill="var(--text)" />
+        {label ? <text x={x} y={y - 11} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>{label}</text> : null}
+      </g>
     );
   }
+  function flag(x, y, t) { return <text key={'fl' + x + '_' + y} x={x} y={y} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-mid)' }}>{t}</text>; }
+  function footR(cx, cy) { return <g key={'fr' + cx}><ellipse cx={cx - 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /><ellipse cx={cx + 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /></g>; }
+  function footOne(cx, cy) { return <ellipse key={'fo' + cx} cx={cx} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" />; }
 
-  // ── MOVE avant-arrière : navettes 5/10/15 m (avant + retour arrière) puis sprint 30 m ──
-  function Move() {
-    var x0 = 40, perM = 9;                  // 9 px/m
-    var lanes = [{ y: 40, m: 5, n: 1 }, { y: 82, m: 10, n: 3 }, { y: 124, m: 15, n: 5 }];
-    return Wrap(
-      <svg width="100%" viewBox="0 0 440 210" role="img" aria-label="Schéma du Move : navettes 5, 10, 15 m puis sprint 30 m">
-        <defs>{arrow('mvA', AVANT)}{arrow('mvR', ARRIERE)}{arrow('mvS', SPRINT)}</defs>
-        {/* ligne de départ commune */}
-        <line x1={x0} y1={22} x2={x0} y2={186} stroke={GUIDE} strokeWidth="1.5" strokeDasharray="3 3" />
-        {Flag(x0, 16, 'Départ')}
-        {lanes.map(function (ln) {
-          var xe = x0 + ln.m * perM;
-          return (
-            <g key={ln.m}>
-              <line x1={x0 + 3} y1={ln.y - 5} x2={xe - 3} y2={ln.y - 5} stroke={AVANT} strokeWidth="2.6" markerEnd="url(#mvA)" />
-              <line x1={xe - 3} y1={ln.y + 5} x2={x0 + 3} y2={ln.y + 5} stroke={ARRIERE} strokeWidth="2.6" strokeDasharray="5 3" markerEnd="url(#mvR)" />
-              {Plot(xe, ln.y, ln.m + ' m')}
-              {Step(x0 - 2, ln.y - 5, ln.n, AVANT)}
-              {Step(x0 - 2, ln.y + 5, ln.n + 1, ARRIERE)}
-            </g>
-          );
-        })}
-        {/* sprint 30 m */}
-        <line x1={x0 + 3} y1={172} x2={x0 + 30 * perM} y2={172} stroke={SPRINT} strokeWidth="3" markerEnd="url(#mvS)" />
-        {Step(x0 - 2, 172, 7, SPRINT)}
+  // ── SQUARE 4×4 ──
+  function squareData() {
+    var L = 90, R = 210, c1T = 300, c1B = 420, c2T = 108, c2B = 228;
+    var path = [[150, 452], [L, c1B], [L, c1T], [R, c1T], [R, c1B], [L, c1B], [L, c2B], [R, c2B], [R, c2T], [L, c2T], [L, c2B], [150, 40]];
+    var labels = ['Départ → carré 1', 'Avant', 'Pas chassés', 'Arrière', 'Pas chassés', '10 m → carré 2', 'Pas chassés', 'Avant', 'Pas chassés', 'Arrière', '10 m → Arrivée'];
+    var colors = [CONNECT, AVANT, CHASSE, ARRIERE, CHASSE, CONNECT, CHASSE, AVANT, CHASSE, ARRIERE, CONNECT];
+    var extras = (
+      <g>
+        <rect x={L} y={c1T} width={120} height={120} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
+        <rect x={L} y={c2T} width={120} height={120} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
+        {[[L, c1T], [R, c1T], [L, c1B], [R, c1B], [L, c2T], [R, c2T], [L, c2B], [R, c2B]].map(function (p, i) { return <circle key={i} cx={p[0]} cy={p[1]} r={4} fill="var(--text)" />; })}
+        {flag(150, 462, 'Départ')}{flag(150, 30, 'Arrivée')}
+        {flag(150, 365, 'Carré 1 · 4×4 m')}{flag(150, 95, 'Carré 2 · sens inverse')}
+        <text x={158} y={268} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>10 m</text>
+      </g>
+    );
+    return { w: 300, h: 470, path: path, labels: labels, colors: colors, extras: extras,
+      legend: [{ c: AVANT, l: 'avant' }, { c: CHASSE, l: 'pas chassés' }, { c: ARRIERE, l: 'arrière' }],
+      aria: 'Simulation du Square 4×4',
+      caption: "Par carré : avant → pas chassés → arrière → pas chassés. Carré 1 dans un sens, carré 2 en sens inverse. 10 m entre les départs de carré, puis 10 m jusqu'à l'arrivée. Plots contournés de l'extérieur vers l'intérieur." };
+  }
+
+  // ── MOVE avant-arrière ──
+  function moveData() {
+    var x0 = 40, perM = 9, y1 = 40, y2 = 82, y3 = 124, ys = 172;
+    var c5 = x0 + 5 * perM, c10 = x0 + 10 * perM, c15 = x0 + 15 * perM, se = x0 + 30 * perM;
+    var path = [[x0, y1], [c5, y1], [x0, y1], [x0, y2], [c10, y2], [x0, y2], [x0, y3], [c15, y3], [x0, y3], [x0, ys], [se, ys]];
+    var labels = ['Avant 5 m', 'Retour arrière', 'Se replacer', 'Avant 10 m', 'Retour arrière', 'Se replacer', 'Avant 15 m', 'Retour arrière', 'Se replacer', 'Sprint 30 m'];
+    var colors = [AVANT, ARRIERE, CONNECT, AVANT, ARRIERE, CONNECT, AVANT, ARRIERE, CONNECT, SPRINT];
+    var extras = (
+      <g>
+        <line x1={x0} y1={22} x2={x0} y2={186} stroke="var(--border-mid)" strokeWidth={1.5} strokeDasharray="3 3" />
+        {flag(x0, 16, 'Départ')}
+        {plot(c5, y1, '5 m')}{plot(c10, y2, '10 m')}{plot(c15, y3, '15 m')}
         <text x={x0 + 150} y={166} style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-mid)' }}>Sprint 30 m</text>
-      </svg>,
-      [{ c: AVANT, l: 'avant' }, { c: ARRIERE, l: 'retour arrière', d: '5 3' }, { c: SPRINT, l: 'sprint' }],
-      "Depuis le départ : 5 m en avant, contourner le plot, retour en course arrière ; idem à 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m droit devant. 1 min de récup, ×3, le meilleur compte."
+      </g>
     );
+    return { w: 440, h: 210, path: path, labels: labels, colors: colors, extras: extras,
+      legend: [{ c: AVANT, l: 'avant' }, { c: ARRIERE, l: 'retour arrière' }, { c: SPRINT, l: 'sprint' }],
+      aria: 'Simulation du Move avant-arrière',
+      caption: "5 m avant, contourner, retour arrière ; idem 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m droit devant. 1 min de récup, ×3, le meilleur compte." };
   }
 
-  // ── SLALOM 10.18 : 10 diagonales de 18,03 m ──
-  function Slalom() {
-    var n = 11, x0 = 24, x1 = 410, yTop = 44, yBot = 132;
-    var pts = [];
+  // ── SLALOM 10.18 ──
+  function slalomData() {
+    var n = 11, x0 = 24, x1 = 410, yTop = 44, yBot = 132, pts = [];
     for (var i = 0; i < n; i++) { pts.push([x0 + (x1 - x0) * i / (n - 1), (i % 2 === 0) ? yBot : yTop]); }
-    var poly = pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' ');
-    return Wrap(
-      <svg width="100%" viewBox="0 0 440 170" role="img" aria-label="Schéma du Slalom : 10 diagonales de 18 m">
-        <defs>{arrow('slA', AVANT)}</defs>
-        <polyline points={poly} fill="none" stroke={AVANT} strokeWidth="2.6" strokeLinejoin="round" markerEnd="url(#slA)" />
-        {pts.map(function (p, i) { return <g key={i}>{Plot(p[0], p[1])}{i < n - 1 ? Step((p[0] + pts[i + 1][0]) / 2, (p[1] + pts[i + 1][1]) / 2, i + 1, AVANT) : null}</g>; })}
-        {Flag(x0, yBot + 22, 'Départ')}
-        {Flag(pts[n - 1][0], yTop - 12, 'Arrivée')}
-      </svg>,
-      null,
-      "10 diagonales de 18,03 m (~180 m), 9 changements de direction. Plots contournés de l'extérieur vers l'intérieur. 2 essais, le meilleur compte."
+    var labels = [], colors = [];
+    for (var j = 0; j < n - 1; j++) { labels.push('Diagonale ' + (j + 1) + '/10'); colors.push(AVANT); }
+    var extras = (
+      <g>
+        {pts.map(function (p, i) { return plot(p[0], p[1]); })}
+        {flag(pts[0][0], yBot + 20, 'Départ')}{flag(pts[n - 1][0], yTop - 10, 'Arrivée')}
+      </g>
     );
+    return { w: 440, h: 170, path: pts, labels: labels, colors: colors, extras: extras,
+      legend: [{ c: AVANT, l: 'course' }],
+      aria: 'Simulation du Slalom', caption: "10 diagonales de 18,03 m (~180 m), 9 changements de direction. Plots contournés de l'extérieur vers l'intérieur. 2 essais, le meilleur compte." };
   }
 
-  // ── STANDING LONG JUMP : saut en longueur sans élan (vue de profil) ──
-  function LongJump() {
-    var ground = 150, xs = 80, xe = 300, apex = 56;
-    return Wrap(
-      <svg width="100%" viewBox="0 0 400 190" role="img" aria-label="Schéma du saut en longueur sans élan">
-        <defs>{arrow('ljA', JUMP)}</defs>
-        <line x1={24} y1={ground} x2={376} y2={ground} stroke={GUIDE} strokeWidth="1.5" />
-        {/* ligne de départ */}
-        <line x1={xs} y1={ground} x2={xs} y2={ground - 70} stroke="var(--text-dim)" strokeWidth="1.5" strokeDasharray="3 3" />
-        {Flag(xs, ground - 78, 'Ligne')}
-        {/* trajectoire */}
-        <path d={'M' + xs + ',' + ground + ' Q' + ((xs + xe) / 2) + ',' + apex + ' ' + xe + ',' + ground} fill="none" stroke={JUMP} strokeWidth="2.6" strokeDasharray="6 4" markerEnd="url(#ljA)" />
-        {footR(xs, ground + 8)}
-        {footR(xe, ground + 8)}
-        {/* mesure */}
-        <line x1={xs} y1={ground + 22} x2={xe} y2={ground + 22} stroke="var(--text-dim)" strokeWidth="1" />
-        <line x1={xs} y1={ground + 18} x2={xs} y2={ground + 26} stroke="var(--text-dim)" strokeWidth="1" />
-        <line x1={xe} y1={ground + 18} x2={xe} y2={ground + 26} stroke="var(--text-dim)" strokeWidth="1" />
+  function sampleQuad(p0, c, p1, steps) {
+    var out = [];
+    for (var i = 0; i <= steps; i++) { var t = i / steps, u = 1 - t; out.push([u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]]); }
+    return out;
+  }
+
+  // ── STANDING LONG JUMP ──
+  function longJumpData() {
+    var ground = 150, xs = 80, xe = 300, apex = 48;
+    var pts = sampleQuad([xs, ground], [(xs + xe) / 2, apex], [xe, ground], 12);
+    var labels = [], colors = [];
+    for (var i = 0; i < pts.length - 1; i++) { var t = i / (pts.length - 1); labels.push(t < 0.18 ? 'Impulsion' : (t > 0.8 ? 'Réception' : 'Saut')); colors.push(JUMP); }
+    var extras = (
+      <g>
+        <line x1={24} y1={ground} x2={376} y2={ground} stroke="var(--border-mid)" strokeWidth={1.5} />
+        <line x1={xs} y1={ground} x2={xs} y2={ground - 68} stroke="var(--text-dim)" strokeWidth={1.5} strokeDasharray="3 3" />
+        {flag(xs, ground - 76, 'Ligne')}
+        {footR(xs, ground + 8)}{footR(xe, ground + 8)}
+        <line x1={xs} y1={ground + 22} x2={xe} y2={ground + 22} stroke="var(--text-dim)" strokeWidth={1} />
+        <line x1={xs} y1={ground + 18} x2={xs} y2={ground + 26} stroke="var(--text-dim)" strokeWidth={1} />
+        <line x1={xe} y1={ground + 18} x2={xe} y2={ground + 26} stroke="var(--text-dim)" strokeWidth={1} />
         <text x={(xs + xe) / 2} y={ground + 35} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fill: 'var(--text-dim)' }}>distance (talon le plus proche)</text>
-        {Step(xs, ground - 70, 1, JUMP)}
-        {Step((xs + xe) / 2, apex - 4, 2, JUMP)}
-        {Step(xe, ground - 70, 3, JUMP)}
-      </svg>,
-      null,
-      "① Pieds joints derrière la ligne, sans élan. ② Flexion-extension, saut vers l'avant. ③ Réception stabilisée sur les deux pieds. Mesure du bord de la ligne au talon le plus proche. 3 essais, le meilleur compte."
+      </g>
     );
+    return { w: 400, h: 190, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
+      aria: 'Simulation du saut en longueur', caption: "Pieds joints derrière la ligne, sans élan. Flexion-extension, saut vers l'avant, réception sur les deux pieds. Mesure au talon le plus proche. 3 essais, le meilleur compte." };
   }
 
-  // ── STANDING TRIPLE JUMP : 3 bonds enchaînés (vue de profil) ──
-  function TripleJump() {
-    var ground = 150, xs = 44;
-    var cps = [xs, 160, 275, 396];   // contacts au sol : départ, bond1, bond2, réception
-    function arc(a, b, n) {
-      var mid = (a + b) / 2, apex = ground - 54;
-      return (
-        <g key={n}>
-          <path d={'M' + a + ',' + ground + ' Q' + mid + ',' + apex + ' ' + b + ',' + ground} fill="none" stroke={JUMP} strokeWidth="2.6" strokeDasharray="6 4" markerEnd="url(#tjA)" />
-          {Step(mid, apex - 2, n, JUMP)}
-        </g>
-      );
+  // ── STANDING TRIPLE JUMP ──
+  function tripleJumpData() {
+    var ground = 150, apex = ground - 50, cps = [44, 160, 275, 396], path = [], labels = [], colors = [];
+    for (var a = 0; a < 3; a++) {
+      var arc = sampleQuad([cps[a], ground], [(cps[a] + cps[a + 1]) / 2, apex], [cps[a + 1], ground], 6);
+      for (var i = (a === 0 ? 0 : 1); i < arc.length; i++) { path.push(arc[i]); }
     }
-    return Wrap(
-      <svg width="100%" viewBox="0 0 440 190" role="img" aria-label="Schéma du triple saut sans élan">
-        <defs>{arrow('tjA', JUMP)}</defs>
-        <line x1={24} y1={ground} x2={416} y2={ground} stroke={GUIDE} strokeWidth="1.5" />
-        {arc(cps[0], cps[1], 1)}
-        {arc(cps[1], cps[2], 2)}
-        {arc(cps[2], cps[3], 3)}
-        {footR(cps[0], ground + 8)}
-        {footOne(cps[1], ground + 8)}
-        {footOne(cps[2], ground + 8)}
-        {footR(cps[3], ground + 8)}
-        {Flag(cps[0], ground + 24, 'pieds joints')}
-        {Flag(cps[1], ground + 24, '1 pied')}
-        {Flag(cps[2], ground + 24, '1 pied')}
-        {Flag(cps[3], ground + 24, '2 pieds')}
-      </svg>,
-      null,
-      "Départ pieds joints, sans élan. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. Mesure jusqu'au talon le plus proche. 3 essais, le meilleur compte."
+    for (var s = 0; s < path.length - 1; s++) { var seg = path[s][0]; labels.push(seg < cps[1] ? 'Bond 1' : seg < cps[2] ? 'Bond 2' : 'Bond 3'); colors.push(JUMP); }
+    var extras = (
+      <g>
+        <line x1={24} y1={ground} x2={416} y2={ground} stroke="var(--border-mid)" strokeWidth={1.5} />
+        {footR(cps[0], ground + 8)}{footOne(cps[1], ground + 8)}{footOne(cps[2], ground + 8)}{footR(cps[3], ground + 8)}
+        {flag(cps[0], ground + 24, 'pieds joints')}{flag(cps[1], ground + 24, '1 pied')}{flag(cps[2], ground + 24, '1 pied')}{flag(cps[3], ground + 24, '2 pieds')}
+      </g>
     );
+    return { w: 440, h: 190, path: path, labels: labels, colors: colors, extras: extras, legend: null,
+      aria: 'Simulation du triple saut', caption: "Départ pieds joints. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. 3 essais, le meilleur compte." };
   }
 
   function CadDiagram(props) {
-    if (props.name === 'square') return <Square />;
-    if (props.name === 'move') return <Move />;
-    if (props.name === 'slalom') return <Slalom />;
-    if (props.name === 'longjump') return <LongJump />;
-    if (props.name === 'triplejump') return <TripleJump />;
-    return null;
+    var data = null;
+    if (props.name === 'square') data = squareData();
+    else if (props.name === 'move') data = moveData();
+    else if (props.name === 'slalom') data = slalomData();
+    else if (props.name === 'longjump') data = longJumpData();
+    else if (props.name === 'triplejump') data = tripleJumpData();
+    if (!data) return null;
+    return <CadCourseSim {...data} />;
   }
   window.CadDiagram = CadDiagram;
 })();

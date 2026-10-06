@@ -331,7 +331,7 @@
         {xTicks.map(function (t, i) {
           return <text key={'x' + i} x={sx(t)} y={H - PADB + 15} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fill: 'var(--text-dim)' }}>{t}</text>;
         })}
-        <text x={W - PADR + 4} y={H - PADB + 15} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-dim)', fontStyle: 'italic' }}>ans</text>
+        {props.xUnit !== '' ? <text x={W - PADR + 4} y={H - PADB + 15} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-dim)', fontStyle: 'italic' }}>{props.xUnit || 'ans'}</text> : null}
 
         {area ? <path d={area} fill={(props.areaBetween.color || BRAND) + '22'} stroke="none" /> : null}
         {cursorOn ? <line x1={tipX} y1={PADT} x2={tipX} y2={H - PADB} stroke={BRAND} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} /> : null}

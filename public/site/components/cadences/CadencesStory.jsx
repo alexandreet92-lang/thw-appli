@@ -154,7 +154,40 @@
       <div className="cad-note-src">
         Sources : endurance cardio-respiratoire des enfants −5 %/décennie depuis ~1970 et ≈ 15 % sous la génération
         précédente (méta-analyses Tomkinson) ; force de poigne des hommes 20-34 ans ~117 lb en 1985 (≈ 53 kg) → ~98 lb
-        aujourd’hui (≈ 44 kg), soit ≈ −16 % (Journal of Hand Therapy) ; 31 % des adultes sous le minimum d’activité OMS (2022).
+        aujourd’hui (≈ 44 kg), soit ≈ −16 % (Journal of Hand Therapy) ; inactivité mondiale 23,4 % (2000) → 31,3 % (2022),
+        projetée ~35 % en 2030 (Lancet Global Health / OMS).
+      </div>
+    );
+  }
+  function InactivityTrend() {
+    var LC = window.CadLineChart;
+    return (
+      <div className="cad-card">
+        <div className="cad-h3" style={{ marginBottom: 8 }}>Adultes qui ne bougent pas assez — dans le monde (%)</div>
+        {LC ? <LC xUnit="" series={[{ key: 'ina', label: 'Inactivité', color: '#ef4444', endLabel: '≈35 %', points: [[2000, 23.4], [2010, 26.4], [2016, 27.5], [2022, 31.3], [2030, 35]] }]}
+                  markers={[{ x: 2022, y: 31.3, color: '#ef4444', label: '31 % (2022)', below: true }]}
+                  xDomain={[2000, 2030]} xTicks={[2000, 2010, 2020, 2030]} yDomain={[0, 40]} yTicks={[0, 10, 20, 30, 40]}
+                  aria="Inactivité physique mondiale 2000-2030" /> : null}
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>La tendance monte : +8 points depuis 2000, projetée à ~35 % en 2030.</div>
+      </div>
+    );
+  }
+  function MortalityBars() {
+    var PF = window.CadPointsByFamily;
+    return (
+      <div className="cad-card">
+        <div className="cad-h3" style={{ marginBottom: 12 }}>Risque de mortalité selon le niveau cardio (× vs élite)</div>
+        {PF ? <PF data={[{ label: 'Élite', pts: 0.2, color: '#22c55e' }, { label: 'Au-dessus', pts: 1, color: '#84cc16' }, { label: 'En-dessous', pts: 1.4, color: '#f59e0b' }, { label: 'Faible', pts: 5, color: '#ef4444' }]} /> : null}
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>Un cardio faible = <strong style={{ color: 'var(--text)' }}>×5 de risque de mortalité</strong> vs un cardio d’élite (JAMA, 122 000 personnes).</div>
+      </div>
+    );
+  }
+  function SourcesCout() {
+    return (
+      <div className="cad-note-src">
+        Sources : cardio faible vs élite = HR 5,04 de mortalité toutes causes, +1 MET ≈ −13 % (Mandsager, JAMA Open 2018,
+        122 007 patients) ; chaque −5 kg de force de poigne = +16 % de mortalité, meilleur prédicteur que la tension systolique
+        (Leong, Lancet 2015, PURE, 140 000 adultes).
       </div>
     );
   }
@@ -195,14 +228,22 @@
           <p className="cad-act-p">Les enfants d’aujourd’hui mettent <strong>~1 min 30 de plus</strong> pour courir un kilomètre que leurs parents au même âge. Leur endurance baisse d’<strong>environ 5 % par décennie</strong> depuis les années 70 ; ils sont <strong>~15 % moins endurants</strong>. Plus grands, plus lourds — mais plus faibles : <strong>−10 %</strong> de force de poigne chez un garçon de 12 ans entre 1981 et 2007.</p>
           <p className="cad-act-p">Chez l’adulte, même pente : un homme de 20-34 ans a <strong>~16 % de poigne en moins</strong> qu’en 1985. Et <strong>1 adulte sur 3</strong> dans le monde ne bouge pas assez — un chiffre qui grimpe encore.</p>
           <GripBars />
+          <InactivityTrend />
           <p className="cad-act-p">Le pire ? On mesure tout — poids, tension, cholestérol — <strong>sauf</strong> notre condition physique. On ne sait pas vraiment où on en est. <strong>CADENCES comble ce trou.</strong></p>
           <SourcesGen />
         </Act>
 
         {/* 2. Ce que ça coûte */}
         <Act eye="Ce que ça coûte" title="La condition physique, c’est de la santé mesurable."
-             lead={<span>Le VO₂max et la force comptent parmi les <strong>meilleurs prédicteurs</strong> de santé, d’autonomie et de longévité — souvent plus que les examens de routine.</span>}>
-          <p className="cad-act-p">Pourtant, on surveille son poids, sa tension, son cholestérol… presque jamais sa condition physique. On navigue à l’aveugle. CADENCES donne enfin <strong>un chiffre clair, à suivre dans le temps.</strong></p>
+             lead={<span>Le VO₂max et la force comptent parmi les <strong>meilleurs prédicteurs</strong> de santé, d’autonomie et de longévité — souvent plus que les examens de routine.</span>}
+             media={<MortalityBars />}>
+          <p className="cad-act-p">Pourtant, on surveille son poids, sa tension, son cholestérol… presque jamais sa condition physique. On navigue à l’aveugle.</p>
+          <div className="cad-callrow">
+            <div className="cad-callout-big"><b>−13 %</b><span>de mortalité par +1 MET de cardio gagné</span></div>
+            <div className="cad-callout-big"><b>+16 %</b><span>de mortalité par −5 kg de force de poigne</span></div>
+          </div>
+          <p className="cad-act-p"><strong>Le VO₂max est le meilleur prédicteur de longévité</strong> — devant le poids, la tension, le cholestérol et le tabac. CADENCES donne enfin ce chiffre, à suivre dans le temps.</p>
+          <SourcesCout />
         </Act>
 
         {/* 3. Comment ton corps vieillit */}

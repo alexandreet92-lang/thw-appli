@@ -1678,21 +1678,26 @@ function LocalisationBloc() {
   }, [])
 
   // Récupère la position et met en cache (utilisé pour le thème jour/nuit précis).
+  // Via la couche geo multi-plateforme : app native → plugin @capacitor/geolocation
+  // (CoreLocation, déclenche la VRAIE fenêtre iOS) ; web → navigator.geolocation.
+  // `navigator.geolocation` seul ne fonctionne pas dans la WebView iOS (l'ancien
+  // code ne demandait donc jamais l'autorisation → les boutons « ne faisaient rien »).
   function capturePosition(): Promise<boolean> {
     return new Promise(resolve => {
-      if (!('geolocation' in navigator)) { setMsg(t('profile.geoUnavailable')); resolve(false); return }
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          try {
-            localStorage.setItem('thw-geo', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }))
-            localStorage.setItem(GEO_GRANTED_AT_KEY, String(Date.now()))
-          } catch { /* ignore */ }
-          void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
-          resolve(true)
-        },
-        () => resolve(false),
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 6 * 3600_000 },
-      )
+      void import('@/lib/native/geo').then(({ getCurrentPosition }) => {
+        getCurrentPosition(
+          pos => {
+            try {
+              localStorage.setItem('thw-geo', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }))
+              localStorage.setItem(GEO_GRANTED_AT_KEY, String(Date.now()))
+            } catch { /* ignore */ }
+            void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+            resolve(true)
+          },
+          () => resolve(false),
+          { enableHighAccuracy: false, timeout: 12000, maximumAge: 6 * 3600_000 },
+        )
+      }).catch(() => resolve(false))
     })
   }
 

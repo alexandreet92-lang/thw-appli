@@ -250,7 +250,9 @@ export default function RecordPage() {
       try { after = (await Geolocation.requestPermissions({ permissions: ['location'] })).location } catch { after = 'req-err' }
     } catch { after = 'plugin-err' }
     if (after === 'granted') { setGpsPerm('granted'); return }
-    // Diagnostic (temporaire) : affiche l'état réel renvoyé par iOS.
+    // Diagnostic (temporaire) : alerte native (impossible à rater) qui montre
+    // l'état exact renvoyé par iOS, puis ouvre les Réglages de l'app.
+    try { window.alert(`GPS iOS → avant: ${before} · après: ${after}\n\nSi \"denied\" : active Position dans les Réglages.\nSi \"prompt\" : la fenêtre système ne s'affiche pas (clé Info.plist).`) } catch { /* ignore */ }
     setToast(`GPS: ${before} → ${after}`)
     setGpsPerm(after === 'denied' || before === 'denied' ? 'denied' : 'prompt')
     // Pas accordé (refus, bloqué, ou fenêtre non affichée) → Réglages de l'app

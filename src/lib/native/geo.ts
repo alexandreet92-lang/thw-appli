@@ -111,6 +111,7 @@ let starting = false
 let lastFix: GeoPos | null = null
 let lastFixAt = 0
 let restartTimer: ReturnType<typeof setTimeout> | null = null
+let silenceTimer: ReturnType<typeof setTimeout> | null = null
 let resumeListener: { remove: () => Promise<void> } | null = null
 
 // Mode « arrière-plan » : activé pendant un enregistrement (setBackgroundTracking).
@@ -146,6 +147,7 @@ function toW3C(p: { timestamp: number; coords: { latitude: number; longitude: nu
 }
 
 async function stopNativeWatch(): Promise<void> {
+  clearSilenceWatchdog()
   const id = nativeWatchId
   nativeWatchId = null
   if (id == null) return
@@ -161,6 +163,28 @@ function scheduleRestart(ms: number): void {
   }, ms)
 }
 
+/** Chien de garde « watch silencieux » : sur iOS, watchPosition peut ne plus
+ *  émettre (à l'arrêt, ou watch coincé après un changement d'état). Si aucune
+ *  position fraîche n'est arrivée depuis 10 s alors qu'on est abonné en
+ *  foreground, on relance le watch — ce qui réémet aussitôt un fix via le seed
+ *  getCurrentPosition de startNativeWatch. En mouvement, lastFixAt avance et on
+ *  se contente de ré-armer (aucun redémarrage). */
+function clearSilenceWatchdog(): void {
+  if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
+}
+function armSilenceWatchdog(): void {
+  clearSilenceWatchdog()
+  silenceTimer = setTimeout(() => {
+    silenceTimer = null
+    if (!subs.size || backgroundMode) return
+    if (Date.now() - lastFixAt > 10000) {
+      void (async () => { await stopNativeWatch(); await startNativeWatch() })()
+    } else {
+      armSilenceWatchdog()
+    }
+  }, 10000)
+}
+
 async function startNativeWatch(): Promise<void> {
   // En mode arrière-plan, la source est le watcher background : jamais le foreground.
   if (backgroundMode || nativeWatchId != null || starting || !subs.size) return
@@ -171,6 +195,20 @@ async function startNativeWatch(): Promise<void> {
     if (perm === 'disabled') { broadcastErr({ kind: 'disabled', code: 'OS-PLUG-GLOC-0007', message: 'Location services are not enabled' }); return }
     if (!subs.size) return
     const Geo = await plugin()
+    // Seed immédiat : watchPosition peut tarder (voire ne jamais émettre à
+    // l'arrêt) à livrer le 1er point sur iOS. getCurrentPosition, lui, est
+    // fiable (c'est ce qui centre déjà la carte) → on diffuse un fix tout de
+    // suite pour que le statut sorte de « Recherche GPS… » sans attendre. Appelé
+    // AVANT le watch (aucun watch actif) → pas d'interférence CLLocationManager.
+    try {
+      const seed = await Geo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 })
+      if (seed && subs.size) {
+        const p = toW3C(seed)
+        lastFix = p; lastFixAt = Date.now()
+        for (const s of subs) s.onPos(p)
+      }
+    } catch { /* pas de fix ponctuel : le watch prendra le relais */ }
+    if (!subs.size) return
     const id = await Geo.watchPosition(
       { enableHighAccuracy: true, timeout: NATIVE_WATCH_TIMEOUT_MS, maximumAge: 0 },
       (position, err) => {
@@ -189,6 +227,7 @@ async function startNativeWatch(): Promise<void> {
       },
     )
     nativeWatchId = id
+    armSilenceWatchdog()
     if (!subs.size) await stopNativeWatch()
   } catch (e) {
     const err = classifyGeoError(e)
@@ -296,6 +335,7 @@ function nativeSubscribe(sub: Sub): GeoHandle {
       if (!subs.delete(sub)) return
       if (!subs.size) {
         if (restartTimer) { clearTimeout(restartTimer); restartTimer = null }
+        clearSilenceWatchdog()
         void stopNativeWatch()
         void stopBackgroundWatch()
       }

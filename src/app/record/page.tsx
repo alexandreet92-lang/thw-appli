@@ -240,11 +240,22 @@ export default function RecordPage() {
   // on ouvre les Réglages de l'app. Tap manuel (bouton) ou auto à l'ouverture.
   const requestGps = async (): Promise<void> => {
     if (!isNativeApp()) return
-    const current = await checkNativeGeoPermission()
-    if (current === 'denied' || current === 'disabled') { setGpsPerm(current); void openAppSettings(); return }
-    const p = await ensureNativeGeoPermission() // 'prompt' → fenêtre système
-    setGpsPerm(p)
-    if (p === 'denied' || p === 'disabled') void openAppSettings()
+    let before = 'unknown'
+    let after = 'unknown'
+    try {
+      const { Geolocation } = await import('@capacitor/geolocation')
+      try { before = (await Geolocation.checkPermissions()).location } catch { before = 'check-err' }
+      if (before === 'granted') { setGpsPerm('granted'); return }
+      // 'prompt' → la fenêtre iOS s'affiche ; 'denied' → iOS ne la réaffiche plus.
+      try { after = (await Geolocation.requestPermissions({ permissions: ['location'] })).location } catch { after = 'req-err' }
+    } catch { after = 'plugin-err' }
+    if (after === 'granted') { setGpsPerm('granted'); return }
+    // Diagnostic (temporaire) : affiche l'état réel renvoyé par iOS.
+    setToast(`GPS: ${before} → ${after}`)
+    setGpsPerm(after === 'denied' || before === 'denied' ? 'denied' : 'prompt')
+    // Pas accordé (refus, bloqué, ou fenêtre non affichée) → Réglages de l'app
+    // pour activer la position à la main.
+    void openAppSettings()
   }
   // À l'ouverture de l'écran (sport GPS, app native) : lit l'autorisation ;
   // si jamais demandée, affiche la fenêtre iOS tout de suite (comme Strava).

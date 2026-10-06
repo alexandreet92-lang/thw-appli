@@ -7,6 +7,9 @@ import SportSelector, { type SportId, getSportIcon, getSportLabel, getSportColor
 import { stopLiveShare, currentLiveShareId } from '@/lib/community/liveShare'
 import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'motion/react'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
+import { checkNativeGeoPermission, ensureNativeGeoPermission, type GeoPermission } from '@/lib/native/geo'
+import { isNativeApp } from '@/lib/native/platform'
+import { openAppSettings } from '@/lib/native/appSettings'
 import { subscribeSensors, getSensorState, autoReconnectSensors, type SensorState } from '@/lib/sensors/bluetooth'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -228,10 +231,55 @@ export default function RecordPage() {
   // ── Statut GPS de l'écran de départ (pilule centrale) ──
   // Montre la précision réelle avant de partir. Uniquement si l'athlète a déjà
   // accepté l'explication GPS (sinon la pré-permission reste gérée par l'écran live).
-  const [gpsAllowed, setGpsAllowed] = useState(false)
-  useEffect(() => { try { setGpsAllowed(!!localStorage.getItem('gps_permission_explained')) } catch { /* ignore */ } }, [])
   const isGpsSport = ['cycling', 'mtb', 'running', 'trail', 'hiking', 'ski', 'openwater'].includes(sport)
-  const { gps: startGps } = useGPSTracking(view === 'home' && gpsAllowed && isGpsSport && !isDesktopRec)
+  // Autorisation iOS RÉELLE (et non un simple drapeau local) : c'est elle qui
+  // décide d'afficher « Autoriser la localisation » et d'activer le suivi.
+  const [gpsPerm, setGpsPerm] = useState<GeoPermission>(isNativeApp() ? 'unknown' : 'granted')
+  const gpsRequestedRef = useRef(false)
+  // Demande l'autorisation (déclenche la fenêtre iOS). Refus / service coupé →
+  // on ouvre les Réglages de l'app. Tap manuel (bouton) ou auto à l'ouverture.
+  const requestGps = async (): Promise<void> => {
+    if (!isNativeApp()) return
+    const current = await checkNativeGeoPermission()
+    if (current === 'denied' || current === 'disabled') { setGpsPerm(current); void openAppSettings(); return }
+    const p = await ensureNativeGeoPermission() // 'prompt' → fenêtre système
+    setGpsPerm(p)
+    if (p === 'denied' || p === 'disabled') void openAppSettings()
+  }
+  // À l'ouverture de l'écran (sport GPS, app native) : lit l'autorisation ;
+  // si jamais demandée, affiche la fenêtre iOS tout de suite (comme Strava).
+  useEffect(() => {
+    if (!isNativeApp() || !isGpsSport || isDesktopRec || view !== 'home') return
+    let alive = true
+    void (async () => {
+      const p = await checkNativeGeoPermission()
+      if (!alive) return
+      setGpsPerm(p)
+      if (p !== 'granted' && p !== 'denied' && p !== 'disabled' && !gpsRequestedRef.current) {
+        gpsRequestedRef.current = true
+        const r = await ensureNativeGeoPermission()
+        if (alive) setGpsPerm(r)
+      }
+    })()
+    return () => { alive = false }
+  }, [isGpsSport, isDesktopRec, view])
+  // Retour au premier plan (ex. après être allé dans Réglages) : re-vérifie.
+  useEffect(() => {
+    if (!isNativeApp()) return
+    let off: (() => void) | null = null
+    void (async () => {
+      try {
+        const { App } = await import('@capacitor/app')
+        const h = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) void checkNativeGeoPermission().then(setGpsPerm)
+        })
+        off = () => { void h.remove() }
+      } catch { /* plugin absent */ }
+    })()
+    return () => { off?.() }
+  }, [])
+  const gpsGranted = !isNativeApp() || gpsPerm === 'granted'
+  const { gps: startGps } = useGPSTracking(view === 'home' && gpsGranted && isGpsSport && !isDesktopRec)
 
   // ── Capteurs BLE (puces Cardio / Puissance) ──
   const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
@@ -311,6 +359,9 @@ export default function RecordPage() {
   }
 
   const handleStart = () => {
+    // Filet de sécurité : si on démarre un sport GPS sans autorisation, on la
+    // demande (fenêtre iOS) — le suivi s'active dès qu'elle est accordée.
+    if (isNativeApp() && isGpsSport && !isDesktopRec && gpsPerm !== 'granted') void requestGps()
     if (sport === 'cycling') setView('cycling')
     // Running : desktop → tapis direct (pas de sortie GPS possible sur ordi) ;
     // mobile → choix Dehors / Tapis.
@@ -484,9 +535,11 @@ export default function RecordPage() {
   const gpsAcc = startGps.accuracy != null ? Math.max(1, Math.round(startGps.accuracy)) : null
   const gpsPill: { dot: string; text: string; live?: boolean } = !isGpsSport || isDesktopRec
     ? { dot: getSportColor(sport), text: t('rec.indoor') }
-    : !gpsAllowed
-      ? { dot: RK_DOT.idle, text: t('rec.gpsEnable') }
-      : startGps.status === GPSStatus.good
+    : isNativeApp() && (gpsPerm === 'denied' || gpsPerm === 'disabled')
+      ? { dot: 'var(--danger)', text: t('rec.gpsAllow') }
+      : isNativeApp() && gpsPerm !== 'granted'
+        ? { dot: RK_DOT.idle, text: t('rec.gpsAllow'), live: true }
+        : startGps.status === GPSStatus.good
         ? { dot: RK_DOT.ok, text: t('rec.gpsPrecise', { acc: gpsAcc ?? 3 }) }
         : startGps.status === GPSStatus.approximate
           ? { dot: RK_DOT.warn, text: t('rec.gpsApprox', { acc: gpsAcc ?? 12 }) }
@@ -573,9 +626,9 @@ export default function RecordPage() {
         </span>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', paddingTop: 0 }}>
           <RkStatusPill glass dot={gpsPill.dot} live={gpsPill.live} onClick={isGpsSport && !isDesktopRec ? () => {
-            // GPS jamais autorisé : la pilule lance l'autorisation (même effet que
-            // l'écran d'explication) ; sinon elle ouvre les réglages GPS & écran.
-            if (!gpsAllowed) { try { localStorage.setItem('gps_permission_explained', 'true') } catch { /* ignore */ } setGpsAllowed(true) }
+            // Pas encore autorisé (natif) : la pilule déclenche la demande iOS
+            // (ou ouvre les Réglages si refusé). Autorisé : réglages GPS & écran.
+            if (isNativeApp() && gpsPerm !== 'granted') void requestGps()
             else setGpsSheetOpen(true)
           } : undefined}>
             {gpsPill.text}

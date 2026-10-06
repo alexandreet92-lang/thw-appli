@@ -104,6 +104,21 @@ export async function ensureNativeGeoPermission(): Promise<GeoPermission> {
   } finally { clearTimeout(warn) }
 }
 
+/** Lit l'autorisation SANS la demander (pas de prompt iOS). Web : 'granted'
+ *  (le navigateur demande lui-même au 1er watch). Sert à piloter l'UI : afficher
+ *  un bouton « Autoriser la localisation » tant que ce n'est pas 'granted'. */
+export async function checkNativeGeoPermission(): Promise<GeoPermission> {
+  if (!isNativeApp()) return 'granted'
+  try {
+    const st = (await (await plugin()).checkPermissions()).location
+    if (st === 'granted') return 'granted'
+    if (st === 'denied') return 'denied'
+    return 'prompt'
+  } catch (e) {
+    return classifyGeoError(e).kind === 'disabled' ? 'disabled' : 'unknown'
+  }
+}
+
 interface Sub { onPos: (p: GeoPos) => void; onErr: (e: GeoErr) => void }
 const subs = new Set<Sub>()
 let nativeWatchId: string | null = null

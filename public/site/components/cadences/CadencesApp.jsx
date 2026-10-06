@@ -97,6 +97,21 @@
         .cad-ul { margin: 0; padding-left: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--text-mid); display: grid; gap: 5px; }
         .cad-ul strong { color: var(--text); }
         .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
+        /* Fiche épreuve structurée */
+        .cad-ec-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+        .cad-ec-name { font-family: var(--font-display); font-weight: 700; font-size: 17px; color: var(--text); }
+        .cad-ec-pts { flex: 0 0 auto; text-align: center; background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 7px 15px; }
+        .cad-ec-pts b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--brand); }
+        .cad-ec-pts span { font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-ec-body { display: grid; gap: 13px; margin-top: 14px; }
+        .cad-ec-h { font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); margin-bottom: 4px; }
+        .cad-ec-p { font-family: var(--font-body); font-size: 13.5px; line-height: 1.55; color: var(--text-mid); margin: 0; }
+        .cad-ec-ol, .cad-ec-ul { margin: 0; padding-left: 18px; font-family: var(--font-body); font-size: 13.5px; line-height: 1.55; color: var(--text-mid); display: grid; gap: 4px; }
+        /* Barème lisible */
+        .cad-bareme th, .cad-bareme td { font-size: 13px; padding: 9px 12px; }
+        .cad-bareme .cad-b-rl { text-align: left; font-weight: 600; color: var(--text); }
+        .cad-bareme tr.cad-b-sub td { font-size: 11.5px; color: var(--text-dim); padding-top: 2px; padding-bottom: 8px; border-bottom: none; }
+        .cad-bareme tr.cad-b-sub .cad-b-rl { color: var(--text-dim); font-weight: 500; }
         /* Manifeste d'ouverture (intro déroulante) */
         .cad-manifesto { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; gap: 40px; margin-top: 10px; }
         .cad-act { max-width: none; width: 100%; }
@@ -662,8 +677,6 @@
                   <div><strong>Matériel.</strong> {proto.materiel.join(', ')}.</div>
                   <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{proto.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
                   {proto.securite ? <div><strong>Sécurité.</strong> {proto.securite}</div> : null}
-                  {proto.warmup ? <div><strong>Échauffement — {proto.warmup.titre}.</strong> {proto.warmup.texte}</div> : null}
-                  {proto.echauffementSpecifique && (!proto.warmup || (proto.warmup.titre !== 'Force' && proto.warmup.titre !== 'Haltérophilie')) ? <div><strong>En plus, pour cette épreuve.</strong> {proto.echauffementSpecifique}</div> : null}
                   {proto.allure ? <div><strong>Allure.</strong> {proto.allure}</div> : null}
                   {proto.box ? <div><strong>Box.</strong> {proto.box}</div> : null}
                   <div><strong>À saisir.</strong> {proto.saisie}</div>

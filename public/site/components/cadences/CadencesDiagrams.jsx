@@ -61,7 +61,7 @@
     var curSeg = run === 'idle' ? -1 : cur.k;
 
     return (
-      <div style={{ background: 'var(--bg-card-2)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: 16, marginTop: 10 }}>
+      <div style={{ background: 'var(--bg-card-2)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: 16, marginTop: 10, maxWidth: props.maxWidth || 460 }}>
         {/* bannière d'indication */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 24 }}>
@@ -119,56 +119,60 @@
   function plot(x, y, label) {
     return (
       <g key={'p' + x + '_' + y}>
-        <circle cx={x} cy={y} r={5} fill="var(--text)" />
-        {label ? <text x={x} y={y - 11} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>{label}</text> : null}
+        <circle cx={x} cy={y} r={4.5} fill="var(--text)" />
+        {label ? <text x={x} y={y - 10} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-mid)' }}>{label}</text> : null}
       </g>
     );
   }
-  function flag(x, y, t) { return <text key={'fl' + x + '_' + y} x={x} y={y} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-mid)' }}>{t}</text>; }
+  function flag(x, y, t) { return <text key={'fl' + x + '_' + y} x={x} y={y} textAnchor="middle" style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, fill: 'var(--text)' }}>{t}</text>; }
+  function dim(x, y, t) { return <text key={'dm' + x + '_' + y} x={x} y={y} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>{t}</text>; }
   function footR(cx, cy) { return <g key={'fr' + cx}><ellipse cx={cx - 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /><ellipse cx={cx + 4} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" /></g>; }
   function footOne(cx, cy) { return <ellipse key={'fo' + cx} cx={cx} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" />; }
 
-  // ── SQUARE 4×4 ──
+  // ── SQUARE 4×4 (carrés décalés, un seul couleur) ──
   function squareData() {
-    var L = 90, R = 210, c1T = 300, c1B = 420, c2T = 108, c2B = 228;
-    var path = [[150, 452], [L, c1B], [L, c1T], [R, c1T], [R, c1B], [L, c1B], [L, c2B], [R, c2B], [R, c2T], [L, c2T], [L, c2B], [150, 40]];
-    var labels = ['Départ → carré 1', 'Avant', 'Pas chassés', 'Arrière', 'Pas chassés', '10 m → carré 2', 'Pas chassés', 'Avant', 'Pas chassés', 'Arrière', '10 m → Arrivée'];
-    var colors = [CONNECT, AVANT, CHASSE, ARRIERE, CHASSE, CONNECT, CHASSE, AVANT, CHASSE, ARRIERE, CONNECT];
+    var L1 = 40, R1 = 120, T1 = 50, B1 = 130;    // carré 1 · haut-gauche
+    var L2 = 170, R2 = 250, T2 = 170, B2 = 250;  // carré 2 · bas-droite
+    var path = [
+      [80, 152], [L1, B1], [L1, T1], [R1, T1], [R1, B1], [L1, B1],
+      [L2, T2], [R2, T2], [R2, B2], [L2, B2], [L2, T2], [285, 112],
+    ];
+    var labels = ['Départ → carré 1', 'Avant', 'Pas chassés', 'Arrière', 'Pas chassés',
+      '10 m → carré 2', 'Pas chassés', 'Arrière', 'Pas chassés', 'Avant', '→ Arrivée'];
+    var colors = labels.map(function () { return AVANT; });
     var extras = (
       <g>
-        <rect x={L} y={c1T} width={120} height={120} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
-        <rect x={L} y={c2T} width={120} height={120} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
-        {[[L, c1T], [R, c1T], [L, c1B], [R, c1B], [L, c2T], [R, c2T], [L, c2B], [R, c2B]].map(function (p, i) { return <circle key={i} cx={p[0]} cy={p[1]} r={4} fill="var(--text)" />; })}
-        {flag(150, 462, 'Départ')}{flag(150, 30, 'Arrivée')}
-        {flag(150, 365, 'Carré 1 · 4×4 m')}{flag(150, 95, 'Carré 2 · sens inverse')}
-        <text x={158} y={268} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>10 m</text>
+        <rect x={L1} y={T1} width={80} height={80} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
+        <rect x={L2} y={T2} width={80} height={80} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
+        {[[L1, T1], [R1, T1], [L1, B1], [R1, B1], [L2, T2], [R2, T2], [L2, B2], [R2, B2]].map(function (p, i) { return <circle key={i} cx={p[0]} cy={p[1]} r={3.6} fill="var(--text)" />; })}
+        {flag(80, 44, 'Carré 1')}{flag(210, 164, 'Carré 2 · sens inverse')}
+        {flag(80, 172, 'Départ')}{flag(285, 100, 'Arrivée')}
+        {dim(80, 146, '4 m')}{dim(128, 152, '10 m')}
       </g>
     );
-    return { w: 300, h: 470, path: path, labels: labels, colors: colors, extras: extras,
-      legend: [{ c: AVANT, l: 'avant' }, { c: CHASSE, l: 'pas chassés' }, { c: ARRIERE, l: 'arrière' }],
+    return { w: 320, h: 285, maxWidth: 380, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du Square 4×4',
-      caption: "Par carré : avant → pas chassés → arrière → pas chassés. Carré 1 dans un sens, carré 2 en sens inverse. 10 m entre les départs de carré, puis 10 m jusqu'à l'arrivée. Plots contournés de l'extérieur vers l'intérieur." };
+      caption: "Deux carrés de 4 m décalés, séparés de 10 m. Par carré : avant → pas chassés → arrière → pas chassés. Carré 1 dans un sens, carré 2 en sens inverse. Plots contournés de l'extérieur vers l'intérieur." };
   }
 
-  // ── MOVE avant-arrière ──
+  // ── MOVE avant-arrière (plots sur une même ligne, un seul couleur) ──
   function moveData() {
-    var x0 = 40, perM = 9, y1 = 40, y2 = 82, y3 = 124, ys = 172;
+    var x0 = 40, perM = 9, y = 70;
     var c5 = x0 + 5 * perM, c10 = x0 + 10 * perM, c15 = x0 + 15 * perM, se = x0 + 30 * perM;
-    var path = [[x0, y1], [c5, y1], [x0, y1], [x0, y2], [c10, y2], [x0, y2], [x0, y3], [c15, y3], [x0, y3], [x0, ys], [se, ys]];
-    var labels = ['Avant 5 m', 'Retour arrière', 'Se replacer', 'Avant 10 m', 'Retour arrière', 'Se replacer', 'Avant 15 m', 'Retour arrière', 'Se replacer', 'Sprint 30 m'];
-    var colors = [AVANT, ARRIERE, CONNECT, AVANT, ARRIERE, CONNECT, AVANT, ARRIERE, CONNECT, SPRINT];
+    var path = [[x0, y], [c5, y], [x0, y], [c10, y], [x0, y], [c15, y], [x0, y], [se, y]];
+    var labels = ['Avant 5 m', 'Retour arrière', 'Avant 10 m', 'Retour arrière', 'Avant 15 m', 'Retour arrière', 'Sprint 30 m'];
+    var colors = labels.map(function () { return AVANT; });
     var extras = (
       <g>
-        <line x1={x0} y1={22} x2={x0} y2={186} stroke="var(--border-mid)" strokeWidth={1.5} strokeDasharray="3 3" />
-        {flag(x0, 16, 'Départ')}
-        {plot(c5, y1, '5 m')}{plot(c10, y2, '10 m')}{plot(c15, y3, '15 m')}
-        <text x={x0 + 150} y={166} style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-mid)' }}>Sprint 30 m</text>
+        <line x1={x0} y1={46} x2={x0} y2={94} stroke="var(--border-mid)" strokeWidth={1.5} strokeDasharray="3 3" />
+        {flag(x0, 40, 'Départ')}
+        {plot(c5, y, '5 m')}{plot(c10, y, '10 m')}{plot(c15, y, '15 m')}
+        {dim(se - 40, 90, 'Sprint 30 m')}
       </g>
     );
-    return { w: 440, h: 210, path: path, labels: labels, colors: colors, extras: extras,
-      legend: [{ c: AVANT, l: 'avant' }, { c: ARRIERE, l: 'retour arrière' }, { c: SPRINT, l: 'sprint' }],
+    return { w: 360, h: 110, maxWidth: 460, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du Move avant-arrière',
-      caption: "5 m avant, contourner, retour arrière ; idem 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m droit devant. 1 min de récup, ×3, le meilleur compte." };
+      caption: "Tous les plots sur une même ligne. 5 m avant, contourner, retour arrière ; idem 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m. 1 min de récup, ×3, le meilleur compte." };
   }
 
   // ── SLALOM 10.18 ──
@@ -183,8 +187,7 @@
         {flag(pts[0][0], yBot + 20, 'Départ')}{flag(pts[n - 1][0], yTop - 10, 'Arrivée')}
       </g>
     );
-    return { w: 440, h: 170, path: pts, labels: labels, colors: colors, extras: extras,
-      legend: [{ c: AVANT, l: 'course' }],
+    return { w: 440, h: 170, maxWidth: 520, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du Slalom', caption: "10 diagonales de 18,03 m (~180 m), 9 changements de direction. Plots contournés de l'extérieur vers l'intérieur. 2 essais, le meilleur compte." };
   }
 
@@ -212,7 +215,7 @@
         <text x={(xs + xe) / 2} y={ground + 35} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fill: 'var(--text-dim)' }}>distance (talon le plus proche)</text>
       </g>
     );
-    return { w: 400, h: 190, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
+    return { w: 400, h: 190, maxWidth: 440, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du saut en longueur', caption: "Pieds joints derrière la ligne, sans élan. Flexion-extension, saut vers l'avant, réception sur les deux pieds. Mesure au talon le plus proche. 3 essais, le meilleur compte." };
   }
 
@@ -231,7 +234,7 @@
         {flag(cps[0], ground + 24, 'pieds joints')}{flag(cps[1], ground + 24, '1 pied')}{flag(cps[2], ground + 24, '1 pied')}{flag(cps[3], ground + 24, '2 pieds')}
       </g>
     );
-    return { w: 440, h: 190, path: path, labels: labels, colors: colors, extras: extras, legend: null,
+    return { w: 440, h: 190, maxWidth: 480, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du triple saut', caption: "Départ pieds joints. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. 3 essais, le meilleur compte." };
   }
 

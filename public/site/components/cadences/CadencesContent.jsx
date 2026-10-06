@@ -56,16 +56,40 @@
     var b = sex === 'M' ? test.male : test.female;
     return BAR_P.map(function (p) { return b.ref + (b.max - b.ref) * (p - 60) / 40; });
   }
+  // Distance (m) par épreuve → allures dérivées (course, natation, slalom).
+  var DIST = { sprint_30m: 30, sprint_100m: 100, run_400m: 400, run_3200m: 3200, repeat_200m_x6: 1200, swim_50m: 50, swim_200m: 200, agility_slalom: 180.3 };
+  var RUN_SLUGS = ['sprint_30m', 'sprint_100m', 'run_400m', 'run_3200m', 'repeat_200m_x6'];
+  function paceRows(t, cols) {
+    var d = DIST[t.slug]; if (!d) return [];
+    if (RUN_SLUGS.indexOf(t.slug) >= 0) {
+      return [
+        { sub: 'min/km', cells: cols.map(function (v) { return fmtDur(v / d * 1000); }) },
+        { sub: 'km/h', cells: cols.map(function (v) { return String(round1(d / v * 3.6)); }) },
+      ];
+    }
+    if (t.slug === 'swim_50m' || t.slug === 'swim_200m') {
+      return [{ sub: '/100 m', cells: cols.map(function (v) { return fmtDur(v / d * 100); }) }];
+    }
+    if (t.slug === 'agility_slalom') {
+      return [{ sub: 'km/h moy.', cells: cols.map(function (v) { return String(round1(d / v * 3.6)); }) }];
+    }
+    return [];
+  }
   function BaremeMini(props) {
     var t = props.test;
+    function sexRows(sex, label) {
+      var cols = baremeCols(t, sex);
+      var main = <tr key={sex}><td className="cad-b-rl">{label}</td>{cols.map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>;
+      var subs = paceRows(t, cols).map(function (r, j) {
+        return <tr key={sex + 's' + j} className="cad-b-sub"><td className="cad-b-rl">↳ {r.sub}</td>{r.cells.map(function (c, i) { return <td key={i}>{c}</td>; })}</tr>;
+      });
+      return [main].concat(subs);
+    }
     return (
-      <div style={{ overflowX: 'auto', marginTop: 10 }}>
-        <table className="cad-table cad-table-sm">
-          <thead><tr><th style={{ textAlign: 'left' }}>Barème</th>{BAR_P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
-          <tbody>
-            <tr><td style={{ textAlign: 'left', fontWeight: 600, color: 'var(--text)' }}>H</td>{baremeCols(t, 'M').map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>
-            <tr><td style={{ textAlign: 'left', fontWeight: 600, color: 'var(--text)' }}>F</td>{baremeCols(t, 'F').map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>
-          </tbody>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table className="cad-table cad-bareme">
+          <thead><tr><th style={{ textAlign: 'left' }}></th>{BAR_P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
+          <tbody>{sexRows('M', 'H').concat(sexRows('F', 'F'))}</tbody>
         </table>
       </div>
     );
@@ -176,29 +200,69 @@
   }
 
   // ── Protocole complet 12 jours ──────────────────────────────────────
+  function ECSection(props) {
+    return (
+      <div className="cad-ec-sec">
+        <div className="cad-ec-h">{props.title}</div>
+        {props.children}
+      </div>
+    );
+  }
+  // Règles communes selon le type d'épreuve.
+  function reglesFor(t, p) {
+    var r = [];
+    if (p && (p.diagram === 'square' || p.diagram === 'move' || p.diagram === 'slalom')) {
+      r.push('Sur gazon, jamais sur bitume.');
+      r.push('Plots contournés de l\'extérieur vers l\'intérieur.');
+    }
+    if (t.group === 'Force max' || t.group === 'Haltérophilie') r.push('Technique avant la charge : on arrête si l\'exécution se dégrade.');
+    return r;
+  }
   function EpreuveCard(props) {
     var t = props.t, p = props.p;
+    var regles = reglesFor(t, p);
+    var donnees = [];
+    if (p) {
+      donnees.push(<li key="s"><strong style={{ color: 'var(--text)' }}>À saisir :</strong> {p.saisie}</li>);
+      if (p.allure) donnees.push(<li key="a"><strong style={{ color: 'var(--text)' }}>Allure cible :</strong> {p.allure}</li>);
+      if (p.box) donnees.push(<li key="b"><strong style={{ color: 'var(--text)' }}>Box :</strong> {p.box}</li>);
+    }
     return (
       <div className="cad-card" style={{ padding: 'var(--space-4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{t.name}</div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-dim)' }}>{t.group} · {t.pts_max} pts</div>
+        <div className="cad-ec-top">
+          <div className="cad-ec-name">{t.name}</div>
+          <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
         </div>
         {p ? (
-          <div style={{ display: 'grid', gap: 6, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)' }}>
-            <div><strong style={{ color: 'var(--text)' }}>Objectif.</strong> {p.objectif}</div>
-            <div><strong style={{ color: 'var(--text)' }}>Matériel.</strong> {p.materiel.join(', ')}.</div>
-            <ol style={{ margin: '2px 0', paddingLeft: 18, display: 'grid', gap: 2 }}>{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
-            {p.securite ? <div><strong style={{ color: 'var(--text)' }}>Sécurité.</strong> {p.securite}</div> : null}
-            {p.warmup ? <div><strong style={{ color: 'var(--text)' }}>Échauffement — {p.warmup.titre}.</strong> {p.warmup.texte}</div> : null}
-            {p.echauffementSpecifique && (!p.warmup || (p.warmup.titre !== 'Force' && p.warmup.titre !== 'Haltérophilie')) ? <div><strong style={{ color: 'var(--text)' }}>En plus, pour cette épreuve.</strong> {p.echauffementSpecifique}</div> : null}
-            {p.allure ? <div><strong style={{ color: 'var(--text)' }}>Allure.</strong> {p.allure}</div> : null}
-            {p.box ? <div><strong style={{ color: 'var(--text)' }}>Box.</strong> {p.box}</div> : null}
-            <div><strong style={{ color: 'var(--text)' }}>À saisir.</strong> {p.saisie}</div>
+          <div className="cad-ec-body">
+            <ECSection title="Objectif"><p className="cad-ec-p">{p.objectif}</p></ECSection>
+            <ECSection title="Matériel requis"><p className="cad-ec-p">{p.materiel.join(' · ')}</p></ECSection>
+            <ECSection title="Déroulé"><ol className="cad-ec-ol">{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol></ECSection>
+            {regles.length ? <ECSection title="Règles"><ul className="cad-ec-ul">{regles.map(function (s, i) { return <li key={i}>{s}</li>; })}</ul></ECSection> : null}
+            {p.securite ? <ECSection title="Conseils"><p className="cad-ec-p">{p.securite}</p></ECSection> : null}
+            <ECSection title="Données à retenir"><ul className="cad-ec-ul">{donnees}</ul></ECSection>
           </div>
         ) : null}
         {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
-        <BaremeMini test={t} />
+        <ECSection title="Barème"><BaremeMini test={t} /></ECSection>
+      </div>
+    );
+  }
+  function EchauffementBlock(props) {
+    var catalog = props.catalog, seen = {}, list = [];
+    Object.keys(catalog.protocols || {}).forEach(function (k) {
+      var w = catalog.protocols[k].warmup;
+      if (w && w.titre && !seen[w.titre]) { seen[w.titre] = 1; list.push(w); }
+    });
+    return (
+      <div className="cad-card" style={{ margin: 'var(--space-3) 0 var(--space-4)' }}>
+        <h3 className="cad-h3" style={{ marginBottom: 6 }}>Échauffement — à faire au début, selon la séance</h3>
+        <p className="cad-p" style={{ margin: '0 0 10px' }}>Règles communes : {catalog.echauffement}</p>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {list.map(function (w, i) {
+            return <div key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55 }}><strong style={{ color: 'var(--text)' }}>{w.titre}.</strong> <span style={{ color: 'var(--text-mid)' }}> {w.texte}</span></div>;
+          })}
+        </div>
       </div>
     );
   }
@@ -212,6 +276,7 @@
     return (
       <section className="cad-section">
         <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. Choisis un jour pour voir ses épreuves, leur schéma et leur barème.">Le protocole, jour par jour</SectionTitle>
+        <EchauffementBlock catalog={catalog} />
         <div className="cad-dayrow">
           {catalog.days.map(function (d) {
             return (
@@ -223,10 +288,6 @@
               </button>
             );
           })}
-        </div>
-        <div className="cad-card" style={{ background: 'var(--bg-card-2)', margin: 'var(--space-4) 0' }}>
-          <strong style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)' }}>L'échauffement n'est pas le même selon la séance.</strong>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6 }}> Chaque épreuve a le sien (indiqué sur sa fiche ci-dessous), adapté au sport et à l'effort. Règles communes : {catalog.echauffement}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 'var(--space-3)' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>JOUR {cur.day}</span>

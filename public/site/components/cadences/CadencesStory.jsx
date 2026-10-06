@@ -126,14 +126,23 @@
   }
 
   function Act(props) {
-    return (
-      <section className="cad-act">
+    var head = (
+      <React.Fragment>
         {props.eye ? <div className="cad-act-eye">{props.eye}</div> : null}
         {props.title ? <h2 className="cad-act-t">{props.title}</h2> : null}
         {props.lead ? <p className="cad-act-lead">{props.lead}</p> : null}
         {props.children}
-      </section>
+      </React.Fragment>
     );
+    if (props.media) {
+      return (
+        <section className="cad-act cad-act--split">
+          <div className="cad-act-col">{head}</div>
+          <div className="cad-act-media">{props.media}</div>
+        </section>
+      );
+    }
+    return <section className="cad-act">{head}</section>;
   }
 
   function CadManifesto(props) {
@@ -152,19 +161,22 @@
         </Act>
 
         {/* b. Comment ton corps vieillit */}
-        <Act eye="Comment ton corps vieillit" title="Chaque système, en % de son pic de vie">
-          <div className="cad-card" style={{ marginTop: 18, position: 'relative' }}>
-            <div style={{ display: 'flex', gap: 8, maxWidth: 260, marginBottom: 14 }}>
-              <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
-              <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
-            </div>
-            {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} hover={true} focusX={59} xDomain={[0, 80]} replayNonce={rp} aria="Déclin des systèmes du corps avec l'âge" /> : null}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              {Legend(sys)}
-              <button type="button" className="cad-link" onClick={function () { setRp(rp + 1); }}>↻ Rejouer</button>
-            </div>
-            <Sources />
-          </div>
+        <Act eye="Comment ton corps vieillit" title="Chaque système, en % de son pic de vie"
+             lead={<span>Cinq grands systèmes, suivis de 0 à 80 ans, en pourcentage de leur pic de vie.</span>}
+             media={
+               <div className="cad-card" style={{ position: 'relative' }}>
+                 <div style={{ display: 'flex', gap: 8, maxWidth: 260, marginBottom: 14 }}>
+                   <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
+                   <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
+                 </div>
+                 {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} hover={true} focusX={59} xDomain={[0, 80]} replayNonce={rp} aria="Déclin des systèmes du corps avec l'âge" /> : null}
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                   {Legend(sys)}
+                   <button type="button" className="cad-link" onClick={function () { setRp(rp + 1); }}>↻ Rejouer</button>
+                 </div>
+                 <Sources />
+               </div>
+             }>
           <p className="cad-act-p">Tout grimpe jusqu’à ~25-30 ans, puis redescend — mais pas au même rythme. <strong>Le VO₂max et le muscle lâchent les premiers</strong> ; l’os et la coordination tiennent plus longtemps. Passe la souris sur la courbe pour lire chaque système à l’âge voulu, et compare homme / femme (chez la femme, la chute des œstrogènes et de l’os s’accélère à la ménopause).</p>
         </Act>
 
@@ -175,16 +187,18 @@
         </Act>
 
         {/* d. Sédentaire vs entraîné */}
-        <Act eye="Sédentaire vs entraîné" title="Ce que l’entraînement change, sur le VO₂max">
-          <div className="cad-card" style={{ marginTop: 18 }}>
-            {LC ? <LC series={COMPARE} xDomain={[25, 80]} xTicks={[30, 40, 50, 60, 70, 80]} yTicks={[40, 60, 80, 100]} yDomain={[30, 100]} areaBetween={{ a: 'entr', b: 'sed', color: '#00c8e0' }} aria="VO2max : sédentaire contre entraîné" /> : null}
-            <div className="cad-callrow">
-              <div className="cad-callout-big"><b>~2× plus lent</b><span>le déclin du VO₂max, entraînement maintenu vs sédentaire</span></div>
-              <div className="cad-callout-big"><b>+9 ans</b><span>d’âge biologique gagnés chez les pratiquants réguliers à vie</span></div>
-            </div>
-            <Sources />
-          </div>
+        <Act eye="Sédentaire vs entraîné" title="Ce que l’entraînement change, sur le VO₂max"
+             media={
+               <div className="cad-card">
+                 {LC ? <LC series={COMPARE} xDomain={[25, 80]} xTicks={[30, 40, 50, 60, 70, 80]} yTicks={[40, 60, 80, 100]} yDomain={[30, 100]} areaBetween={{ a: 'entr', b: 'sed', color: '#00c8e0' }} aria="VO2max : sédentaire contre entraîné" /> : null}
+                 <Sources />
+               </div>
+             }>
           <p className="cad-act-p">À 80 ans, l’entraîné garde le VO₂max que le sédentaire avait <strong>~20 ans plus tôt</strong>. L’aire grise entre les deux courbes, ce sont ces <strong>années gagnées</strong> — pas sur un exploit, mais sur la régularité.</p>
+          <div className="cad-callrow">
+            <div className="cad-callout-big"><b>~2× plus lent</b><span>le déclin du VO₂max, entraînement maintenu vs sédentaire</span></div>
+            <div className="cad-callout-big"><b>+9 ans</b><span>d’âge biologique gagnés chez les pratiquants réguliers à vie</span></div>
+          </div>
         </Act>
 
         {/* e. Les deux garçons */}
@@ -201,11 +215,13 @@
         </Act>
 
         {/* f. Trajectoire A vs B */}
-        <Act eye="Trajectoire A vs B" title="Capacité physique globale, de 5 à 80 ans">
-          <div className="cad-card" style={{ marginTop: 18 }}>
-            {LC ? <LC series={LIFE} markers={LIFE_MARKERS} xDomain={[5, 80]} xTicks={[10, 20, 30, 40, 50, 60, 70, 80]} aria="Capacité physique de deux parcours de vie" /> : null}
-            <p className="cad-act-p" style={{ margin: '12px 0 0' }}>Les courbes divergent tôt et ne se rejoignent jamais. À 80 ans, <strong>A</strong> a la capacité d’un sexagénaire et vit en autonomie ; <strong>B</strong> a basculé dans la dépendance. Même capital de départ, deux façons de le dépenser.</p>
-          </div>
+        <Act eye="Trajectoire A vs B" title="Capacité physique globale, de 5 à 80 ans"
+             media={
+               <div className="cad-card">
+                 {LC ? <LC series={LIFE} markers={LIFE_MARKERS} xDomain={[5, 80]} xTicks={[10, 20, 30, 40, 50, 60, 70, 80]} aria="Capacité physique de deux parcours de vie" /> : null}
+               </div>
+             }>
+          <p className="cad-act-p">Les courbes divergent tôt et ne se rejoignent jamais. À 80 ans, <strong>A</strong> a la capacité d’un sexagénaire et vit en autonomie ; <strong>B</strong> a basculé dans la dépendance. Même capital de départ, deux façons de le dépenser.</p>
           <p className="cad-act-p">La différence ne s’est pas jouée à la salle un jour donné, mais sur <strong>des milliers de petites séances</strong>, répétées pendant soixante ans.</p>
         </Act>
 

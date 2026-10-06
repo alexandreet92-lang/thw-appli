@@ -30,8 +30,8 @@
   function CadStyle() {
     return (
       <style>{`
-        .cad-wrap { max-width: 1100px; margin: 0 auto; padding: 104px 24px 80px; color: var(--text); }
-        @media (max-width: 640px) { .cad-wrap { padding: 92px 16px 64px; } }
+        .cad-wrap { max-width: min(1460px, 94vw); margin: 0 auto; padding: 104px 24px 80px; color: var(--text); }
+        @media (max-width: 640px) { .cad-wrap { max-width: 100%; padding: 92px 16px 64px; } }
         .cad-input, .cad-select {
           width: 100%; box-sizing: border-box; padding: 11px 13px;
           font-family: var(--font-mono); font-size: 16px; color: var(--text);
@@ -98,14 +98,19 @@
         .cad-ul strong { color: var(--text); }
         .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
         /* Manifeste d'ouverture (intro déroulante) */
-        .cad-manifesto { display: grid; gap: 40px; margin-top: 10px; }
-        .cad-act { max-width: none; }
+        .cad-manifesto { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; gap: 40px; margin-top: 10px; }
+        .cad-act { max-width: none; width: 100%; }
         .cad-act-eye { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
         .cad-act-t { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: 26px; line-height: 1.15; color: var(--text); margin: 8px 0 0; }
         .cad-act-lead { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.5; color: var(--text-mid); margin: 12px 0 0; max-width: 760px; }
         .cad-act-lead strong { color: var(--text); }
-        .cad-act-p { font-family: var(--font-body); font-size: 14.5px; line-height: 1.65; color: var(--text-mid); margin: 12px 0 0; max-width: 760px; }
+        .cad-act-p { font-family: var(--font-body); font-size: 14.5px; line-height: 1.65; color: var(--text-mid); margin: 12px 0 0; max-width: 920px; }
         .cad-act-p strong { color: var(--text); }
+        .cad-act--split { display: grid; grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr); gap: 40px; align-items: center; }
+        .cad-act-col { min-width: 0; }
+        .cad-act-media { min-width: 0; }
+        .cad-act--split .cad-act-lead, .cad-act--split .cad-act-p { max-width: none; }
+        @media (max-width: 880px) { .cad-act--split { grid-template-columns: 1fr; gap: 18px; } }
         .cad-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
         .cad-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 11.5px; color: var(--text-mid); }
         .cad-legend i { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: 0 0 auto; }

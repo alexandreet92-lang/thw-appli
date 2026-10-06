@@ -381,6 +381,10 @@
             <li>Coefficients d'âge : estimations (littérature masters), à valider sur le terrain — surtout 18–20 et 71–80 ans.</li>
           </ul>
         </div>
+        <div className="cad-card" style={{ marginTop: 'var(--space-3)' }}>
+          <h3 className="cad-h3">Courbes de vieillissement (page d'accueil)</h3>
+          <p className="cad-p" style={{ margin: 0 }}>Les graphiques « Comment ton corps vieillit », « sédentaire vs entraîné » et « trajectoire A/B » sont <strong>illustratifs</strong> (moyennes de population), pas des mesures individuelles. Repères issus de la littérature : déclin du VO₂max ~2× plus lent chez les athlètes masters que chez les sédentaires ; perte musculaire de 3 à 8 %/décennie après 30 ans ; testostérone ~−1 %/an après 30 ; pic de densité osseuse vers 30 ans ; pratiquants réguliers à vie (57-80 ans) conservant masse musculaire, immunité et cholestérol d'un jeune (≈ +9 ans d'âge biologique).</p>
+        </div>
       </section>
     );
   }

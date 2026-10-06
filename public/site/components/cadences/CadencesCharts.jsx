@@ -189,5 +189,157 @@
     );
   }
 
-  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily });
+  /* ── Primitive « courbes dans le temps » (multi-séries, SVG brut, aucune lib). ──
+     Sert : vieillissement des systèmes (curseur d'âge qui balaye + valeurs vivantes),
+     sédentaire vs entraîné (aire « années gagnées »), trajectoire A/B (jalons).
+     Respecte prefers-reduced-motion (pas de balayage). */
+  function lEaseOut(t) { return 1 - Math.pow(1 - t, 3); }
+  function lEaseInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function valueAt(points, x) {
+    var n = points.length;
+    if (!n) return 0;
+    if (x <= points[0][0]) return points[0][1];
+    if (x >= points[n - 1][0]) return points[n - 1][1];
+    for (var i = 0; i < n - 1; i++) {
+      if (x >= points[i][0] && x <= points[i + 1][0]) {
+        var t = (x - points[i][0]) / (points[i + 1][0] - points[i][0]);
+        return points[i][1] + t * (points[i + 1][1] - points[i][1]);
+      }
+    }
+    return points[n - 1][1];
+  }
+  function smoothPath(px) {
+    if (px.length < 2) return px.length ? 'M' + px[0][0] + ',' + px[0][1] : '';
+    var d = 'M' + px[0][0] + ',' + px[0][1];
+    for (var i = 0; i < px.length - 1; i++) {
+      var p0 = px[i - 1] || px[i], p1 = px[i], p2 = px[i + 1], p3 = px[i + 2] || p2;
+      var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ' C' + c1x + ',' + c1y + ' ' + c2x + ',' + c2y + ' ' + p2[0] + ',' + p2[1];
+    }
+    return d;
+  }
+
+  function CadLineChart(props) {
+    var series = props.series || [];
+    var x0 = (props.xDomain && props.xDomain[0]) != null ? props.xDomain[0] : 0;
+    var x1 = (props.xDomain && props.xDomain[1]) != null ? props.xDomain[1] : 80;
+    var y0 = (props.yDomain && props.yDomain[0]) != null ? props.yDomain[0] : 0;
+    var y1 = (props.yDomain && props.yDomain[1]) != null ? props.yDomain[1] : 100;
+    var W = 560, H = props.height || 300;
+    var PADL = 30, PADR = props.sweep ? 68 : 92, PADT = 18, PADB = 34;
+    var xTicks = props.xTicks || [0, 10, 20, 30, 40, 50, 60, 70, 80];
+    var yTicks = props.yTicks || [0, 20, 40, 60, 80, 100];
+    var sweep = !!props.sweep && !reduced();
+    var focusX = props.focusX != null ? props.focusX : x1;
+
+    function sx(x) { return PADL + (x - x0) / (x1 - x0) * (W - PADR - PADL); }
+    function sy(y) { return (H - PADB) - (y - y0) / (y1 - y0) * (H - PADB - PADT); }
+
+    var caState = React.useState(sweep ? x0 : focusX);
+    var ca = caState[0], setCa = caState[1];
+    React.useEffect(function () {
+      if (!sweep) { setCa(focusX); return; }
+      var raf, start = null, dur = 2600;
+      function step(ts) {
+        if (start == null) start = ts;
+        var p = Math.min(1, (ts - start) / dur), age;
+        if (p < 0.72) age = x0 + (x1 - x0) * lEaseOut(p / 0.72);
+        else age = x1 + (focusX - x1) * lEaseInOut((p - 0.72) / 0.28);
+        setCa(age);
+        if (p < 1) raf = requestAnimationFrame(step);
+      }
+      raf = requestAnimationFrame(step);
+      return function () { cancelAnimationFrame(raf); };
+    }, []);
+
+    function partialPx(points) {
+      var out = [];
+      for (var i = 0; i < points.length; i++) { if (points[i][0] <= ca) out.push(points[i]); }
+      if (!out.length) out.push([x0, valueAt(points, x0)]);
+      if (ca < points[points.length - 1][0]) out.push([ca, valueAt(points, ca)]);
+      return out.map(function (p) { return [sx(p[0]), sy(p[1])]; });
+    }
+    function fullPx(points) { return points.map(function (p) { return [sx(p[0]), sy(p[1])]; }); }
+    function densePx(points) { var o = []; for (var x = x0; x <= x1 + 0.001; x += 1) o.push([sx(x), sy(valueAt(points, x))]); return o; }
+
+    var tipX = sx(ca);
+    var leftSide = sweep && tipX > (W - PADR - 10);
+    var badgeX = leftSide ? tipX - 10 : tipX + 10;
+
+    // Positions verticales des badges (anti-collision).
+    var bl = series.map(function (s) { return { key: s.key, y: sy(valueAt(s.points, ca)) }; });
+    bl.sort(function (a, b) { return a.y - b.y; });
+    var GAP = 17;
+    for (var ii = 1; ii < bl.length; ii++) { if (bl[ii].y - bl[ii - 1].y < GAP) bl[ii].y = bl[ii - 1].y + GAP; }
+    var over = bl.length ? bl[bl.length - 1].y - (H - PADB) : 0;
+    if (over > 0) { for (var jj = 0; jj < bl.length; jj++) bl[jj].y -= over; }
+    var under = bl.length ? bl[0].y - PADT : 0;
+    if (under < 0) { for (var kk = 0; kk < bl.length; kk++) bl[kk].y -= under; }
+    var badgeY = {}; bl.forEach(function (b) { badgeY[b.key] = b.y; });
+
+    var area = null;
+    if (props.areaBetween) {
+      var sa = series.filter(function (s) { return s.key === props.areaBetween.a; })[0];
+      var sb = series.filter(function (s) { return s.key === props.areaBetween.b; })[0];
+      if (sa && sb) {
+        var up = densePx(sa.points), dn = densePx(sb.points).slice().reverse();
+        area = 'M ' + up.map(function (p) { return p[0] + ',' + p[1]; }).join(' L ') + ' L ' + dn.map(function (p) { return p[0] + ',' + p[1]; }).join(' L ') + ' Z';
+      }
+    }
+
+    return (
+      <svg width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Graphique'} style={{ display: 'block' }}>
+        {yTicks.map(function (t, i) {
+          return (
+            <g key={'y' + i}>
+              <line x1={PADL} y1={sy(t)} x2={W - PADR} y2={sy(t)} stroke={GRID} strokeWidth={t === y0 ? 1 : 0.5} strokeDasharray={t === y0 ? 'none' : '2 4'} />
+              <text x={PADL - 6} y={sy(t) + 3} textAnchor="end" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fill: 'var(--text-dim)' }}>{t}</text>
+            </g>
+          );
+        })}
+        {xTicks.map(function (t, i) {
+          return <text key={'x' + i} x={sx(t)} y={H - PADB + 15} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fill: 'var(--text-dim)' }}>{t}</text>;
+        })}
+        <text x={W - PADR + 4} y={H - PADB + 15} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9, fill: 'var(--text-dim)', fontStyle: 'italic' }}>ans</text>
+
+        {area ? <path d={area} fill={(props.areaBetween.color || BRAND) + '22'} stroke="none" /> : null}
+        {sweep ? <line x1={tipX} y1={PADT} x2={tipX} y2={H - PADB} stroke={BRAND} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} /> : null}
+        {sweep ? series.map(function (s) {
+          return <path key={'g' + s.key} d={smoothPath(fullPx(s.points))} fill="none" stroke={s.color} strokeWidth={1.4} opacity={0.14} />;
+        }) : null}
+        {series.map(function (s) {
+          return <path key={'l' + s.key} d={smoothPath(partialPx(s.points))} fill="none" stroke={s.color} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash || 'none'} />;
+        })}
+        {(props.markers || []).map(function (m, i) {
+          return (
+            <g key={'m' + i}>
+              <circle cx={sx(m.x)} cy={sy(m.y)} r={3.6} fill="var(--bg-card)" stroke={m.color || BRAND} strokeWidth={2} />
+              {m.label ? <text x={sx(m.x)} y={sy(m.y) + (m.below ? 15 : -9)} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{m.label}</text> : null}
+            </g>
+          );
+        })}
+        {series.map(function (s) {
+          var v = valueAt(s.points, ca); var ty = sy(v), by = badgeY[s.key];
+          return (
+            <g key={'b' + s.key}>
+              <line x1={tipX} y1={ty} x2={badgeX} y2={by} stroke={s.color} strokeWidth={0.8} opacity={0.5} />
+              <circle cx={tipX} cy={ty} r={3} fill={s.color} />
+              <circle cx={badgeX} cy={by} r={3} fill={s.color} />
+              <text x={leftSide ? badgeX - 7 : badgeX + 7} y={by + 3.5} textAnchor={leftSide ? 'end' : 'start'}
+                    style={{ fontFamily: s.endLabel ? 'var(--font-body)' : 'var(--font-mono)', fontSize: s.endLabel ? 10.5 : 11.5, fontWeight: 700, fill: s.color }}>{s.endLabel || Math.round(v)}</text>
+            </g>
+          );
+        })}
+        {sweep ? (
+          <text x={(PADL + (W - PADR)) / 2} y={H - PADB - 8} textAnchor="middle">
+            <tspan style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-dim)' }}>Âge </tspan>
+            <tspan style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, fill: 'var(--text)' }}>{Math.round(ca)}</tspan>
+          </text>
+        ) : null}
+      </svg>
+    );
+  }
+
+  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily, CadLineChart: CadLineChart });
 })();

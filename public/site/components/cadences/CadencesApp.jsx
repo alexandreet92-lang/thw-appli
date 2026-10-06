@@ -92,7 +92,33 @@
         .cad-ul { margin: 0; padding-left: 18px; font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--text-mid); display: grid; gap: 5px; }
         .cad-ul strong { color: var(--text); }
         .cad-warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
-        @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } }
+        /* Manifeste d'ouverture (intro déroulante) */
+        .cad-manifesto { display: grid; gap: 56px; margin-top: 10px; }
+        .cad-act { max-width: 760px; }
+        .cad-act-eye { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
+        .cad-act-t { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: 26px; line-height: 1.15; color: var(--text); margin: 8px 0 0; }
+        .cad-act-lead { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.5; color: var(--text-mid); margin: 12px 0 0; max-width: 680px; }
+        .cad-act-lead strong { color: var(--text); }
+        .cad-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+        .cad-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 11.5px; color: var(--text-mid); }
+        .cad-legend i { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: 0 0 auto; }
+        .cad-callrow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+        .cad-callout-big { flex: 1; min-width: 190px; background: var(--bg-card-2); border: 1px solid var(--border-mid); border-left: 3px solid var(--brand); border-radius: var(--radius-md); padding: 14px 16px; }
+        .cad-callout-big b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--text); letter-spacing: -0.02em; }
+        .cad-callout-big span { font-family: var(--font-body); font-size: 12px; line-height: 1.45; color: var(--text-mid); }
+        .cad-note-src { margin-top: 12px; font-family: var(--font-body); font-size: 11px; color: var(--text-dim); line-height: 1.55; }
+        .cad-tl { display: grid; gap: 16px; margin-top: 16px; }
+        .cad-tl-h { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); }
+        .cad-tl-dot { width: 10px; height: 10px; border-radius: 999px; flex: 0 0 auto; }
+        .cad-tl-row { display: flex; gap: 0; overflow-x: auto; padding: 8px 0 8px; -webkit-overflow-scrolling: touch; }
+        .cad-tl-node { flex: 0 0 auto; min-width: 116px; max-width: 150px; display: grid; gap: 3px; padding: 0 12px 0 0; position: relative; }
+        .cad-tl-node::before { content: ''; position: absolute; left: 5px; right: 0; top: 5px; height: 2px; background: var(--border-mid); }
+        .cad-tl-node i { width: 11px; height: 11px; border-radius: 999px; border: 2px solid var(--bg); position: relative; z-index: 1; }
+        .cad-tl-age { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 5px; }
+        .cad-tl-lab { font-family: var(--font-body); font-size: 11.5px; line-height: 1.35; color: var(--text-mid); }
+        .cad-reveal { margin-top: 14px; }
+        .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
+        @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
       `}</style>
     );
   }
@@ -215,13 +241,15 @@
     var terminees = (props.campaigns || []).filter(function (c) { return c.status === 'completed'; });
     var tb = React.useState('apercu'); var tab = tb[0], setTab = tb[1];
 
-    var cta = props.crossOrigin
-      ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={props.appUrl}>Démarrer le test →</a>
-      : enCours
-        ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={function () { props.onResume(enCours.id); }}>Reprendre le test →</button>
-        : props.loggedIn
-          ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>
-          : <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>;
+    function makeCta() {
+      return props.crossOrigin
+        ? <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={props.appUrl}>Démarrer le test →</a>
+        : enCours
+          ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={function () { props.onResume(enCours.id); }}>Reprendre le test →</button>
+          : props.loggedIn
+            ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>
+            : <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>;
+    }
 
     function panel() {
       if (tab === 'qualites') return window.CadContent.qualities(cat);
@@ -247,10 +275,13 @@
             <strong>Pour qui ?</strong> Un test exigeant, conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — pas pour débuter.
           </div>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            {cta}
+            {makeCta()}
             {props.crossOrigin ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Le test se lance sur l'app.</span> : null}
           </div>
+          <div className="cad-scrollcue" style={{ marginTop: 16 }}>↓ D'abord, pourquoi ce test</div>
         </div>
+
+        {window.CadManifesto ? <window.CadManifesto catalog={cat} makeCta={makeCta} /> : null}
 
         <nav className="cad-tabs" aria-label="Sections">
           {CAD_TABS.map(function (t) {

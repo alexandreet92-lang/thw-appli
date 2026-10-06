@@ -14,20 +14,32 @@
     try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
     catch (e) { return false; }
   }
-  // Hook : passe de false à true au montage (déclenche la transition CSS).
-  function useEnter() {
-    var s = React.useState(reduced());
+  // Hook : détecte quand l'élément entre à l'écran (IntersectionObserver), ré-armé
+  // en sortie pour pouvoir rejouer. prefers-reduced-motion ou absence d'API →
+  // considéré visible d'emblée (état final montré, pas d'animation différée).
+  // Renvoie [ref, inView] — poser la ref sur l'élément racine.
+  function useInView(opts) {
+    var ref = React.useRef(null);
+    var skip = reduced() || typeof IntersectionObserver === 'undefined';
+    var st = React.useState(skip);
+    var inView = st[0], setInView = st[1];
     React.useEffect(function () {
-      if (s[0]) return;
-      var id = requestAnimationFrame(function () { requestAnimationFrame(function () { s[1](true); }); });
-      return function () { cancelAnimationFrame(id); };
+      if (skip) return;
+      var el = ref.current; if (!el) return;
+      var io = new IntersectionObserver(function (entries) { setInView(entries[0].isIntersecting); },
+        { threshold: (opts && opts.threshold) || 0.35 });
+      io.observe(el);
+      return function () { io.disconnect(); };
     }, []);
-    return s[0];
+    return [ref, inView];
   }
+  // Hook : passe à true quand l'élément entre à l'écran (déclenche la transition
+  // CSS de remplissage), repasse à false en sortie (rejoue). Renvoie [ref, on].
+  function useEnter() { return useInView(); }
 
   /* G1 — donut du score global (total / max). Au-delà du max : anneau plein. */
   function CadScoreDonut(props) {
-    var on = useEnter();
+    var en = useEnter(); var enRef = en[0], on = en[1];
     var size = props.size || 200;
     var total = props.total || 0;
     var max = props.totalMax || 1000;
@@ -39,7 +51,7 @@
     var cx = size / 2;
     var shown = on ? frac : 0;
     return (
-      <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
+      <div ref={enRef} style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
         <div style={{ position: 'relative', width: size, height: size }}>
           <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img"
                aria-label={'Score ' + Math.round(total) + ' sur ' + max + ', niveau ' + props.level}>
@@ -71,13 +83,13 @@
     );
   }
   function Ring(props) {
-    var on = useEnter();
+    var en = useEnter(); var enRef = en[0], on = en[1];
     var q = props.q;
     var size = 76, r = size / 2 - 6, c = 2 * Math.PI * r, cx = size / 2;
     var frac = Math.max(0, Math.min(1, (q.pct || 0) / 1.2));
     var shown = on ? frac : 0;
     return (
-      <div style={{ display: 'grid', placeItems: 'center', gap: 4, textAlign: 'center' }}>
+      <div ref={enRef} style={{ display: 'grid', placeItems: 'center', gap: 4, textAlign: 'center' }}>
         <div style={{ position: 'relative', width: size, height: size }}>
           <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img"
                aria-label={q.label + ' : ' + Math.round((q.pct || 0) * 100) + ' %, ' + q.level}>
@@ -98,7 +110,7 @@
 
   /* G4 — radar 7 axes. Rayon = pct/1.2 (Exceptionnel = plein). Repères 60 % / 100 %. */
   function CadRadar(props) {
-    var on = useEnter();
+    var en = useEnter(); var enRef = en[0], on = en[1];
     var items = props.items || [];
     var n = items.length || 7;
     var size = props.size || 300;
@@ -119,7 +131,7 @@
       var p = pt(i, R * f); return p[0] + ',' + p[1];
     }).join(' ');
     return (
-      <div style={{ display: 'grid', placeItems: 'center' }}>
+      <div ref={enRef} style={{ display: 'grid', placeItems: 'center' }}>
         <svg width={size} height={size} viewBox={(-PAD) + ' ' + (-PAD) + ' ' + (size + 2 * PAD) + ' ' + (size + 2 * PAD)} role="img" aria-label="Radar des 7 qualités">
           {/* grille : anneaux de fond + repères 60 % et 100 % */}
           {[0.3, 0.6, 0.833, 1].map(function (f, i) {
@@ -150,11 +162,11 @@
 
   /* G5 — barre points/% d'une épreuve, repères 60 % (Réf) et 100 % (Max). */
   function CadTestBar(props) {
-    var on = useEnter();
+    var en = useEnter(); var enRef = en[0], on = en[1];
     var target = Math.max(0, Math.min(100, (props.pct || 0) * 100));
     var w = on ? target : 0;
     return (
-      <svg width="100%" height={12} viewBox="0 0 100 12" preserveAspectRatio="none" role="img"
+      <svg ref={enRef} width="100%" height={12} viewBox="0 0 100 12" preserveAspectRatio="none" role="img"
            aria-label={Math.round((props.pct || 0) * 100) + ' %'}>
         <rect x={0} y={3} width={100} height={6} rx={3} fill={TRACK}/>
         <rect x={0} y={3} width={w} height={6} rx={3} fill={props.color}
@@ -167,11 +179,11 @@
 
   /* Répartition des points par famille — barres horizontales animées. */
   function CadPointsByFamily(props) {
-    var on = useEnter();
+    var en = useEnter(); var enRef = en[0], on = en[1];
     var data = props.data || [];
     var maxv = Math.max.apply(null, data.map(function (d) { return d.pts; }).concat([1]));
     return (
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div ref={enRef} style={{ display: 'grid', gap: 10 }}>
         {data.map(function (d, i) {
           var w = on ? Math.max(3, (d.pts / maxv) * 100) : 0;
           return (
@@ -236,11 +248,15 @@
     function sx(x) { return PADL + (x - x0) / (x1 - x0) * (W - PADR - PADL); }
     function sy(y) { return (H - PADB) - (y - y0) / (y1 - y0) * (H - PADB - PADT); }
 
-    var caState = React.useState(sweep ? x0 : focusX);
+    // Le balayage se déclenche quand le graphe entre à l'écran (et au clic « Rejouer »
+    // via replayNonce). Hors sweep / reduced-motion : état final (poster statique).
+    var iv = useInView(); var chartRef = iv[0], inView = iv[1];
+    var caState = React.useState(focusX);
     var ca = caState[0], setCa = caState[1];
     React.useEffect(function () {
-      if (!sweep) { setCa(focusX); return; }
+      if (!sweep || !inView) { setCa(focusX); return; }
       var raf, start = null, dur = 2600;
+      setCa(x0);
       function step(ts) {
         if (start == null) start = ts;
         var p = Math.min(1, (ts - start) / dur), age;
@@ -251,7 +267,7 @@
       }
       raf = requestAnimationFrame(step);
       return function () { cancelAnimationFrame(raf); };
-    }, []);
+    }, [inView, props.replayNonce]);
 
     function partialPx(points) {
       var out = [];
@@ -289,7 +305,7 @@
     }
 
     return (
-      <svg width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Graphique'} style={{ display: 'block' }}>
+      <svg ref={chartRef} width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Graphique'} style={{ display: 'block' }}>
         {yTicks.map(function (t, i) {
           return (
             <g key={'y' + i}>

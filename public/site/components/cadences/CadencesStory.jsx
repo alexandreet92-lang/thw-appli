@@ -139,6 +139,7 @@
   function CadManifesto(props) {
     var sv = React.useState('M'); var sex = sv[0], setSex = sv[1];
     var ov = React.useState(false); var open = ov[0], setOpen = ov[1];
+    var rpv = React.useState(0); var rp = rpv[0], setRp = rpv[1];
     var sys = sex === 'F' ? SYS_F : SYS_M;
     var LC = window.CadLineChart;
 
@@ -156,8 +157,11 @@
               <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
               <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
             </div>
-            {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} focusX={59} xDomain={[0, 80]} aria="Déclin des systèmes du corps avec l'âge" /> : null}
-            {Legend(sys)}
+            {LC ? <LC key={'aging-' + sex} series={sys} sweep={true} focusX={59} xDomain={[0, 80]} replayNonce={rp} aria="Déclin des systèmes du corps avec l'âge" /> : null}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {Legend(sys)}
+              <button type="button" className="cad-link" onClick={function () { setRp(rp + 1); }}>↻ Rejouer</button>
+            </div>
             <Sources />
           </div>
         </Act>

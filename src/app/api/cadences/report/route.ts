@@ -61,7 +61,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const inputs: TestInput[] = (results ?? [])
       .filter((r) => r.status === 'validated' && r.raw_value != null)
-      .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment }))
+      .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, parts: partsOf(r.raw_parts) }))
     const profile = { sex: camp.scale_sex as 'M' | 'F', bodyWeightKg: Number(camp.body_weight_kg), ageBand: camp.age_band }
     scores = {
       general: computeCampaign(inputs, profile, 'general', config),
@@ -83,4 +83,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     results: results ?? [],
     scores,
   })
+}
+
+/** Essais bruts (raw_parts jsonb) → nombres finis, ou null. */
+function partsOf(raw: unknown): number[] | null {
+  if (!Array.isArray(raw)) return null
+  const v = raw.map(Number).filter((n) => Number.isFinite(n))
+  return v.length ? v : null
 }

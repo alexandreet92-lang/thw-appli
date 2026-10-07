@@ -613,6 +613,7 @@
 
   // ════════════════ TABLEAU DE BORD / SAISIE ════════════════
   function partCountOf(t) { return t.partCount || 1; }
+  function critPts(t, agg) { var c = (t.criteria || []).filter(function (x) { return x.aggregate === agg; })[0]; return c ? c.pts_max : 0; }
   function parsePart(t, s) {
     if (!String(s == null ? '' : s).trim()) return null;
     if (t.unit === 's') return F().parseDuration(s);
@@ -680,6 +681,10 @@
       var value = aggDraft(t, d);
       if (value == null || value <= 0) { setErr(t.name + ' : saisis une valeur valide.'); return; }
       if (t.aggregate === 'sum' && d.parts.some(function (p) { return !String(p || '').trim(); })) { setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' passages.'); return; }
+      // Épreuves à critères (meilleur + total des essais) : tous les essais comptent.
+      if (t.criteria && d.parts.some(function (p) { return parsePart(t, p) == null; })) {
+        setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' essais' + (t.unit === 'm' ? ' (0 pour un saut raté).' : '.')); return;
+      }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
       put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: d.variant, timingMethod: d.timing, poolLength: d.pool })
@@ -854,6 +859,12 @@
               );
             })}
           </div>
+
+          {t.criteria ? (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-mid)' }}>
+              Notation : <strong style={{ color: 'var(--text)' }}>meilleur essai</strong> ({critPts(t, 'best')} pts) + <strong style={{ color: 'var(--text)' }}>total des {n} essais</strong> ({critPts(t, 'sum')} pts) — la régularité compte.
+            </div>
+          ) : null}
 
           {t.isAmrap ? (
             <div>

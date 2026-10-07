@@ -6,7 +6,7 @@
 
 import config from './cadences.config.json'
 import cases from './reference-cases.json'
-import { computeCampaign } from './engine'
+import { computeCampaign, computeTest } from './engine'
 import type { CadencesConfig, Profile, TestInput, QualityKey } from './types'
 
 const cfg = config as unknown as CadencesConfig
@@ -58,9 +58,34 @@ for (const c of cases as any[]) {
   console.log(`  total = ${res.total.toFixed(3)} (attendu ${c.total_points})`)
 }
 
+// ── Épreuves à critères (meilleur essai + total des essais), calculées à la main ──
+const totalPtsMax = cfg.tests.reduce((a, t) => a + t.pts_max, 0)
+near(totalPtsMax, cfg.total_points, 1e-9, 'somme des pts_max = total_points')
+for (const t of cfg.tests) {
+  if (!t.criteria) continue
+  const sc = t.criteria.reduce((a, c) => a + c.pts_max, 0)
+  near(sc, t.pts_max, 1e-9, `${t.slug} : somme des critères = pts_max`)
+}
+const H: Profile = { sex: 'M', bodyWeightKg: 80, ageBand: '26-35' }
+const testOf = (slug: string) => cfg.tests.find((t) => t.slug === slug)!
+const CRIT_CASES = [
+  // Long jump H (Réf 2,55 / Max 3,20) : meilleur 3,20 → 100 % × 15 ; total 8,75 m vs Réf 7,65 / Max 9,60 → 82,5641 % × 10
+  { slug: 'standing_long_jump', value: 3.2, parts: [3.2, 3.0, 2.55], points: 15 + 0.825641 * 10 },
+  // Square H (Réf 20,5 / Max 16) : meilleur 16 → 100 % × 12 ; total 51 s vs Réf 61,5 / Max 48 → 91,1111 % × 8
+  { slug: 'agility_square', value: 16, parts: [16, 17, 18], points: 12 + 0.911111 * 8 },
+  // Sans détail des essais : tous égaux au meilleur (2,55 = Réf → 60 % partout)
+  { slug: 'standing_long_jump', value: 2.55, parts: null, points: 0.6 * 25 },
+]
+console.log('\nÉpreuves à critères')
+for (const k of CRIT_CASES) {
+  const s = computeTest(testOf(k.slug), { slug: k.slug, value: k.value, parts: k.parts }, H, 'general', cfg)
+  if (!s) { console.error(`  ✗ ${k.slug} : non calculé`); failures++; continue }
+  if (near(s.points, k.points, 0.001, `${k.slug} points (critères)`)) console.log(`  ✓ ${k.slug} ${k.parts ? '[' + k.parts.join(', ') + ']' : '(sans détail)'} → ${s.points.toFixed(3)} pts`)
+}
+
 console.log(`\nÉcarts max — pct: ${maxPct.toFixed(6)} · points: ${maxPts.toFixed(6)} · total: ${maxTotal.toFixed(6)} · qualité pct: ${maxQPct.toFixed(6)}`)
 if (failures === 0) {
-  console.log('\n✓ VALIDATION RÉUSSIE — les 3 cas de référence sont reproduits dans la tolérance.')
+  console.log('\n✓ VALIDATION RÉUSSIE — les 3 cas de référence et les épreuves à critères sont reproduits dans la tolérance.')
   process.exit(0)
 } else {
   console.error(`\n✗ ÉCHEC — ${failures} écart(s) hors tolérance.`)

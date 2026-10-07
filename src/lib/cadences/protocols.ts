@@ -141,9 +141,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     etapes: [
       'Départ pieds joints derrière la ligne, sans élan.',
       'Flexion-extension, saut vers l\'avant, réception stabilisée sur les deux pieds.',
-      'Mesurer du bord de la ligne au talon le plus proche. 3 essais, le meilleur compte.',
+      'Mesurer du bord de la ligne au talon le plus proche. 3 essais.',
+      'Notation sur 2 critères : le meilleur saut (15 pts) + le total des 3 sauts (10 pts). Un saut raté compte 0 m.',
     ],
-    saisie: 'La meilleure des 3 distances (m).',
+    saisie: 'Les 3 distances (m) — 0 pour un saut raté.',
     diagram: 'longjump',
   },
   standing_triple_jump: {
@@ -152,9 +153,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     etapes: [
       'Départ pieds joints, sans élan.',
       '3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds.',
-      'Mesurer jusqu\'au talon le plus proche. 3 essais, le meilleur compte.',
+      'Mesurer jusqu\'au talon le plus proche. 3 essais.',
+      'Notation sur 2 critères : le meilleur saut (15 pts) + le total des 3 sauts (10 pts). Un saut raté compte 0 m.',
     ],
-    saisie: 'La meilleure des 3 distances (m).',
+    saisie: 'Les 3 distances (m) — 0 pour un saut raté.',
     diagram: 'triplejump',
   },
   sprint_30m: {
@@ -162,18 +164,18 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Piste ou gazon', 'Chrono (idéalement cellules)'],
     etapes: [
       'Départ arrêté, un pied devant, déclenchement au signal.',
-      'Sprint maximal jusqu\'à 30 m. 2 essais, récupération complète, le meilleur compte.',
+      'Sprint maximal jusqu\'à 30 m. 3 tentatives, récupération complète, seul le meilleur temps compte.',
     ],
-    saisie: 'Le meilleur des 2 temps (s). Précise le chronométrage et les chaussures (pointes corrigées automatiquement).',
+    saisie: 'Les 3 temps (s) — le meilleur est retenu. Précise le chronométrage et les chaussures (pointes corrigées automatiquement).',
   },
   sprint_100m: {
     objectif: 'Vitesse maximale soutenue.',
     materiel: ['Piste ou terrain plat balisé à 100 m', 'Chrono (idéalement cellules)'],
     etapes: [
       'Départ arrêté, comme le 30 m, sur signal.',
-      'Sprint maximal sur 100 m. 1 essai.',
+      'Sprint maximal sur 100 m. 3 tentatives, récupération complète, seul le meilleur temps compte.',
     ],
-    saisie: 'Le temps (s). Précise le chronométrage et les chaussures.',
+    saisie: 'Les 3 temps (s) — le meilleur est retenu. Précise le chronométrage et les chaussures.',
   },
   agility_square: {
     objectif: 'Changements de direction et déplacements multi-directionnels.',
@@ -182,9 +184,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
       'Parcours : 2 carrés de 4 m × 4 m, alignés sur le même axe, séparés de 10 m (mesuré de départ de carré à départ de carré). Un 2e segment de 10 m va du départ du carré 2 jusqu\'à l\'arrivée.',
       'Dans chaque carré : avant (1 côté) → pas chassés (1 côté) → arrière (1 côté) → pas chassés (1 côté).',
       'Carré 1 dans un sens, carré 2 dans le sens inverse. Plots contournés de l\'extérieur vers l\'intérieur.',
-      '2 essais, le meilleur compte, 1 min de récupération entre les deux.',
+      '3 passages, 1 min 30 de récupération entre chaque.',
+      'Notation sur 2 critères : le meilleur temps (12 pts) + le temps total des 3 passages (8 pts).',
     ],
-    saisie: 'Le meilleur des 2 temps (s).',
+    saisie: 'Les 3 temps (s).',
     diagram: 'square',
   },
   agility_move: {
@@ -194,9 +197,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
       'Depuis le départ : 5 m en avant jusqu\'au plot, le contourner, puis retour en course arrière.',
       'Même chose vers le plot à 10 m (avant, contourner, retour arrière), puis vers le plot à 15 m.',
       'Après le retour du plot à 15 m, sprint de 30 m droit devant.',
-      '1 min de récupération, 3 passages, le meilleur compte.',
+      '3 passages, 1 min 30 de récupération entre chaque.',
+      'Notation sur 2 critères : le meilleur temps (12 pts) + le temps total des 3 passages (8 pts).',
     ],
-    saisie: 'Le meilleur des 3 passages (s).',
+    saisie: 'Les 3 temps (s).',
     diagram: 'move',
   },
   agility_slalom: {
@@ -204,9 +208,11 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Plots', 'Gazon', 'Chrono'],
     etapes: [
       'Parcours : 10 diagonales de 18,03 m chacune (environ 180 m au total), 9 changements de direction.',
-      'Plots contournés de l\'extérieur vers l\'intérieur. 2 essais, le meilleur compte.',
+      'Plots contournés de l\'extérieur vers l\'intérieur.',
+      '3 passages, 1 min 30 de récupération entre chaque.',
+      'Notation sur 2 critères : le meilleur temps (20 pts) + le temps total des 3 passages (14 pts).',
     ],
-    saisie: 'Le meilleur des 2 temps (s).',
+    saisie: 'Les 3 temps (s).',
     diagram: 'slalom',
   },
 

@@ -67,9 +67,40 @@ export function computeTest(
 
   // 6. pourcentage : plancher 0, PAS de plafond. Fonctionne pour les deux sens
   //    car (max − ref) est négatif pour un temps.
-  const pct = Math.max(0, config.anchors.ref_pct + (config.anchors.max_pct - config.anchors.ref_pct) * (x - ref) / (max - ref))
+  const pctOf = (v: number, r: number, m: number) =>
+    Math.max(0, config.anchors.ref_pct + (config.anchors.max_pct - config.anchors.ref_pct) * (v - r) / (m - r))
 
-  // 7. points
+  // 7. points — épreuve simple : pct × pts_max. Épreuve à critères (meilleur +
+  //    total des essais) : chaque critère est noté sur les mêmes seuils (× n
+  //    essais pour le total) ; le pct de l'épreuve = points / pts_max.
+  if (test.criteria && test.criteria.length) {
+    const n = Math.max(1, test.attempts ?? 1)
+    const raw = (input.parts ?? []).filter((v) => Number.isFinite(v))
+    // Sans détail des essais (anciennes saisies) : tous égaux à la valeur retenue.
+    const parts = raw.length ? raw : new Array(n).fill(input.value)
+    let points = 0
+    for (const c of test.criteria) {
+      let v: number, r = ref, m = max
+      if (c.aggregate === 'sum') {
+        let sum = 0
+        for (const p of parts) {
+          let y = applyEquipment(p, test, input.equipment)
+          if (test.kind === 'ratio') y = y / profile.bodyWeightKg
+          sum += y
+        }
+        // essais manquants : complétés par la moyenne des essais saisis (neutre)
+        v = parts.length < n ? (sum / parts.length) * n : sum
+        r = ref * n; m = max * n
+      } else {
+        v = x
+      }
+      points += pctOf(v, r, m) * c.pts_max
+    }
+    const pct = points / test.pts_max
+    return { slug: test.slug, valueUsed: x, refAdj: ref, maxAdj: max, pct, points, level: levelFor(pct, config) }
+  }
+
+  const pct = pctOf(x, ref, max)
   const points = pct * test.pts_max
 
   return { slug: test.slug, valueUsed: x, refAdj: ref, maxAdj: max, pct, points, level: levelFor(pct, config) }

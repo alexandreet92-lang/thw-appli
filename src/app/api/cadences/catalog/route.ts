@@ -28,6 +28,7 @@ export async function GET(): Promise<NextResponse> {
     day: t.day,
     order_in_day: t.order_in_day,
     aggregate: t.aggregate ?? 'best',
+    criteria: t.criteria ?? null,                   // [{aggregate,pts_max}] : meilleur + total des essais
     partCount: t.slug === 'amrap_20min' ? 1 : (t.attempts && t.attempts > 1 ? t.attempts : 1),
     equipmentField: t.equipment?.field ?? null,     // 'chaussures' | 'ceinture' | null
     hasTiming: TRACK.has(t.slug),

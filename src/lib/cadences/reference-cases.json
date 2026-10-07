@@ -1,5 +1,809 @@
 [
-{"case": 1, "sex": "M", "body_weight_kg": 80, "age_band": "21-25", "tests": [{"slug": "standing_long_jump", "input": 2.65, "equipment": null, "ref_adj": 2.55, "max_adj": 3.2, "pct": 0.6615, "points": 24.477}, {"slug": "standing_triple_jump", "input": 7.8, "equipment": null, "ref_adj": 7.5, "max_adj": 9.5, "pct": 0.66, "points": 24.42}, {"slug": "sprint_30m", "input": 4.4, "equipment": null, "ref_adj": 4.5, "max_adj": 4, "pct": 0.68, "points": 19.04}, {"slug": "sprint_100m", "input": 13, "equipment": null, "ref_adj": 13.5, "max_adj": 11.5, "pct": 0.7, "points": 19.6}, {"slug": "agility_square", "input": 21, "equipment": null, "ref_adj": 20.5, "max_adj": 16, "pct": 0.5556, "points": 10}, {"slug": "agility_move", "input": 26.5, "equipment": null, "ref_adj": 26, "max_adj": 21, "pct": 0.56, "points": 10.08}, {"slug": "agility_slalom", "input": 45, "equipment": null, "ref_adj": 44.5, "max_adj": 37, "pct": 0.5733, "points": 10.32}, {"slug": "repeat_200m_x6", "input": 245, "equipment": null, "ref_adj": 240, "max_adj": 185, "pct": 0.5636, "points": 35.509}, {"slug": "swim_50m", "input": 44, "equipment": null, "ref_adj": 45, "max_adj": 28, "pct": 0.6235, "points": 14.341}, {"slug": "swim_200m", "input": 205, "equipment": null, "ref_adj": 210, "max_adj": 140, "pct": 0.6286, "points": 25.771}, {"slug": "run_400m", "input": 64, "equipment": null, "ref_adj": 65, "max_adj": 50, "pct": 0.6267, "points": 51.387}, {"slug": "amrap_20min", "input": 17, "equipment": null, "ref_adj": 15, "max_adj": 28, "pct": 0.6615, "points": 36.385}, {"slug": "run_3200m", "input": 750, "equipment": null, "ref_adj": 770, "max_adj": 550, "pct": 0.6364, "points": 80.818}, {"slug": "squat_3rm", "input": 115, "equipment": null, "ref_adj": 108, "max_adj": 180, "pct": 0.6389, "points": 17.889}, {"slug": "bench_press_3rm", "input": 75, "equipment": null, "ref_adj": 72, "max_adj": 128, "pct": 0.6214, "points": 17.4}, {"slug": "deadlift_3rm", "input": 145, "equipment": null, "ref_adj": 144, "max_adj": 216, "pct": 0.6056, "points": 16.956}, {"slug": "military_press_3rm", "input": 50, "equipment": null, "ref_adj": 52, "max_adj": 80, "pct": 0.5714, "points": 16}, {"slug": "weighted_pullup_3rm", "input": 15, "equipment": null, "ref_adj": 20, "max_adj": 44, "pct": 0.5167, "points": 14.467}, {"slug": "dead_hang", "input": 80, "equipment": null, "ref_adj": 75, "max_adj": 150, "pct": 0.6267, "points": 17.547}, {"slug": "bike_20min", "input": 250, "equipment": null, "ref_adj": 269.6, "max_adj": 420.8, "pct": 0.5481, "points": 44.948}, {"slug": "hyrox_circuit", "input": 880, "equipment": null, "ref_adj": 900, "max_adj": 630, "pct": 0.6296, "points": 57.296}, {"slug": "clean_2rm", "input": 90, "equipment": null, "ref_adj": 93.6, "max_adj": 131.2, "pct": 0.5617, "points": 15.728}, {"slug": "clean_and_press_2rm", "input": 80, "equipment": null, "ref_adj": 84, "max_adj": 118.4, "pct": 0.5535, "points": 15.498}, {"slug": "front_squat_3rm", "input": 90, "equipment": null, "ref_adj": 91.2, "max_adj": 164, "pct": 0.5934, "points": 16.615}], "total_points": 612.491, "qualities": {"Vitesse": {"points": 63.21, "pts_max": 101.7, "pct": 0.6215, "level": "Référence"}, "Force": {"points": 135.57, "pts_max": 225.15, "pct": 0.6021, "level": "Référence"}, "Puissance": {"points": 76.95, "pts_max": 127.8, "pct": 0.6021, "level": "Référence"}, "Explosivité": {"points": 57.01, "pts_max": 89.15, "pct": 0.6395, "level": "Référence"}, "Endurance": {"points": 85.59, "pts_max": 139.35, "pct": 0.6142, "level": "Référence"}, "VO2max": {"points": 159.77, "pts_max": 261.15, "pct": 0.6118, "level": "Référence"}, "Coordination": {"points": 34.39, "pts_max": 55.7, "pct": 0.6174, "level": "Référence"}}},
-{"case": 2, "sex": "M", "body_weight_kg": 80, "age_band": "46-50", "tests": [{"slug": "standing_long_jump", "input": 2.65, "equipment": null, "ref_adj": 1.9469, "max_adj": 2.4432, "pct": 1.1667, "points": 43.167}, {"slug": "standing_triple_jump", "input": 7.8, "equipment": null, "ref_adj": 5.8312, "max_adj": 7.3863, "pct": 1.1064, "points": 40.938}, {"slug": "sprint_30m", "input": 4.4, "equipment": null, "ref_adj": 4.9894, "max_adj": 4.435, "pct": 1.0253, "points": 28.707}, {"slug": "sprint_100m", "input": 13, "equipment": null, "ref_adj": 14.9174, "max_adj": 12.7074, "pct": 0.947, "points": 26.517}, {"slug": "agility_square", "input": 21, "equipment": null, "ref_adj": 23.0352, "max_adj": 17.9787, "pct": 0.761, "points": 13.698}, {"slug": "agility_move", "input": 26.5, "equipment": null, "ref_adj": 29.2153, "max_adj": 23.597, "pct": 0.7933, "points": 14.28}, {"slug": "agility_slalom", "input": 45, "equipment": null, "ref_adj": 49.2925, "max_adj": 40.9848, "pct": 0.8067, "points": 14.52}, {"slug": "repeat_200m_x6", "input": 245, "equipment": null, "ref_adj": 270.7028, "max_adj": 208.6668, "pct": 0.7657, "points": 48.241}, {"slug": "swim_50m", "input": 44, "equipment": null, "ref_adj": 49.923, "max_adj": 31.0632, "pct": 0.7256, "points": 16.689}, {"slug": "swim_200m", "input": 205, "equipment": null, "ref_adj": 245.8106, "max_adj": 163.8738, "pct": 0.7992, "points": 32.768}, {"slug": "run_400m", "input": 64, "equipment": null, "ref_adj": 73.2849, "max_adj": 56.373, "pct": 0.8196, "points": 67.208}, {"slug": "amrap_20min", "input": 17, "equipment": null, "ref_adj": 12.8625, "max_adj": 24.01, "pct": 0.7485, "points": 41.166}, {"slug": "run_3200m", "input": 750, "equipment": null, "ref_adj": 906.9494, "max_adj": 647.821, "pct": 0.8423, "points": 106.969}, {"slug": "squat_3rm", "input": 115, "equipment": null, "ref_adj": 97.2, "max_adj": 162, "pct": 0.7099, "points": 19.877}, {"slug": "bench_press_3rm", "input": 75, "equipment": null, "ref_adj": 64.8, "max_adj": 115.2, "pct": 0.681, "points": 19.067}, {"slug": "deadlift_3rm", "input": 145, "equipment": null, "ref_adj": 129.6, "max_adj": 194.4, "pct": 0.6951, "points": 19.462}, {"slug": "military_press_3rm", "input": 50, "equipment": null, "ref_adj": 46.8, "max_adj": 72, "pct": 0.6508, "points": 18.222}, {"slug": "weighted_pullup_3rm", "input": 15, "equipment": null, "ref_adj": 17.2, "max_adj": 37.84, "pct": 0.5574, "points": 15.606}, {"slug": "dead_hang", "input": 80, "equipment": null, "ref_adj": 66.375, "max_adj": 132.75, "pct": 0.6821, "points": 19.099}, {"slug": "bike_20min", "input": 250, "equipment": null, "ref_adj": 227.812, "max_adj": 355.576, "pct": 0.6695, "points": 54.896}, {"slug": "hyrox_circuit", "input": 880, "equipment": null, "ref_adj": 1053.8642, "max_adj": 737.7049, "pct": 0.82, "points": 74.617}, {"slug": "clean_2rm", "input": 90, "equipment": null, "ref_adj": 77.9688, "max_adj": 109.2896, "pct": 0.7537, "points": 21.102}, {"slug": "clean_and_press_2rm", "input": 80, "equipment": null, "ref_adj": 71.232, "max_adj": 100.4032, "pct": 0.7202, "points": 20.166}, {"slug": "front_squat_3rm", "input": 90, "equipment": null, "ref_adj": 81.5328, "max_adj": 146.616, "pct": 0.652, "points": 18.257}], "total_points": 795.239, "qualities": {"Vitesse": {"points": 85.2, "pts_max": 101.7, "pct": 0.8378, "level": "Élite"}, "Force": {"points": 155.13, "pts_max": 225.15, "pct": 0.689, "level": "Référence"}, "Puissance": {"points": 102.11, "pts_max": 127.8, "pct": 0.799, "level": "Référence"}, "Explosivité": {"points": 91.27, "pts_max": 89.15, "pct": 1.0238, "level": "Phénomène"}, "Endurance": {"points": 108.47, "pts_max": 139.35, "pct": 0.7784, "level": "Référence"}, "VO2max": {"points": 205.12, "pts_max": 261.15, "pct": 0.7854, "level": "Référence"}, "Coordination": {"points": 47.94, "pts_max": 55.7, "pct": 0.8606, "level": "Élite"}}},
-{"case": 3, "sex": "F", "body_weight_kg": 60, "age_band": "36-40", "tests": [{"slug": "standing_long_jump", "input": 2.1, "equipment": null, "ref_adj": 1.8604, "max_adj": 2.3141, "pct": 0.8112, "points": 30.016}, {"slug": "standing_triple_jump", "input": 6.2, "equipment": null, "ref_adj": 5.493, "max_adj": 6.9578, "pct": 0.7931, "points": 29.343}, {"slug": "sprint_30m", "input": 5, "equipment": "pointes", "ref_adj": 5.2795, "max_adj": 4.6584, "pct": 0.6834, "points": 19.136}, {"slug": "sprint_100m", "input": 15.5, "equipment": "pointes", "ref_adj": 16.5115, "max_adj": 13.4156, "pct": 0.6706, "points": 18.777}, {"slug": "agility_square", "input": 24, "equipment": null, "ref_adj": 23.9272, "max_adj": 18.6216, "pct": 0.5945, "points": 10.701}, {"slug": "agility_move", "input": 30, "equipment": null, "ref_adj": 30.2731, "max_adj": 24.4474, "pct": 0.6188, "points": 11.138}, {"slug": "agility_slalom", "input": 50, "equipment": null, "ref_adj": 51.4469, "max_adj": 42.7691, "pct": 0.6667, "points": 12.001}, {"slug": "repeat_200m_x6", "input": 280, "equipment": null, "ref_adj": 301.0455, "max_adj": 228.3794, "pct": 0.7158, "points": 45.098}, {"slug": "swim_50m", "input": 52, "equipment": null, "ref_adj": 56.8644, "max_adj": 33.0848, "pct": 0.6818, "points": 15.682}, {"slug": "swim_200m", "input": 250, "equipment": null, "ref_adj": 267.809, "max_adj": 168.037, "pct": 0.6714, "points": 27.527}, {"slug": "run_400m", "input": 80, "equipment": "pointes", "ref_adj": 80.9709, "max_adj": 62.2853, "pct": 0.5865, "points": 48.096}, {"slug": "amrap_20min", "input": 12, "equipment": null, "ref_adj": 10.5655, "max_adj": 21.131, "pct": 0.6543, "points": 35.987}, {"slug": "run_3200m", "input": 900, "equipment": "pointes", "ref_adj": 963.1579, "max_adj": 694.7368, "pct": 0.6807, "points": 86.45}, {"slug": "squat_3rm", "input": 60, "equipment": "ceinture", "ref_adj": 54, "max_adj": 90, "pct": 0.62, "points": 17.36}, {"slug": "bench_press_3rm", "input": 40, "equipment": null, "ref_adj": 36, "max_adj": 63, "pct": 0.6593, "points": 18.459}, {"slug": "deadlift_3rm", "input": 80, "equipment": "ceinture", "ref_adj": 72, "max_adj": 108, "pct": 0.6267, "points": 17.547}, {"slug": "military_press_3rm", "input": 25, "equipment": null, "ref_adj": 24, "max_adj": 39, "pct": 0.6267, "points": 17.547}, {"slug": "weighted_pullup_3rm", "input": 8, "equipment": null, "ref_adj": 8.7525, "max_adj": 20.4225, "pct": 0.5742, "points": 16.078}, {"slug": "dead_hang", "input": 60, "equipment": null, "ref_adj": 49.25, "max_adj": 108.35, "pct": 0.6728, "points": 18.837}, {"slug": "bike_20min", "input": 180, "equipment": null, "ref_adj": 155.8512, "max_adj": 257.6664, "pct": 0.6949, "points": 56.98}, {"slug": "hyrox_circuit", "input": 1100, "equipment": null, "ref_adj": 1127.3486, "max_adj": 782.881, "pct": 0.6318, "points": 57.49}, {"slug": "clean_2rm", "input": 50, "equipment": null, "ref_adj": 47.9556, "max_adj": 74.7879, "pct": 0.6305, "points": 17.653}, {"slug": "clean_and_press_2rm", "input": 40, "equipment": null, "ref_adj": 39.8268, "max_adj": 61.7604, "pct": 0.6032, "points": 16.888}, {"slug": "front_squat_3rm", "input": 55, "equipment": null, "ref_adj": 54.327, "max_adj": 81.192, "pct": 0.61, "points": 17.081}], "total_points": 661.871, "qualities": {"Vitesse": {"points": 67.0, "pts_max": 101.7, "pct": 0.6588, "level": "Référence"}, "Force": {"points": 141.59, "pts_max": 225.15, "pct": 0.6288, "level": "Référence"}, "Puissance": {"points": 83.0, "pts_max": 127.8, "pct": 0.6494, "level": "Référence"}, "Explosivité": {"points": 66.1, "pts_max": 89.15, "pct": 0.7415, "level": "Référence"}, "Endurance": {"points": 90.68, "pts_max": 139.35, "pct": 0.6507, "level": "Référence"}, "VO2max": {"points": 175.41, "pts_max": 261.15, "pct": 0.6717, "level": "Référence"}, "Coordination": {"points": 38.11, "pts_max": 55.7, "pct": 0.6841, "level": "Référence"}}}
+ {
+  "case": 1,
+  "sex": "M",
+  "body_weight_kg": 80,
+  "age_band": "21-25",
+  "tests": [
+   {
+    "slug": "standing_long_jump",
+    "input": 2.65,
+    "equipment": null,
+    "ref_adj": 2.55,
+    "max_adj": 3.2,
+    "pct": 0.6615,
+    "points": 16.538514
+   },
+   {
+    "slug": "standing_triple_jump",
+    "input": 7.8,
+    "equipment": null,
+    "ref_adj": 7.5,
+    "max_adj": 9.5,
+    "pct": 0.66,
+    "points": 16.5
+   },
+   {
+    "slug": "sprint_30m",
+    "input": 4.4,
+    "equipment": null,
+    "ref_adj": 4.5,
+    "max_adj": 4,
+    "pct": 0.68,
+    "points": 13.6
+   },
+   {
+    "slug": "sprint_100m",
+    "input": 13,
+    "equipment": null,
+    "ref_adj": 13.5,
+    "max_adj": 11.5,
+    "pct": 0.7,
+    "points": 28.0
+   },
+   {
+    "slug": "agility_square",
+    "input": 21,
+    "equipment": null,
+    "ref_adj": 20.5,
+    "max_adj": 16,
+    "pct": 0.5556,
+    "points": 11.111111
+   },
+   {
+    "slug": "agility_move",
+    "input": 26.5,
+    "equipment": null,
+    "ref_adj": 26,
+    "max_adj": 21,
+    "pct": 0.56,
+    "points": 11.2
+   },
+   {
+    "slug": "agility_slalom",
+    "input": 45,
+    "equipment": null,
+    "ref_adj": 44.5,
+    "max_adj": 37,
+    "pct": 0.5733,
+    "points": 19.493333
+   },
+   {
+    "slug": "repeat_200m_x6",
+    "input": 245,
+    "equipment": null,
+    "ref_adj": 240,
+    "max_adj": 185,
+    "pct": 0.5636,
+    "points": 36.63627
+   },
+   {
+    "slug": "swim_50m",
+    "input": 44,
+    "equipment": null,
+    "ref_adj": 45,
+    "max_adj": 28,
+    "pct": 0.6235,
+    "points": 14.341
+   },
+   {
+    "slug": "swim_200m",
+    "input": 205,
+    "equipment": null,
+    "ref_adj": 210,
+    "max_adj": 140,
+    "pct": 0.6286,
+    "points": 25.771
+   },
+   {
+    "slug": "run_400m",
+    "input": 64,
+    "equipment": null,
+    "ref_adj": 65,
+    "max_adj": 50,
+    "pct": 0.6267,
+    "points": 50.133659
+   },
+   {
+    "slug": "amrap_20min",
+    "input": 17,
+    "equipment": null,
+    "ref_adj": 15,
+    "max_adj": 28,
+    "pct": 0.6615,
+    "points": 43.000455
+   },
+   {
+    "slug": "run_3200m",
+    "input": 750,
+    "equipment": null,
+    "ref_adj": 770,
+    "max_adj": 550,
+    "pct": 0.6364,
+    "points": 76.363465
+   },
+   {
+    "slug": "squat_3rm",
+    "input": 115,
+    "equipment": null,
+    "ref_adj": 108,
+    "max_adj": 180,
+    "pct": 0.6389,
+    "points": 17.889
+   },
+   {
+    "slug": "bench_press_3rm",
+    "input": 75,
+    "equipment": null,
+    "ref_adj": 72,
+    "max_adj": 128,
+    "pct": 0.6214,
+    "points": 17.4
+   },
+   {
+    "slug": "deadlift_3rm",
+    "input": 145,
+    "equipment": null,
+    "ref_adj": 144,
+    "max_adj": 216,
+    "pct": 0.6056,
+    "points": 16.956
+   },
+   {
+    "slug": "military_press_3rm",
+    "input": 50,
+    "equipment": null,
+    "ref_adj": 52,
+    "max_adj": 80,
+    "pct": 0.5714,
+    "points": 16.0
+   },
+   {
+    "slug": "weighted_pullup_3rm",
+    "input": 15,
+    "equipment": null,
+    "ref_adj": 20,
+    "max_adj": 44,
+    "pct": 0.5167,
+    "points": 14.467
+   },
+   {
+    "slug": "dead_hang",
+    "input": 80,
+    "equipment": null,
+    "ref_adj": 75,
+    "max_adj": 150,
+    "pct": 0.6267,
+    "points": 17.547
+   },
+   {
+    "slug": "bike_20min",
+    "input": 250,
+    "equipment": null,
+    "ref_adj": 269.6,
+    "max_adj": 420.8,
+    "pct": 0.5481,
+    "points": 49.333171
+   },
+   {
+    "slug": "hyrox_circuit",
+    "input": 880,
+    "equipment": null,
+    "ref_adj": 900,
+    "max_adj": 630,
+    "pct": 0.6296,
+    "points": 50.37011
+   },
+   {
+    "slug": "clean_2rm",
+    "input": 90,
+    "equipment": null,
+    "ref_adj": 93.6,
+    "max_adj": 131.2,
+    "pct": 0.5617,
+    "points": 15.728
+   },
+   {
+    "slug": "clean_and_press_2rm",
+    "input": 80,
+    "equipment": null,
+    "ref_adj": 84,
+    "max_adj": 118.4,
+    "pct": 0.5535,
+    "points": 15.498
+   },
+   {
+    "slug": "front_squat_3rm",
+    "input": 90,
+    "equipment": null,
+    "ref_adj": 91.2,
+    "max_adj": 164,
+    "pct": 0.5934,
+    "points": 16.615
+   }
+  ],
+  "total_points": 610.492086,
+  "qualities": {
+   "Vitesse": {
+    "points": 71.15572,
+    "pts_max": 114.5,
+    "pct": 0.621447,
+    "level": "Référence"
+   },
+   "Force": {
+    "points": 135.840286,
+    "pts_max": 225.45,
+    "pct": 0.60253,
+    "level": "Référence"
+   },
+   "Puissance": {
+    "points": 80.959383,
+    "pts_max": 134.9,
+    "pct": 0.600144,
+    "level": "Référence"
+   },
+   "Explosivité": {
+    "points": 46.134364,
+    "pts_max": 73.15,
+    "pct": 0.630682,
+    "level": "Référence"
+   },
+   "Endurance": {
+    "points": 86.49379,
+    "pts_max": 140.85,
+    "pct": 0.614084,
+    "level": "Référence"
+   },
+   "VO2max": {
+    "points": 158.812333,
+    "pts_max": 260.35,
+    "pct": 0.609996,
+    "level": "Référence"
+   },
+   "Coordination": {
+    "points": 31.09621,
+    "pts_max": 50.8,
+    "pct": 0.61213,
+    "level": "Référence"
+   }
+  }
+ },
+ {
+  "case": 2,
+  "sex": "M",
+  "body_weight_kg": 80,
+  "age_band": "46-50",
+  "tests": [
+   {
+    "slug": "standing_long_jump",
+    "input": 2.65,
+    "equipment": null,
+    "ref_adj": 1.9469,
+    "max_adj": 2.4432,
+    "pct": 1.1667,
+    "points": 29.166892
+   },
+   {
+    "slug": "standing_triple_jump",
+    "input": 7.8,
+    "equipment": null,
+    "ref_adj": 5.8312,
+    "max_adj": 7.3863,
+    "pct": 1.1064,
+    "points": 27.660811
+   },
+   {
+    "slug": "sprint_30m",
+    "input": 4.4,
+    "equipment": null,
+    "ref_adj": 4.9894,
+    "max_adj": 4.435,
+    "pct": 1.0253,
+    "points": 20.505
+   },
+   {
+    "slug": "sprint_100m",
+    "input": 13,
+    "equipment": null,
+    "ref_adj": 14.9174,
+    "max_adj": 12.7074,
+    "pct": 0.947,
+    "points": 37.881429
+   },
+   {
+    "slug": "agility_square",
+    "input": 21,
+    "equipment": null,
+    "ref_adj": 23.0352,
+    "max_adj": 17.9787,
+    "pct": 0.761,
+    "points": 15.22
+   },
+   {
+    "slug": "agility_move",
+    "input": 26.5,
+    "equipment": null,
+    "ref_adj": 29.2153,
+    "max_adj": 23.597,
+    "pct": 0.7933,
+    "points": 15.866667
+   },
+   {
+    "slug": "agility_slalom",
+    "input": 45,
+    "equipment": null,
+    "ref_adj": 49.2925,
+    "max_adj": 40.9848,
+    "pct": 0.8067,
+    "points": 27.426667
+   },
+   {
+    "slug": "repeat_200m_x6",
+    "input": 245,
+    "equipment": null,
+    "ref_adj": 270.7028,
+    "max_adj": 208.6668,
+    "pct": 0.7657,
+    "points": 49.77246
+   },
+   {
+    "slug": "swim_50m",
+    "input": 44,
+    "equipment": null,
+    "ref_adj": 49.923,
+    "max_adj": 31.0632,
+    "pct": 0.7256,
+    "points": 16.689
+   },
+   {
+    "slug": "swim_200m",
+    "input": 205,
+    "equipment": null,
+    "ref_adj": 245.8106,
+    "max_adj": 163.8738,
+    "pct": 0.7992,
+    "points": 32.768
+   },
+   {
+    "slug": "run_400m",
+    "input": 64,
+    "equipment": null,
+    "ref_adj": 73.2849,
+    "max_adj": 56.373,
+    "pct": 0.8196,
+    "points": 65.56878
+   },
+   {
+    "slug": "amrap_20min",
+    "input": 17,
+    "equipment": null,
+    "ref_adj": 12.8625,
+    "max_adj": 24.01,
+    "pct": 0.7485,
+    "points": 48.650727
+   },
+   {
+    "slug": "run_3200m",
+    "input": 750,
+    "equipment": null,
+    "ref_adj": 906.9494,
+    "max_adj": 647.821,
+    "pct": 0.8423,
+    "points": 101.073071
+   },
+   {
+    "slug": "squat_3rm",
+    "input": 115,
+    "equipment": null,
+    "ref_adj": 97.2,
+    "max_adj": 162,
+    "pct": 0.7099,
+    "points": 19.877
+   },
+   {
+    "slug": "bench_press_3rm",
+    "input": 75,
+    "equipment": null,
+    "ref_adj": 64.8,
+    "max_adj": 115.2,
+    "pct": 0.681,
+    "points": 19.067
+   },
+   {
+    "slug": "deadlift_3rm",
+    "input": 145,
+    "equipment": null,
+    "ref_adj": 129.6,
+    "max_adj": 194.4,
+    "pct": 0.6951,
+    "points": 19.462
+   },
+   {
+    "slug": "military_press_3rm",
+    "input": 50,
+    "equipment": null,
+    "ref_adj": 46.8,
+    "max_adj": 72,
+    "pct": 0.6508,
+    "points": 18.222
+   },
+   {
+    "slug": "weighted_pullup_3rm",
+    "input": 15,
+    "equipment": null,
+    "ref_adj": 17.2,
+    "max_adj": 37.84,
+    "pct": 0.5574,
+    "points": 15.606
+   },
+   {
+    "slug": "dead_hang",
+    "input": 80,
+    "equipment": null,
+    "ref_adj": 66.375,
+    "max_adj": 132.75,
+    "pct": 0.6821,
+    "points": 19.099
+   },
+   {
+    "slug": "bike_20min",
+    "input": 250,
+    "equipment": null,
+    "ref_adj": 227.812,
+    "max_adj": 355.576,
+    "pct": 0.6695,
+    "points": 60.251707
+   },
+   {
+    "slug": "hyrox_circuit",
+    "input": 880,
+    "equipment": null,
+    "ref_adj": 1053.8642,
+    "max_adj": 737.7049,
+    "pct": 0.82,
+    "points": 65.597363
+   },
+   {
+    "slug": "clean_2rm",
+    "input": 90,
+    "equipment": null,
+    "ref_adj": 77.9688,
+    "max_adj": 109.2896,
+    "pct": 0.7537,
+    "points": 21.102
+   },
+   {
+    "slug": "clean_and_press_2rm",
+    "input": 80,
+    "equipment": null,
+    "ref_adj": 71.232,
+    "max_adj": 100.4032,
+    "pct": 0.7202,
+    "points": 20.166
+   },
+   {
+    "slug": "front_squat_3rm",
+    "input": 90,
+    "equipment": null,
+    "ref_adj": 81.5328,
+    "max_adj": 146.616,
+    "pct": 0.652,
+    "points": 18.257
+   }
+  ],
+  "total_points": 784.956574,
+  "qualities": {
+   "Vitesse": {
+    "points": 96.014614,
+    "pts_max": 114.5,
+    "pct": 0.838556,
+    "level": "Élite"
+   },
+   "Force": {
+    "points": 155.196554,
+    "pts_max": 225.45,
+    "pct": 0.688386,
+    "level": "Référence"
+   },
+   "Puissance": {
+    "points": 106.96888,
+    "pts_max": 134.9,
+    "pct": 0.792949,
+    "level": "Référence"
+   },
+   "Explosivité": {
+    "points": 71.952311,
+    "pts_max": 73.15,
+    "pct": 0.983627,
+    "level": "Élite"
+   },
+   "Endurance": {
+    "points": 109.21674,
+    "pts_max": 140.85,
+    "pct": 0.775412,
+    "level": "Référence"
+   },
+   "VO2max": {
+    "points": 203.192234,
+    "pts_max": 260.35,
+    "pct": 0.780458,
+    "level": "Référence"
+   },
+   "Coordination": {
+    "points": 42.415239,
+    "pts_max": 50.8,
+    "pct": 0.834946,
+    "level": "Élite"
+   }
+  }
+ },
+ {
+  "case": 3,
+  "sex": "F",
+  "body_weight_kg": 60,
+  "age_band": "36-40",
+  "tests": [
+   {
+    "slug": "standing_long_jump",
+    "input": 2.1,
+    "equipment": null,
+    "ref_adj": 1.8604,
+    "max_adj": 2.3141,
+    "pct": 0.8112,
+    "points": 20.281081
+   },
+   {
+    "slug": "standing_triple_jump",
+    "input": 6.2,
+    "equipment": null,
+    "ref_adj": 5.493,
+    "max_adj": 6.9578,
+    "pct": 0.7931,
+    "points": 19.826351
+   },
+   {
+    "slug": "sprint_30m",
+    "input": 5,
+    "equipment": "pointes",
+    "ref_adj": 5.2795,
+    "max_adj": 4.6584,
+    "pct": 0.6834,
+    "points": 13.668571
+   },
+   {
+    "slug": "sprint_100m",
+    "input": 15.5,
+    "equipment": "pointes",
+    "ref_adj": 16.5115,
+    "max_adj": 13.4156,
+    "pct": 0.6706,
+    "points": 26.824286
+   },
+   {
+    "slug": "agility_square",
+    "input": 24,
+    "equipment": null,
+    "ref_adj": 23.9272,
+    "max_adj": 18.6216,
+    "pct": 0.5945,
+    "points": 11.89
+   },
+   {
+    "slug": "agility_move",
+    "input": 30,
+    "equipment": null,
+    "ref_adj": 30.2731,
+    "max_adj": 24.4474,
+    "pct": 0.6188,
+    "points": 12.375556
+   },
+   {
+    "slug": "agility_slalom",
+    "input": 50,
+    "equipment": null,
+    "ref_adj": 51.4469,
+    "max_adj": 42.7691,
+    "pct": 0.6667,
+    "points": 22.668556
+   },
+   {
+    "slug": "repeat_200m_x6",
+    "input": 280,
+    "equipment": null,
+    "ref_adj": 301.0455,
+    "max_adj": 228.3794,
+    "pct": 0.7158,
+    "points": 46.529683
+   },
+   {
+    "slug": "swim_50m",
+    "input": 52,
+    "equipment": null,
+    "ref_adj": 56.8644,
+    "max_adj": 33.0848,
+    "pct": 0.6818,
+    "points": 15.682
+   },
+   {
+    "slug": "swim_200m",
+    "input": 250,
+    "equipment": null,
+    "ref_adj": 267.809,
+    "max_adj": 168.037,
+    "pct": 0.6714,
+    "points": 27.527
+   },
+   {
+    "slug": "run_400m",
+    "input": 80,
+    "equipment": "pointes",
+    "ref_adj": 80.9709,
+    "max_adj": 62.2853,
+    "pct": 0.5865,
+    "points": 46.922927
+   },
+   {
+    "slug": "amrap_20min",
+    "input": 12,
+    "equipment": null,
+    "ref_adj": 10.5655,
+    "max_adj": 21.131,
+    "pct": 0.6543,
+    "points": 42.530091
+   },
+   {
+    "slug": "run_3200m",
+    "input": 900,
+    "equipment": "pointes",
+    "ref_adj": 963.1579,
+    "max_adj": 694.7368,
+    "pct": 0.6807,
+    "points": 81.685039
+   },
+   {
+    "slug": "squat_3rm",
+    "input": 60,
+    "equipment": "ceinture",
+    "ref_adj": 54,
+    "max_adj": 90,
+    "pct": 0.62,
+    "points": 17.36
+   },
+   {
+    "slug": "bench_press_3rm",
+    "input": 40,
+    "equipment": null,
+    "ref_adj": 36,
+    "max_adj": 63,
+    "pct": 0.6593,
+    "points": 18.459
+   },
+   {
+    "slug": "deadlift_3rm",
+    "input": 80,
+    "equipment": "ceinture",
+    "ref_adj": 72,
+    "max_adj": 108,
+    "pct": 0.6267,
+    "points": 17.547
+   },
+   {
+    "slug": "military_press_3rm",
+    "input": 25,
+    "equipment": null,
+    "ref_adj": 24,
+    "max_adj": 39,
+    "pct": 0.6267,
+    "points": 17.547
+   },
+   {
+    "slug": "weighted_pullup_3rm",
+    "input": 8,
+    "equipment": null,
+    "ref_adj": 8.7525,
+    "max_adj": 20.4225,
+    "pct": 0.5742,
+    "points": 16.078
+   },
+   {
+    "slug": "dead_hang",
+    "input": 60,
+    "equipment": null,
+    "ref_adj": 49.25,
+    "max_adj": 108.35,
+    "pct": 0.6728,
+    "points": 18.837
+   },
+   {
+    "slug": "bike_20min",
+    "input": 180,
+    "equipment": null,
+    "ref_adj": 155.8512,
+    "max_adj": 257.6664,
+    "pct": 0.6949,
+    "points": 62.539024
+   },
+   {
+    "slug": "hyrox_circuit",
+    "input": 1100,
+    "equipment": null,
+    "ref_adj": 1127.3486,
+    "max_adj": 782.881,
+    "pct": 0.6318,
+    "points": 50.540659
+   },
+   {
+    "slug": "clean_2rm",
+    "input": 50,
+    "equipment": null,
+    "ref_adj": 47.9556,
+    "max_adj": 74.7879,
+    "pct": 0.6305,
+    "points": 17.653
+   },
+   {
+    "slug": "clean_and_press_2rm",
+    "input": 40,
+    "equipment": null,
+    "ref_adj": 39.8268,
+    "max_adj": 61.7604,
+    "pct": 0.6032,
+    "points": 16.888
+   },
+   {
+    "slug": "front_squat_3rm",
+    "input": 55,
+    "equipment": null,
+    "ref_adj": 54.327,
+    "max_adj": 81.192,
+    "pct": 0.61,
+    "points": 17.081
+   }
+  ],
+  "total_points": 658.940824,
+  "qualities": {
+   "Vitesse": {
+    "points": 75.526194,
+    "pts_max": 114.5,
+    "pct": 0.659617,
+    "level": "Référence"
+   },
+   "Force": {
+    "points": 141.831605,
+    "pts_max": 225.45,
+    "pct": 0.629104,
+    "level": "Référence"
+   },
+   "Puissance": {
+    "points": 87.535705,
+    "pts_max": 134.9,
+    "pct": 0.648893,
+    "level": "Référence"
+   },
+   "Explosivité": {
+    "points": 52.842225,
+    "pts_max": 73.15,
+    "pct": 0.722382,
+    "level": "Référence"
+   },
+   "Endurance": {
+    "points": 91.869492,
+    "pts_max": 140.85,
+    "pct": 0.652251,
+    "level": "Référence"
+   },
+   "VO2max": {
+    "points": 175.109782,
+    "pts_max": 260.35,
+    "pct": 0.672594,
+    "level": "Référence"
+   },
+   "Coordination": {
+    "points": 34.225821,
+    "pts_max": 50.8,
+    "pct": 0.673737,
+    "level": "Référence"
+   }
+  }
+ }
 ]

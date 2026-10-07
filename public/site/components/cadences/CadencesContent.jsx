@@ -77,16 +77,22 @@
   }
   function BaremeMini(props) {
     var t = props.test;
+    var crit = t.criteria || null;
+    var nTry = t.partCount || 3;
+    function critPts(agg) { var c = (crit || []).filter(function (x) { return x.aggregate === agg; })[0]; return c ? c.pts_max : 0; }
     function sexRows(sex, label) {
       var cols = baremeCols(t, sex);
-      var main = <tr key={sex}><td className="cad-b-rl">{label}</td>{cols.map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>;
+      var main = <tr key={sex}><td className="cad-b-rl">{crit ? label + ' · meilleur' : label}</td>{cols.map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>;
       var subs = paceRows(t, cols).map(function (r, j) {
         return <tr key={sex + 's' + j} className="cad-b-sub"><td className="cad-b-rl">↳ {r.sub}</td>{r.cells.map(function (c, i) { return <td key={i}>{c}</td>; })}</tr>;
       });
-      return [main].concat(subs);
+      // Total des essais : même barème × nombre d'essais.
+      var tot = crit ? [<tr key={sex + 't'} className="cad-b-sub"><td className="cad-b-rl">↳ total des {nTry}</td>{cols.map(function (v, i) { return <td key={i}>{fmtThreshold(t, v * nTry)}</td>; })}</tr>] : [];
+      return [main].concat(subs, tot);
     }
     return (
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        {crit ? <p className="cad-ec-p" style={{ margin: '0 0 8px' }}>Deux critères : <strong>meilleur essai</strong> ({critPts('best')} pts) + <strong>total des {nTry} essais</strong> ({critPts('sum')} pts), noté sur le même barème × {nTry}.</p> : null}
         <table className="cad-table cad-bareme">
           <thead><tr><th style={{ textAlign: 'left' }}></th>{BAR_P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
           <tbody>{sexRows('M', 'H').concat(sexRows('F', 'F'))}</tbody>
@@ -231,7 +237,7 @@
       <div className="cad-card" style={{ padding: 'var(--space-4)' }}>
         <div className="cad-ec-top">
           <div className="cad-ec-name">{t.name}</div>
-          <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
+          <div className="cad-ec-pts"><b>{t.pts_max}</b><span>{t.criteria ? t.criteria.map(function (c) { return c.pts_max; }).join(' + ') + ' pts' : 'pts'}</span></div>
         </div>
         {p ? (
           <div className="cad-ec-body">

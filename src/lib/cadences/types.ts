@@ -41,6 +41,16 @@ export interface TestConfig {
   age_time_exponent?: number
   attempts?: number
   aggregate?: Aggregate
+  /** Notation à plusieurs critères (ex. sauts : meilleur essai + total des essais).
+   *  La somme des pts_max des critères = pts_max de l'épreuve. */
+  criteria?: Criterion[]
+}
+
+/** Un critère de notation : agrégat des essais + points attribués. Pour 'sum',
+ *  les seuils Réf/Max sont multipliés par le nombre d'essais (`attempts`). */
+export interface Criterion {
+  aggregate: Aggregate
+  pts_max: number
 }
 
 export interface CadencesConfig {
@@ -70,6 +80,7 @@ export interface TestInput {
   slug: string
   value: number | null     // null = non passée → ignorée
   equipment?: string | null // 'pointes' | 'ceinture' | 'normales' | 'sans' | null
+  parts?: number[] | null  // essais bruts (épreuves à critères : meilleur + total)
 }
 
 /** Score calculé d'une épreuve. */

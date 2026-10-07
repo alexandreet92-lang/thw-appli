@@ -172,7 +172,7 @@
     );
     return { w: 360, h: 110, maxWidth: 460, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du Move avant-arrière',
-      caption: "Tous les plots sur une même ligne. 5 m avant, contourner, retour arrière ; idem 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m. 1 min de récup, ×3, le meilleur compte." };
+      caption: "Tous les plots sur une même ligne. 5 m avant, contourner, retour arrière ; idem 10 m puis 15 m. Après le retour du 15 m, sprint de 30 m. 3 passages, 1 min 30 de récup : meilleur temps + total des 3." };
   }
 
   // ── SLALOM 10.18 ──
@@ -188,7 +188,7 @@
       </g>
     );
     return { w: 440, h: 170, maxWidth: 520, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
-      aria: 'Simulation du Slalom', caption: "10 diagonales de 18,03 m (~180 m), 9 changements de direction. Plots contournés de l'extérieur vers l'intérieur. 2 essais, le meilleur compte." };
+      aria: 'Simulation du Slalom', caption: "10 diagonales de 18,03 m (~180 m), 9 changements de direction. Plots contournés de l'extérieur vers l'intérieur. 3 passages, 1 min 30 de récup : meilleur temps + total des 3." };
   }
 
   function sampleQuad(p0, c, p1, steps) {
@@ -216,7 +216,7 @@
       </g>
     );
     return { w: 400, h: 190, maxWidth: 440, path: pts, labels: labels, colors: colors, extras: extras, legend: null,
-      aria: 'Simulation du saut en longueur', caption: "Pieds joints derrière la ligne, sans élan. Flexion-extension, saut vers l'avant, réception sur les deux pieds. Mesure au talon le plus proche. 3 essais, le meilleur compte." };
+      aria: 'Simulation du saut en longueur', caption: "Pieds joints derrière la ligne, sans élan. Flexion-extension, saut vers l'avant, réception sur les deux pieds. Mesure au talon le plus proche. 3 essais : meilleur saut + total des 3." };
   }
 
   // ── STANDING TRIPLE JUMP ──
@@ -235,7 +235,7 @@
       </g>
     );
     return { w: 440, h: 190, maxWidth: 480, path: path, labels: labels, colors: colors, extras: extras, legend: null,
-      aria: 'Simulation du triple saut', caption: "Départ pieds joints. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. 3 essais, le meilleur compte." };
+      aria: 'Simulation du triple saut', caption: "Départ pieds joints. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. 3 essais : meilleur saut + total des 3." };
   }
 
   function CadDiagram(props) {

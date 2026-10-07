@@ -236,6 +236,9 @@
         .cad-sess { border-radius: 8px; padding: 6px 7px; color: #fff; font-family: var(--font-body); font-size: 11.5px; font-weight: 600; line-height: 1.25; animation: cadPop .45s cubic-bezier(.22,1,.36,1) both; }
         .cad-sess small { display: block; font-weight: 500; opacity: .9; font-size: 10.5px; }
         .cad-rest { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); font-style: italic; }
+        .cad-sess.is-opt { border: 2px dashed var(--sc); color: var(--text); }
+        .cad-sess .cad-sess-d { font-weight: 500; opacity: .85; margin-top: 3px; line-height: 1.3; }
+        .cad-stack-opt { background: repeating-linear-gradient(135deg, var(--sc) 0 5px, transparent 5px 10px) !important; opacity: .7; }
         @keyframes cadPop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
         @media (max-width: 760px) { .cad-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cad-wday { min-height: 0; } }
         @media (prefers-reduced-motion: reduce) { .cad-pillar { opacity: 1; transform: none; transition: none; } .cad-sess { animation: none; } }

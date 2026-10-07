@@ -302,42 +302,48 @@
   /* ════════ ACTE 7 — Que faire concrètement ════════ */
   var PILLARS = [
     { key: 'force', name: 'Force', color: COL.muscle, why: 'Le muscle, c’est ton assurance-vie.',
-      what: 'Soulever lourd et maîtriser ton poids de corps.',
-      ex: ['Charges : squat, soulevé de terre, développé, rowing, fentes', 'Poids du corps : pompes, tractions, dips, gainage', '3 à 5 séries de 5 à 12 répétitions, proche de l’échec'],
-      min: '2 séances · 60 min', ideal: '3 séances · 2 h' },
+      what: 'Deux séances de muscu, très basiques — à personnaliser.',
+      ex: ['Upper : développé, tirage, rowing, tractions, pompes, dips — charges lourdes, ou poids du corps sans matériel / pour varier', 'Legs : squat, soulevé de terre, fentes, gainage', '3 à 5 séries de 5 à 12 répétitions, proche de l’échec'],
+      min: '2 séances (Upper + Legs)', ideal: '2 séances' },
     { key: 'vit', name: 'Vitesse & explosivité', color: COL.brain, why: 'Ce qui part en premier.',
-      what: 'Aller vite, changer de rythme, sauter.',
-      ex: ['Sprints : 6 à 10 × 10-30 m, récupération complète', 'Changements de rythme (fartlek), côtes courtes', 'Sauts : bonds, sauts pieds joints, box jumps, corde'],
-      min: '1 bloc · 15 min', ideal: '2 blocs · 30 min' },
+      what: 'Dans le run qualité : aller vite, changer de rythme, sauter.',
+      ex: ['Jumps : bonds, sauts pieds joints, box jumps', 'Sprints : 6 à 10 × 10-30 m, récupération complète', 'Changements de rythme (fartlek), côtes courtes'],
+      min: '1 run qualité', ideal: '1 run qualité' },
     { key: 'end', name: 'Endurance', color: COL.vo2, why: 'Le cœur, premier prédicteur de longévité.',
-      what: 'Course, vélo, natation, rameur, marche rapide.',
-      ex: ['80 % du temps en aisance (tu peux parler)', '20 % plus dur : fractionné, seuil', 'Une sortie longue le week-end'],
-      min: '150 min modéré', ideal: '240 min, dont 1-2 séances intenses' },
+      what: 'Du VO₂max, des finishers intenses, puis du volume facile.',
+      ex: ['VO₂max : fractionné court dans le run qualité', 'Finisher 10-20 min intense en fin de muscu : rameur, vélo, run, elliptique, SkiErg', 'Idéal : + 1 run en endurance fondamentale (tu peux parler) et la séance libre'],
+      min: 'Run qualité + finishers', ideal: '+ 1 run EF + séance libre' },
     { key: 'mob', name: 'Souplesse & mobilité', color: COL.os, why: 'Garder l’amplitude, éviter les blessures.',
-      what: 'Étirements et mobilité articulaire.',
-      ex: ['Hanches, épaules, chevilles, colonne', '30-60 s par groupe musculaire', 'Idéal en fin de séance ou le soir'],
-      min: '2 × 10 min', ideal: '5 × 10 min' },
+      what: 'Pas une séance de plus : intégrée à chaque séance.',
+      ex: ['10 min d’échauffement mobilité au début', 'Étirements au retour au calme : 30-60 s par groupe', 'Hanches, épaules, chevilles, colonne'],
+      min: 'À chaque séance', ideal: 'À chaque séance' },
   ];
-  var PCOL = { force: COL.muscle, vit: COL.brain, end: COL.vo2, mob: COL.os };
-  var PNAME = { force: 'Force', vit: 'Vitesse', end: 'Endurance', mob: 'Mobilité' };
+  // Types de séances (couleurs = qualités dominantes, cf. courbe du vieillissement).
+  var STYPE = {
+    muscu: { name: 'Muscu', color: COL.muscle },
+    runq: { name: 'Run qualité', color: COL.brain },
+    ef: { name: 'Run EF', color: COL.vo2 },
+    libre: { name: 'Libre', color: COL.os },
+  };
+  var STYPE_ORDER = ['muscu', 'runq', 'ef', 'libre'];
   var WEEK = {
     min: [
-      [{ p: 'force', m: 30, t: 'Force — haut + bas' }],
-      [{ p: 'end', m: 50, t: 'Footing / vélo' }],
-      [{ p: 'mob', m: 10, t: 'Mobilité' }],
-      [{ p: 'force', m: 30, t: 'Force — poids du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
-      [],
-      [{ p: 'end', m: 50, t: 'Endurance' }, { p: 'vit', m: 15, t: 'Sprints + sauts' }],
-      [{ p: 'end', m: 50, t: 'Sortie tranquille' }],
+      { s: 'muscu', m: 60, t: 'Muscu Upper', d: '+ finisher cardio 10-20 min' },
+      null,
+      { s: 'runq', m: 50, t: 'Run qualité', d: 'Jumps · rythme · sprints · VO₂max' },
+      null,
+      { s: 'muscu', m: 60, t: 'Muscu Legs', d: '+ finisher cardio 10-20 min' },
+      null,
+      { s: 'libre', m: 60, t: 'Libre', d: 'Si le temps : natation, tennis, vélo, foot…', opt: true },
     ],
     ideal: [
-      [{ p: 'force', m: 40, t: 'Force — bas du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
-      [{ p: 'end', m: 60, t: 'Fractionné' }, { p: 'vit', m: 15, t: 'Sprints' }],
-      [{ p: 'force', m: 40, t: 'Force — haut du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
-      [{ p: 'end', m: 60, t: 'Endurance' }, { p: 'mob', m: 10, t: 'Mobilité' }],
-      [{ p: 'force', m: 40, t: 'Force — complet' }, { p: 'vit', m: 15, t: 'Sauts + côtes' }],
-      [{ p: 'end', m: 90, t: 'Sortie longue' }, { p: 'mob', m: 10, t: 'Mobilité' }],
-      [{ p: 'end', m: 30, t: 'Récup active' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      { s: 'muscu', m: 60, t: 'Muscu Upper', d: '+ finisher cardio 10-20 min' },
+      { s: 'runq', m: 50, t: 'Run qualité', d: 'Jumps · rythme · sprints · VO₂max' },
+      null,
+      { s: 'muscu', m: 60, t: 'Muscu Legs', d: '+ finisher cardio 10-20 min' },
+      null,
+      { s: 'ef', m: 60, t: 'Run EF', d: 'Endurance fondamentale, en aisance' },
+      { s: 'libre', m: 75, t: 'Libre', d: 'Natation, tennis, vélo, foot… sans se prendre la tête' },
     ],
   };
   var DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -371,10 +377,15 @@
     var hook = window.CadUseInView;
     var iv = hook ? hook({ threshold: 0.25 }) : [null, true];
     var week = WEEK[mode];
-    var tot = { force: 0, vit: 0, end: 0, mob: 0 };
-    week.forEach(function (d) { d.forEach(function (s) { tot[s.p] += s.m; }); });
-    var all = tot.force + tot.vit + tot.end + tot.mob;
-    var SCALE = 480;
+    var sess = week.filter(Boolean);
+    var core = sess.filter(function (s) { return !s.opt; });
+    var opt = sess.filter(function (s) { return s.opt; });
+    var coreMin = core.reduce(function (a, s) { return a + s.m; }, 0);
+    var optMin = opt.reduce(function (a, s) { return a + s.m; }, 0);
+    var SCALE = 330;
+    var segs = STYPE_ORDER.map(function (k) {
+      return { k: k, m: core.filter(function (s) { return s.s === k; }).reduce(function (a, s) { return a + s.m; }, 0), n: core.filter(function (s) { return s.s === k; }).length };
+    }).filter(function (g) { return g.m > 0; });
     return (
       <div ref={iv[0]} className="cad-card" style={{ marginTop: 18 }}>
         <div style={{ display: 'flex', gap: 8, maxWidth: 320 }}>
@@ -382,35 +393,45 @@
           <button type="button" className="cad-pill" aria-pressed={mode === 'ideal'} onClick={function () { setMode('ideal'); }}>Idéal</button>
         </div>
         <div className="cad-plan-tot">
-          <b>{fmtH(all)}</b>
-          <span>par semaine · {mode === 'min' ? 'pour rester en bonne santé et garder ses qualités' : 'pour être en très bonne forme, à tout âge'}</span>
+          <b>{core.length} séances</b>
+          <span>
+            ≈ {fmtH(coreMin)} par semaine{opt.length ? ' · ' + fmtH(coreMin + optMin) + ' avec la séance libre' : ''}
+            {' · '}{mode === 'min' ? 'pour rester en bonne santé et garder ses qualités' : 'pour être en très bonne forme, à tout âge'}
+          </span>
         </div>
-        <div className="cad-stack" role="img" aria-label={'Répartition hebdomadaire : ' + fmtH(all)}>
-          {['force', 'vit', 'end', 'mob'].map(function (k) {
-            return <i key={k} style={{ width: (iv[1] ? tot[k] / SCALE * 100 : 0) + '%', background: PCOL[k] }}></i>;
+        <div className="cad-stack" role="img" aria-label={core.length + ' séances, ' + fmtH(coreMin) + ' par semaine'}>
+          {segs.map(function (g) {
+            return <i key={g.k} style={{ width: (iv[1] ? g.m / SCALE * 100 : 0) + '%', background: STYPE[g.k].color }}></i>;
+          })}
+          {opt.map(function (s, i) {
+            return <i key={'o' + i} className="cad-stack-opt" style={{ width: (iv[1] ? s.m / SCALE * 100 : 0) + '%', '--sc': STYPE[s.s].color }}></i>;
           })}
         </div>
         <div className="cad-legend">
-          {['force', 'vit', 'end', 'mob'].map(function (k) {
-            return <span key={k}><i style={{ background: PCOL[k] }}></i>{PNAME[k]} · {tot[k]} min</span>;
+          {segs.map(function (g) {
+            return <span key={g.k}><i style={{ background: STYPE[g.k].color }}></i>{STYPE[g.k].name} · {g.n > 1 ? g.n + ' × ' : ''}{g.m / g.n} min</span>;
           })}
+          {opt.length ? <span><i style={{ background: 'transparent', border: '1.5px dashed ' + STYPE.libre.color }}></i>Libre (optionnelle) · {optMin} min</span> : null}
         </div>
         <div className="cad-week">
-          {week.map(function (d, i) {
+          {week.map(function (s, i) {
             return (
               <div key={mode + i} className="cad-wday">
                 <small>{DAYS[i]}</small>
-                {d.length ? d.map(function (s, j) {
-                  return <div key={j} className="cad-sess" style={{ background: PCOL[s.p], animationDelay: (i * 60 + j * 40) + 'ms' }}>{s.t}<small>{s.m} min</small></div>;
-                }) : <span className="cad-rest">Repos</span>}
+                {s ? (
+                  <div className={'cad-sess' + (s.opt ? ' is-opt' : '')} style={{ '--sc': STYPE[s.s].color, background: s.opt ? 'transparent' : STYPE[s.s].color, animationDelay: (i * 60) + 'ms' }}>
+                    {s.t}{s.opt ? ' (option)' : ''}<small>{s.m} min</small><small className="cad-sess-d">{s.d}</small>
+                  </div>
+                ) : <span className="cad-rest">Repos</span>}
               </div>
             );
           })}
         </div>
         <div className="cad-fig-c">
           {mode === 'min'
-            ? <span>C’est le plancher OMS (150 min d’endurance + 2 séances de renfort), complété par un peu de vitesse et de mobilité — les deux qualités que personne ne travaille et qui partent en premier.</span>
-            : <span>L’endurance passe à 4 h, dont 1-2 séances intenses qui <strong>comptent double</strong> pour l’OMS ; la force passe à 3 séances, la vitesse à 2 blocs. Tu te rapproches de la zone où le bénéfice sur la mortalité plafonne (3-5× le minimum, −39 %).</span>}
+            ? <span><strong>3 séances suffisent.</strong> Le run qualité et les finishers sont intenses — et l’OMS compte l’intense double : tu atteins le plancher (≈ 150 min-équivalent) et les 2 séances de renforcement recommandées. La séance libre, si tu as le temps, c’est du bonus.</span>
+            : <span>La 2ᵉ sortie en <strong>endurance fondamentale</strong> construit le moteur aérobie ; la <strong>séance libre</strong> garde le plaisir — et c’est le plaisir qui fait tenir soixante ans.</span>}
+          {' '}La mobilité n’est pas une séance de plus : 10 min au début et à la fin de chaque séance.
         </div>
       </div>
     );
@@ -618,11 +639,11 @@
 
         {/* 7. Que faire concrètement */}
         <Act eye="Que faire concrètement" title="Le minimum pour rester fort. L’idéal pour être en très bonne forme."
-             lead={<span>La bonne nouvelle : la recette est connue, et elle tient en <strong>quelques heures par semaine</strong>. Quatre piliers d’entraînement — puis deux piliers de soutien.</span>}>
+             lead={<span>Pas besoin de s’entraîner tous les jours : <strong>3 séances bien construites</strong> couvrent l’essentiel ; <strong>5</strong> pour être en très bonne forme. Quatre qualités à travailler — puis deux piliers de soutien.</span>}>
           <p className="cad-act-p">Beaucoup ne font qu’une seule chose : courir, <em>ou</em> soulever, <em>ou</em> s’étirer. Or chaque qualité vieillit à sa façon — et celles qu’on ne travaille pas partent quand même. Un corps en très bonne forme, c’est un corps <strong>fort, rapide, endurant et mobile</strong>.</p>
           <div className="cad-tier">1 · L’entraînement — le moteur</div>
           <Pillars />
-          <p className="cad-act-p" style={{ marginTop: 20 }}><strong>Combien d’heures ?</strong> Bascule entre la semaine minimum et la semaine idéale : le total, la répartition et un exemple de semaine.</p>
+          <p className="cad-act-p" style={{ marginTop: 20 }}><strong>Combien de séances ?</strong> Bascule entre la semaine minimum et la semaine idéale : le nombre de séances, le temps total et un exemple de semaine.</p>
           <WeekPlanner />
           <p className="cad-act-p">Les repères à viser ? Tu les as vus plus haut : <strong>plus de 40 pompes</strong>, <strong>8 sur 10 ou plus</strong> au test assis-debout, une poigne qui ne baisse pas d’une année sur l’autre. CADENCES les mesure toutes, avec un barème détaillé pour chaque épreuve.</p>
 

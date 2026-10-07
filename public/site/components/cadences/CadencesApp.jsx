@@ -312,6 +312,134 @@
         .cad-lvl-item em { font-style: normal; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
         .cad-lvl-item p { margin: 4px 0 0 !important; font-size: 12.5px !important; }
         @media (max-width: 640px) { .cad-lvl-seg span { display: none; } .cad-lvl-ticks span:nth-child(6) { display: none; } .cad-lvl-world span { font-size: 10px; } .cad-ti-score { padding: 18px 16px; } }
+        .cad-q-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+        .cad-q-tile { background: var(--bg-card); border: 1px solid var(--border-mid); border-top: 4px solid var(--qc); border-radius: var(--radius-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+        .cad-q-tile-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .cad-q-tile-h b { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--text); }
+        .cad-q-tile-h span { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--qc); white-space: nowrap; }
+        .cad-q-tile p { margin: 0; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); }
+        .cad-q-bar { height: 8px; border-radius: 999px; background: rgba(128,140,160,0.16); overflow: hidden; }
+        .cad-q-bar i { display: block; height: 100%; border-radius: 999px; background: var(--qc); transition: width .9s cubic-bezier(.22,1,.36,1); }
+        .cad-q-share { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); }
+        .cad-q-top { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
+        .cad-q-top span { font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--text); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 3px 8px; }
+        .cad-qm-wrap { overflow-x: auto; margin-top: 10px; scrollbar-width: none; }
+        .cad-qm-wrap::-webkit-scrollbar { display: none; }
+        .cad-qm { display: grid; gap: 3px; min-width: 520px; }
+        .cad-qm-hd { font-family: var(--font-body); font-size: 11px; font-weight: 700; text-align: center; padding: 4px 2px; color: var(--text-mid); }
+        .cad-qm-name { font-family: var(--font-body); font-size: 12px; color: var(--text-mid); padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cad-qm-name em { font-style: normal; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-right: 6px; }
+        .cad-qm-name.is-on { background: var(--bg-card-2); color: var(--text); font-weight: 600; }
+        .cad-qm-cell { border-radius: 6px; font-family: var(--font-mono); font-size: 11px; display: grid; place-items: center; min-height: 26px; transition: transform .12s; }
+        .cad-qm-cell.is-on { outline: 1.5px solid var(--text); outline-offset: -1.5px; }
+        .cad-gl-main { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+        .cad-gl-card { background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 14px 16px; }
+        .cad-gl-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .cad-gl-h b { font-family: var(--font-display); font-weight: 700; font-size: 15.5px; color: var(--text); }
+        .cad-gl-card p { margin: 6px 0 0; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); }
+        .cad-gl-tag { flex: 0 0 auto; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: var(--text-dim); border: 1px solid var(--border-mid); white-space: nowrap; }
+        .cad-gl-tag.is-in { color: var(--brand); border-color: rgba(0,200,224,.4); background: rgba(0,200,224,.08); }
+        .cad-gl-list { display: grid; margin-top: 8px; border: 1px solid var(--border-mid); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); }
+        .cad-gl-row { display: grid; grid-template-columns: 10px 190px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+        .cad-gl-row:last-child { border-bottom: none; }
+        .cad-gl-row b { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--text); }
+        .cad-gl-d { font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); }
+        .cad-gl-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border-mid); }
+        .cad-gl-dot.is-in { background: var(--brand); }
+        @media (max-width: 680px) { .cad-gl-row { grid-template-columns: 10px minmax(0, 1fr) auto; } .cad-gl-d { grid-column: 2 / -1; } }
+        .cad-pdays { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; margin-bottom: var(--space-4); }
+        @media (max-width: 900px) { .cad-pdays { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+        .cad-pday { display: grid; gap: 3px; text-align: center; padding: 9px 4px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-mid); cursor: pointer; color: var(--text); transition: all .15s; min-width: 0; }
+        .cad-pday b { font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--brand); }
+        .cad-pday span { font-family: var(--font-body); font-size: 10.5px; line-height: 1.25; color: var(--text-mid); overflow: hidden; text-overflow: ellipsis; }
+        .cad-pday:hover:not(.rest) { border-color: var(--brand); }
+        .cad-pday.on { background: var(--brand-gradient); border-color: transparent; box-shadow: 0 3px 12px rgba(0,200,224,.28); }
+        .cad-pday.on b, .cad-pday.on span { color: #fff; }
+        .cad-pday.rest { background: var(--bg-card-2); cursor: default; opacity: .6; }
+        .cad-pday.rest b { color: var(--text-dim); }
+        .cad-dayhead { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); gap: 22px; background: var(--bg-card); border: 1px solid var(--border-mid); border-left: 4px solid var(--brand); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: var(--space-4); }
+        @media (max-width: 820px) { .cad-dayhead { grid-template-columns: 1fr; } }
+        .cad-dayhead-t > span { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brand); }
+        .cad-dayhead-t h3 { margin: 4px 0 8px; font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--text); }
+        .cad-dayhead-g { display: grid; gap: 12px; }
+        .cad-ep-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .cad-ep-meta span { font-family: var(--font-body); font-size: 11.5px; font-weight: 600; color: var(--text-mid); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 3px 9px; }
+        .cad-ep-meta span.is-hl { color: var(--brand); border-color: rgba(0,200,224,.4); background: rgba(0,200,224,.08); }
+        .cad-ep { padding: 20px 22px; }
+        .cad-ep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; margin-top: 14px; align-items: start; }
+        @media (max-width: 900px) { .cad-ep-grid { grid-template-columns: 1fr; } }
+        .cad-ep-side { display: grid; gap: 14px; min-width: 0; }
+        .cad-ep .cad-ec-body { margin-top: 0; }
+        .cad-steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+        .cad-steps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; }
+        .cad-steps i { font-style: normal; width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; background: rgba(0,200,224,.12); color: var(--brand); font-family: var(--font-display); font-weight: 800; font-size: 12px; }
+        .cad-steps span { font-family: var(--font-body); font-size: 13.5px; line-height: 1.55; color: var(--text-mid); }
+        .cad-pnav { display: flex; justify-content: space-between; gap: 10px; margin-top: var(--space-4); flex-wrap: wrap; }
+        .cad-bday { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+        .cad-bday b { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--brand); }
+        .cad-bday span { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
+        .cad-brow { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: 18px; align-items: center; padding: 14px 0; border-top: 1px solid var(--border); }
+        @media (max-width: 680px) { .cad-brow { grid-template-columns: 1fr; gap: 6px; } }
+        .cad-brow-n b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); }
+        .cad-brow-n span { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); }
+        .cad-brow-sub { margin-top: 10px; font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
+        .cad-sc { position: relative; height: 46px; margin: 0 26px 0 6px; }
+        .cad-sc-bar { position: absolute; left: 0; right: 0; top: 30px; height: 6px; border-radius: 999px; background: rgba(128,140,160,0.16); }
+        .cad-sc-bar i { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, #f87171, #fbbf24); opacity: .55; border-radius: 999px 0 0 999px; }
+        .cad-sc-bar i.is-mid { background: linear-gradient(90deg, #a3e635, #4ade80); border-radius: 0; opacity: .8; }
+        .cad-sc-bar i.is-top { background: linear-gradient(90deg, #2dd4bf, #38bdf8); border-radius: 0 999px 999px 0; opacity: .8; }
+        .cad-sc-m { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+        .cad-sc-m.is-first { transform: none; text-align: left; }
+        .cad-sc-m em { display: block; font-style: normal; font-family: var(--font-body); font-size: 10px; color: var(--text-dim); }
+        .cad-sc-m b { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-mid); }
+        .cad-sc-m.is-key b { color: var(--text); font-size: 12.5px; }
+        .cad-sc-m.is-key em { color: var(--brand); font-weight: 700; }
+        .cad-sc-m::after { content: ''; position: absolute; left: 50%; top: 28px; width: 2px; height: 10px; background: var(--text-dim); transform: translateX(-50%); border-radius: 2px; }
+        .cad-sc-m.is-first::after { left: 0; transform: none; }
+        .cad-sc-m.is-key::after { background: var(--text); }
+        .cad-agein { display: grid; gap: 4px; width: 140px; }
+        .cad-agein span { font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
+        .cad-heat-wrap { overflow-x: auto; margin-top: 12px; scrollbar-width: none; }
+        .cad-heat-wrap::-webkit-scrollbar { display: none; }
+        .cad-heat { display: grid; gap: 3px; min-width: 460px; }
+        .cad-heat-hd { font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text-mid); text-align: center; padding: 4px 2px; }
+        .cad-heat-b { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-mid); padding: 5px 6px; border-radius: 6px; }
+        .cad-heat-c { font-family: var(--font-mono); font-size: 11px; border-radius: 6px; display: grid; place-items: center; min-height: 26px; }
+        .cad-heat-b.is-on { background: var(--brand-gradient); color: #fff; font-weight: 700; }
+        .cad-heat-c.is-on { outline: 2px solid var(--brand); outline-offset: -2px; font-weight: 700; }
+        .cad-steps5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+        @media (max-width: 980px) { .cad-steps5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 560px) { .cad-steps5 { grid-template-columns: 1fr; } }
+        .cad-step5 { position: relative; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 16px; display: grid; gap: 6px; align-content: start; }
+        .cad-step5 i { font-style: normal; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: var(--brand-gradient); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13px; }
+        .cad-step5 b { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
+        .cad-step5 span { font-family: var(--font-body); font-size: 12.5px; line-height: 1.5; color: var(--text-mid); }
+        .cad-sim-ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+        .cad-sim-ctl .cad-select { flex: 1; min-width: 180px; }
+        .cad-sim-line { position: relative; height: 70px; margin: 0 8px; }
+        .cad-sim-track { position: absolute; left: 0; right: 0; top: 46px; height: 8px; border-radius: 999px; background: linear-gradient(90deg, #f87171, #fbbf24 30%, #a3e635 46%, #4ade80 77%, #38bdf8); opacity: .75; }
+        .cad-sim-k { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+        .cad-sim-k em { display: block; font-style: normal; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; color: var(--brand); }
+        .cad-sim-k b { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+        .cad-sim-k::after { content: ''; position: absolute; left: 50%; top: 38px; width: 2px; height: 24px; background: var(--text); transform: translateX(-50%); }
+        .cad-sim-dot { position: absolute; top: 40px; width: 20px; height: 20px; border-radius: 999px; transform: translateX(-50%); border: 3px solid var(--bg-card); box-shadow: 0 2px 8px rgba(0,0,0,.25); transition: left .08s linear; }
+        .cad-sim-out { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+        @media (max-width: 520px) { .cad-sim-out { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .cad-sim-out div, .cad-crit div { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 10px 12px; }
+        .cad-sim-out em, .cad-crit em { display: block; font-style: normal; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-sim-out b, .cad-crit b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 19px; color: var(--text); margin-top: 2px; }
+        .cad-sim-out b small { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+        .cad-sim-out b.is-lvl { font-size: 15px; overflow-wrap: anywhere; line-height: 1.25; margin-top: 5px; }
+        .cad-crit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+        @media (max-width: 520px) { .cad-crit { grid-template-columns: 1fr; } }
+        .cad-crit span { display: block; font-family: var(--font-body); font-size: 12px; color: var(--text-mid); margin-top: 2px; }
+        .cad-crit div.is-tot { border-color: rgba(0,200,224,.45); background: rgba(0,200,224,.08); }
+        .cad-crit div.is-tot b { color: var(--brand); }
+        .cad-warns { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .cad-warn-i { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; background: var(--bg-card); border: 1px solid rgba(245,158,11,.35); border-radius: var(--radius-lg); padding: 14px 16px; }
+        .cad-warn-i > i { font-style: normal; width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; background: rgba(245,158,11,.15); color: #f59e0b; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+        .cad-warn-i b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
+        .cad-warn-i span { display: block; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); margin-top: 3px; }
         .cad-src .note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.5; }
         .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
         @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
@@ -429,7 +557,7 @@
     { k: 'protocole', label: 'Protocole', icon: 'plan' },
     { k: 'baremes', label: 'Barèmes & charges', icon: 'card' },
     { k: 'score', label: 'Le score', icon: 'bolt' },
-    { k: 'fiabilite', label: 'Fiabilité', icon: 'shield' },
+    { k: 'avertissements', label: 'Avertissements', icon: 'shield' },
   ];
   function CadIntro(props) {
     var cat = props.catalog;
@@ -452,7 +580,7 @@
       if (tab === 'protocole') return window.CadContent.protocol(cat);
       if (tab === 'baremes') return window.CadContent.bareme(cat);
       if (tab === 'score') return window.CadContent.scoreExplain(cat);
-      if (tab === 'fiabilite') return <React.Fragment>{window.CadContent.transparence(cat)}{window.CadContent.warnings(cat)}</React.Fragment>;
+      if (tab === 'avertissements') return window.CadContent.warnings(cat);
       return window.CadContent.overview(cat);
     }
 

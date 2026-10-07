@@ -839,4 +839,5 @@
   }
 
   window.CadTestIntro = CadTestIntro;
+  window.CadLevelScale = LevelScale;
 })();

@@ -43,6 +43,7 @@
   function round1(v) { return Math.round(v * 100) / 100; }
   function fmtDur(v) { var m = Math.floor(v / 60); var s = Math.round(v - m * 60); return m + ':' + String(s).padStart(2, '0'); }
   function fmtThreshold(t, v) {
+    if (!(v > 0)) return '—';
     if (t.kind === 'ratio' && t.unit === 'kg') return round1(v) + '× pdc';
     if (t.kind === 'ratio' && t.unit === 'W') return round1(v) + ' W/kg';
     if (t.unit === 's') return v >= 60 ? fmtDur(v) : round1(v) + ' s';
@@ -79,9 +80,11 @@
     var t = props.test;
     var crit = t.criteria || null;
     var nTry = t.partCount || 3;
+    var P = props.compact ? [0, 60, 100, 120] : BAR_P;
+    var pick = function (cols) { return props.compact ? [cols[0], cols[3], cols[5], cols[6]] : cols; };
     function critPts(agg) { var c = (crit || []).filter(function (x) { return x.aggregate === agg; })[0]; return c ? c.pts_max : 0; }
     function sexRows(sex, label) {
-      var cols = baremeCols(t, sex);
+      var cols = pick(baremeCols(t, sex));
       var main = <tr key={sex}><td className="cad-b-rl">{crit ? label + ' · meilleur' : label}</td>{cols.map(function (v, i) { return <td key={i}>{fmtThreshold(t, v)}</td>; })}</tr>;
       var subs = paceRows(t, cols).map(function (r, j) {
         return <tr key={sex + 's' + j} className="cad-b-sub"><td className="cad-b-rl">↳ {r.sub}</td>{r.cells.map(function (c, i) { return <td key={i}>{c}</td>; })}</tr>;
@@ -94,7 +97,7 @@
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
         {crit ? <p className="cad-ec-p" style={{ margin: '0 0 8px' }}>Deux critères : <strong>meilleur essai</strong> ({critPts('best')} pts) + <strong>total des {nTry} essais</strong> ({critPts('sum')} pts), noté sur le même barème × {nTry}.</p> : null}
         <table className="cad-table cad-bareme">
-          <thead><tr><th style={{ textAlign: 'left' }}></th>{BAR_P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
+          <thead><tr><th style={{ textAlign: 'left' }}></th>{P.map(function (p) { return <th key={p}>{p === 60 ? 'Réf' : p === 100 ? 'Max' : p + '%'}</th>; })}</tr></thead>
           <tbody>{sexRows('M', 'H').concat(sexRows('F', 'F'))}</tbody>
         </table>
       </div>
@@ -172,31 +175,114 @@
     );
   }
 
-  // ── Les qualités physiques (glossaire + ce que le test mesure) ──────
-  function qualities(catalog) {
-    var nTested = QUALITY_GLOSSARY.filter(function (q) { return q.tested; }).length;
-    var sorted = QUALITY_GLOSSARY.slice().sort(function (a, b) {
-      return ((b.principal ? 2 : 0) + (b.tested ? 1 : 0)) - ((a.principal ? 2 : 0) + (a.tested ? 1 : 0));
+  // ── Les qualités physiques ───────────────────────────────────────────
+  // Couleur fonctionnelle par qualité du score (repère visuel, constante).
+  var QCOL = { vitesse: '#00c8e0', force: '#f59e0b', puissance: '#fb923c', explosivite: '#e11d48', endurance: '#22c55e', vo2max: '#2563eb', coordination: '#14b8a6' };
+  function qLabel(q) { return q.label === 'VO2max' ? 'VO₂max' : q.label; }
+  function hexA(hex, a) {
+    var h = hex.replace('#', ''); var n = parseInt(h, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  // Poids de chaque qualité dans les points (Σ pts × pondération) + épreuves clés.
+  function qualityWeights(catalog) {
+    return catalog.qualities.map(function (q) {
+      var pts = 0, top = [];
+      catalog.tests.forEach(function (t) {
+        var w = (t.weights && t.weights[q.key]) || 0;
+        pts += t.pts_max * w;
+        if (w >= 0.3) top.push({ name: t.name.replace(/\s*\(.*\)$/, ''), w: w });
+      });
+      top.sort(function (a, b) { return b.w - a.w; });
+      return { key: q.key, label: qLabel(q), pts: pts, top: top, color: QCOL[q.key] || '#00c8e0' };
     });
+  }
+  function QualityTiles(props) {
+    var data = qualityWeights(props.catalog);
+    var max = Math.max.apply(null, data.map(function (d) { return d.pts; }));
+    var hook = window.CadUseInView; var iv = hook ? hook({ threshold: 0.2 }) : [null, true];
+    return (
+      <div ref={iv[0]} className="cad-q-tiles">
+        {data.map(function (d, i) {
+          return (
+            <div key={d.key} className="cad-q-tile" style={{ '--qc': d.color }}>
+              <div className="cad-q-tile-h"><b>{d.label}</b><span>{Math.round(d.pts)} pts</span></div>
+              <p>{QUALITY_DEFS[d.key]}</p>
+              <div className="cad-q-bar"><i style={{ width: (iv[1] ? d.pts / max * 100 : 0) + '%', transitionDelay: (i * 80) + 'ms' }}></i></div>
+              <div className="cad-q-share">{Math.round(d.pts / props.catalog.totalPoints * 100)} % du score</div>
+              <div className="cad-q-top">{d.top.slice(0, 5).map(function (t) { return <span key={t.name}>{t.name}</span>; })}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  function QualityMatrix(props) {
+    var cat = props.catalog;
+    var hs = React.useState(null); var hov = hs[0], setHov = hs[1];
+    var tests = cat.tests.slice().sort(function (a, b) { return a.day - b.day || a.order_in_day - b.order_in_day; });
+    return (
+      <div className="cad-qm-wrap">
+        <div className="cad-qm" style={{ gridTemplateColumns: 'minmax(150px, 1.6fr) repeat(' + cat.qualities.length + ', minmax(44px, 1fr))' }}>
+          <div className="cad-qm-hd"></div>
+          {cat.qualities.map(function (q) { return <div key={q.key} className="cad-qm-hd" style={{ color: QCOL[q.key] }}>{qLabel(q)}</div>; })}
+          {tests.map(function (t) {
+            var on = hov === t.slug;
+            return (
+              <React.Fragment key={t.slug}>
+                <div className={'cad-qm-name' + (on ? ' is-on' : '')} onMouseEnter={function () { setHov(t.slug); }} onMouseLeave={function () { setHov(null); }}>
+                  <em>J{t.day}</em>{t.name.replace(/\s*\(.*\)$/, '')}
+                </div>
+                {cat.qualities.map(function (q) {
+                  var w = (t.weights && t.weights[q.key]) || 0;
+                  return (
+                    <div key={q.key} className={'cad-qm-cell' + (on ? ' is-on' : '')} onMouseEnter={function () { setHov(t.slug); }} onMouseLeave={function () { setHov(null); }}
+                         style={{ background: w ? hexA(QCOL[q.key], 0.12 + w * 0.78) : 'transparent', color: w >= 0.45 ? '#fff' : 'var(--text-mid)' }}
+                         title={t.name + ' · ' + qLabel(q) + ' : ' + Math.round(w * 100) + ' %'}>
+                      {w ? Math.round(w * 100) : ''}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  function qualities(catalog) {
+    var principales = QUALITY_GLOSSARY.filter(function (q) { return q.principal; });
+    var autres = QUALITY_GLOSSARY.filter(function (q) { return !q.principal; });
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Ce qu'on mesure"
-          sub={"Les qualités physiques, définies. Cinq sont considérées comme principales ; " + nTested + " sont évaluées par CADENCES. Pour le score, elles sont regroupées en 7 familles (le radar)."}>Les qualités physiques</SectionTitle>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>
-          <span>★ principale</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <i style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 999, background: 'var(--brand)' }}></i> mesurée dans le test
-          </span>
+        <SectionTitle kicker="Ce qu'on mesure" sub="Le score lit 7 qualités. Chacune pèse un certain nombre de points, et chaque épreuve en mesure plusieurs à la fois.">Les qualités physiques</SectionTitle>
+        <QualityTiles catalog={catalog} />
+
+        <div className="cad-card" style={{ marginTop: 'var(--space-5)' }}>
+          <h3 className="cad-h3">Quelle épreuve mesure quoi</h3>
+          <p className="cad-p">Part de chaque épreuve attribuée à chaque qualité (en %). Plus la case est foncée, plus l’épreuve compte pour cette qualité.</p>
+          <QualityMatrix catalog={catalog} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(228px, 1fr))', gap: 'var(--space-3)' }}>
-          {sorted.map(function (q, i) {
+
+        <h3 className="cad-h3" style={{ marginTop: 'var(--space-6)' }}>Les 5 qualités principales</h3>
+        <div className="cad-gl-main">
+          {principales.map(function (q) {
             return (
-              <div key={i} className="cad-card" style={{ padding: 'var(--space-4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{q.principal ? '★ ' : ''}{q.t}</div>
-                  {q.tested ? <span style={{ flex: '0 0 auto', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--brand-gradient)', borderRadius: 999, padding: '2px 8px' }}>Test</span> : null}
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-mid)', marginTop: 6 }}>{q.d}</div>
+              <div key={q.t} className="cad-gl-card">
+                <div className="cad-gl-h"><b>{q.t}</b><span className={'cad-gl-tag' + (q.tested ? ' is-in' : '')}>{q.tested ? 'mesurée' : 'hors test'}</span></div>
+                <p>{q.d}</p>
+              </div>
+            );
+          })}
+        </div>
+        <h3 className="cad-h3" style={{ marginTop: 'var(--space-5)' }}>Les autres qualités</h3>
+        <div className="cad-gl-list">
+          {autres.map(function (q) {
+            return (
+              <div key={q.t} className="cad-gl-row">
+                <span className={'cad-gl-dot' + (q.tested ? ' is-in' : '')}></span>
+                <b>{q.t}</b>
+                <span className="cad-gl-d">{q.d}</span>
+                <span className={'cad-gl-tag' + (q.tested ? ' is-in' : '')}>{q.tested ? 'mesurée' : 'hors test'}</span>
               </div>
             );
           })}
@@ -224,214 +310,337 @@
     if (t.group === 'Force max' || t.group === 'Haltérophilie') r.push('Technique avant la charge : on arrête si l\'exécution se dégrade.');
     return r;
   }
+  function recupFor(t) {
+    if (t.group === 'Agilité') return '1′30 de récup';
+    if (t.group === 'Sprints') return 'récup complète';
+    return null;
+  }
   function EpreuveCard(props) {
     var t = props.t, p = props.p;
     var regles = reglesFor(t, p);
-    var donnees = [];
-    if (p) {
-      donnees.push(<li key="s"><strong style={{ color: 'var(--text)' }}>À saisir :</strong> {p.saisie}</li>);
-      if (p.allure) donnees.push(<li key="a"><strong style={{ color: 'var(--text)' }}>Allure cible :</strong> {p.allure}</li>);
-      if (p.box) donnees.push(<li key="b"><strong style={{ color: 'var(--text)' }}>Box :</strong> {p.box}</li>);
-    }
+    var n = t.partCount || 1;
+    var recup = recupFor(t);
     return (
-      <div className="cad-card" style={{ padding: 'var(--space-4)' }}>
+      <div className="cad-card cad-ep">
         <div className="cad-ec-top">
-          <div className="cad-ec-name">{t.name}</div>
+          <div>
+            <div className="cad-ec-name">{t.name}</div>
+            <div className="cad-ep-meta">
+              {n > 1 ? <span>{n} {t.aggregate === 'sum' ? 'passages' : 'essais'}</span> : <span>1 essai</span>}
+              {recup ? <span>{recup}</span> : null}
+              {t.criteria ? <span className="is-hl">meilleur + total</span> : null}
+            </div>
+          </div>
           <div className="cad-ec-pts"><b>{t.pts_max}</b><span>{t.criteria ? t.criteria.map(function (c) { return c.pts_max; }).join(' + ') + ' pts' : 'pts'}</span></div>
         </div>
-        {p ? (
+        <div className="cad-ep-grid">
           <div className="cad-ec-body">
-            <ECSection title="Objectif"><p className="cad-ec-p">{p.objectif}</p></ECSection>
-            <ECSection title="Matériel requis"><p className="cad-ec-p">{p.materiel.join(' · ')}</p></ECSection>
-            <ECSection title="Déroulé"><ol className="cad-ec-ol">{p.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol></ECSection>
+            {p ? <ECSection title="Objectif"><p className="cad-ec-p">{p.objectif}</p></ECSection> : null}
+            {p ? <ECSection title="Déroulé"><ol className="cad-steps">{p.etapes.map(function (s, i) { return <li key={i}><i>{i + 1}</i><span>{s}</span></li>; })}</ol></ECSection> : null}
             {regles.length ? <ECSection title="Règles"><ul className="cad-ec-ul">{regles.map(function (s, i) { return <li key={i}>{s}</li>; })}</ul></ECSection> : null}
-            {p.securite ? <ECSection title="Conseils"><p className="cad-ec-p">{p.securite}</p></ECSection> : null}
-            <ECSection title="Données à retenir"><ul className="cad-ec-ul">{donnees}</ul></ECSection>
+            {p && p.securite ? <ECSection title="Conseils"><p className="cad-ec-p">{p.securite}</p></ECSection> : null}
+            {p ? (
+              <ECSection title="À saisir">
+                <p className="cad-ec-p">{p.saisie}</p>
+                {p.allure ? <p className="cad-ec-p" style={{ marginTop: 4 }}><strong>Allure cible :</strong> {p.allure}</p> : null}
+                {p.box ? <p className="cad-ec-p" style={{ marginTop: 4 }}><strong>Box :</strong> {p.box}</p> : null}
+              </ECSection>
+            ) : null}
           </div>
-        ) : null}
-        {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
-        <ECSection title="Barème"><BaremeMini test={t} /></ECSection>
-      </div>
-    );
-  }
-  function EchauffementBlock(props) {
-    var catalog = props.catalog, seen = {}, list = [];
-    Object.keys(catalog.protocols || {}).forEach(function (k) {
-      var w = catalog.protocols[k].warmup;
-      if (w && w.titre && !seen[w.titre]) { seen[w.titre] = 1; list.push(w); }
-    });
-    return (
-      <div className="cad-card" style={{ margin: 'var(--space-3) 0 var(--space-4)' }}>
-        <h3 className="cad-h3" style={{ marginBottom: 6 }}>Échauffement — à faire au début, selon la séance</h3>
-        <p className="cad-p" style={{ margin: '0 0 10px' }}>Règles communes : {catalog.echauffement}</p>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {list.map(function (w, i) {
-            return <div key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.55 }}><strong style={{ color: 'var(--text)' }}>{w.titre}.</strong> <span style={{ color: 'var(--text-mid)' }}> {w.texte}</span></div>;
-          })}
+          <div className="cad-ep-side">
+            {p && p.diagram ? <CadDiagram name={p.diagram} /> : null}
+            <ECSection title="Barème"><BaremeMini test={t} compact /></ECSection>
+          </div>
         </div>
       </div>
     );
   }
   function ProtocolSection(props) {
     var catalog = props.catalog;
-    var firstDay = catalog.days.filter(function (d) { return !d.rest; })[0];
-    var ds = React.useState(firstDay ? firstDay.day : 1);
+    var playable = catalog.days.filter(function (d) { return !d.rest; });
+    var ds = React.useState(playable[0] ? playable[0].day : 1);
     var day = ds[0], setDay = ds[1];
     var byDay = function (dd) { return catalog.tests.filter(function (t) { return t.day === dd; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; }); };
     var cur = catalog.days.filter(function (d) { return d.day === day; })[0] || catalog.days[0];
+    var tests = byDay(cur.day);
+    var gear = [], warm = [], seenG = {}, seenW = {};
+    tests.forEach(function (t) {
+      var p = catalog.protocols[t.slug]; if (!p) return;
+      (p.materiel || []).forEach(function (m) { if (!seenG[m]) { seenG[m] = 1; gear.push(m); } });
+      if (p.warmup && p.warmup.titre && !seenW[p.warmup.titre]) { seenW[p.warmup.titre] = 1; warm.push(p.warmup); }
+    });
+    var idx = playable.map(function (d) { return d.day; }).indexOf(cur.day);
+    var prev = idx > 0 ? playable[idx - 1] : null, next = idx < playable.length - 1 ? playable[idx + 1] : null;
+    function go(d) { setDay(d.day); var el = document.getElementById('cad-proto-top'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     return (
-      <section className="cad-section">
-        <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. Choisis un jour pour voir ses épreuves, leur schéma et leur barème.">Le protocole, jour par jour</SectionTitle>
-        <EchauffementBlock catalog={catalog} />
-        <div className="cad-dayrow">
+      <section className="cad-section" id="cad-proto-top">
+        <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. Choisis un jour : son échauffement, son matériel, puis chaque épreuve avec son schéma et son barème.">Le protocole, jour par jour</SectionTitle>
+        <div className="cad-pdays">
           {catalog.days.map(function (d) {
             return (
-              <button key={d.day} type="button" disabled={d.rest}
-                className={'cad-day' + (d.day === day ? ' on' : '') + (d.rest ? ' rest' : '')}
-                onClick={function () { if (!d.rest) setDay(d.day); }}>
-                <span className="cad-day-n">J{d.day}</span>
-                <span className="cad-day-l">{d.rest ? 'Repos' : d.label}</span>
+              <button key={d.day} type="button" disabled={d.rest} className={'cad-pday' + (d.day === day ? ' on' : '') + (d.rest ? ' rest' : '')}
+                      onClick={function () { if (!d.rest) setDay(d.day); }}>
+                <b>J{d.day}</b><span>{d.rest ? 'Repos' : d.label}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 'var(--space-3)' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>JOUR {cur.day}</span>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>{cur.label}</span>
-        </div>
-        {cur.rest ? (
-          <div className="cad-card" style={{ color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>Repos — fait partie du protocole.</div>
-        ) : (
-          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-            {byDay(cur.day).map(function (t) { return <EpreuveCard key={t.slug} t={t} p={catalog.protocols[t.slug]} />; })}
+        <div className="cad-dayhead">
+          <div className="cad-dayhead-t">
+            <span>Jour {cur.day}</span>
+            <h3>{cur.label}</h3>
+            <div className="cad-ep-meta"><span>{tests.length} épreuve{tests.length > 1 ? 's' : ''}</span><span>1 h – 1 h 30 avec l’échauffement</span><span>{tests.reduce(function (a, t) { return a + t.pts_max; }, 0)} pts en jeu</span></div>
           </div>
-        )}
+          <div className="cad-dayhead-g">
+            <div>
+              <div className="cad-ec-h">Matériel du jour</div>
+              <div className="cad-ti-tags">{gear.map(function (g) { return <span key={g}>{g}</span>; })}</div>
+            </div>
+            {warm.map(function (w) {
+              return (
+                <div key={w.titre}>
+                  <div className="cad-ec-h">Échauffement · {w.titre}</div>
+                  <p className="cad-ec-p">{w.texte}</p>
+                </div>
+              );
+            })}
+            <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Règles communes : {catalog.echauffement}</p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          {tests.map(function (t) { return <EpreuveCard key={t.slug} t={t} p={catalog.protocols[t.slug]} />; })}
+        </div>
+        <div className="cad-pnav">
+          {prev ? <button type="button" className="thw-btn-ghost" onClick={function () { go(prev); }}>← J{prev.day} · {prev.label}</button> : <span></span>}
+          {next ? <button type="button" className="thw-btn-ghost" onClick={function () { go(next); }}>J{next.day} · {next.label} →</button> : <span></span>}
+        </div>
       </section>
     );
   }
   function protocol(catalog) { return <ProtocolSection catalog={catalog} />; }
 
   // ── Barèmes & charges ───────────────────────────────────────────────
-  function bareme(catalog) {
+  function ScaleRow(props) {
+    var t = props.t, sex = props.sex, mult = props.mult || 1;
+    var b = sex === 'M' ? t.male : t.female;
+    var at = function (p) { return (b.ref + (b.max - b.ref) * (p - 60) / 40) * mult; };
+    var marks = [{ p: 0, l: '0 %' }, { p: 60, l: 'Réf' }, { p: 100, l: 'Max' }, { p: 120, l: '120 %' }];
+    return (
+      <div className="cad-sc">
+        <div className="cad-sc-bar"><i style={{ left: 0, width: '50%' }}></i><i className="is-mid" style={{ left: '50%', width: '33.3%' }}></i><i className="is-top" style={{ left: '83.3%', width: '16.7%' }}></i></div>
+        {marks.map(function (m) {
+          return <div key={m.p} className={'cad-sc-m' + (m.p === 60 || m.p === 100 ? ' is-key' : '') + (m.p === 0 ? ' is-first' : '')} style={{ left: (m.p / 120 * 100) + '%' }}><em>{m.l}</em><b>{fmtThreshold(t, at(m.p))}</b></div>;
+        })}
+      </div>
+    );
+  }
+  function BaremeSection(props) {
+    var catalog = props.catalog;
+    var ss = React.useState('M'); var sex = ss[0], setSex = ss[1];
+    var as = React.useState(''); var age = as[0], setAge = as[1];
+    var a = Number(age);
+    var band = isFinite(a) && a >= 18 && a <= 80 ? catalog.age.bands.filter(function (bd) { var p = bd.split('-'); return a >= Number(p[0]) && a <= Number(p[1]); })[0] : null;
     var equip = catalog.tests.filter(function (t) { return t.equipment; });
+    var days = catalog.days.filter(function (d) { return !d.rest; });
+    var LS = window.CadLevelScale;
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Les repères" sub="Deux repères par épreuve : Référence (noté 60 %) et Maximum (noté 100 %). La force et le vélo sont en ratio au poids de corps (pdc) ; les courses et la nage en temps.">Barèmes & charges</SectionTitle>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table className="cad-table">
-            <thead>
-              <tr><th style={{ textAlign: 'left' }}>Épreuve</th><th>Réf · H</th><th>Max · H</th><th>Réf · F</th><th>Max · F</th></tr>
-            </thead>
-            <tbody>
-              {catalog.tests.map(function (t) {
-                return (
-                  <tr key={t.slug}>
-                    <td style={{ textAlign: 'left' }}><span style={{ fontWeight: 600, color: 'var(--text)' }}>{t.name}</span> <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>· {t.pts_max} pts</span></td>
-                    <td>{fmtThreshold(t, t.male.ref)}</td>
-                    <td>{fmtThreshold(t, t.male.max)}</td>
-                    <td>{fmtThreshold(t, t.female.ref)}</td>
-                    <td>{fmtThreshold(t, t.female.max)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <SectionTitle kicker="Les repères" sub="Deux repères par épreuve : Référence (noté 60 %) et Maximum (noté 100 %). Entre les deux, les points montent de façon linéaire ; au-delà du Max, ça continue.">Barèmes & charges</SectionTitle>
+        <div className="cad-seg" style={{ marginBottom: 'var(--space-4)' }}>
+          <button type="button" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Hommes</button>
+          <button type="button" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femmes</button>
         </div>
-
-        <div className="cad-two" style={{ marginTop: 'var(--space-5)' }}>
-          <div>
-            <h3 className="cad-h3">Les niveaux</h3>
-            <table className="cad-table cad-table-sm">
-              <tbody>
-                {levelRanges(catalog.levels).map(function (l) {
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          {days.map(function (d) {
+            var tests = catalog.tests.filter(function (t) { return t.day === d.day; }).sort(function (x, y) { return x.order_in_day - y.order_in_day; });
+            return (
+              <div key={d.day} className="cad-card">
+                <div className="cad-bday"><b>J{d.day}</b><span>{d.label}</span></div>
+                {tests.map(function (t) {
                   return (
-                    <tr key={l.label}>
-                      <td style={{ textAlign: 'left', width: 28 }}><span style={{ display: 'inline-block', width: 11, height: 11, borderRadius: 3, background: levelColor(catalog.palette, l.label) }}/></td>
-                      <td style={{ textAlign: 'left', fontWeight: 600, color: 'var(--text)' }}>{l.label}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{l.range}</td>
-                    </tr>
+                    <div key={t.slug} className="cad-brow">
+                      <div className="cad-brow-n"><b>{t.name.replace(/\s*\(.*\)$/, '')}</b><span>{t.pts_max} pts{t.criteria ? ' · ' + t.criteria.map(function (c) { return c.pts_max; }).join(' + ') : ''}{t.kind === 'ratio' ? ' · ratio pdc' : ''}</span></div>
+                      <div>
+                        <ScaleRow t={t} sex={sex} />
+                        {t.criteria ? <div className="cad-brow-sub">Total des {t.partCount || 3} essais<ScaleRow t={t} sex={sex} mult={t.partCount || 3} /></div> : null}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="cad-card" style={{ marginTop: 'var(--space-5)' }}>
+          <h3 className="cad-h3">Les niveaux</h3>
+          <p className="cad-p">Le même découpage s’applique au score total (sur {catalog.totalPoints}) et à chaque qualité (en %).</p>
+          {LS ? <LS cat={catalog} /> : null}
+        </div>
+
+        <div className="cad-card" style={{ marginTop: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h3 className="cad-h3">Barème ajusté à l’âge</h3>
+              <p className="cad-p" style={{ margin: 0, maxWidth: 640 }}>Coefficient par tranche d’âge et par qualité (1,00 = pleine valeur). « Plus = mieux » : seuils × coefficient. Chronos : assouplis plus faiblement.</p>
+            </div>
+            <label className="cad-agein"><span>Ton âge</span><input className="cad-input" inputMode="numeric" placeholder="ex. 42" value={age} onChange={function (e) { setAge(e.target.value); }} aria-label="Ton âge" /></label>
           </div>
-          <div>
-            <h3 className="cad-h3">Équipement (corrections)</h3>
-            <p className="cad-p">Base : chaussures normales, sans ceinture. Sinon, le résultat est ramené à cette base (estimations) :</p>
-            <ul className="cad-ul">
-              {equip.map(function (t) {
-                var sign = t.equipment.rule.indexOf('1-') !== -1 ? '−' : '+';
-                return <li key={t.slug}>{t.name} — {t.equipment.applies_when} : {sign}{Math.round(t.equipment.pct * 100)} %</li>;
+          <div className="cad-heat-wrap">
+            <div className="cad-heat" style={{ gridTemplateColumns: '64px repeat(' + catalog.qualities.length + ', minmax(40px, 1fr))' }}>
+              <div className="cad-heat-hd"></div>
+              {catalog.qualities.map(function (q) { return <div key={q.key} className="cad-heat-hd">{qLabel(q)}</div>; })}
+              {catalog.age.bands.map(function (bd) {
+                var pf = catalog.age.pf[bd]; var on = bd === band;
+                return (
+                  <React.Fragment key={bd}>
+                    <div className={'cad-heat-b' + (on ? ' is-on' : '')}>{bd}</div>
+                    {catalog.qualities.map(function (q) {
+                      var v = pf[q.key];
+                      return <div key={q.key} className={'cad-heat-c' + (on ? ' is-on' : '')} style={{ background: hexA('#00c8e0', 0.08 + (1 - v) * 1.1), color: v < 0.7 ? '#fff' : 'var(--text-mid)' }}>{v.toFixed(2)}</div>;
+                    })}
+                  </React.Fragment>
+                );
               })}
-            </ul>
+            </div>
           </div>
         </div>
 
-        <div style={{ marginTop: 'var(--space-5)' }}>
-          <h3 className="cad-h3">Barème ajusté à l’âge (coefficients)</h3>
-          <p className="cad-p">Coefficient par tranche d'âge et par qualité (1,00 = pleine valeur). « Plus = mieux » → seuils × coefficient ; chronos → assouplis plus faiblement. Estimations, calibrées pour des pratiquants réguliers.</p>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="cad-table cad-table-sm">
-              <thead><tr><th style={{ textAlign: 'left' }}>Tranche</th>{catalog.qualities.map(function (q) { return <th key={q.key}>{q.label.slice(0, 4)}</th>; })}</tr></thead>
-              <tbody>
-                {catalog.age.bands.map(function (b) {
-                  var pf = catalog.age.pf[b];
-                  return <tr key={b}><td style={{ textAlign: 'left', fontFamily: 'var(--font-mono)' }}>{b}</td>{catalog.qualities.map(function (q) { return <td key={q.key} style={{ fontFamily: 'var(--font-mono)' }}>{pf[q.key].toFixed(2)}</td>; })}</tr>;
-                })}
-              </tbody>
-            </table>
+        <div className="cad-two" style={{ marginTop: 'var(--space-4)' }}>
+          <div className="cad-card">
+            <h3 className="cad-h3">Corrections d’équipement</h3>
+            <p className="cad-p">Base : chaussures normales, sans ceinture. Sinon, le résultat est ramené à cette base :</p>
+            <div className="cad-ti-tags">
+              {equip.map(function (t) {
+                var sign = t.equipment.rule.indexOf('1-') !== -1 ? '−' : '+';
+                return <span key={t.slug}>{t.name.replace(/\s*\(.*\)$/, '')} · {t.equipment.applies_when} {sign}{Math.round(t.equipment.pct * 100)} %</span>;
+              })}
+            </div>
           </div>
-        </div>
-        <div style={{ marginTop: 'var(--space-5)' }}>
-          <h3 className="cad-h3">Charges Hyrox — thrusters</h3>
-          <p className="cad-p">Charge des thrusters selon le poids de corps. Burpees box jump : box 60 cm (H) / 40 cm (F), 12 répétitions par tour.</p>
-          <div className="cad-two">
-            {['M', 'F'].map(function (sex) {
-              var rows = (catalog.hyroxThrusterKg && catalog.hyroxThrusterKg[sex]) || [];
-              return (
-                <div key={sex}>
-                  <div className="t-label" style={{ color: 'var(--text-mid)', marginBottom: 6 }}>{sex === 'M' ? 'Hommes' : 'Femmes'}</div>
-                  <table className="cad-table cad-table-sm">
-                    <tbody>
+          <div className="cad-card">
+            <h3 className="cad-h3">Charges Hyrox — thrusters</h3>
+            <p className="cad-p">Selon le poids de corps. Burpees box jump : box 60 cm (H) / 40 cm (F), 12 par tour.</p>
+            <div className="cad-two">
+              {['M', 'F'].map(function (sx) {
+                var rows = (catalog.hyroxThrusterKg && catalog.hyroxThrusterKg[sx]) || [];
+                return (
+                  <div key={sx}>
+                    <div className="cad-ec-h">{sx === 'M' ? 'Hommes' : 'Femmes'}</div>
+                    <table className="cad-table cad-table-sm"><tbody>
                       {rows.map(function (b, i) {
                         var label = b.hi == null ? ('≥ ' + b.lo + ' kg') : (b.lo === 0 ? ('< ' + b.hi + ' kg') : (b.lo + '–' + b.hi + ' kg'));
                         return <tr key={i}><td style={{ textAlign: 'left' }}>{label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.kg} kg</td></tr>;
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
+                    </tbody></table>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
     );
   }
+  function bareme(catalog) { return <BaremeSection catalog={catalog} />; }
 
-  // ── Calcul du score (pédagogie) ─────────────────────────────────────
+  // ── Calcul du score (pédagogie interactive) ─────────────────────────
+  function fr1(v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); }
+  function fr2(v) { return String(Math.round(v * 100) / 100).replace('.', ','); }
+  function pctFor(catalog, v, ref, max) {
+    var a = catalog.anchors || { ref_pct: 0.6, max_pct: 1 };
+    return Math.max(0, a.ref_pct + (a.max_pct - a.ref_pct) * (v - ref) / (max - ref));
+  }
+  function ScoreSim(props) {
+    var cat = props.catalog;
+    var simple = cat.tests.filter(function (t) { return t.kind === 'abs'; });
+    var ts = React.useState('run_400m'); var slug = ts[0], setSlug = ts[1];
+    var ss = React.useState('M'); var sex = ss[0], setSex = ss[1];
+    var t = cat.tests.filter(function (x) { return x.slug === slug; })[0] || simple[0];
+    var b = sex === 'M' ? t.male : t.female;
+    var lo = b.ref + (b.max - b.ref) * (0 - 60) / 40, hi = b.ref + (b.max - b.ref) * (130 - 60) / 40;
+    var vs = React.useState(null); var val = vs[0], setVal = vs[1];
+    var v = val == null ? (b.ref + b.max) / 2 : val;
+    var pct = pctFor(cat, v, b.ref, b.max);
+    var pts = pct * t.pts_max;
+    var lvl = levelFor(pct, cat.levels), col = levelColor(cat.palette, lvl);
+    var pos = function (x) { return Math.max(0, Math.min(100, (x - lo) / (hi - lo) * 100)); };
+    var step = Math.abs(hi - lo) / 200;
+    return (
+      <div className="cad-card cad-sim">
+        <h3 className="cad-h3">Simulateur</h3>
+        <div className="cad-sim-ctl">
+          <select className="cad-select" value={t.slug} onChange={function (e) { setSlug(e.target.value); setVal(null); }} aria-label="Épreuve">
+            {simple.map(function (x) { return <option key={x.slug} value={x.slug}>{x.name.replace(/\s*\(.*\)$/, '')}</option>; })}
+          </select>
+          <div className="cad-seg">
+            <button type="button" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); setVal(null); }}>H</button>
+            <button type="button" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); setVal(null); }}>F</button>
+          </div>
+        </div>
+        <div className="cad-sim-line">
+          <div className="cad-sim-track"></div>
+          <div className="cad-sim-k" style={{ left: pos(b.ref) + '%' }}><em>Réf · 60 %</em><b>{fmtThreshold(t, b.ref)}</b></div>
+          <div className="cad-sim-k" style={{ left: pos(b.max) + '%' }}><em>Max · 100 %</em><b>{fmtThreshold(t, b.max)}</b></div>
+          <div className="cad-sim-dot" style={{ left: pos(v) + '%', background: col }}></div>
+        </div>
+        <input type="range" className="cad-range" style={{ maxWidth: 'none', accentColor: col }} min={Math.min(lo, hi)} max={Math.max(lo, hi)} step={step}
+               value={t.direction === 'lower_is_better' ? (lo + hi - v) : v}
+               onChange={function (e) { var x = parseFloat(e.target.value); setVal(t.direction === 'lower_is_better' ? (lo + hi - x) : x); }} aria-label="Résultat simulé" />
+        <div className="cad-sim-out">
+          <div><em>Ton résultat</em><b>{fmtThreshold(t, v)}</b></div>
+          <div><em>Pourcentage</em><b>{Math.round(pct * 100)} %</b></div>
+          <div><em>Points</em><b>{fr1(pts)} <small>/ {t.pts_max}</small></b></div>
+          <div><em>Niveau</em><b className="is-lvl" style={{ color: col }}>{lvl}</b></div>
+        </div>
+        <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>{t.direction === 'lower_is_better' ? 'Épreuve chronométrée : plus le temps est court, plus le % monte.' : 'Plus le résultat est grand, plus le % monte.'} Au-delà du Max, il n’y a pas de plafond.</p>
+      </div>
+    );
+  }
   function scoreExplain(catalog) {
+    var lj = catalog.tests.filter(function (t) { return t.slug === 'standing_long_jump'; })[0];
+    var ex = null;
+    if (lj && lj.criteria) {
+      var parts = [3.2, 3.0, 2.55], best = 3.2, sum = 8.75, n = 3;
+      var pb = pctFor(catalog, best, lj.male.ref, lj.male.max), ps = pctFor(catalog, sum, lj.male.ref * n, lj.male.max * n);
+      var cb = lj.criteria[0].pts_max, cs = lj.criteria[1].pts_max;
+      ex = { parts: parts, pb: pb, ps: ps, cb: cb, cs: cs, best: best, sum: sum, ref: lj.male.ref, max: lj.male.max, n: n };
+    }
+    var STEPS = [
+      { n: '1', t: 'Ton résultat', d: 'Temps, distance, charge (ramenée à ton poids de corps) ou watts.' },
+      { n: '2', t: 'Un pourcentage', d: 'Référence = 60 %, Maximum = 100 %. Linéaire entre les deux, sans plafond au-dessus, jusqu’à 0 en dessous.' },
+      { n: '3', t: 'Des points', d: '% × points de l’épreuve. Exemple : 400 m à 100 % → ' + ((catalog.tests.filter(function (t) { return t.slug === 'run_400m'; })[0] || { pts_max: 80 }).pts_max) + ' pts.' },
+      { n: '4', t: 'Un total sur ' + catalog.totalPoints, d: 'La somme des 24 épreuves. On peut dépasser ' + catalog.totalPoints + '.' },
+      { n: '5', t: 'Un niveau', d: 'Sédentaire → Extraterrestre, posé sur le total et sur chaque qualité.' },
+    ];
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Comprendre" sub="Pas de boîte noire : voici exactement comment ton score est calculé.">Comment est calculé ton score</SectionTitle>
-        <div className="cad-two">
-          <div className="cad-card">
-            <h3 className="cad-h3">Le principe</h3>
-            <p className="cad-p">Chaque épreuve a deux repères : <strong>Référence</strong> (60 %) et <strong>Maximum</strong> (100 %). Entre les deux, les points montent de façon <strong>linéaire</strong>. Au-dessus du Max, ça continue <strong>sans plafond</strong> ; en dessous de la Référence, ça descend jusqu'à 0.</p>
-            <p className="cad-p">Le score global est la <strong>somme des points</strong> de toutes les épreuves. Le total de référence est fixé à <strong>{catalog.totalPoints} points</strong> — on peut donc dépasser {catalog.totalPoints}.</p>
-          </div>
-          <div className="cad-card">
-            <h3 className="cad-h3">Exemple</h3>
-            <p className="cad-p">Sur une épreuve où Réf = 100 et Max = 140 : un résultat de 120 tombe pile au milieu → 80 %. Un résultat de 140 → 100 %. Un résultat de 160 (au-delà du Max) → 150 %, et les points continuent.</p>
-            <p className="cad-p">Un <strong>niveau nommé</strong> (Sédentaire → Extraterrestre) est posé sur ce pourcentage, juste pour la lecture : il ne change jamais le calcul.</p>
-          </div>
-          <div className="cad-card">
-            <h3 className="cad-h3">Général ou ajusté à l'âge</h3>
-            <p className="cad-p">Le barème <strong>général</strong> est calé sur 21–35 ans. Le barème <strong>ajusté à l'âge</strong> assouplit les repères selon ta tranche — et beaucoup moins sur les efforts très courts. Tu bascules entre les deux sur ta page de résultats.</p>
-          </div>
-          <div className="cad-card">
-            <h3 className="cad-h3">Pourquoi retester</h3>
-            <p className="cad-p">Le même enchaînement, chaque année, rend tes scores <strong>comparables</strong> dans le temps. La fatigue accumulée fait partie du test : récupérer vite est une qualité, pas un biais.</p>
+        <SectionTitle kicker="Comprendre" sub="Pas de boîte noire : voici exactement comment ton score est calculé — et tu peux le tester toi-même.">Comment est calculé ton score</SectionTitle>
+        <div className="cad-steps5">
+          {STEPS.map(function (s) { return <div key={s.n} className="cad-step5"><i>{s.n}</i><b>{s.t}</b><span>{s.d}</span></div>; })}
+        </div>
+        <div className="cad-two" style={{ marginTop: 'var(--space-4)', alignItems: 'start' }}>
+          <ScoreSim catalog={catalog} />
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            {ex ? (
+              <div className="cad-card">
+                <h3 className="cad-h3">Meilleur essai + total des essais</h3>
+                <p className="cad-p">Pour les sauts et l’agilité, la régularité compte. Exemple, saut en longueur (homme) : 3 sauts à <strong>{ex.parts.map(fr2).join(' m, ')} m</strong>.</p>
+                <div className="cad-crit">
+                  <div><em>Meilleur saut</em><b>{fr2(ex.best)} m</b><span>{Math.round(ex.pb * 100)} % × {ex.cb} pts = <strong>{fr1(ex.pb * ex.cb)}</strong></span></div>
+                  <div><em>Total des 3</em><b>{fr2(ex.sum)} m</b><span>{Math.round(ex.ps * 100)} % × {ex.cs} pts = <strong>{fr1(ex.ps * ex.cs)}</strong></span></div>
+                  <div className="is-tot"><em>Épreuve</em><b>{fr1(ex.pb * ex.cb + ex.ps * ex.cs)} pts</b><span>sur {ex.cb + ex.cs}</span></div>
+                </div>
+                <p className="cad-p" style={{ margin: '8px 0 0', fontSize: 12.5 }}>Le total est noté sur le même barème × 3 (Réf {fr2(ex.ref * ex.n)} m, Max {fr2(ex.max * ex.n)} m). Un saut raté compte 0 m.</p>
+              </div>
+            ) : null}
+            <div className="cad-card">
+              <h3 className="cad-h3">Général ou ajusté à l’âge</h3>
+              <p className="cad-p">Le barème <strong>général</strong> est calé sur 21–35 ans. Le barème <strong>ajusté à l’âge</strong> assouplit les repères selon ta tranche (voir les coefficients dans « Barèmes ») — beaucoup moins sur les efforts très courts. Tu bascules entre les deux sur tes résultats.</p>
+            </div>
+            <div className="cad-card">
+              <h3 className="cad-h3">Pourquoi retester</h3>
+              <p className="cad-p" style={{ margin: 0 }}>Le même enchaînement, chaque année — idéalement à la même période (<strong>avril, mai, septembre ou octobre</strong>) — rend tes scores <strong>comparables</strong>. La fatigue accumulée sur les 12 jours fait partie du test : récupérer vite est une qualité.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -440,62 +649,28 @@
 
   // ── Avertissements & limites ────────────────────────────────────────
   function warnings(catalog) {
-    return (
-      <section className="cad-section">
-        <div className="cad-card cad-warn">
-          <h3 className="cad-h3" style={{ marginTop: 0 }}>Avertissements & limites</h3>
-          <ul className="cad-ul">
-            <li>CADENCES demande des efforts intenses : un <strong>avis médical</strong> est conseillé avant de tester.</li>
-            <li>Ce n'est <strong>pas un diagnostic</strong> médical ni une prescription.</li>
-            <li>C'est un test de <strong>condition générale</strong> conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — pas pour des débutants.</li>
-            <li>Les barèmes par âge sont des <strong>estimations</strong> (littérature masters), calibrées pour des pratiquants réguliers, pas pour la population générale.</li>
-          </ul>
-          <p className="cad-p" style={{ margin: 0, fontSize: 12, color: 'var(--text-dim)' }}>Version du barème : {catalog.version}.</p>
-        </div>
-      </section>
-    );
-  }
-
-  // ── Transparence (niveaux de confiance, hypothèses) ─────────────────
-  function transparence() {
-    var conf = [
-      { l: 'Solide / moyenne', c: '#22c55e', tests: 'Sauts, sprints, force, vélo 20′, natation 50 m, 400 m', why: 'Repères publiés ou seuils fixés par Alex.' },
-      { l: 'Faible', c: '#f59e0b', tests: '6×200 m, natation 200 m, dead hang, Hyrox, 3200 m', why: 'Estimation par décomposition, jamais mesurée sur le terrain.' },
-      { l: 'Aucune donnée', c: '#ef4444', tests: 'Square, Move, Slalom', why: 'Modèle théorique pur — à calibrer en priorité (échantillon ≥ 30).' },
+    var W = [
+      { t: 'Avis médical conseillé', d: 'CADENCES demande des efforts intenses et maximaux. Consulte un médecin avant de tester, surtout après 40 ans ou en cas d’antécédent.' },
+      { t: 'Pas un diagnostic', d: 'C’est un test de condition physique, pas un examen médical ni une prescription.' },
+      { t: 'Pour des pratiquants réguliers', d: 'Conçu pour des personnes qui s’entraînent déjà, avec un certain niveau — pas pour débuter.' },
+      { t: 'Barèmes d’âge estimés', d: 'Les coefficients par âge sont des estimations (littérature masters), calibrées pour des pratiquants réguliers, à affiner avec de vraies données.' },
+      { t: 'Arrête si ça ne va pas', d: 'Douleur, malaise, vertige : on stoppe l’épreuve. La technique passe toujours avant la charge ou le chrono.' },
     ];
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Jouer franc-jeu" sub="D'où viennent les repères, et ce qu'il reste à valider. On préfère le dire que faire semblant.">Fiabilité & hypothèses</SectionTitle>
-        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-          {conf.map(function (r, i) {
-            return (
-              <div key={i} className="cad-card" style={{ padding: 'var(--space-4)', borderLeft: '4px solid ' + r.c }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{r.l}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', marginTop: 4 }}>{r.tests}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>{r.why}</div>
-              </div>
-            );
+        <SectionTitle kicker="À lire avant de tester">Avertissements & limites</SectionTitle>
+        <div className="cad-warns">
+          {W.map(function (w, i) {
+            return <div key={i} className="cad-warn-i"><i>!</i><div><b>{w.t}</b><span>{w.d}</span></div></div>;
           })}
         </div>
-        <div className="cad-card" style={{ marginTop: 'var(--space-3)' }}>
-          <h3 className="cad-h3">Hypothèses de conversion (à ajuster avec de vraies données)</h3>
-          <ul className="cad-ul">
-            <li>Femmes — force : ~65 % des valeurs hommes ; sauts : ~80 % ; course : ~15–20 % plus lentes.</li>
-            <li>Force en 3RM : dérivée de l'ancien barème 1RM × 0,91.</li>
-            <li>Vélo : FTP estimée = 95 % de la puissance moyenne sur 20 min.</li>
-            <li>Coefficients d'âge : estimations (littérature masters), à valider sur le terrain — surtout 18–20 et 71–80 ans.</li>
-          </ul>
-        </div>
-        <div className="cad-card" style={{ marginTop: 'var(--space-3)' }}>
-          <h3 className="cad-h3">Courbes de vieillissement (page d'accueil)</h3>
-          <p className="cad-p" style={{ margin: 0 }}>Les graphiques « Comment ton corps vieillit », « sédentaire vs entraîné » et « trajectoire A/B » sont <strong>illustratifs</strong> (moyennes de population), pas des mesures individuelles. Repères issus de la littérature : déclin du VO₂max ~2× plus lent chez les athlètes masters que chez les sédentaires ; perte musculaire de 3 à 8 %/décennie après 30 ans ; testostérone ~−1 %/an après 30 ; pic de densité osseuse vers 30 ans ; pratiquants réguliers à vie (57-80 ans) conservant masse musculaire, immunité et cholestérol d'un jeune (≈ +9 ans d'âge biologique).</p>
-        </div>
+        <p className="cad-p" style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-dim)' }}>Version du barème : {catalog.version}.</p>
       </section>
     );
   }
 
   window.CadContent = {
     overview: overview, qualities: qualities, protocol: protocol,
-    bareme: bareme, scoreExplain: scoreExplain, transparence: transparence, warnings: warnings,
+    bareme: bareme, scoreExplain: scoreExplain, warnings: warnings,
   };
 })();

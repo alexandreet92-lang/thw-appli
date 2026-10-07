@@ -245,11 +245,10 @@ export default function RecordPage() {
     try {
       const { Geolocation } = await import('@capacitor/geolocation')
       try { before = (await Geolocation.checkPermissions()).location } catch (e) { before = 'check-err:' + (e instanceof Error ? e.message : String(e)) }
-      if (before === 'granted') { setGpsPerm('granted'); setGpsDebug('gps: granted'); return }
+      if (before === 'granted') { setGpsPerm('granted'); return }
       // 'prompt' → la fenêtre iOS s'affiche ; 'denied' → iOS ne la réaffiche plus.
       try { after = (await Geolocation.requestPermissions({ permissions: ['location'] })).location } catch (e) { after = 'req-err:' + (e instanceof Error ? e.message : String(e)) }
     } catch (e) { after = 'plugin-err:' + (e instanceof Error ? e.message : String(e)) }
-    setGpsDebug(`gps: ${before} → ${after}`)
     if (after === 'granted') { setGpsPerm('granted'); return }
     // Diagnostic (temporaire) : alerte native (impossible à rater) qui montre
     // l'état exact renvoyé par iOS, puis ouvre les Réglages de l'app.
@@ -294,21 +293,6 @@ export default function RecordPage() {
   }, [])
   const gpsGranted = !isNativeApp() || gpsPerm === 'granted'
   const { gps: startGps } = useGPSTracking(view === 'home' && gpsGranted && isGpsSport && !isDesktopRec)
-
-  // ── DEBUG GPS (temporaire) : affiche l'état réel du plugin natif à l'écran.
-  const [gpsDebug, setGpsDebug] = useState<string>('gps: …')
-  useEffect(() => {
-    if (!isNativeApp()) { setGpsDebug('gps: WEB (pas natif)'); return }
-    void (async () => {
-      let line = 'gps natif · '
-      try {
-        const { Geolocation } = await import('@capacitor/geolocation')
-        try { const c = await Geolocation.checkPermissions(); line += 'check=' + c.location }
-        catch (e) { line += 'check-ERR=' + (e instanceof Error ? e.message : String(e)) }
-      } catch (e) { line += 'import-ERR=' + (e instanceof Error ? e.message : String(e)) }
-      setGpsDebug(line)
-    })()
-  }, [])
 
   // ── Capteurs BLE (puces Cardio / Puissance) ──
   const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
@@ -633,14 +617,6 @@ export default function RecordPage() {
           recenterKey={recenterKey}
           onPosition={p => { if (p && !mapPos) setMapPos(p) }}
         />
-      </div>
-
-      {/* DEBUG GPS (temporaire) — bandeau noir lisible en haut. */}
-      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 56px)', left: 12, right: 12, zIndex: 200,
-        background: 'rgba(0,0,0,0.82)', /* design-allow-color — overlay debug temporaire */
-        color: '#fff', /* design-allow-color — overlay debug temporaire */
-        fontSize: 12, lineHeight: 1.35, padding: '8px 12px', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-mono, monospace)', wordBreak: 'break-word' }}>
-        {gpsDebug} · native={String(isNativeApp())} · perm={gpsPerm}
       </div>
 
       {/* En-tête flottant : retour · pilule GPS (verre) · couches + me localiser.

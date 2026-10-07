@@ -73,7 +73,7 @@
     );
   }
 
-  /* G3 — 7 mini-anneaux, un par qualité (plein = Exceptionnel, pct/1.2). */
+  /* G3 — 7 mini-anneaux, un par qualité (plein = Extraterrestre, pct/1.1). */
   function CadQualityRings(props) {
     var items = props.items || [];
     return (
@@ -86,7 +86,7 @@
     var en = useEnter(); var enRef = en[0], on = en[1];
     var q = props.q;
     var size = 76, r = size / 2 - 6, c = 2 * Math.PI * r, cx = size / 2;
-    var frac = Math.max(0, Math.min(1, (q.pct || 0) / 1.2));
+    var frac = Math.max(0, Math.min(1, (q.pct || 0) / 1.1));
     var shown = on ? frac : 0;
     return (
       <div ref={enRef} style={{ display: 'grid', placeItems: 'center', gap: 4, textAlign: 'center' }}>
@@ -108,7 +108,7 @@
     );
   }
 
-  /* G4 — radar 7 axes. Rayon = pct/1.2 (Exceptionnel = plein). Repères 60 % / 100 %. */
+  /* G4 — radar 7 axes. Rayon = pct/1.1 (Extraterrestre = plein). Repères 60 % / 100 %. */
   function CadRadar(props) {
     var en = useEnter(); var enRef = en[0], on = en[1];
     var items = props.items || [];
@@ -127,16 +127,16 @@
       return items.map(function (_, i) { var p = pt(i, R * frac); return p[0] + ',' + p[1]; }).join(' ');
     }
     var valPoly = items.map(function (q, i) {
-      var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.2)) : 0;
+      var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.1)) : 0;
       var p = pt(i, R * f); return p[0] + ',' + p[1];
     }).join(' ');
     return (
       <div ref={enRef} style={{ display: 'grid', placeItems: 'center' }}>
         <svg width={size} height={size} viewBox={(-PAD) + ' ' + (-PAD) + ' ' + (size + 2 * PAD) + ' ' + (size + 2 * PAD)} role="img" aria-label="Radar des 7 qualités">
-          {/* grille : anneaux de fond + repères 60 % et 100 % */}
-          {[0.3, 0.6, 0.833, 1].map(function (f, i) {
-            return <polygon key={i} points={polyAt(f)} fill="none" stroke={GRID} strokeWidth={f === 0.6 || f === 0.833 ? 1.1 : 0.6}
-                            strokeDasharray={f === 0.6 ? '3 3' : 'none'}/>;
+          {/* grille : anneaux de fond + repères Réf (60 %) et Max (100 %), échelle /1.1 */}
+          {[0.3, 0.6 / 1.1, 1 / 1.1, 1].map(function (f, i) {
+            return <polygon key={i} points={polyAt(f)} fill="none" stroke={GRID} strokeWidth={i === 1 || i === 2 ? 1.1 : 0.6}
+                            strokeDasharray={i === 1 ? '3 3' : 'none'}/>;
           })}
           {/* axes */}
           {items.map(function (_, i) { var p = pt(i, R); return <line key={i} x1={cx} y1={cy} x2={p[0]} y2={p[1]} stroke={GRID} strokeWidth={0.6}/>; })}
@@ -144,7 +144,7 @@
           <polygon points={valPoly} fill={color + '33'} stroke={color} strokeWidth={2} strokeLinejoin="round"
                    style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/>
           {items.map(function (q, i) {
-            var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.2)) : 0;
+            var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.1)) : 0;
             var p = pt(i, R * f);
             return <circle key={i} cx={p[0]} cy={p[1]} r={2.6} fill={q.color || color} style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/>;
           })}

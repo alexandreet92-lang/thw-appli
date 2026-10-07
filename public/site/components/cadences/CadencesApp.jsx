@@ -258,6 +258,60 @@
         .cad-src li { font-family: var(--font-body); font-size: 12px; line-height: 1.5; color: var(--text-dim); }
         .cad-src a { color: var(--brand); text-decoration: none; word-break: break-word; }
         .cad-src a:hover { text-decoration: underline; }
+        .cad-ti { margin-top: 40px; padding: 0; }
+        .cad-manifesto > .cad-act { padding: 24px 0; }
+        .cad-ti-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+        @media (max-width: 1080px) { .cad-ti-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 680px) { .cad-ti-grid { grid-template-columns: minmax(0, 1fr); } }
+        .cad-ti-card { position: relative; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 20px; min-width: 0; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        .cad-ti-card.is-wide { grid-column: span 2; }
+        @media (max-width: 680px) { .cad-ti-card.is-wide { grid-column: auto; } }
+        .cad-ti-n { position: absolute; top: 16px; right: 18px; font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1; color: var(--brand); opacity: .22; }
+        .cad-ti-h { margin: 0 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 17px; color: var(--text); }
+        .cad-ti-card p, .cad-ti-score p { font-family: var(--font-body); font-size: 13.5px; line-height: 1.6; color: var(--text-mid); margin: 0 0 8px; }
+        .cad-ti-card p strong, .cad-ti-score p strong { color: var(--text); }
+        .cad-ti-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+        .cad-ti-tags span { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 4px 10px; }
+        .cad-ti-tags.is-q span { color: var(--brand); border-color: rgba(0,200,224,.35); background: rgba(0,200,224,.08); }
+        .cad-ti-days { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+        @media (max-width: 520px) { .cad-ti-days { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        .cad-ti-day { border-radius: var(--radius-md); padding: 8px 6px; background: rgba(0,200,224,.08); border: 1px solid rgba(0,200,224,.3); display: grid; gap: 3px; text-align: center; min-width: 0; }
+        .cad-ti-day b { font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--brand); }
+        .cad-ti-day span { font-family: var(--font-body); font-size: 10.5px; line-height: 1.25; color: var(--text-mid); hyphens: auto; }
+        .cad-ti-day.is-rest { background: var(--bg-card-2); border-color: var(--border-mid); }
+        .cad-ti-day.is-rest b { color: var(--text-dim); }
+        .cad-ti-big { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: -0.02em; color: var(--text); margin: 2px 0 6px; }
+        .cad-ti-gear { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+        .cad-ti-gear small { font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); }
+        .cad-ti-gear ul { margin: 4px 0 0; padding-left: 16px; }
+        .cad-ti-gear li { font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); }
+        .cad-ti-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; margin: 4px 0 12px; }
+        @media (max-width: 640px) { .cad-ti-months { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+        .cad-ti-months span { text-align: center; font-family: var(--font-body); font-size: 11.5px; font-weight: 600; padding: 9px 2px; border-radius: 8px; background: var(--bg-card-2); color: var(--text-dim); border: 1px solid var(--border-mid); }
+        .cad-ti-months span.is-best { background: var(--brand-gradient); color: #fff; border-color: transparent; box-shadow: 0 3px 12px rgba(0,200,224,.28); }
+        .cad-ti-score { position: relative; margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border-mid); border-left: 4px solid var(--brand); border-radius: var(--radius-lg); padding: 22px 24px; }
+        .cad-ti-score-t { font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--text); margin: 0 0 10px; }
+        .cad-ti-score p { max-width: 920px; }
+        .cad-ti-punch { font-family: var(--font-display) !important; font-weight: 700; font-size: 17px !important; color: var(--text) !important; }
+        .cad-lvl-bar { position: relative; display: flex; height: 46px; border-radius: 12px; overflow: visible; margin-top: 34px; }
+        .cad-lvl-seg { border: none; padding: 0; cursor: pointer; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: bottom; transition: transform .6s cubic-bezier(.22,1,.36,1), filter .15s, box-shadow .15s; min-width: 0; }
+        .cad-lvl-seg:first-child { border-radius: 12px 0 0 12px; justify-content: flex-end; padding-right: 14px; }
+        .cad-lvl-seg:last-of-type { border-radius: 0 12px 12px 0; }
+        .cad-lvl-seg span { font-family: var(--font-body); font-size: 11.5px; font-weight: 700; color: rgba(10,20,30,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+        .cad-lvl-seg.is-on, .cad-lvl-seg:hover { filter: brightness(1.08); box-shadow: 0 0 0 2px var(--text) inset; }
+        .cad-lvl-world { position: absolute; top: -30px; bottom: -6px; width: 0; border-left: 2px dashed var(--text); transition: opacity .5s ease .7s; pointer-events: none; }
+        .cad-lvl-world span { position: absolute; top: 0; left: 6px; white-space: nowrap; font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text); }
+        .cad-lvl-ticks { position: relative; height: 18px; margin-top: 6px; }
+        .cad-lvl-ticks span { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); }
+        .cad-lvl-ticks span:first-child { transform: none; }
+        .cad-lvl-focus { margin-top: 10px; min-height: 40px; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); }
+        .cad-lvl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
+        .cad-lvl-item { border: 1px solid var(--border-mid); border-left: 4px solid var(--lc); border-radius: var(--radius-md); padding: 10px 12px; background: var(--bg-card-2); }
+        .cad-lvl-item div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .cad-lvl-item b { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--text); }
+        .cad-lvl-item em { font-style: normal; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+        .cad-lvl-item p { margin: 4px 0 0 !important; font-size: 12.5px !important; }
+        @media (max-width: 640px) { .cad-lvl-seg span { display: none; } .cad-lvl-ticks span:nth-child(6) { display: none; } .cad-lvl-world span { font-size: 10px; } .cad-ti-score { padding: 18px 16px; } }
         .cad-src .note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.5; }
         .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
         @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
@@ -413,15 +467,14 @@
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.6, margin: '12px 0 0', color: 'var(--text-mid)', maxWidth: 640 }}>
             {cat.totalTests} épreuves · 12 jours · score sur {cat.totalPoints} · 7 qualités · barème général ou ajusté à l'âge · 18 à 80 ans.
           </p>
-          <div className="cad-note-level">
-            <strong>Pour qui ?</strong> Un test exigeant, conçu pour des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — pas pour débuter.
-          </div>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {makeCta()}
             {props.crossOrigin ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Le test se lance sur l'app.</span> : null}
           </div>
-          <div className="cad-scrollcue" style={{ marginTop: 16 }}>↓ D'abord, pourquoi ce test</div>
         </div>
+
+        {window.CadTestIntro ? <window.CadTestIntro catalog={cat} /> : null}
+        <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Et d'abord, pourquoi ce test</div>
 
         {window.CadManifesto ? <window.CadManifesto catalog={cat} makeCta={makeCta} /> : null}
 
@@ -553,7 +606,7 @@
   function qualityItemsFrom(catalog, score) {
     return catalog.qualities.map(function (q) {
       var s = (score && score.byQuality && score.byQuality[q.key]) || {};
-      var level = s.level || 'Faible';
+      var level = s.level || 'Sédentaire';
       return { key: q.key, label: q.label, pct: s.pct || 0, level: level, color: levelColor(catalog.palette, level) };
     });
   }
@@ -601,7 +654,7 @@
     var cat = props.catalog, rep = props.report;
     var camp = rep.campaign;
     var results = rep.results || [];
-    var score = (rep.scores && rep.scores[props.mode]) || { total: 0, globalLevel: 'Faible', byQuality: {}, byTest: {} };
+    var score = (rep.scores && rep.scores[props.mode]) || { total: 0, globalLevel: 'Sédentaire', byQuality: {}, byTest: {} };
     var resultBySlug = {}; results.forEach(function (r) { resultBySlug[r.test_slug] = r; });
 
     var ds = React.useState(function () {
@@ -688,7 +741,7 @@
               <a key={d.day} className={'cad-chip' + (d.rest ? ' rest' : '')} href={d.rest ? undefined : '#cad-jour-' + d.day}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>J{d.day}</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12.5, whiteSpace: 'nowrap' }}>{d.label}</span>
-                {d.rest ? null : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: done === tests.length ? levelColor(cat.palette, 'Solide') : 'var(--text-mid)' }}>{done}/{tests.length}</span>}
+                {d.rest ? null : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: done === tests.length ? levelColor(cat.palette, 'Élite') : 'var(--text-mid)' }}>{done}/{tests.length}</span>}
               </a>
             );
           })}

@@ -8,16 +8,22 @@
 // ══════════════════════════════════════════════════════════════════
 
 export const LEVEL_LABELS = [
-  'Faible', 'Insuffisant', 'Moyen', 'Référence', 'Solide', 'Élite', 'Exceptionnel',
+  'Sédentaire', 'Amateur', 'Confirmé', 'Référence', 'Élite', 'Phénomène', 'Extraterrestre',
 ] as const
 
 export const LEVEL_COLORS: Record<string, string> = {
+  Sédentaire: '#f87171',
+  Amateur: '#fb923c',
+  Confirmé: '#fbbf24',
+  Référence: '#a3e635',
+  Élite: '#4ade80',
+  Phénomène: '#2dd4bf',
+  Extraterrestre: '#38bdf8',
+  // Anciens libellés (scores figés avant le renommage des paliers).
   Faible: '#f87171',
   Insuffisant: '#fb923c',
   Moyen: '#fbbf24',
-  Référence: '#a3e635',
   Solide: '#4ade80',
-  Élite: '#2dd4bf',
   Exceptionnel: '#38bdf8',
 }
 

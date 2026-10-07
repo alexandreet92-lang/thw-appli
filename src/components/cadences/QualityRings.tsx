@@ -1,5 +1,5 @@
 // CADENCES · G3 — 7 mini-anneaux, un par qualité. SVG brut.
-// Anneau rempli à pct / 1.2 (Exceptionnel = plein). Centre : % ; dessous : libellé + niveau.
+// Anneau rempli à pct / 1.1 (Extraterrestre = plein). Centre : % ; dessous : libellé + niveau.
 import { levelColor } from '@/lib/cadences/palette'
 
 export interface QualityItem { key: string; label: string; pct: number; level: string }
@@ -16,7 +16,7 @@ function Ring({ q }: { q: QualityItem }) {
   const size = 72
   const r = size / 2 - 6
   const c = 2 * Math.PI * r
-  const frac = Math.max(0, Math.min(1, q.pct / 1.2))
+  const frac = Math.max(0, Math.min(1, q.pct / 1.1))
   const col = levelColor(q.level)
   const cx = size / 2
   return (

@@ -417,7 +417,7 @@
           <div className="cad-card">
             <h3 className="cad-h3">Exemple</h3>
             <p className="cad-p">Sur une épreuve où Réf = 100 et Max = 140 : un résultat de 120 tombe pile au milieu → 80 %. Un résultat de 140 → 100 %. Un résultat de 160 (au-delà du Max) → 150 %, et les points continuent.</p>
-            <p className="cad-p">Un <strong>niveau nommé</strong> (Faible → Exceptionnel) est posé sur ce pourcentage, juste pour la lecture : il ne change jamais le calcul.</p>
+            <p className="cad-p">Un <strong>niveau nommé</strong> (Sédentaire → Extraterrestre) est posé sur ce pourcentage, juste pour la lecture : il ne change jamais le calcul.</p>
           </div>
           <div className="cad-card">
             <h3 className="cad-h3">Général ou ajusté à l'âge</h3>

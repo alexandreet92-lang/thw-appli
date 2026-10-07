@@ -678,3 +678,165 @@
 
   window.CadManifesto = CadManifesto;
 })();
+
+/* ════════════════════════════════════════════════════════════════
+   CADENCES (site) — « Le test, concrètement » : présentation placée juste
+   sous le titre (organisation, durée, public, matériel, période, qualités,
+   lecture du score avec les 7 paliers). Données issues du catalogue.
+   Publie window.CadTestIntro.
+   ════════════════════════════════════════════════════════════════ */
+(function () {
+  var LEVEL_DESC = {
+    'Sédentaire': 'Le niveau de la population générale aujourd’hui : autour, voire en dessous de la moyenne mondiale actuelle. Le corps n’est pas sollicité.',
+    'Amateur': 'Pratiquant régulier, athlète amateur. Déjà au-dessus de la moyenne mondiale — mais encore loin de ce que le corps peut faire.',
+    'Confirmé': 'Athlète amateur entraîné : de vraies bases dans la plupart des qualités, encore quelques points faibles.',
+    'Référence': 'Ce que devrait être le niveau de la population au regard des capacités humaines : fort, rapide, endurant, mobile.',
+    'Élite': 'Athlète aux capacités physiques exceptionnelles, de très haut niveau.',
+    'Phénomène': 'Au-delà du maximum du barème sur l’ensemble des qualités. Rarissime : des profils hybrides d’exception.',
+    'Extraterrestre': 'Niveau presque anormal : des capacités physiques plus qu’exceptionnelles.',
+  };
+  var FAMILIES = ['Haltérophilie', 'Sauts, sprints & agilité', 'Natation', 'Force maximale', 'Course : 400 m, 6 × 200 m, 3200 m', 'Vélo 20 min', 'AMRAP', 'Circuit Hyrox'];
+  var GEAR = [
+    { k: 'Salle', items: ['Barre olympique + disques', 'Rack', 'Banc', 'Barre de traction + ceinture ou gilet de lest', 'Box (60 cm H / 40 cm F)', 'Rameur'] },
+    { k: 'Extérieur', items: ['Piste de 400 m', 'Gazon', 'Plots', 'Mètre ruban', 'Chrono (idéalement cellules)'] },
+    { k: 'Piscine', items: ['Bassin de 25 ou 50 m'] },
+    { k: 'Vélo', items: ['Vélo ou home-trainer avec capteur de puissance'] },
+  ];
+  var MONTHS = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+  var BEST = { 3: 1, 4: 1, 8: 1, 9: 1 };
+
+  function Card(props) {
+    return (
+      <div className={'cad-ti-card' + (props.wide ? ' is-wide' : '')}>
+        <div className="cad-ti-n">{props.n}</div>
+        <h3 className="cad-ti-h">{props.t}</h3>
+        {props.children}
+      </div>
+    );
+  }
+
+  function LevelScale(props) {
+    var cat = props.cat;
+    var pal = cat.palette || {};
+    var levels = cat.levels || [];
+    var total = cat.totalPoints || 1000;
+    var hook = window.CadUseInView;
+    var iv = hook ? hook({ threshold: 0.3 }) : [null, true];
+    var hs = React.useState(null); var hov = hs[0], setHov = hs[1];
+    var TOP = 1.2;                     // l'échelle va jusqu'à 1200 pour montrer le dernier palier
+    var segs = levels.map(function (l, i) {
+      var from = l.min_pct, to = i < levels.length - 1 ? levels[i + 1].min_pct : TOP;
+      return { label: l.label, from: from, to: to, color: pal[l.label] || '#94a3b8',
+               range: i < levels.length - 1 ? Math.round(from * total) + ' – ' + Math.round(to * total) : Math.round(from * total) + ' +' };
+    });
+    var cur = segs.filter(function (s) { return s.label === hov; })[0];
+    return (
+      <div ref={iv[0]}>
+        <div className="cad-lvl-bar" role="img" aria-label="Paliers de niveau du score CADENCES">
+          {segs.map(function (s, i) {
+            return (
+              <button key={s.label} type="button" className={'cad-lvl-seg' + (hov === s.label ? ' is-on' : '')}
+                      onMouseEnter={function () { setHov(s.label); }} onFocus={function () { setHov(s.label); }} onClick={function () { setHov(s.label); }}
+                      style={{ width: ((s.to - s.from) / TOP * 100) + '%', background: s.color, transform: iv[1] ? 'scaleY(1)' : 'scaleY(0)', transitionDelay: (i * 90) + 'ms' }}
+                      aria-label={s.label + ' : ' + s.range}>
+                <span>{s.label}</span>
+              </button>
+            );
+          })}
+          <div className="cad-lvl-world" style={{ left: (0.06 / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Moyenne mondiale actuelle</span></div>
+        </div>
+        <div className="cad-lvl-ticks">
+          {[0, 200, 400, 600, 800, 1000, 1100].map(function (t) {
+            return <span key={t} style={{ left: (t / total / TOP * 100) + '%' }}>{t}</span>;
+          })}
+        </div>
+        <div className="cad-lvl-focus" aria-live="polite">
+          {cur ? <span><b style={{ color: cur.color }}>{cur.label}</b> · {cur.range} — {LEVEL_DESC[cur.label] || ''}</span>
+               : <span>Survole ou touche un palier pour lire sa description.</span>}
+        </div>
+        <div className="cad-lvl-list">
+          {segs.map(function (s) {
+            return (
+              <div key={s.label} className="cad-lvl-item" style={{ '--lc': s.color }}>
+                <div><b>{s.label}</b><em>{s.range}</em></div>
+                <p>{LEVEL_DESC[s.label] || ''}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function CadTestIntro(props) {
+    var cat = props.catalog || {};
+    var days = cat.days || [];
+    var quals = cat.qualities || [];
+    var restDays = days.filter(function (d) { return d.rest; }).length;
+    return (
+      <section className="cad-ti">
+        <div className="cad-act-eye">Le test, concrètement</div>
+        <h2 className="cad-act-t">Ce que tu vas faire, et comment.</h2>
+        <p className="cad-act-lead"><strong>{cat.totalTests || 24} épreuves</strong> réparties sur <strong>{days.length || 12} jours</strong> pour mesurer, toujours avec le même protocole, <strong>{quals.length || 7} grandes qualités physiques</strong>. Résultat : un score sur {cat.totalPoints || 1000} — et surtout un repère que tu retrouves d’une année sur l’autre.</p>
+
+        <div className="cad-ti-grid">
+          <Card n="1" t="En quoi ça consiste">
+            <p>{cat.totalTests || 24} épreuves qui couvrent tout le spectre de l’hybride :</p>
+            <div className="cad-ti-tags">{FAMILIES.map(function (f) { return <span key={f}>{f}</span>; })}</div>
+            <p>Chaque épreuve rapporte des points selon un barème ; le total donne ton score sur {cat.totalPoints || 1000}.</p>
+          </Card>
+          <Card n="2" t="Comment ça s’organise" wide>
+            <p><strong>{days.length - restDays} jours d’épreuves et {restDays} jours de repos</strong>, dans un ordre fixe. Chaque séance commence par un échauffement adapté (onglet Protocole).</p>
+            <div className="cad-ti-days">
+              {days.map(function (d) {
+                return <div key={d.day} className={'cad-ti-day' + (d.rest ? ' is-rest' : '')}><b>J{d.day}</b><span>{d.label}</span></div>;
+              })}
+            </div>
+          </Card>
+          <Card n="3" t="Combien de temps">
+            <div className="cad-ti-big">1 h – 1 h 30</div>
+            <p>par jour d’épreuves, échauffement compris — soit <strong>10 à 13 h au total</strong> sur les {days.length || 12} jours.</p>
+          </Card>
+          <Card n="4" t="Pour qui">
+            <p>Des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — ce n’est pas un test pour débuter.</p>
+            <p><strong>18 à 80 ans</strong>, hommes et femmes, avec un barème <strong>général</strong> ou <strong>ajusté à l’âge</strong>, au choix.</p>
+          </Card>
+          <Card n="5" t="Le matériel">
+            <p>Pas besoin de tout avoir chez soi : <strong>une salle, une piste, une piscine</strong>.</p>
+            <div className="cad-ti-gear">
+              {GEAR.map(function (g) {
+                return <div key={g.k}><small>{g.k}</small><ul>{g.items.map(function (it) { return <li key={it}>{it}</li>; })}</ul></div>;
+              })}
+            </div>
+          </Card>
+          <Card n="6" t="Quand et tous les combien">
+            <p><strong>Une fois par an</strong> — ou <strong>deux fois par an, espacées de 6 mois</strong>, pour un suivi plus serré.</p>
+            <p>Et <strong>toujours à la même période</strong> : c’est la seule façon de comparer ce qui est comparable d’une année sur l’autre.</p>
+          </Card>
+          <Card n="7" t="La meilleure période" wide>
+            <div className="cad-ti-months">
+              {MONTHS.map(function (m, i) { return <span key={m} className={BEST[i] ? 'is-best' : ''}>{m}</span>; })}
+            </div>
+            <p><strong>Avril, mai, septembre et octobre</strong> : ni trop chaud, ni trop froid en général (selon là où tu habites). La chaleur et le froid faussent les chronos, surtout en course et sur les sprints.</p>
+          </Card>
+          <Card n="8" t="Les qualités mesurées">
+            <div className="cad-ti-tags is-q">{quals.map(function (q) { return <span key={q.key}>{q.label === 'VO2max' ? 'VO₂max' : q.label}</span>; })}</div>
+            <p>Le détail (agilité, endurance de force…) est dans l’onglet Qualités.</p>
+          </Card>
+        </div>
+
+        <div className="cad-ti-score">
+          <div className="cad-ti-n">9</div>
+          <h3 className="cad-ti-h">Comment lire ton score</h3>
+          <div className="cad-ti-score-t">Ce test note sévèrement. C’est voulu.</div>
+          <p>Un score de <strong>400 / 1000</strong> peut sembler, à première vue, en dessous de la moyenne. Ce n’est pas le cas : avec 400, <strong>tu es au-dessus du niveau physique moyen de la population</strong> — en France comme ailleurs dans le monde.</p>
+          <p>CADENCES ne te compare pas à la moyenne d’aujourd’hui, parce que cette moyenne est <strong>mauvaise — très mauvaise</strong> — et qu’elle se dégrade <strong>année après année</strong>. Bientôt, monter 10 étages à 30 ans suffira pour être au-dessus de la moyenne.</p>
+          <p className="cad-ti-punch">CADENCES te note par rapport à ce que le niveau physique d’un être humain devrait être.</p>
+          <LevelScale cat={cat} />
+        </div>
+      </section>
+    );
+  }
+
+  window.CadTestIntro = CadTestIntro;
+})();

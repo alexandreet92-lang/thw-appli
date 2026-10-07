@@ -52,7 +52,7 @@
         .cad-chip.rest { opacity: .55; }
         .cad-pill { flex: 1; padding: 12px 14px; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text); background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-btn); transition: all .15s; }
         .cad-pill[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); border-color: transparent; box-shadow: 0 3px 14px rgba(0,200,224,.3); }
-        .cad-link { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--brand); }
+        .cad-link { justify-self: start; background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--brand); }
         .cad-proto { display: grid; gap: 6px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.55; color: var(--text-mid); border-left: 2px solid var(--brand); padding-left: 12px; }
         .cad-proto strong { color: var(--text); }
         .cad-err { font-family: var(--font-body); font-size: 13px; color: var(--text); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: var(--radius-sm); padding: 10px 12px; }
@@ -440,6 +440,110 @@
         .cad-warn-i > i { font-style: normal; width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; background: rgba(245,158,11,.15); color: #f59e0b; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
         .cad-warn-i b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
         .cad-warn-i span { display: block; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); margin-top: 3px; }
+        .cad-run { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr); }
+        .cad-run section { max-width: none; margin-left: 0; margin-right: 0; }
+        .cad-wiz-steps { display: flex; gap: 8px; margin: 18px 0 16px; flex-wrap: wrap; }
+        .cad-wiz-step { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 7px; border-radius: 999px; background: var(--bg-card); border: 1px solid var(--border-mid); font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--text-dim); }
+        .cad-wiz-step i { font-style: normal; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; background: var(--bg-card-2); font-family: var(--font-display); font-weight: 800; font-size: 12px; color: var(--text-mid); }
+        .cad-wiz-step.on { color: var(--text); border-color: var(--brand); }
+        .cad-wiz-step.on i { background: var(--brand-gradient); color: #fff; }
+        .cad-wiz-step.done i { background: rgba(0,200,224,.15); color: var(--brand); }
+        .cad-wiz { padding: 24px; }
+        .cad-wiz-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 14px; }
+        @media (max-width: 520px) { .cad-wiz-2 { grid-template-columns: 1fr 1fr; } }
+        .cad-wiz-gear { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+        .cad-check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--border); cursor: pointer; margin-top: 6px; background: var(--bg-card); transition: all .15s; }
+        .cad-check input { margin-top: 3px; accent-color: #00c8e0; }
+        .cad-check span { font-family: var(--font-body); font-size: 13px; line-height: 1.45; color: var(--text-mid); }
+        .cad-check.on { border-color: rgba(0,200,224,.45); background: rgba(0,200,224,.06); }
+        .cad-check.on span { color: var(--text); }
+        .cad-check.is-big { padding: 12px 14px; border-width: 1.5px; }
+        .cad-wiz-date { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; align-items: end; }
+        @media (max-width: 620px) { .cad-wiz-date { grid-template-columns: 1fr; } }
+        .cad-wiz-tip { font-family: var(--font-body); font-size: 12.5px; line-height: 1.5; color: var(--text-mid); background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.3); border-radius: var(--radius-md); padding: 10px 12px; }
+        .cad-wiz-tip.ok { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.3); }
+        .cad-cal { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+        @media (max-width: 760px) { .cad-cal { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 420px) { .cad-cal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .cad-cal-d { display: grid; gap: 2px; text-align: left; padding: 10px 11px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text); min-width: 0; font: inherit; }
+        .cad-cal-d b { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--brand); }
+        .cad-cal-d em { font-style: normal; font-family: var(--font-body); font-size: 11px; color: var(--text-dim); text-transform: capitalize; }
+        .cad-cal-d span { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
+        .cad-cal-d small { font-family: var(--font-body); font-size: 10.5px; font-weight: 700; margin-top: 4px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+        .cad-cal-d.rest { background: var(--bg-card-2); opacity: .6; }
+        .cad-cal-d.rest b { color: var(--text-dim); }
+        .cad-cal.is-run .cad-cal-d { cursor: pointer; transition: all .15s; }
+        .cad-cal.is-run .cad-cal-d:hover:not(:disabled) { border-color: var(--brand); transform: translateY(-1px); }
+        .cad-cal-d.is-rest { cursor: default !important; background: var(--bg-card-2); opacity: .6; }
+        .cad-cal-d.is-done { border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.07); }
+        .cad-cal-d.is-done small { color: #22c55e; }
+        .cad-cal-d.is-part small { color: var(--brand); }
+        .cad-cal-d.is-late small { color: #f59e0b; }
+        .cad-cal-d.is-now { border: 2px solid var(--brand); box-shadow: 0 4px 16px rgba(0,200,224,.22); }
+        .cad-cal-d.is-today small { color: var(--brand); }
+        .cad-wiz-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .cad-sess-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+        .cad-sess-prog { text-align: right; }
+        .cad-sess-prog b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--text); line-height: 1; }
+        .cad-sess-prog span { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); }
+        @media (max-width: 560px) { .cad-sess-prog { text-align: left; display: flex; align-items: baseline; gap: 8px; } .cad-sess-prog b { display: inline; } }
+        .cad-sess-steps { display: flex; gap: 6px; margin: 16px 0; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        .cad-sess-steps::-webkit-scrollbar { display: none; }
+        .cad-sess-step { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--border-mid); background: var(--bg-card); cursor: pointer; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--text-mid); max-width: 220px; }
+        .cad-sess-step span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cad-sess-step i { font-style: normal; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; background: var(--bg-card-2); font-family: var(--font-display); font-weight: 800; font-size: 11px; }
+        .cad-sess-step.on { border-color: var(--brand); color: var(--text); }
+        .cad-sess-step.on i { background: var(--brand-gradient); color: #fff; }
+        .cad-sess-step.ok i { background: rgba(34,197,94,.18); color: #22c55e; }
+        .cad-sess-step.skip i { background: var(--bg-card-2); color: var(--text-dim); }
+        .cad-sess-end { text-align: center; display: grid; justify-items: center; gap: 6px; padding: 32px 20px; }
+        .cad-sess-end-ico { width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center; background: rgba(34,197,94,.15); color: #22c55e; font-size: 26px; font-weight: 800; }
+        .cad-step-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 330px); gap: 16px; align-items: start; }
+        @media (max-width: 900px) { .cad-step-grid { grid-template-columns: 1fr; } }
+        .cad-step-card { padding: 22px; }
+        .cad-step-side { display: grid; gap: 14px; position: sticky; top: 90px; }
+        @media (max-width: 900px) { .cad-step-side { position: static; } }
+        .cad-step-note { margin-top: 12px; font-family: var(--font-body); font-size: 12.5px; color: var(--text); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); padding: 8px 11px; }
+        .cad-tries { display: grid; gap: 10px; margin-top: 6px; }
+        .cad-try { display: grid; gap: 4px; min-width: 0; }
+        .cad-try > span { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-try .cad-input { font-family: var(--font-mono); font-size: 17px; padding: 12px 12px; }
+        .cad-preview-n { font-family: var(--font-display); font-weight: 800; font-size: 40px; letter-spacing: -0.03em; line-height: 1; margin-top: 6px; }
+        .cad-preview-n small { font-size: 15px; color: var(--text-dim); font-weight: 700; }
+        .cad-preview-l { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--text); }
+        .cad-preview-l span { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+        .cad-timer { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; }
+        .cad-timer em { display: block; font-style: normal; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-timer b { display: block; font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--text); }
+        .cad-timer.is-done b { color: #22c55e; }
+        .cad-timer-btns { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .cad-dash { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; align-items: center; margin-top: 16px; }
+        @media (max-width: 680px) { .cad-dash { grid-template-columns: 1fr; justify-items: center; } }
+        .cad-dash-kpis { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .cad-dash-kpis > div:not(.cad-dash-mode) { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 8px 14px; min-width: 86px; }
+        .cad-dash-kpis b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--text); line-height: 1.1; }
+        .cad-dash-kpis span { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); }
+        .cad-dash-mode { margin-left: auto; }
+        .cad-dash-score { display: grid; justify-items: center; gap: 8px; }
+        .cad-dash-note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); text-align: center; max-width: 180px; line-height: 1.4; }
+        .cad-dash-bar { height: 8px; border-radius: 999px; background: rgba(128,140,160,0.16); overflow: hidden; }
+        .cad-dash-bar i { display: block; height: 100%; border-radius: 999px; background: var(--brand-gradient); transition: width .8s cubic-bezier(.22,1,.36,1); }
+        .cad-res-hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 26px; align-items: center; margin-top: 16px; border-top: 4px solid var(--brand); }
+        @media (max-width: 720px) { .cad-res-hero { grid-template-columns: minmax(0, 1fr); justify-items: center; } .cad-res-hero > div { width: 100%; } }
+        .cad-res-lvl { font-family: var(--font-display); font-weight: 800; font-size: 34px; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 6px; }
+        .cad-res-delta { display: inline-flex; align-items: baseline; gap: 8px; background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 6px 14px; margin-bottom: 4px; }
+        .cad-res-delta b { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--brand); }
+        .cad-res-delta span { font-family: var(--font-body); font-size: 12px; color: var(--text-mid); }
+        .cad-res-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(80px, 1.2fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--border); }
+        @media (max-width: 560px) { .cad-res-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; } .cad-res-row .cad-dash-bar { grid-column: 1 / -1; grid-row: 2; } }
+        .cad-res-n b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--text); }
+        .cad-res-n span { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
+        .cad-res-p { text-align: right; white-space: nowrap; }
+        .cad-res-p b { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+        .cad-res-p span { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); margin-left: 4px; }
+        .cad-next { margin-top: 18px; border-left: 4px solid var(--brand); }
+        .cad-lvl-world.is-you { border-left-style: solid; border-left-width: 3px; }
+        .cad-lvl-world.is-you span { background: var(--text); color: var(--bg); padding: 1px 6px; border-radius: 6px; }
         .cad-src .note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.5; }
         .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
         @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
@@ -492,8 +596,8 @@
           setCampaigns(list);
           var cur = list.filter(function (c) { return c.status === 'in_progress'; })[0];
           if (cur) { loadReport(cur.id, 'test'); }
-          else { setView('intro'); }
-        }).catch(function () { setView('intro'); });
+          else { setView(function (v) { return v === 'loading' ? 'intro' : v; }); }
+        }).catch(function () { setView(function (v) { return v === 'loading' ? 'intro' : v; }); });
     }, [account, catalog, crossOrigin]);
 
     function loadReport(id, nextView) {
@@ -528,7 +632,7 @@
                       onHome={function () { setView('intro'); }}
                       onClosed={function () { reload().then(function () { setView('results'); }); }}/>;
     } else if (view === 'results' && report) {
-      body = <CadResults catalog={catalog} report={report} mode={mode} setMode={setMode} onBack={function () { setView('intro'); }}/>;
+      body = <CadResults catalog={catalog} report={report} campaigns={campaigns} mode={mode} setMode={setMode} onBack={function () { setView('intro'); }}/>;
     } else {
       body = <CadIntro catalog={catalog} loggedIn={loggedIn} campaigns={campaigns}
                        crossOrigin={crossOrigin} appUrl={appTestUrl}
@@ -648,65 +752,162 @@
     );
   }
 
-  // ════════════════ DÉMARRAGE ════════════════
+  // ════════════════ DÉMARRAGE (assistant en 3 étapes) ════════════════
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function dateAt(iso, plusDays) { var d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); d.setDate(d.getDate() + plusDays); return d; }
+  function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function fmtDay(d) { try { return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { return isoOf(d); } }
+  function startKey(id) { return 'cad-start-' + id; }
+  function getStart(camp) { try { var v = window.localStorage.getItem(startKey(camp.id)); if (v) return v; } catch (e) {} return String(camp.started_on || todayISO()).slice(0, 10); }
+  function setStart(id, iso) { try { window.localStorage.setItem(startKey(id), iso); } catch (e) {} }
+  var GEAR_LIST = [
+    { k: 'Salle', items: ['Barre olympique + disques', 'Rack + banc', 'Barre de traction + lest', 'Box (60 / 40 cm)', 'Rameur'] },
+    { k: 'Piste & gazon', items: ['Piste de 400 m', 'Gazon plat', 'Plots', 'Mètre ruban', 'Chrono (idéalement cellules)'] },
+    { k: 'Piscine', items: ['Bassin de 25 ou 50 m'] },
+    { k: 'Vélo', items: ['Vélo ou home-trainer avec capteur de puissance'] },
+  ];
+
   function CadStart(props) {
+    var cat = props.catalog;
+    var st = React.useState(1); var step = st[0], setStep = st[1];
     var sx = React.useState(null); var sex = sx[0], setSex = sx[1];
     var ag = React.useState(''); var age = ag[0], setAge = ag[1];
     var pd = React.useState(''); var poids = pd[0], setPoids = pd[1];
+    var dt = React.useState(todayISO()); var start = dt[0], setStartD = dt[1];
+    var gk = React.useState({}); var gear = gk[0], setGear = gk[1];
+    var wk = React.useState(false); var warned = wk[0], setWarned = wk[1];
     var cs = React.useState(false); var consent = cs[0], setConsent = cs[1];
     var bz = React.useState(false); var busy = bz[0], setBusy = bz[1];
     var er = React.useState(null); var err = er[0], setErr = er[1];
+    var month = new Date(start + 'T12:00:00').getMonth();
+    var goodMonth = month === 3 || month === 4 || month === 8 || month === 9;
 
+    function next() {
+      setErr(null);
+      if (step === 1) {
+        if (!sex) return setErr('Choisis le barème (homme / femme).');
+        var a = Number(age), p = Number(poids);
+        if (!isFinite(a) || a < 18 || a > 80) return setErr('Âge requis : réservé aux 18 à 80 ans.');
+        if (!isFinite(p) || p < 30 || p > 250) return setErr('Poids de corps requis (30 à 250 kg).');
+      }
+      if (step === 2 && !start) return setErr('Choisis une date de début.');
+      setStep(step + 1);
+    }
     function go() {
       setErr(null);
-      if (!sex) return setErr('Choisis le barème (homme / femme).');
-      var a = Number(age), p = Number(poids);
-      if (!isFinite(a) || a < 18 || a > 80) return setErr('Âge requis : réservé aux 18 à 80 ans.');
-      if (!isFinite(p) || p < 30 || p > 250) return setErr('Poids de corps requis (30 à 250 kg).');
+      if (!warned) return setErr('Coche la case « J’ai lu les avertissements » pour démarrer.');
       setBusy(true);
-      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ sex: sex, scaleSex: sex, age: a, bodyWeightKg: p, shareForCalibration: consent }) })
+      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { setErr((res.j && res.j.erreur) || 'Impossible de démarrer.'); setBusy(false); return; }
+          setStart(res.j.id, start);
           props.onCreated(res.j.id);
         }).catch(function () { setErr('Erreur réseau.'); setBusy(false); });
     }
-
+    var STEPS = ['Profil', 'Préparation', 'Engagement'];
     return (
-      <div>
+      <div className="cad-run">
         <button type="button" className="cad-link" onClick={props.onCancel}>← Retour</button>
-        <h1 className="t-h1" style={{ margin: '10px 0 0' }}>Démarrer un nouveau test</h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--text-mid)', margin: '8px 0 20px' }}>
-          Ton sexe, ton âge et ton poids de corps servent au barème. Ils restent privés.
-        </p>
-        <div className="cad-card" style={{ display: 'grid', gap: 16 }}>
-          <div>
-            <div className="t-label" style={{ color: 'var(--text-mid)', marginBottom: 8 }}>Barème</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
-              <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
+        <div className="cad-act-eye" style={{ marginTop: 14 }}>Nouveau test</div>
+        <h1 className="cad-act-t" style={{ fontSize: 30 }}>Démarrer CADENCES</h1>
+        <div className="cad-wiz-steps">
+          {STEPS.map(function (s, i) {
+            var n = i + 1;
+            return <div key={s} className={'cad-wiz-step' + (n === step ? ' on' : '') + (n < step ? ' done' : '')}><i>{n < step ? '✓' : n}</i><span>{s}</span></div>;
+          })}
+        </div>
+
+        <div className="cad-card cad-wiz">
+          {step === 1 ? (
+            <div style={{ display: 'grid', gap: 18 }}>
+              <div>
+                <h3 className="cad-h3">Ton profil</h3>
+                <p className="cad-p" style={{ margin: 0 }}>Ton sexe, ton âge et ton poids servent au barème (le poids pour les épreuves en ratio). Ils restent privés.</p>
+              </div>
+              <div>
+                <div className="cad-ec-h">Barème</div>
+                <div style={{ display: 'flex', gap: 8, maxWidth: 360 }}>
+                  <button type="button" className="cad-pill" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); }}>Homme</button>
+                  <button type="button" className="cad-pill" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); }}>Femme</button>
+                </div>
+              </div>
+              <div className="cad-wiz-2">
+                <label><div className="cad-ec-h">Âge</div><input className="cad-input" inputMode="numeric" value={age} placeholder="ex. 32" onChange={function (e) { setAge(e.target.value); }} aria-label="Âge"/></label>
+                <label><div className="cad-ec-h">Poids de corps (kg)</div><input className="cad-input" inputMode="decimal" value={poids} placeholder="ex. 78" onChange={function (e) { setPoids(e.target.value); }} aria-label="Poids de corps"/></label>
+              </div>
             </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div style={{ display: 'grid', gap: 18 }}>
+              <div>
+                <h3 className="cad-h3">Préparer tes 12 jours</h3>
+                <p className="cad-p" style={{ margin: 0 }}>Vérifie ton matériel, puis choisis la date du jour 1 : le calendrier se cale dessus.</p>
+              </div>
+              <div className="cad-wiz-gear">
+                {GEAR_LIST.map(function (g) {
+                  return (
+                    <div key={g.k}>
+                      <div className="cad-ec-h">{g.k}</div>
+                      {g.items.map(function (it) {
+                        var on = !!gear[it];
+                        return (
+                          <label key={it} className={'cad-check' + (on ? ' on' : '')}>
+                            <input type="checkbox" checked={on} onChange={function () { var n = Object.assign({}, gear); n[it] = !on; setGear(n); }}/>
+                            <span>{it}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="cad-wiz-date">
+                <label><div className="cad-ec-h">Date du jour 1</div><input type="date" className="cad-input" value={start} onChange={function (e) { setStartD(e.target.value); }} aria-label="Date du jour 1"/></label>
+                <div className={'cad-wiz-tip' + (goodMonth ? ' ok' : '')}>
+                  {goodMonth ? 'Bonne période : ni trop chaud, ni trop froid en général.' : 'Conseil : avril, mai, septembre ou octobre sont les meilleurs mois (selon là où tu habites).'} Garde la même période chaque année pour comparer.
+                </div>
+              </div>
+              <div className="cad-cal">
+                {cat.days.map(function (d) {
+                  var dd = dateAt(start, d.day - 1);
+                  return <div key={d.day} className={'cad-cal-d' + (d.rest ? ' rest' : '')}><b>J{d.day}</b><em>{fmtDay(dd)}</em><span>{d.rest ? 'Repos' : d.label}</span></div>;
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <h3 className="cad-h3">Avant de te lancer</h3>
+                <p className="cad-p" style={{ margin: 0 }}>Barème {sex === 'M' ? 'homme' : 'femme'} · {age} ans · {poids} kg · jour 1 le {fmtDay(dateAt(start, 0))}</p>
+              </div>
+              <div className="cad-warns" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                {[['Avis médical conseillé', 'Efforts intenses et maximaux : consulte avant de tester.'], ['Pas un diagnostic', 'Un test de condition physique, pas un examen médical.'], ['Arrête si ça ne va pas', 'Douleur, malaise, vertige : on stoppe. La technique d’abord.']].map(function (w) {
+                  return <div key={w[0]} className="cad-warn-i"><i>!</i><div><b>{w[0]}</b><span>{w[1]}</span></div></div>;
+                })}
+              </div>
+              <label className={'cad-check is-big' + (warned ? ' on' : '')}>
+                <input type="checkbox" checked={warned} onChange={function (e) { setWarned(e.target.checked); }}/>
+                <span><strong>J’ai lu les avertissements</strong> et je teste sous ma responsabilité.</span>
+              </label>
+              <label className={'cad-check' + (consent ? ' on' : '')}>
+                <input type="checkbox" checked={consent} onChange={function (e) { setConsent(e.target.checked); }}/>
+                <span>J’accepte que mes résultats anonymisés servent à affiner les barèmes (optionnel, révocable).</span>
+              </label>
+            </div>
+          ) : null}
+
+          {err ? <div className="cad-err" role="alert" style={{ marginTop: 14 }}>{err}</div> : null}
+          <div className="cad-wiz-nav">
+            {step > 1 ? <button type="button" className="thw-btn-ghost" onClick={function () { setErr(null); setStep(step - 1); }}>← Précédent</button> : <span></span>}
+            {step < 3
+              ? <button type="button" className="thw-btn-primary" onClick={next}>Continuer →</button>
+              : <button type="button" className="thw-btn-primary" style={{ opacity: busy ? .6 : 1 }} disabled={busy} onClick={go}>{busy ? 'Démarrage…' : 'Démarrer le test'}</button>}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <div className="t-label" style={{ color: 'var(--text-mid)', marginBottom: 8 }}>Âge</div>
-              <input className="cad-input" inputMode="numeric" value={age} placeholder="ex. 32" onChange={function (e) { setAge(e.target.value); }} aria-label="Âge"/>
-            </div>
-            <div>
-              <div className="t-label" style={{ color: 'var(--text-mid)', marginBottom: 8 }}>Poids de corps (kg)</div>
-              <input className="cad-input" inputMode="decimal" value={poids} placeholder="ex. 78" onChange={function (e) { setPoids(e.target.value); }} aria-label="Poids de corps"/>
-            </div>
-          </div>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-            <input type="checkbox" checked={consent} onChange={function (e) { setConsent(e.target.checked); }} style={{ marginTop: 3 }}/>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
-              J’accepte que mes résultats anonymisés servent à affiner les barèmes (optionnel, révocable).
-            </span>
-          </label>
-          {err ? <div className="cad-err" role="alert">{err}</div> : null}
-          <button type="button" className="thw-btn-primary" style={{ justifySelf: 'start', fontSize: 15, padding: '12px 20px', opacity: busy ? .6 : 1 }} disabled={busy} onClick={go}>
-            {busy ? 'Démarrage…' : 'Démarrer le test'}
-          </button>
         </div>
       </div>
     );
@@ -731,9 +932,12 @@
       </label>
     );
   }
-  function qualityItemsFrom(catalog, score) {
+  // partial : en cours de test, une qualité sans aucune épreuve saisie est « à venir » (pas 0 %).
+  function qualityItemsFrom(catalog, score, partial) {
     return catalog.qualities.map(function (q) {
       var s = (score && score.byQuality && score.byQuality[q.key]) || {};
+      var tested = !partial || catalog.tests.some(function (t) { return t.weights && t.weights[q.key] > 0 && score && score.byTest && score.byTest[t.slug]; });
+      if (!tested) return { key: q.key, label: q.label, pct: 0, level: 'À venir', color: 'var(--text-dim)', pending: true };
       var level = s.level || 'Sédentaire';
       return { key: q.key, label: q.label, pct: s.pct || 0, level: level, color: levelColor(catalog.palette, level) };
     });
@@ -768,9 +972,17 @@
       timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.hasVariant ? 'box' : null,
     };
   }
+  // Valeur enregistrée → texte du champ (temps ≥ 1 min en m:ss, 2 décimales max).
+  function partText(t, v) {
+    var n = Number(v);
+    if (!isFinite(n)) return String(v);
+    n = Math.round(n * 100) / 100;
+    if (t.unit === 's' && n >= 60) { var m = Math.floor(n / 60), sec = Math.round((n - m * 60) * 100) / 100; return m + ':' + (sec < 10 ? '0' : '') + sec; }
+    return String(n);
+  }
   function draftFromResult(t, r) {
     var base = emptyDraft(t);
-    var parts = (r.raw_parts && r.raw_parts.length) ? r.raw_parts.map(String) : (r.raw_value != null ? [String(r.raw_value)] : base.parts);
+    var parts = (r.raw_parts && r.raw_parts.length) ? r.raw_parts.map(function (v) { return partText(t, v); }) : (r.raw_value != null ? [partText(t, r.raw_value)] : base.parts);
     return {
       parts: t.isAmrap ? [parts[0] || ''] : pad(parts, partCountOf(t)),
       partialReps: t.isAmrap ? (parts[1] != null ? String(parts[1]) : '') : '',
@@ -779,12 +991,89 @@
     };
   }
 
+  // ── Aperçu des points en direct (même formule que src/lib/cadences/engine.ts) ──
+  function previewScore(cat, t, d, camp, mode) {
+    var value = aggDraft(t, d);
+    if (value == null || !(value > 0)) return null;
+    var base = camp.scale_sex === 'M' ? t.male : t.female;
+    var ref = base.ref, max = base.max;
+    if (mode === 'age') {
+      var pf = (cat.age && cat.age.pf && cat.age.pf[camp.age_band]) || null;
+      if (pf) {
+        var f = 0; QK.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
+        if (t.direction === 'higher_is_better') { ref *= f; max *= f; }
+        else { var dv = Math.pow(f, t.ageTimeExponent == null ? 1 : t.ageTimeExponent); ref /= dv; max /= dv; }
+      }
+    }
+    function norm(v) {
+      var x = v, eq = t.equipment;
+      if (eq && d.equipment === eq.applies_when) x = eq.rule === 'result_x_(1-pct)' ? x * (1 - eq.pct) : x * (1 + eq.pct);
+      if (t.kind === 'ratio') x = x / camp.body_weight_kg;
+      return x;
+    }
+    var an = cat.anchors || { ref_pct: 0.6, max_pct: 1 };
+    function pctOf(v, r, m) { return Math.max(0, an.ref_pct + (an.max_pct - an.ref_pct) * (v - r) / (m - r)); }
+    var points;
+    if (t.criteria && t.criteria.length) {
+      var n = partCountOf(t);
+      var parts = (d.parts || []).map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; });
+      if (!parts.length) parts = [value];
+      points = 0;
+      t.criteria.forEach(function (c) {
+        if (c.aggregate === 'sum') {
+          var sum = 0; parts.forEach(function (p) { sum += norm(p); });
+          var v = parts.length < n ? sum / parts.length * n : sum;
+          points += pctOf(v, ref * n, max * n) * c.pts_max;
+        } else points += pctOf(norm(value), ref, max) * c.pts_max;
+      });
+    } else points = pctOf(norm(value), ref, max) * t.pts_max;
+    var pct = points / t.pts_max;
+    var lvl = cat.levels[0].label; cat.levels.forEach(function (l) { if (pct >= l.min_pct) lvl = l.label; });
+    return { points: points, pct: pct, level: lvl };
+  }
+
+  // Récupération conseillée entre essais (secondes).
+  function recupSec(t) {
+    if (t.group === 'Agilité') return 90;
+    if (t.group === 'Sprints' || t.group === 'Force max' || t.group === 'Haltérophilie') return 180;
+    return 0;
+  }
+  function RecupTimer(props) {
+    var total = props.sec;
+    var ls = React.useState(total); var left = ls[0], setLeft = ls[1];
+    var rs = React.useState(false); var running = rs[0], setRunning = rs[1];
+    React.useEffect(function () {
+      if (!running) return;
+      var id = setInterval(function () { setLeft(function (l) { if (l <= 1) { setRunning(false); return 0; } return l - 1; }); }, 1000);
+      return function () { clearInterval(id); };
+    }, [running]);
+    var R = 22, C = 2 * Math.PI * R, frac = left / total;
+    return (
+      <div className={'cad-timer' + (left === 0 ? ' is-done' : '')}>
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+          <circle cx="28" cy="28" r={R} fill="none" stroke="rgba(128,140,160,0.2)" strokeWidth="5"/>
+          <circle cx="28" cy="28" r={R} fill="none" stroke="var(--brand)" strokeWidth="5" strokeLinecap="round" strokeDasharray={(C * frac) + ' ' + C} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dasharray .9s linear' }}/>
+        </svg>
+        <div>
+          <em>Récupération</em>
+          <b>{Math.floor(left / 60)}:{pad2(left % 60)}</b>
+        </div>
+        <div className="cad-timer-btns">
+          <button type="button" className="thw-btn-ghost" onClick={function () { if (left === 0) setLeft(total); setRunning(!running); }}>{running ? 'Pause' : left === 0 ? 'Relancer' : 'Démarrer'}</button>
+          <button type="button" className="cad-link" onClick={function () { setRunning(false); setLeft(total); }}>Remettre à {Math.floor(total / 60)}:{pad2(total % 60)}</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════ MON TEST : tableau de bord + séance du jour ════════════════
   function CadTest(props) {
     var cat = props.catalog, rep = props.report;
     var camp = rep.campaign;
     var results = rep.results || [];
-    var score = (rep.scores && rep.scores[props.mode]) || { total: 0, globalLevel: 'Sédentaire', byQuality: {}, byTest: {} };
     var resultBySlug = {}; results.forEach(function (r) { resultBySlug[r.test_slug] = r; });
+    var score = (rep.scores && rep.scores[props.mode]) || { total: 0, globalLevel: cat.levels[0].label, byQuality: {}, byTest: {} };
+    var start = getStart(camp);
 
     var ds = React.useState(function () {
       var m = {};
@@ -794,33 +1083,33 @@
     var drafts = ds[0], setDrafts = ds[1];
     var er = React.useState(null); var err = er[0], setErr = er[1];
     var bz = React.useState(false); var closing = bz[0], setClosing = bz[1];
+    var od = React.useState(null); var openDay = od[0], setOpenDay = od[1];
+    var sp = React.useState(0); var stepIdx = sp[0], setStepIdx = sp[1];
+    var rc = React.useState(false); var recap = rc[0], setRecap = rc[1];
 
-    function setDraft(slug, patch) {
-      setDrafts(function (d) { var n = Object.assign({}, d); n[slug] = Object.assign({}, d[slug], patch); return n; });
-    }
+    function setDraft(slug, patch) { setDrafts(function (d) { var n = Object.assign({}, d); n[slug] = Object.assign({}, d[slug], patch); return n; }); }
     function put(payload) {
       return api('/api/cadences/result', { method: 'PUT', body: JSON.stringify(payload) })
         .then(function (r) { if (!r.ok) { return r.json().then(function (j) { setErr((j && j.erreur) || 'Enregistrement impossible.'); return false; }); } return true; })
         .catch(function () { setErr('Erreur réseau.'); return false; });
     }
-    function validate(t) {
+    function validate(t, after) {
       setErr(null);
       var d = drafts[t.slug];
       var value = aggDraft(t, d);
       if (value == null || value <= 0) { setErr(t.name + ' : saisis une valeur valide.'); return; }
       if (t.aggregate === 'sum' && d.parts.some(function (p) { return !String(p || '').trim(); })) { setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' passages.'); return; }
-      // Épreuves à critères (meilleur + total des essais) : tous les essais comptent.
       if (t.criteria && d.parts.some(function (p) { return parsePart(t, p) == null; })) {
         setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' essais' + (t.unit === 'm' ? ' (0 pour un saut raté).' : '.')); return;
       }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
       put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: d.variant, timingMethod: d.timing, poolLength: d.pool })
-        .then(function (ok) { if (ok) props.reload(); });
+        .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
-    function skip(t, reason) {
+    function skip(t, reason, after) {
       setErr(null);
-      put({ campaignId: camp.id, slug: t.slug, status: 'skipped', skipReason: reason }).then(function (ok) { if (ok) props.reload(); });
+      put({ campaignId: camp.id, slug: t.slug, status: 'skipped', skipReason: reason }).then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
     function clear(t) {
       setErr(null);
@@ -828,7 +1117,6 @@
         .then(function (r) { if (r.ok) { setDraft(t.slug, emptyDraft(t)); props.reload(); } else setErr('Impossible d’effacer.'); });
     }
     function close() {
-      if (!window.confirm('Clôturer le test ? Les saisies seront figées et ton score définitif calculé.')) return;
       setClosing(true); setErr(null);
       api('/api/cadences/campaign/close', { method: 'POST', body: JSON.stringify({ campaignId: camp.id }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -836,81 +1124,289 @@
         .catch(function () { setErr('Erreur réseau.'); setClosing(false); });
     }
 
-    var validated = results.filter(function (r) { return r.status === 'validated'; }).length;
-    var gColor = levelColor(cat.palette, score.globalLevel);
     var testsByDay = function (day) { return cat.tests.filter(function (t) { return t.day === day; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; }); };
+    var statusOf = function (slug) { var r = resultBySlug[slug]; return r ? r.status : null; };
+    var validated = results.filter(function (r) { return r.status === 'validated'; }).length;
+    var skippedN = results.filter(function (r) { return r.status === 'skipped'; }).length;
+    var missing = cat.totalTests - validated - skippedN;
+    var gColor = levelColor(cat.palette, score.globalLevel);
+    var today = todayISO();
 
-    return (
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-          <h1 className="t-h1" style={{ margin: 0 }}>Mon test CADENCES</h1>
-          <button type="button" className="cad-link" onClick={props.onHome}>← Accueil</button>
-        </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0' }}>
-          Barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg. Saisis chaque épreuve dès qu’elle est faite ; tu peux corriger jusqu’à la clôture.
-        </p>
-
-        <section className="cad-card" style={{ marginTop: 20, display: 'grid', gap: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div className="t-h2">Où j’en suis</div>
-            <ModeToggle mode={props.mode} setMode={props.setMode}/>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(170px, 210px) 1fr', gap: 24, alignItems: 'center' }} className="cad-score-grid">
-            <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={score.globalLevel} color={gColor} size={180}/>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{validated} / {cat.totalTests} épreuves validées. Score indicatif tant que des épreuves manquent.</div>
-              <CadQualityRings items={qualityItemsFrom(cat, score)}/>
+    // ── Séance du jour (mode focus) ──
+    if (openDay != null) {
+      var day = cat.days.filter(function (d) { return d.day === openDay; })[0];
+      var tests = testsByDay(openDay);
+      var warm = null; tests.forEach(function (t) { var p = cat.protocols[t.slug]; if (!warm && p && p.warmup) warm = p.warmup; });
+      var steps = ['Échauffement'].concat(tests.map(function (t) { return t.name.replace(/\s*\(.*\)$/, ''); }));
+      var cur = stepIdx > 0 ? tests[stepIdx - 1] : null;
+      var goStep = function (i) { setErr(null); setStepIdx(Math.max(0, Math.min(steps.length, i))); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } };
+      var finished = stepIdx >= steps.length;
+      return (
+        <div className="cad-run">
+          <button type="button" className="cad-link" onClick={function () { setOpenDay(null); setStepIdx(0); setErr(null); }}>← Mon test</button>
+          <div className="cad-sess-head">
+            <div>
+              <div className="cad-act-eye">Jour {day.day} · {fmtDay(dateAt(start, day.day - 1))}</div>
+              <h1 className="cad-act-t" style={{ fontSize: 28 }}>{day.label}</h1>
             </div>
+            <div className="cad-sess-prog"><b>{tests.filter(function (t) { return statusOf(t.slug); }).length}/{tests.length}</b><span>épreuves saisies</span></div>
           </div>
-          {validated > 0 ? <button type="button" className="thw-btn-primary" style={{ justifySelf: 'start', opacity: closing ? .6 : 1 }} disabled={closing} onClick={close}>{closing ? 'Clôture…' : 'Clôturer mon test'}</button> : null}
-          {err ? <div className="cad-err" role="alert">{err}</div> : null}
+          <div className="cad-sess-steps">
+            {steps.map(function (s, i) {
+              var t = i > 0 ? tests[i - 1] : null;
+              var stt = t ? statusOf(t.slug) : null;
+              return (
+                <button key={i} type="button" className={'cad-sess-step' + (i === stepIdx ? ' on' : '') + (stt === 'validated' ? ' ok' : stt === 'skipped' ? ' skip' : '')} onClick={function () { goStep(i); }}>
+                  <i>{stt === 'validated' ? '✓' : stt === 'skipped' ? '–' : i === 0 ? '◎' : i}</i><span>{s}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {err ? <div className="cad-err" role="alert" style={{ marginBottom: 12 }}>{err}</div> : null}
+
+          {stepIdx === 0 ? (
+            <WarmupStep warm={warm} common={cat.echauffement} onNext={function () { goStep(1); }} />
+          ) : finished ? (
+            <div className="cad-card cad-sess-end">
+              <div className="cad-sess-end-ico">✓</div>
+              <h3 className="cad-h3" style={{ fontSize: 20 }}>Séance du jour {day.day} terminée</h3>
+              <p className="cad-p">{tests.filter(function (t) { return statusOf(t.slug) === 'validated'; }).length} épreuve(s) validée(s) sur {tests.length}. Récupère bien : la suite du protocole compte aussi.</p>
+              <button type="button" className="thw-btn-primary" onClick={function () { setOpenDay(null); setStepIdx(0); }}>Retour au calendrier</button>
+            </div>
+          ) : (
+            <TestStep key={cur.slug} t={cur} idx={stepIdx} n={tests.length} cat={cat} camp={camp} mode={props.mode}
+                      draft={drafts[cur.slug]} setDraft={function (p) { setDraft(cur.slug, p); }}
+                      result={resultBySlug[cur.slug]} score={(score.byTest && score.byTest[cur.slug]) || null}
+                      onValidate={function () { validate(cur, function () { goStep(stepIdx + 1); }); }}
+                      onSkip={function (reason) { skip(cur, reason, function () { goStep(stepIdx + 1); }); }}
+                      onClear={function () { clear(cur); }}
+                      onPrev={function () { goStep(stepIdx - 1); }} onNext={function () { goStep(stepIdx + 1); }} />
+          )}
+        </div>
+      );
+    }
+
+    // ── Tableau de bord ──
+    var curDay = null;
+    cat.days.forEach(function (d) { if (isoOf(dateAt(start, d.day - 1)) === today) curDay = d.day; });
+    return (
+      <div className="cad-run">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div className="cad-act-eye">Mon test CADENCES</div>
+            <h1 className="cad-act-t" style={{ fontSize: 30 }}>{curDay ? 'Jour ' + curDay + ' aujourd’hui' : 'Ton calendrier'}</h1>
+          </div>
+          <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
+        </div>
+        <p className="cad-p" style={{ marginTop: 6 }}>Barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg · jour 1 le {fmtDay(dateAt(start, 0))}</p>
+
+        <section className="cad-card cad-dash">
+          <div className="cad-dash-score">
+            <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={missing ? 'Provisoire' : score.globalLevel} color={missing ? 'var(--brand)' : gColor} size={170}/>
+            {missing ? <div className="cad-dash-note">Points acquis à ce stade. Le palier tombe à la clôture.</div> : null}
+          </div>
+          <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            <div className="cad-dash-kpis">
+              <div><b>{validated}</b><span>validées</span></div>
+              <div><b>{skippedN}</b><span>passées</span></div>
+              <div><b>{missing}</b><span>restantes</span></div>
+              <div className="cad-dash-mode"><ModeToggle mode={props.mode} setMode={props.setMode}/></div>
+            </div>
+            <div className="cad-dash-bar"><i style={{ width: (validated + skippedN) / cat.totalTests * 100 + '%' }}></i></div>
+            <CadQualityRings items={qualityItemsFrom(cat, score, true)}/>
+          </div>
         </section>
 
-        <nav className="cad-chiprow" aria-label="Jours du test">
+        <h2 className="cad-h3" style={{ fontSize: 18, margin: '26px 0 12px' }}>Les 12 jours</h2>
+        <div className="cad-cal is-run">
           {cat.days.map(function (d) {
-            var tests = testsByDay(d.day);
-            var done = tests.filter(function (t) { return resultBySlug[t.slug] && resultBySlug[t.slug].status === 'validated'; }).length;
+            var dd = dateAt(start, d.day - 1), iso = isoOf(dd);
+            var ts = testsByDay(d.day);
+            var done = ts.filter(function (t) { return statusOf(t.slug); }).length;
+            var state = d.rest ? 'rest' : done === ts.length ? 'done' : done > 0 ? 'part' : iso === today ? 'today' : iso < today ? 'late' : 'next';
+            var label = d.rest ? 'Repos' : state === 'done' ? 'Fait ✓' : state === 'part' ? done + '/' + ts.length : state === 'today' ? 'Aujourd’hui' : state === 'late' ? 'À rattraper' : 'À venir';
             return (
-              <a key={d.day} className={'cad-chip' + (d.rest ? ' rest' : '')} href={d.rest ? undefined : '#cad-jour-' + d.day}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>J{d.day}</span>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12.5, whiteSpace: 'nowrap' }}>{d.label}</span>
-                {d.rest ? null : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: done === tests.length ? levelColor(cat.palette, 'Élite') : 'var(--text-mid)' }}>{done}/{tests.length}</span>}
-              </a>
-            );
-          })}
-        </nav>
-
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, lineHeight: 1.6, color: 'var(--text-mid)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-          <strong style={{ color: 'var(--text)' }}>Échauffement général.</strong> {cat.echauffement}
-        </p>
-
-        <div style={{ display: 'grid', gap: 24, marginTop: 16 }}>
-          {cat.days.map(function (d) {
-            return (
-              <section key={d.day} id={'cad-jour-' + d.day} style={{ scrollMarginTop: 80 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-                  <span className="t-h2">Jour {d.day}</span>
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{d.label}</span>
-                </div>
-                {d.rest ? (
-                  <div className="cad-card" style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>Jour de repos — fait partie du protocole. Pas d’épreuve.</div>
-                ) : (
-                  <div style={{ display: 'grid', gap: 12 }}>
-                    {testsByDay(d.day).map(function (t) {
-                      var sc = (score.byTest && score.byTest[t.slug]) || null;
-                      return <CadTestCard key={t.slug} t={t} draft={drafts[t.slug]} setDraft={function (p) { setDraft(t.slug, p); }}
-                                          result={resultBySlug[t.slug]} score={sc} proto={cat.protocols[t.slug]}
-                                          palette={cat.palette} bodyWeight={camp.body_weight_kg}
-                                          hyroxTable={cat.hyroxThrusterKg} sex={camp.scale_sex}
-                                          onValidate={function () { validate(t); }} onSkip={function (reason) { skip(t, reason); }} onClear={function () { clear(t); }}/>;
-                    })}
-                  </div>
-                )}
-              </section>
+              <button key={d.day} type="button" disabled={d.rest} className={'cad-cal-d is-' + state + (iso === today ? ' is-now' : '')} onClick={function () { if (!d.rest) { setOpenDay(d.day); setStepIdx(0); } }}>
+                <b>J{d.day}</b><em>{fmtDay(dd)}</em><span>{d.label}</span><small>{label}</small>
+              </button>
             );
           })}
         </div>
-        <style>{`@media (max-width: 620px){ .cad-score-grid{ grid-template-columns: 1fr !important; justify-items:center; } }`}</style>
+
+        <section className="cad-card" style={{ marginTop: 20 }}>
+          {recap ? (
+            <div style={{ display: 'grid', gap: 12 }}>
+              <h3 className="cad-h3">Clôturer le test ?</h3>
+              <p className="cad-p" style={{ margin: 0 }}>{validated} épreuve(s) validée(s), {skippedN} passée(s){missing ? ', ' + missing + ' non saisie(s) — elles ne compteront pas' : ''}. Score actuel : <strong>{Math.round(score.total)} / {cat.totalPoints}</strong> ({score.globalLevel}). Après la clôture, les saisies sont figées et ton score devient définitif.</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" className="thw-btn-primary" style={{ opacity: closing ? .6 : 1 }} disabled={closing} onClick={close}>{closing ? 'Clôture…' : 'Oui, clôturer'}</button>
+                <button type="button" className="thw-btn-ghost" onClick={function () { setRecap(false); }}>Pas encore</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <h3 className="cad-h3" style={{ marginBottom: 4 }}>{missing ? 'Encore ' + missing + ' épreuve' + (missing > 1 ? 's' : '') + ' à saisir' : 'Tout est saisi'}</h3>
+                <p className="cad-p" style={{ margin: 0 }}>{missing ? 'Tu pourras clôturer quand chaque épreuve est validée ou passée.' : 'Tu peux clôturer pour figer ton score.'}</p>
+              </div>
+              {missing === 0
+                ? <button type="button" className="thw-btn-primary" onClick={function () { setRecap(true); }}>Clôturer mon test</button>
+                : validated > 0 ? <button type="button" className="cad-link" onClick={function () { setRecap(true); }}>Clôturer quand même</button> : null}
+            </div>
+          )}
+          {err ? <div className="cad-err" role="alert" style={{ marginTop: 10 }}>{err}</div> : null}
+        </section>
+      </div>
+    );
+  }
+
+  function WarmupStep(props) {
+    var items = String((props.warm && props.warm.texte) || props.common || '').split(/\.\s+/).map(function (s) { return s.replace(/\.$/, '').trim(); }).filter(Boolean);
+    var cs = React.useState({}); var done = cs[0], setDone = cs[1];
+    var all = items.length && items.every(function (_, i) { return done[i]; });
+    return (
+      <div className="cad-card cad-step-card">
+        <div className="cad-ec-h">Étape 0 · Échauffement</div>
+        <h3 className="cad-h3" style={{ fontSize: 20 }}>{props.warm ? props.warm.titre : 'Échauffement'}</h3>
+        <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+          {items.map(function (it, i) {
+            var on = !!done[i];
+            return (
+              <label key={i} className={'cad-check' + (on ? ' on' : '')}>
+                <input type="checkbox" checked={on} onChange={function () { var n = Object.assign({}, done); n[i] = !on; setDone(n); }}/>
+                <span>{it}.</span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="cad-p" style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '12px 0 0' }}>Règles communes : {props.common}</p>
+        <div className="cad-wiz-nav">
+          <span></span>
+          <button type="button" className="thw-btn-primary" onClick={props.onNext}>{all ? 'C’est parti →' : 'Passer à la 1re épreuve →'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  function TestStep(props) {
+    var t = props.t, d = props.draft || emptyDraft(props.t), r = props.result, sc = props.score, cat = props.cat, camp = props.camp;
+    var proto = cat.protocols[t.slug];
+    var sp = React.useState(false); var showProto = sp[0], setShowProto = sp[1];
+    var sk = React.useState(false); var skipping = sk[0], setSkipping = sk[1];
+    var sr = React.useState(''); var skipReason = sr[0], setSkipReason = sr[1];
+    var n = partCountOf(t);
+    var validated = r && r.status === 'validated';
+    var skipped = r && r.status === 'skipped';
+    var agg = aggDraft(t, d);
+    var derived = agg != null ? F().derivedData(t, agg, camp.body_weight_kg) : [];
+    var prev = previewScore(cat, t, d, camp, props.mode);
+    var pColor = prev ? levelColor(cat.palette, prev.level) : 'var(--text-dim)';
+    var rec = recupSec(t);
+    var hyroxKg = null;
+    if (t.slug === 'hyrox_circuit' && cat.hyroxThrusterKg) {
+      var hr = cat.hyroxThrusterKg[camp.scale_sex] || [];
+      for (var hi = 0; hi < hr.length; hi++) { var hb = hr[hi]; if (camp.body_weight_kg >= hb.lo && (hb.hi == null || camp.body_weight_kg < hb.hi)) { hyroxKg = hb.kg; break; } }
+    }
+    return (
+      <div className="cad-step-grid">
+        <div className="cad-card cad-step-card">
+          <div className="cad-ec-top">
+            <div>
+              <div className="cad-ec-h">Épreuve {props.idx}/{props.n}</div>
+              <div className="cad-ec-name" style={{ fontSize: 20 }}>{t.name}</div>
+              <div className="cad-ep-meta">
+                <span>{n > 1 ? n + (t.aggregate === 'sum' ? ' passages' : ' essais') : '1 essai'}</span>
+                {t.criteria ? <span className="is-hl">meilleur {critPts(t, 'best')} + total {critPts(t, 'sum')} pts</span> : null}
+                {validated ? <span className="is-hl">validée</span> : skipped ? <span>passée</span> : null}
+              </div>
+            </div>
+            <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
+          </div>
+
+          {hyroxKg != null ? <div className="cad-step-note"><strong>Thrusters : {hyroxKg} kg</strong> · box {camp.scale_sex === 'F' ? '40' : '60'} cm · 12 burpees box jump</div> : null}
+
+          {proto ? (
+            <div>
+              <ol className="cad-steps" style={{ marginTop: 12 }}>{proto.etapes.map(function (s, i) { return <li key={i}><i>{i + 1}</i><span>{s}</span></li>; })}</ol>
+              {proto.diagram ? (
+                <div style={{ marginTop: 10 }}>
+                  <button type="button" className="cad-link" onClick={function () { setShowProto(!showProto); }}>{showProto ? 'Masquer le schéma' : 'Voir le schéma animé'}</button>
+                  {showProto ? <CadDiagram name={proto.diagram} /> : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="cad-ec-h" style={{ marginTop: 16 }}>Tes résultats{proto && proto.saisie ? ' — ' + proto.saisie : ''}</div>
+          <div className="cad-tries" style={{ gridTemplateColumns: n > 1 ? 'repeat(' + Math.min(n, 3) + ', minmax(0, 1fr))' : 'minmax(0, 260px)' }}>
+            {new Array(n).fill(0).map(function (_, i) {
+              return (
+                <label key={i} className="cad-try">
+                  <span>{n > 1 ? (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? 'Charge (kg)' : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
+                  <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
+                         value={d.parts[i] || ''} aria-label={t.name + ' valeur ' + (i + 1)}
+                         onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
+                </label>
+              );
+            })}
+          </div>
+          {t.isAmrap ? (
+            <label className="cad-try" style={{ maxWidth: 260, marginTop: 8 }}>
+              <span>Répétitions du tour en cours (optionnel)</span>
+              <input className="cad-input" inputMode="numeric" placeholder="ex. 12" value={d.partialReps} onChange={function (e) { props.setDraft({ partialReps: e.target.value }); }} aria-label="Répétitions partielles"/>
+            </label>
+          ) : null}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+            {t.equipmentField === 'chaussures' ? <Sel label="Chaussures" value={d.equipment || 'normales'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['normales', 'Normales'], ['pointes', 'Pointes']]}/> : null}
+            {t.equipmentField === 'ceinture' ? <Sel label="Ceinture" value={d.equipment || 'sans'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['sans', 'Sans'], ['ceinture', 'Avec ceinture']]}/> : null}
+            {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
+            {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
+            {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
+          </div>
+          {derived.length ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12, marginTop: 10 }}>
+              {derived.map(function (dd, i) { return <span key={i} style={{ color: 'var(--text-mid)' }}>{dd.label} : <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{dd.value}</strong></span>; })}
+            </div>
+          ) : null}
+
+          {skipping ? (
+            <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+              <input className="cad-input" placeholder="Pourquoi non passée ? (blessure, matériel…)" value={skipReason} onChange={function (e) { setSkipReason(e.target.value); }} aria-label="Motif"/>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="thw-btn-ghost" onClick={function () { props.onSkip(skipReason); setSkipping(false); }}>Confirmer « non passée »</button>
+                <button type="button" className="thw-btn-ghost" onClick={function () { setSkipping(false); }}>Annuler</button>
+              </div>
+            </div>
+          ) : (
+            <div className="cad-wiz-nav">
+              <button type="button" className="thw-btn-ghost" onClick={props.onPrev}>← Précédent</button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {validated || skipped ? <button type="button" className="cad-link" onClick={props.onClear}>Effacer</button> : <button type="button" className="cad-link" onClick={function () { setSkipping(true); }}>Passer cette épreuve</button>}
+                {validated || skipped ? <button type="button" className="thw-btn-ghost" onClick={props.onNext}>Suivante →</button> : null}
+                <button type="button" className="thw-btn-primary" onClick={props.onValidate}>{validated ? 'Mettre à jour' : 'Valider et continuer →'}</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="cad-step-side">
+          <div className="cad-card cad-preview">
+            <div className="cad-ec-h">Aperçu des points</div>
+            {prev ? (
+              <div>
+                <div className="cad-preview-n" style={{ color: pColor }}>{(Math.round(prev.points * 10) / 10).toFixed(1).replace('.', ',')}<small> / {t.pts_max}</small></div>
+                <div className="cad-preview-l"><span style={{ background: pColor }}></span>{prev.level} · {Math.round(prev.pct * 100)} %</div>
+                <div className="cad-dash-bar" style={{ marginTop: 10 }}><i style={{ width: Math.min(100, prev.pct / 1.2 * 100) + '%', background: pColor }}></i></div>
+                <p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>Calcul indicatif ({props.mode === 'age' ? 'barème ajusté à l’âge' : 'barème général'}). Le score officiel est recalculé à la validation.</p>
+              </div>
+            ) : (
+              <p className="cad-p" style={{ margin: 0 }}>Saisis ton résultat : les points et le palier s’affichent ici en direct.</p>
+            )}
+            {validated && sc ? <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>Enregistré : <strong>{(Math.round(sc.points * 10) / 10).toString().replace('.', ',')} pts · {sc.level}</strong></p> : null}
+          </div>
+          {rec ? <div className="cad-card"><RecupTimer key={t.slug} sec={rec} /><p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>Entre chaque essai. {rec >= 180 ? 'Récupération complète : ne raccourcis pas.' : ''}</p></div> : null}
+        </div>
       </div>
     );
   }
@@ -919,185 +1415,120 @@
     switch (t.unit) { case 's': return 'm:ss ou s'; case 'm': return 'mètres'; case 'kg': return 'kg'; case 'W': return 'watts'; case 'tours': return 'nombre de tours'; default: return ''; }
   }
 
-  function CadTestCard(props) {
-    var t = props.t, d = props.draft || emptyDraft(props.t), r = props.result, sc = props.score, proto = props.proto;
-    var sp = React.useState(false); var showProto = sp[0], setShowProto = sp[1];
-    var sk = React.useState(false); var skipping = sk[0], setSkipping = sk[1];
-    var sr = React.useState(''); var skipReason = sr[0], setSkipReason = sr[1];
-    var n = partCountOf(t);
-    var validated = r && r.status === 'validated';
-    var skipped = r && r.status === 'skipped';
-    var agg = aggDraft(t, d);
-    var derived = agg != null ? F().derivedData(t, agg, props.bodyWeight) : [];
-    var scColor = sc ? levelColor(props.palette, sc.level) : 'var(--border)';
-    var hyroxKg = null;
-    if (t.slug === 'hyrox_circuit' && props.hyroxTable) {
-      var hr = props.hyroxTable[props.sex] || [];
-      for (var hi = 0; hi < hr.length; hi++) { var hb = hr[hi]; if (props.bodyWeight >= hb.lo && (hb.hi == null || props.bodyWeight < hb.hi)) { hyroxKg = hb.kg; break; } }
-    }
-
-    return (
-      <div className="cad-card" style={{ display: 'grid', gap: 12, borderColor: validated ? scColor : 'var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          <div>
-            <div className="t-h3" style={{ fontSize: 15 }}>{t.name}</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{t.group} · {t.pts_max} pts max{proto && proto.flag ? ' · protocole en relecture' : ''}</div>
-          </div>
-          {validated && sc ? (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: scColor, whiteSpace: 'nowrap' }}>{Math.round(sc.points)} pts · {sc.level}</span>
-          ) : skipped ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>Non passée</span> : null}
-        </div>
-
-        {hyroxKg != null ? (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text)', background: 'var(--bg-card-2)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '8px 11px' }}>
-            <strong>Thrusters : {hyroxKg} kg</strong> · box {props.sex === 'F' ? '40' : '60'} cm · 12 burpees box jump (ta tranche de poids)
-          </div>
-        ) : null}
-
-        {proto ? (
-          <div>
-            <button type="button" className="cad-link" onClick={function () { setShowProto(!showProto); }}>{showProto ? 'Masquer le protocole' : 'Voir le protocole'}</button>
-            {showProto ? (
-              <div>
-                <div className="cad-proto" style={{ marginTop: 8 }}>
-                  <div><strong>Objectif.</strong> {proto.objectif}</div>
-                  <div><strong>Matériel.</strong> {proto.materiel.join(', ')}.</div>
-                  <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{proto.etapes.map(function (s, i) { return <li key={i}>{s}</li>; })}</ol>
-                  {proto.securite ? <div><strong>Sécurité.</strong> {proto.securite}</div> : null}
-                  {proto.allure ? <div><strong>Allure.</strong> {proto.allure}</div> : null}
-                  {proto.box ? <div><strong>Box.</strong> {proto.box}</div> : null}
-                  <div><strong>À saisir.</strong> {proto.saisie}</div>
-                </div>
-                {proto.diagram ? <CadDiagram name={proto.diagram} /> : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: n > 1 ? 'repeat(auto-fit, minmax(84px, 1fr))' : '1fr', gap: 8 }}>
-            {new Array(n).fill(0).map(function (_, i) {
-              return (
-                <div key={i}>
-                  {n > 1 ? <div className="t-label" style={{ color: 'var(--text-dim)', fontSize: 10.5, marginBottom: 4 }}>{t.aggregate === 'sum' ? 'Passage ' + (i + 1) : 'Essai ' + (i + 1)}</div> : null}
-                  <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
-                         value={d.parts[i] || ''} aria-label={t.name + ' valeur ' + (i + 1)}
-                         onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
-                </div>
-              );
-            })}
-          </div>
-
-          {t.criteria ? (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-mid)' }}>
-              Notation : <strong style={{ color: 'var(--text)' }}>meilleur essai</strong> ({critPts(t, 'best')} pts) + <strong style={{ color: 'var(--text)' }}>total des {n} essais</strong> ({critPts(t, 'sum')} pts) — la régularité compte.
-            </div>
-          ) : null}
-
-          {t.isAmrap ? (
-            <div>
-              <div className="t-label" style={{ color: 'var(--text-dim)', fontSize: 10.5, marginBottom: 4 }}>Répétitions du tour en cours (optionnel)</div>
-              <input className="cad-input" inputMode="numeric" placeholder="ex. 12" value={d.partialReps} onChange={function (e) { props.setDraft({ partialReps: e.target.value }); }} aria-label="Répétitions partielles"/>
-            </div>
-          ) : null}
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {t.equipmentField === 'chaussures' ? <Sel label="Chaussures" value={d.equipment || 'normales'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['normales', 'Normales'], ['pointes', 'Pointes']]}/> : null}
-            {t.equipmentField === 'ceinture' ? <Sel label="Ceinture" value={d.equipment || 'sans'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['sans', 'Sans'], ['ceinture', 'Avec ceinture']]}/> : null}
-            {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
-            {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
-            {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
-          </div>
-
-          {derived.length ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
-              {derived.map(function (dd, i) { return <span key={i} style={{ color: 'var(--text-mid)' }}>{dd.label} : <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{dd.value}</strong></span>; })}
-            </div>
-          ) : null}
-
-          {skipping ? (
-            <div style={{ display: 'grid', gap: 8 }}>
-              <input className="cad-input" placeholder="Pourquoi non passée ? (blessure, matériel…)" value={skipReason} onChange={function (e) { setSkipReason(e.target.value); }} aria-label="Motif"/>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="thw-btn-ghost" onClick={function () { props.onSkip(skipReason); setSkipping(false); }}>Confirmer « non passée »</button>
-                <button type="button" className="thw-btn-ghost" onClick={function () { setSkipping(false); }}>Annuler</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="thw-btn-primary" onClick={props.onValidate}>{validated ? 'Mettre à jour' : 'Valider'}</button>
-              {!validated && !skipped ? <button type="button" className="thw-btn-ghost" onClick={function () { setSkipping(true); }}>Passer</button> : null}
-              {validated || skipped ? <button type="button" className="thw-btn-ghost" onClick={props.onClear}>Effacer</button> : null}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // ════════════════ RÉSULTATS ════════════════
   function CadResults(props) {
     var cat = props.catalog, rep = props.report, camp = rep.campaign;
     var score = (rep.scores && rep.scores[props.mode]) || null;
     var rawBySlug = {}; (rep.results || []).forEach(function (r) { rawBySlug[r.test_slug] = r.raw_value; });
+    var pv = React.useState(null); var prevRep = pv[0], setPrevRep = pv[1];
+    var prevCamp = (props.campaigns || []).filter(function (c) { return c.status === 'completed' && c.id !== camp.id && String(c.completed_on || c.started_on) < String(camp.completed_on || camp.started_on || '9999'); })
+      .sort(function (a, b) { return String(b.completed_on || b.started_on).localeCompare(String(a.completed_on || a.started_on)); })[0];
+    React.useEffect(function () {
+      if (!prevCamp) return;
+      api('/api/cadences/report?campaignId=' + encodeURIComponent(prevCamp.id)).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) setPrevRep(j); }).catch(function () {});
+    }, [prevCamp && prevCamp.id]);
 
     if (!score) {
       return <div><h1 className="t-h1">Résultats CADENCES</h1><p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Aucun score figé pour cette campagne.</p><button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button></div>;
     }
+    var prevScore = prevRep && prevRep.scores ? prevRep.scores[props.mode] : null;
     var gColor = levelColor(cat.palette, score.globalLevel);
-    var tests = cat.tests.filter(function (t) { return score.byTest && score.byTest[t.slug]; })
-      .sort(function (a, b) { return (score.byTest[b.slug].pct) - (score.byTest[a.slug].pct); });
+    var desc = (window.CadLevelDesc || {})[score.globalLevel] || '';
+    var LS = window.CadLevelScale;
+    var tests = cat.tests.filter(function (t) { return score.byTest && score.byTest[t.slug]; });
+    var sorted = tests.slice().sort(function (a, b) { return score.byTest[b.slug].pct - score.byTest[a.slug].pct; });
+    var quals = cat.qualities.map(function (q) { var s = (score.byQuality && score.byQuality[q.key]) || {}; return { key: q.key, label: q.label === 'VO2max' ? 'VO₂max' : q.label, pct: s.pct || 0, level: s.level }; })
+      .sort(function (a, b) { return b.pct - a.pct; });
+    var doneOn = camp.completed_on || camp.started_on;
+    var next1 = dateAt(String(doneOn).slice(0, 10), 365), next6 = dateAt(String(doneOn).slice(0, 10), 182);
+    function delta(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(Math.round(v)); }
 
+    function Row(t) {
+      var s = score.byTest[t.slug]; var col = levelColor(cat.palette, s.level); var raw = rawBySlug[t.slug];
+      return (
+        <div key={t.slug} className="cad-res-row">
+          <div className="cad-res-n"><b>{t.name.replace(/\s*\(.*\)$/, '')}</b><span>{raw != null ? F().formatValue(t, raw) : ''}</span></div>
+          <div className="cad-dash-bar"><i style={{ width: Math.min(100, s.pct / 1.2 * 100) + '%', background: col }}></i></div>
+          <div className="cad-res-p"><b style={{ color: col }}>{Math.round(s.points)}</b><span>/ {t.pts_max} · {s.level}</span></div>
+        </div>
+      );
+    }
     return (
-      <div>
+      <div className="cad-run">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div className="t-label" style={{ color: 'var(--brand)' }}>Résultats</div>
-            <h1 className="t-h1" style={{ margin: '6px 0 0' }}>CADENCES</h1>
+            <div className="cad-act-eye">Tes résultats</div>
+            <h1 className="cad-act-t" style={{ fontSize: 30 }}>CADENCES · {frDate(doneOn)}</h1>
           </div>
           <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '8px 0 0' }}>
-          {camp.completed_on ? 'Clôturé le ' + frDate(camp.completed_on) : 'Démarré le ' + frDate(camp.started_on)} · barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg.
-        </p>
-
-        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <ModeToggle mode={props.mode} setMode={props.setMode}/>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)' }}>{props.mode === 'general' ? 'Barème général (21–35 ans).' : 'Barème ajusté à l’âge (tranche ' + camp.age_band + ').'}</span>
+          <span className="cad-p" style={{ margin: 0 }}>{props.mode === 'general' ? 'Barème général (21–35 ans).' : 'Barème ajusté à l’âge (tranche ' + camp.age_band + ').'} {camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg.</span>
         </div>
 
-        <section className="cad-card" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(180px, 220px) 1fr', gap: 24, alignItems: 'center' }} >
-          <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={score.globalLevel} color={gColor} size={196}/>
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div className="t-h3" style={{ fontSize: 15 }}>Par qualité</div>
-            <CadQualityRings items={qualityItemsFrom(cat, score)}/>
+        <section className="cad-card cad-res-hero" style={{ borderTopColor: gColor }}>
+          <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={score.globalLevel} color={gColor} size={200}/>
+          <div style={{ minWidth: 0 }}>
+            <div className="cad-ec-h">Ton niveau</div>
+            <div className="cad-res-lvl" style={{ color: gColor }}>{score.globalLevel}</div>
+            <p className="cad-p" style={{ fontSize: 14 }}>{desc}</p>
+            {prevScore ? <div className="cad-res-delta"><b>{delta(score.total - prevScore.total)} pts</b><span>vs ton test du {frDate(prevCamp.completed_on || prevCamp.started_on)} ({Math.round(prevScore.total)})</span></div> : null}
+            {LS ? <LS cat={cat} you={score.total} compact /> : null}
           </div>
         </section>
 
-        <section className="cad-card" style={{ marginTop: 16, display: 'grid', placeItems: 'center' }}>
-          <div className="t-h3" style={{ fontSize: 15, justifySelf: 'start' }}>Profil des 7 qualités</div>
-          <CadRadar items={qualityItemsFrom(cat, score)} color={gColor} size={320}/>
+        <div className="cad-grid2">
+          <div className="cad-card">
+            <h3 className="cad-h3">Tes points forts</h3>
+            {sorted.slice(0, 3).map(Row)}
+            <div className="cad-ti-tags is-q" style={{ marginTop: 10 }}>{quals.slice(0, 2).map(function (q) { return <span key={q.key}>{q.label} · {Math.round(q.pct * 100)} %</span>; })}</div>
+          </div>
+          <div className="cad-card">
+            <h3 className="cad-h3">À travailler en priorité</h3>
+            {sorted.slice(-3).reverse().map(Row)}
+            <div className="cad-ti-tags" style={{ marginTop: 10 }}>{quals.slice(-2).reverse().map(function (q) { return <span key={q.key}>{q.label} · {Math.round(q.pct * 100)} %</span>; })}</div>
+          </div>
+        </div>
+
+        <div className="cad-grid2">
+          <section className="cad-card" style={{ display: 'grid', placeItems: 'center' }}>
+            <h3 className="cad-h3" style={{ justifySelf: 'start' }}>Profil des 7 qualités</h3>
+            <CadRadar items={qualityItemsFrom(cat, score)} color={gColor} size={300}/>
+          </section>
+          <section className="cad-card">
+            <h3 className="cad-h3">Par qualité</h3>
+            <CadQualityRings items={qualityItemsFrom(cat, score)}/>
+            {prevScore ? (
+              <div className="cad-ti-tags" style={{ marginTop: 14 }}>
+                {cat.qualities.map(function (q) {
+                  var a = (score.byQuality[q.key] || {}).pct || 0, b = ((prevScore.byQuality || {})[q.key] || {}).pct || 0;
+                  return <span key={q.key}>{q.label === 'VO2max' ? 'VO₂max' : q.label} {delta((a - b) * 100)} %</span>;
+                })}
+              </div>
+            ) : null}
+          </section>
+        </div>
+
+        <section className="cad-card" style={{ marginTop: 18 }}>
+          <h3 className="cad-h3">Détail par jour</h3>
+          {cat.days.filter(function (d) { return !d.rest; }).map(function (d) {
+            var ts = tests.filter(function (t) { return t.day === d.day; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; });
+            if (!ts.length) return null;
+            return (
+              <div key={d.day} style={{ marginTop: 12 }}>
+                <div className="cad-bday"><b>J{d.day}</b><span>{d.label}</span></div>
+                {ts.map(Row)}
+              </div>
+            );
+          })}
         </section>
 
-        <section style={{ marginTop: 24 }}>
-          <h2 className="t-h2">Détail par épreuve</h2>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '6px 0 0' }}>De ton point fort à ton point faible. Repères à 60 % (Référence) et 100 % (Max).</p>
-          <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
-            {tests.map(function (t) {
-              var s = score.byTest[t.slug];
-              var raw = rawBySlug[t.slug];
-              var col = levelColor(cat.palette, s.level);
-              return (
-                <div key={t.slug} style={{ display: 'grid', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600 }}>{t.name}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{raw != null ? F().formatValue(t, raw) + ' · ' : ''}{Math.round(s.points)} / {t.pts_max} pts</span>
-                  </div>
-                  <CadTestBar pct={s.pct} color={col}/>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: col }}>{s.level} · {Math.round(s.pct * 100)} %</div>
-                </div>
-              );
-            })}
+        <section className="cad-card cad-next">
+          <div>
+            <div className="cad-ec-h">Ton prochain test</div>
+            <h3 className="cad-h3" style={{ fontSize: 19 }}>Le {frDate(isoOf(next1))}</h3>
+            <p className="cad-p" style={{ margin: 0 }}>Même période, même protocole : c’est ce qui rend la comparaison juste. Envie d’un suivi plus serré ? Refais-le dans 6 mois, le {frDate(isoOf(next6))}.</p>
           </div>
         </section>
       </div>

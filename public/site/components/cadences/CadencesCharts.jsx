@@ -99,7 +99,7 @@
                     style={{ transition: 'stroke-dasharray .7s cubic-bezier(.22,1,.36,1) ' + (props.delay || 0) + 'ms' }}/>
           </svg>
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 15, color: 'var(--text)' }}>{Math.round((q.pct || 0) * 100)}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 15, color: 'var(--text)' }}>{q.pending ? '—' : Math.round((q.pct || 0) * 100) + '%'}</span>
           </div>
         </div>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{q.label}</span>

@@ -743,7 +743,11 @@
               </button>
             );
           })}
-          <div className="cad-lvl-world" style={{ left: (0.06 / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Moyenne mondiale actuelle</span></div>
+          {props.you != null ? (
+            <div className="cad-lvl-world is-you" style={{ left: (Math.min(props.you / total, TOP) / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Toi · {Math.round(props.you)}</span></div>
+          ) : (
+            <div className="cad-lvl-world" style={{ left: (0.06 / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Moyenne mondiale actuelle</span></div>
+          )}
         </div>
         <div className="cad-lvl-ticks">
           {[0, 200, 400, 600, 800, 1000, 1100].map(function (t) {
@@ -754,6 +758,7 @@
           {cur ? <span><b style={{ color: cur.color }}>{cur.label}</b> · {cur.range} — {LEVEL_DESC[cur.label] || ''}</span>
                : <span>Survole ou touche un palier pour lire sa description.</span>}
         </div>
+        {props.compact ? null : (
         <div className="cad-lvl-list">
           {segs.map(function (s) {
             return (
@@ -764,6 +769,7 @@
             );
           })}
         </div>
+        )}
       </div>
     );
   }
@@ -840,4 +846,5 @@
 
   window.CadTestIntro = CadTestIntro;
   window.CadLevelScale = LevelScale;
+  window.CadLevelDesc = LEVEL_DESC;
 })();

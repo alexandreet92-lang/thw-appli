@@ -27,6 +27,44 @@ export interface WorkoutExercise {
   tabataRestSec?: number
 }
 
+// ── Tours / rounds : accès uniforme au nombre de répétitions du bloc ──────────
+// « Un tour » n'a pas le même champ selon le mode : séries plates → `sets`,
+// circuit → `circuitRounds`, superset → `sets` (un tour = A+B), EMOM → minutes,
+// Tabata → `tabataRounds`. Ces helpers permettent à l'éditeur live d'ajouter /
+// retirer un tour sans se soucier du champ réel (additif, aucun impact runtime).
+export function roundsFieldForMode(mode: WorkoutMode): 'sets' | 'circuitRounds' | 'emomMinutes' | 'tabataRounds' {
+  if (mode === 'circuit') return 'circuitRounds'
+  if (mode === 'emom') return 'emomMinutes'
+  if (mode === 'tabata') return 'tabataRounds'
+  return 'sets' // series + superset
+}
+
+export function getRounds(ex: WorkoutExercise): number {
+  const field = roundsFieldForMode(ex.mode)
+  const raw = ex[field]
+  if (typeof raw === 'number' && raw > 0) return raw
+  // Valeurs par défaut cohérentes avec les vues (LapView/EMOMView/TabataView).
+  if (ex.mode === 'circuit') return 3
+  if (ex.mode === 'emom') return 10
+  if (ex.mode === 'tabata') return 8
+  return Math.max(1, ex.sets || 1)
+}
+
+export function withRounds(ex: WorkoutExercise, rounds: number): WorkoutExercise {
+  const n = Math.max(1, Math.min(30, Math.round(rounds)))
+  return { ...ex, [roundsFieldForMode(ex.mode)]: n }
+}
+
+/** Tous les identifiants d'exercices « réels » d'un bloc (y compris les
+ *  sous-exercices de circuit et le partenaire de superset) — sert à réconcilier
+ *  les CompletedSet après édition. */
+export function blockExerciseIds(ex: WorkoutExercise): string[] {
+  const ids = [ex.id]
+  for (const c of ex.circuitExercises ?? []) ids.push(c.id)
+  if (ex.supersetPartner) ids.push(ex.supersetPartner.id)
+  return ids
+}
+
 export interface CompletedSet {
   exerciseId: string
   setIndex: number

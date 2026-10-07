@@ -9,6 +9,7 @@ import RideProfile from './pages/RideProfile'
 import RideData from './pages/RideData'
 import SensorDots from './ui/SensorDots'
 import { RkFabSpacer, RkStatusPill, RK_DOT, RkPageDots, RkControlRow, RkBigButton, RkFab, RkIco, RK_ICON, PauseGlyph } from '../kit/RecordKit'
+// onEdit : ouvre la feuille « Modifier la séance » (édition des blocs en direct).
 import { fmtClock } from './format'
 import type { RideView, Derived } from './viewModel'
 import type { SensorStatus } from './useSensors'
@@ -20,10 +21,10 @@ interface Props {
    *  séance (cibles watts par intervalle) — les autres pages (pilotage, flux,
    *  data) sont inutiles sans appareil connecté. */
   soloProfile?: boolean
-  onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
+  onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void; onEdit?: () => void
 }
 
-export default function RideMobile({ v, d, status, soloProfile = false, onTogglePause, onFinish, onStopTest }: Props) {
+export default function RideMobile({ v, d, status, soloProfile = false, onTogglePause, onFinish, onStopTest, onEdit }: Props) {
   const { t } = useI18n()
   const pagesRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
@@ -37,7 +38,9 @@ export default function RideMobile({ v, d, status, soloProfile = false, onToggle
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface-page)' }}>
       {/* En-tête : pilule d'état (séance + chrono) · capteurs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 7px) 14px 8px' }}>
-        <RkFabSpacer />
+        {onEdit
+          ? <RkFab label={t('ht.editSession')} onClick={onEdit}><RkIco d={RK_ICON.edit} size={18} /></RkFab>
+          : <RkFabSpacer />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
           <RkStatusPill dot={RK_DOT.rec} live>
             {v.plan?.title ?? t('w3b.free_ride')} · <span className="rk-num" style={{ letterSpacing: 0 }}>{fmtClock(v.t)}</span>

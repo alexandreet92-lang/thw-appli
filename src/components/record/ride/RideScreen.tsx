@@ -20,6 +20,8 @@ import RideDesktop from './RideDesktop'
 import RidePause from './RidePause'
 import RampTestResult, { type RampStop } from './RampTestResult'
 import RideSummary from './RideSummary'
+import EditSessionSheet from './EditSessionSheet'
+import type { RidePlan } from './types'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { rkScope, useAppDark } from '../kit/RecordKit'
@@ -66,7 +68,12 @@ export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Pr
   const { benchmarks, ready, compute } = useSmSn()
   const ftp = benchmarks.ftp
   const fcMax = benchmarks.hrMax
-  const { plan, plannedId, loading: planLoading } = useRidePlan(ftp, ready, plannedIdOverride)
+  const { plan: loadedPlan, plannedId, loading: planLoading } = useRidePlan(ftp, ready, plannedIdOverride)
+  // Plan ÉDITABLE en direct : initialisé depuis la séance chargée, puis mutable
+  // via la feuille « Modifier la séance » (le moteur lit ce plan courant).
+  const [plan, setPlan] = useState<RidePlan | null>(null)
+  useEffect(() => { setPlan(loadedPlan) }, [loadedPlan])
+  const [editOpen, setEditOpen] = useState(false)
   const sensors = useSensors()
   const engine = useRideEngine(ftp ?? 0, plan, sensors.live)
   const recorder = useRideRecorder()
@@ -186,12 +193,14 @@ export default function RideScreen({ onExit, onFinished, plannedIdOverride }: Pr
         onConnect={sensors.connect} onStart={onStart} onExit={onExit} />
     )
   } else {
+    const onEdit = plan ? () => setEditOpen(true) : undefined
     body = (
       <>
         {isDesktop
-          ? <RideDesktop v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />
-          : <RideMobile v={view} d={d} status={sensors.status} soloProfile={!!plan && sensors.status.trainer !== 'connected'} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} />}
+          ? <RideDesktop v={view} d={d} status={sensors.status} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} onEdit={onEdit} />
+          : <RideMobile v={view} d={d} status={sensors.status} soloProfile={!!plan && sensors.status.trainer !== 'connected'} onTogglePause={engine.pause} onFinish={onFinish} onStopTest={onStopTest} onEdit={onEdit} />}
         {paused && <RidePause onResume={engine.start} onFinish={onFinish} />}
+        <EditSessionSheet open={editOpen} onClose={() => setEditOpen(false)} plan={plan} ftp={ftp ?? 0} onChange={setPlan} isDark={appDark} />
       </>
     )
   }

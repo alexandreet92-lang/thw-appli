@@ -19,6 +19,8 @@ import type { SessionFormData } from './SessionSaveForm'
 import SessionSummary, { type TargetSeries } from './SessionSummary'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
+import WorkoutEditor from './workout/WorkoutEditor'
+import type { WorkoutExercise } from '@/types/workout'
 import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
 import { buildBoxeTimeline, buildWorkoutBoxeTimeline, totalBoxeRounds, type BoxeSession, type BoxeStep, type LiveIntensity } from './boxe/buildBoxeTimeline'
 import { sumComposedMinutes, moveDef, composedMoveLabel, type ComposedSport } from '@/components/planning/composedSports'
@@ -79,7 +81,11 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const sport = session.sport ?? 'boxe'
   const isWorkout = !!session.workoutBlocks   // muscu / hyrox (WorkoutExercise[])
   const sportType = sport === 'hybrid' ? 'hybrid' : sport === 'gym' ? 'gym' : sport === 'hyrox' ? 'hyrox' : 'boxe'
-  const timeline = useMemo(() => isWorkout ? buildWorkoutBoxeTimeline(session.workoutBlocks ?? []) : buildBoxeTimeline(session), [session, isWorkout])
+  // Muscu / Hyrox : blocs ÉDITABLES en direct (réordonner, tours, ajouter…),
+  // initialisés depuis la séance. La timeline en dérive. La boxe (non-workout)
+  // ne touche jamais à cet état : elle reste pilotée par `session`.
+  const [workoutBlocks, setWorkoutBlocks] = useState<WorkoutExercise[]>(session.workoutBlocks ?? [])
+  const timeline = useMemo(() => isWorkout ? buildWorkoutBoxeTimeline(workoutBlocks) : buildBoxeTimeline(session), [session, isWorkout, workoutBlocks])
   const totalRounds = useMemo(() => totalBoxeRounds(timeline), [timeline])
   const isDesktop = useIsDesktop()
 
@@ -106,6 +112,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
   const [liveInt, setLiveInt] = useState<LiveIntensity | null>(null)
   const [runUnit, setRunUnit] = useState<'kmh' | 'minkm'>('minkm')
   const [editInt, setEditInt] = useState(false)
+  const [showEditor, setShowEditor] = useState(false)
   const hr = useHeartRate()
   const reduce = useReducedMotion()
   // « Terminer sans enregistrer » en deux temps (évite une perte accidentelle).
@@ -340,7 +347,7 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
     // volume/séries) pour ne pas perdre les stats. Boxe/hybride : activités.
     if (isWorkout) {
       await saveWorkout({
-        sport: sportType, startedAt, durationSec: elapsed, exercises: session.workoutBlocks ?? [],
+        sport: sportType, startedAt, durationSec: elapsed, exercises: workoutBlocks,
         setsCompleted: setsDone, volumeKg, hr: { avg: hr.avg, max: hr.max, min: hr.min }, form: formData,
       })
       onClose()
@@ -359,6 +366,24 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       visibility: formData.visibility,
     })
     onClose()
+  }
+
+  // Applique les blocs édités (WorkoutEditor) : la timeline se reconstruit via
+  // useMemo ; on recale la position courante en la bornant à la nouvelle
+  // longueur (clamp si dépassement) et on ré-arme le pas de temps + les repères
+  // voix uniquement si l'étape courante change (édition d'un AUTRE bloc = aucune
+  // interruption de l'exo en cours). Chrono et enregistrement continuent.
+  function applyWorkoutEdit(next: WorkoutExercise[]) {
+    const nextTimeline = buildWorkoutBoxeTimeline(next)
+    const clamped = Math.max(0, Math.min(idx, nextTimeline.length - 1))
+    setWorkoutBlocks(next)
+    if (clamped !== idx) {
+      const step = nextTimeline[clamped]
+      if (step) setRemaining(step.durationSec)
+      prevIdxRef.current = clamped
+      cueKeyRef.current = ''
+      setIdx(clamped)
+    }
   }
 
   if (!mounted) return null
@@ -558,12 +583,17 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
         </div>
         {started && <div className="rk-num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-mid)', marginTop: 1, letterSpacing: 0 }}>{subtitle}</div>}
       </div>
-      <RkFab label="Vue d'ensemble" onClick={() => setShowOverview(true)}><RkIco d={RK_ICON.sliders} size={19} /></RkFab>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {isWorkout && (
+          <RkFab label={t('record.editorTitle')} onClick={() => { haptic('light'); setShowEditor(true) }}><RkIco d={RK_ICON.edit} size={19} /></RkFab>
+        )}
+        <RkFab label="Vue d'ensemble" onClick={() => setShowOverview(true)}><RkIco d={RK_ICON.sliders} size={19} /></RkFab>
+      </div>
     </div>
   )
 
   // ── Résumé pré-séance MUSCU / HYROX (WorkoutExercise[]) ──
-  const wBlocks = session.workoutBlocks ?? []
+  const wBlocks = workoutBlocks
   const preStartWorkout = (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px 24px' }}>
       <div className="rk-fade-up" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -686,6 +716,19 @@ export default function BoxeScreen({ session, onClose, isDark }: Props) {
       </AnimatePresence>
 
       <OverviewSheet timeline={timeline} idx={idx} open={showOverview} onClose={() => setShowOverview(false)} isDark={isDark} sportType={sportType} />
+
+      {/* Éditeur de séance en direct (muscu / hyrox uniquement). */}
+      {isWorkout && showEditor && (
+        <WorkoutEditor
+          open={showEditor}
+          sport={sportType === 'hyrox' ? 'hyrox' : 'gym'}
+          exercises={workoutBlocks}
+          accent={WORK_COLOR(sportType)}
+          isDark={isDark}
+          onClose={() => setShowEditor(false)}
+          onApply={applyWorkoutEdit}
+        />
+      )}
 
       {/* Saisie manuelle de la cible cardio (valeur exacte). */}
       {editInt && liveInt && (

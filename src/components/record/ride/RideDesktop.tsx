@@ -23,8 +23,8 @@ function Chip({ name, on }: { name: string; on: boolean }) {
   )
 }
 
-export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onStopTest }: {
-  v: RideView; d: Derived; status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>; onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void
+export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onStopTest, onEdit }: {
+  v: RideView; d: Derived; status: Record<'trainer' | 'hr' | 'cadence', SensorStatus>; onTogglePause: () => void; onFinish: () => void; onStopTest?: () => void; onEdit?: () => void
 }) {
   const { t } = useI18n()
   const curIdx = v.current ? v.plan?.blocks.indexOf(v.current) ?? -1 : -1
@@ -45,6 +45,9 @@ export default function RideDesktop({ v, d, status, onTogglePause, onFinish, onS
         <Chip name={t('w2c.cardio')} on={status.hr === 'connected'} />
         {d.isRampBlock && onStopTest && (
           <button onClick={onStopTest} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--danger, #ef4444)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.stopTestRecovery')}</button>
+        )}
+        {onEdit && (
+          <button onClick={onEdit} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('ht.editSession')}</button>
         )}
         <button onClick={onTogglePause} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.pause')}</button>
         <button onClick={onFinish} style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--charge-hard)', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{t('w2c.finish')}</button>

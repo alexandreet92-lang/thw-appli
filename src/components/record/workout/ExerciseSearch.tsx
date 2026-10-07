@@ -9,9 +9,12 @@ interface Props {
   onAdd: (exercise: WorkoutExercise) => void
   onClose: () => void
   isDark: boolean
+  // z-index : par défaut au-dessus de la séance (10010) ; l'éditeur ouvre le
+  // sélecteur au-dessus de sa feuille (valeur plus haute).
+  zIndex?: number
 }
 
-export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props) {
+export default function ExerciseSearch({ sport, onAdd, onClose, isDark, zIndex = 10010 }: Props) {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [shown, setShown] = useState(false)
@@ -33,7 +36,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
   }, [query, pool])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-body)', transform: shown && !closing ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms cubic-bezier(0.32,0.72,0,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${separator}`, paddingTop: 'calc(12px + env(safe-area-inset-top))' }}>
         <button onClick={requestClose} style={{ background: 'none', border: 'none', color: text, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
         <input

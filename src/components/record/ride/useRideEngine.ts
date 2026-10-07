@@ -20,6 +20,11 @@ export function useRideEngine(ftp: number, plan: RidePlan | null, live: React.Re
   const agg = useRef<Aggregates>(emptyAggregates())
   const zone = useRef({ last: -1, timeS: 0 })
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Réf du plan : l'intervalle 1 Hz lit TOUJOURS le plan courant (édité en
+  // direct) pour l'arrêt auto, sans se recréer. L'échantillonnage / la sauvegarde
+  // restent strictement identiques.
+  const planRef = useRef(plan)
+  planRef.current = plan
 
   const stopTimer = () => { if (timer.current) { clearInterval(timer.current); timer.current = null } }
 
@@ -37,11 +42,12 @@ export function useRideEngine(ftp: number, plan: RidePlan | null, live: React.Re
         if (z === zone.current.last) zone.current.timeS++
         else { zone.current.last = z; zone.current.timeS = 0 }
       }
-      // Fin de séance planifiée → arrêt automatique du chrono.
-      if (plan && nt >= plan.totalS) { stopTimer(); setRunning(false) }
+      // Fin de séance planifiée → arrêt automatique du chrono (plan courant).
+      const p = planRef.current
+      if (p && nt >= p.totalS) { stopTimer(); setRunning(false) }
       return nt
     })
-  }, [ftp, plan, live])
+  }, [ftp, live])
 
   const start = useCallback(() => {
     if (timer.current) return

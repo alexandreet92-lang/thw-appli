@@ -130,63 +130,70 @@
   function footOne(cx, cy) { return <ellipse key={'fo' + cx} cx={cx} cy={cy} rx={3} ry={5} fill="var(--text)" opacity="0.7" />; }
 
   // ── SQUARE 4×4 (schéma validé par Alex) ──
-  // Carré 1 en haut à gauche, carré 2 décalé en bas à droite (carrés de 4 m).
-  // Départ = plot bas-gauche du carré 1. Dans chaque carré : tour 1 (face
-  // toujours au même côté : avant → pas chassés → arrière → pas chassés), puis
-  // tour 2 en sens inverse, retour au plot (2 pieds derrière). Sprint 10 m vers
-  // le plot bas-gauche du carré 2, même chose, puis sprint final 10 m tout droit
-  // jusqu'au plot d'arrivée (à 10 m au-dessus du plot bas du carré 2).
+  // Tout est sur UNE ligne droite (vers le haut). Carré 1 en bas, à droite de la
+  // ligne : départ = son plot du bas-gauche (sur la ligne). Carré 2 plus haut, à
+  // gauche de la ligne : son premier plot (bas-droite) est sur la ligne, à 10 m
+  // du départ. Arrivée sur la ligne, 10 m après le premier plot du carré 2.
+  // Dans chaque carré : tour 1 face toujours vers l'avant (avant → pas chassés →
+  // arrière → pas chassés), tour 2 en sens inverse, fin en reculant jusqu'à avoir
+  // les 2 pieds derrière le plot. On ne quitte la ligne que pour tourner autour
+  // des carrés.
   function squareData() {
-    var S = 20, OX = 50, OY = 40;                       // 20 px par mètre
-    function P(mx, my) { return [OX + mx * S, OY + my * S]; }
-    var c1 = { l: OX, r: OX + 4 * S, t: OY, b: OY + 4 * S };                 // (0,0)–(4,4)
-    var c2 = { l: OX + 8 * S, r: OX + 12 * S, t: OY + 6 * S, b: OY + 10 * S }; // (8,6)–(12,10)
-    var D = P(0, 4), P2 = P(8, 10), A = P(8, 0), i = 4;  // i : léger retrait du 2e tour
-    function tours(q, start) {
-      return [
-        [q.l, q.t], [q.r, q.t], [q.r, q.b], [start[0], start[1]],          // tour 1
-        [q.r - i, q.b - i], [q.r - i, q.t + i], [q.l + i, q.t + i], [start[0], start[1]], // tour 2, sens inverse
-      ];
-    }
-    var path = [D].concat(tours(c1, D), [P2], tours(c2, P2), [A]);
+    var S = 14, LX = 150, OY = 322;                    // 14 px par mètre, ligne en x = LX
+    function P(mx, my) { return [LX + mx * S, OY - my * S]; } // my = mètres vers l'avant
+    var c1 = { l: P(0, 0)[0], r: P(4, 0)[0], b: P(0, 0)[1], t: P(0, 4)[1] };    // à droite de la ligne
+    var c2 = { l: P(-4, 0)[0], r: P(0, 0)[0], b: P(0, 10)[1], t: P(0, 14)[1] }; // à gauche de la ligne
+    var D = P(0, 0), P2 = P(0, 10), A = P(0, 20), i = 4;  // i : léger retrait du 2e tour
+    // Carré 1 (plot de départ en bas-gauche) : avant le long de la ligne, puis vers la droite.
+    var c1Tours = [
+      [c1.l, c1.t], [c1.r, c1.t], [c1.r, c1.b], D,
+      [c1.r - i, c1.b - i], [c1.r - i, c1.t + i], [c1.l + i, c1.t + i], D,
+    ];
+    // Carré 2 (premier plot en bas-droite) : avant le long de la ligne, puis vers la gauche.
+    var c2Tours = [
+      [c2.r, c2.t], [c2.l, c2.t], [c2.l, c2.b], P2,
+      [c2.l + i, c2.b - i], [c2.l + i, c2.t + i], [c2.r - i, c2.t + i], P2,
+    ];
+    var path = [D].concat(c1Tours, [P2], c2Tours, [A]);
     var T1 = ['Tour 1 : Avant', 'Tour 1 : Pas chassés', 'Tour 1 : Arrière', 'Tour 1 : Pas chassés'];
-    var T2 = ['Tour 2 (sens inverse) : Pas chassés', 'Tour 2 : Avant', 'Tour 2 : Pas chassés', 'Tour 2 : Arrière'];
+    var T2 = ['Tour 2 (sens inverse) : Pas chassés', 'Tour 2 : Avant', 'Tour 2 : Pas chassés', 'Tour 2 : Arrière — 2 pieds derrière le plot'];
     var labels = T1.map(function (l) { return 'Carré 1 · ' + l; }).concat(
       T2.map(function (l) { return 'Carré 1 · ' + l; }),
-      ['2 pieds derrière le plot → Sprint 10 m vers le carré 2'],
+      ['Course tout droit, 10 m → 1er plot du carré 2'],
       T1.map(function (l) { return 'Carré 2 · ' + l; }),
       T2.map(function (l) { return 'Carré 2 · ' + l; }),
-      ['Sprint final 10 m → Arrivée']);
+      ['Sprint tout droit, 10 m → Arrivée']);
     var colors = labels.map(function () { return AVANT; });
-    var corners = [[c1.l, c1.t], [c1.r, c1.t], [c1.l, c1.b], [c1.r, c1.b], [c2.l, c2.t], [c2.r, c2.t], [c2.r, c2.b]];
+    var corners = [[c1.r, c1.t], [c1.r, c1.b], [c1.l, c1.t], [c2.l, c2.t], [c2.l, c2.b], [c2.r, c2.t]];
     var extras = (
       <g>
+        <line x1={LX} y1={A[1] - 14} x2={LX} y2={D[1] + 12} stroke="var(--border-mid)" strokeWidth={1} strokeDasharray="3 4" />
         <rect x={c1.l} y={c1.t} width={4 * S} height={4 * S} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
         <rect x={c2.l} y={c2.t} width={4 * S} height={4 * S} fill="none" stroke="var(--border-mid)" strokeWidth={1} rx={3} />
-        {corners.map(function (p, k) { return <circle key={k} cx={p[0]} cy={p[1]} r={3.6} fill="var(--text)" />; })}
-        {plot(P2[0], P2[1], null)}{plot(A[0], A[1], null)}
-        {flag((c1.l + c1.r) / 2, c1.t - 12, 'Carré 1')}
-        {flag((c2.l + c2.r) / 2, c2.b + 22, 'Carré 2')}
-        {flag(D[0] - 14, D[1] + 22, 'Départ')}
-        {flag(A[0] + 34, A[1] + 4, 'Arrivée')}
+        {corners.map(function (p, k) { return <circle key={k} cx={p[0]} cy={p[1]} r={3.4} fill="var(--text)" />; })}
+        {plot(D[0], D[1], null)}{plot(P2[0], P2[1], null)}{plot(A[0], A[1], null)}
         {[c1, c2].map(function (q, k) {
           var cx = (q.l + q.r) / 2, cy = (q.t + q.b) / 2;
           return (
             <g key={'face' + k} opacity={0.75}>
-              <line x1={cx} y1={cy + 8} x2={cx} y2={cy - 12} stroke="var(--text-dim)" strokeWidth={2} strokeLinecap="round" />
-              <path d={'M' + (cx - 6) + ',' + (cy - 6) + ' L' + cx + ',' + (cy - 13) + ' L' + (cx + 6) + ',' + (cy - 6)} fill="none" stroke="var(--text-dim)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              <text x={cx} y={cy + 22} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-dim)' }}>face</text>
+              <line x1={cx} y1={cy + 9} x2={cx} y2={cy - 9} stroke="var(--text-dim)" strokeWidth={2} strokeLinecap="round" />
+              <path d={'M' + (cx - 5) + ',' + (cy - 4) + ' L' + cx + ',' + (cy - 10) + ' L' + (cx + 5) + ',' + (cy - 4)} fill="none" stroke="var(--text-dim)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             </g>
           );
         })}
-        {dim(c1.l - 16, (c1.t + c1.b) / 2 + 4, '4 m')}
-        {dim((D[0] + P2[0]) / 2 - 20, (D[1] + P2[1]) / 2 + 14, '10 m')}
-        {dim(A[0] + 20, (A[1] + c2.t) / 2 + 4, '10 m')}
+        <text x={c1.r + 10} y={(c1.t + c1.b) / 2 + 4} textAnchor="start" style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, fill: 'var(--text)' }}>Carré 1</text>
+        <text x={c2.l - 10} y={(c2.t + c2.b) / 2 + 4} textAnchor="end" style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, fill: 'var(--text)' }}>Carré 2</text>
+        {flag(D[0], D[1] + 22, 'Départ')}
+        {flag(A[0], A[1] - 12, 'Arrivée')}
+        <text x={c1.r + 10} y={c1.t - 4} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-dim)' }}>4 m</text>
+        <text x={LX - 10} y={(D[1] + P2[1]) / 2 + 4} textAnchor="end" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>10 m</text>
+        <text x={LX + 10} y={(P2[1] + A[1]) / 2 + 4} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>10 m</text>
+        <text x={LX + 10} y={P2[1] + 4} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-dim)' }}>1er plot carré 2</text>
       </g>
     );
-    return { w: 340, h: 300, maxWidth: 400, durMax: 14000, path: path, labels: labels, colors: colors, extras: extras, legend: null,
+    return { w: 300, h: 352, maxWidth: 340, durMax: 14000, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       aria: 'Simulation du Square 4×4',
-      caption: "Départ en bas du carré 1. Dans chaque carré : un tour en restant toujours face au même côté (avant → pas chassés → arrière → pas chassés), puis un tour dans l'autre sens ; on repart quand les 2 pieds ont dépassé le plot. Sprint 10 m vers le carré 2, même chose, puis sprint final 10 m tout droit jusqu'à l'arrivée." };
+      caption: "Tout est sur une même ligne. Départ au plot du bas du carré 1. Dans chaque carré : un tour toujours face à l'avant (avant → pas chassés → arrière → pas chassés), puis un tour dans l'autre sens, en finissant en reculant, 2 pieds derrière le plot. 10 m tout droit jusqu'au 1er plot du carré 2, même chose, puis 10 m tout droit jusqu'à l'arrivée." };
   }
 
   // ── MOVE avant-arrière (plots sur une même ligne, un seul couleur) ──

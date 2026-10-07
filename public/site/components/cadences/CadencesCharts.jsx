@@ -339,11 +339,14 @@
           return <path key={'g' + s.key} d={smoothPath(fullPx(s.points))} fill="none" stroke={s.color} strokeWidth={1.4} opacity={0.14} />;
         }) : null}
         {series.map(function (s) {
-          return <path key={'l' + s.key} d={smoothPath(partialPx(s.points))} fill="none" stroke={s.color} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash || 'none'} />;
+          var drawIt = props.draw && !sweep && !s.dash;
+          return <path key={'l' + s.key} d={smoothPath(partialPx(s.points))} fill="none" stroke={s.color} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round"
+                       pathLength={drawIt ? 1 : undefined} strokeDasharray={drawIt ? '1' : (s.dash || 'none')} strokeDashoffset={drawIt ? (inView ? 0 : 1) : undefined}
+                       style={drawIt ? { transition: 'stroke-dashoffset 2.2s cubic-bezier(.45,0,.2,1)' } : undefined} />;
         })}
         {(props.markers || []).map(function (m, i) {
           return (
-            <g key={'m' + i}>
+            <g key={'m' + i} style={props.draw ? { opacity: inView ? 1 : 0, transition: 'opacity .5s ease ' + (1400 + i * 150) + 'ms' } : undefined}>
               <circle cx={sx(m.x)} cy={sy(m.y)} r={3.6} fill="var(--bg-card)" stroke={m.color || BRAND} strokeWidth={2} />
               {m.label ? <text x={sx(m.x)} y={sy(m.y) + (m.below ? 15 : -9)} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{m.label}</text> : null}
             </g>
@@ -352,7 +355,7 @@
         {series.map(function (s) {
           var v = valueAt(s.points, readAge); var ty = sy(v), by = badgeY[s.key];
           return (
-            <g key={'b' + s.key}>
+            <g key={'b' + s.key} style={props.draw && !hovering ? { opacity: inView ? 1 : 0, transition: 'opacity .5s ease 1.9s' } : undefined}>
               <line x1={tipX} y1={ty} x2={badgeX} y2={by} stroke={s.color} strokeWidth={0.8} opacity={0.5} />
               <circle cx={tipX} cy={ty} r={3} fill={s.color} />
               <circle cx={badgeX} cy={by} r={3} fill={s.color} />
@@ -363,7 +366,7 @@
         })}
         {cursorOn ? (
           <text x={(PADL + (W - PADR)) / 2} y={H - PADB - 8} textAnchor="middle">
-            <tspan style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-dim)' }}>Âge </tspan>
+            <tspan style={{ fontFamily: 'var(--font-body)', fontSize: 11, fill: 'var(--text-dim)' }}>{(props.cursorLabel || 'Âge') + ' '}</tspan>
             <tspan style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, fill: 'var(--text)' }}>{Math.round(readAge)}</tspan>
           </text>
         ) : null}
@@ -371,5 +374,233 @@
     );
   }
 
-  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily, CadLineChart: CadLineChart });
+  /* ── Démonstration : petites primitives animées à l'entrée (SVG / HTML brut). ── */
+  var NEUTRAL = '#94a3b8';
+  function frNum(v, dec) {
+    try { return v.toLocaleString('fr-FR', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
+    catch (e) { return String(Math.round(v)); }
+  }
+
+  /* Nombre qui compte de 0 à la valeur quand il entre à l'écran. */
+  function CadCountUp(props) {
+    var iv = useInView({ threshold: 0.5 }); var ref = iv[0], on = iv[1];
+    var target = props.value || 0;
+    var st = React.useState(reduced() ? target : 0); var v = st[0], setV = st[1];
+    React.useEffect(function () {
+      if (reduced()) { setV(target); return; }
+      if (!on) { setV(0); return; }
+      var raf, start = null, dur = props.dur || 1400;
+      function step(ts) {
+        if (start == null) start = ts;
+        var p = Math.min(1, (ts - start) / dur);
+        setV(target * lEaseOut(p));
+        if (p < 1) raf = requestAnimationFrame(step);
+      }
+      raf = requestAnimationFrame(step);
+      return function () { cancelAnimationFrame(raf); };
+    }, [on, target]);
+    return <span ref={ref}>{(props.prefix || '') + frNum(v, props.decimals) + (props.suffix || '')}</span>;
+  }
+
+  /* Dumbbell : avant (gris) → après (couleur), le point glisse à l'apparition. */
+  function CadDumbbell(props) {
+    var iv = useInView(); var ref = iv[0], on = iv[1];
+    var rows = props.rows || [];
+    var d0 = props.domain[0], d1 = props.domain[1];
+    var W = 420, LX = 96, RX = 352, ROW = 50, TOP = 28;
+    var H = TOP + rows.length * ROW;
+    var color = props.color || BRAND;
+    function sx(v) { return LX + (v - d0) / (d1 - d0) * (RX - LX); }
+    var ease = 'cubic-bezier(.22,1,.36,1)';
+    return (
+      <svg ref={ref} width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={props.aria || 'Comparaison avant / après'} style={{ display: 'block', maxWidth: props.maxWidth || 460 }}>
+        <text x={LX} y={12} style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fill: 'var(--text-dim)' }}>
+          <tspan fill={NEUTRAL}>●</tspan> {props.aLabel}   <tspan fill={color}>●</tspan> {props.bLabel}
+        </text>
+        {rows.map(function (r, i) {
+          var y = TOP + i * ROW + 22;
+          var xa = sx(r.a), xb = sx(r.b);
+          var pct = Math.round((r.b - r.a) / r.a * 100);
+          return (
+            <g key={i}>
+              <title>{r.label + ' : ' + r.a + ' → ' + r.b + ' ' + (props.unit || '') + ' (' + pct + ' %)'}</title>
+              <text x={0} y={y + 4} style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, fill: 'var(--text)' }}>{r.label}</text>
+              <line x1={LX} y1={y} x2={RX} y2={y} stroke={TRACK} strokeWidth={1} strokeDasharray="2 4" />
+              <line x1={xa} y1={y} x2={xb} y2={y} stroke={color} strokeWidth={3} strokeLinecap="round" pathLength={1}
+                    strokeDasharray="1" strokeDashoffset={on ? 0 : 1} style={{ transition: 'stroke-dashoffset 1.1s ' + ease + ' ' + (i * 180 + 200) + 'ms' }} />
+              <circle cx={xa} cy={y} r={6} fill="var(--bg-card)" stroke={NEUTRAL} strokeWidth={2.5} />
+              <text x={xa} y={y - 12} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fill: 'var(--text-dim)' }}>{frNum(r.a)}</text>
+              <g style={{ transform: 'translateX(' + (on ? xb - xa : 0) + 'px)', transition: 'transform 1.1s ' + ease + ' ' + (i * 180 + 200) + 'ms' }}>
+                <circle cx={xa} cy={y} r={7} fill={color} style={{ filter: 'drop-shadow(0 0 5px ' + color + '66)' }} />
+                <text x={xa} y={y - 12} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 600, fill: color, opacity: on ? 1 : 0, transition: 'opacity .4s ease ' + (i * 180 + 1100) + 'ms' }}>{frNum(r.b)}</text>
+              </g>
+              <text x={W} y={y + 5} textAnchor="end" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, fill: 'var(--text)', opacity: on ? 1 : 0, transition: 'opacity .5s ease ' + (i * 180 + 1100) + 'ms' }}>{(pct > 0 ? '+' : '−') + Math.abs(pct) + ' %'}</text>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  /* Waffle 10×10 : les carrés se remplissent un à un. Bascule entre plusieurs jeux. */
+  function CadWaffle(props) {
+    var iv = useInView(); var ref = iv[0], on = iv[1];
+    var opts = props.options || [];
+    var ks = React.useState(0); var k = ks[0], setK = ks[1];
+    var cur = opts[k] || { value: 0 };
+    var color = props.color || BRAND;
+    var cells = [];
+    for (var i = 0; i < 100; i++) {
+      var filled = on && i < cur.value;
+      cells.push(<i key={i} style={{ background: filled ? color : TRACK, transition: 'background-color .25s ease ' + (on ? i * 9 : 0) + 'ms', boxShadow: filled ? '0 0 6px ' + color + '44' : 'none' }}></i>);
+    }
+    return (
+      <div ref={ref} className="cad-waffle-wrap">
+        <div className="cad-waffle" role="img" aria-label={cur.label + ' : ' + cur.value + ' sur 100'}>{cells}</div>
+        <div className="cad-waffle-side">
+          <div className="cad-waffle-n"><CadCountUp key={k} value={cur.value} suffix=" %" dur={1100} /></div>
+          <div className="cad-waffle-l">{props.caption}</div>
+          {opts.length > 1 ? (
+            <div className="cad-fchips" style={{ marginTop: 12 }}>
+              {opts.map(function (o, j) {
+                return <button key={o.label} type="button" className="cad-fchip" aria-pressed={j === k} onClick={function () { setK(j); }}>{o.label}</button>;
+              })}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  /* Barres horizontales triées, filtrables par groupe (réordonnancement animé),
+     ligne de référence, surlignage, rang au survol. */
+  function CadHBars(props) {
+    var iv = useInView({ threshold: 0.2 }); var ref = iv[0], on = iv[1];
+    var data = props.data || [];
+    var groups = props.groups || null;
+    var fs = React.useState(groups ? groups[0] : null); var f = fs[0], setF = fs[1];
+    var hs = React.useState(null); var hov = hs[0], setHov = hs[1];
+    var max = props.max || Math.max.apply(null, data.map(function (d) { return d.value; }));
+    var ROWH = props.rowHeight || 34;
+    var color = props.color || BRAND;
+    var visible = data.filter(function (d) { return !groups || f === groups[0] || (d.groups || [d.group]).indexOf(f) >= 0; })
+      .slice().sort(function (a, b) { return b.value - a.value; });
+    var pos = {}; visible.forEach(function (d, i) { pos[d.key] = i; });
+    var ease = 'cubic-bezier(.22,1,.36,1)';
+    var refPct = props.refLine ? props.refLine.value / max * 100 : null;
+    return (
+      <div ref={ref}>
+        {groups ? (
+          <div className="cad-fchips" style={{ marginBottom: 14 }}>
+            {groups.map(function (g) {
+              return <button key={g} type="button" className="cad-fchip" aria-pressed={g === f} onClick={function () { setF(g); }}>{g}</button>;
+            })}
+          </div>
+        ) : null}
+        <div className="cad-hbars" style={{ height: visible.length * ROWH + (props.refLine ? 22 : 0), transition: 'height .5s ' + ease }}>
+          {props.refLine ? (
+            <div className="cad-hbar-row cad-hbar-refrow" style={{ top: 0, bottom: 0, height: 'auto' }}>
+              <span></span>
+              <div style={{ position: 'relative', height: '100%' }}>
+                <div className="cad-hbar-ref" style={{ left: refPct + '%', opacity: on ? 1 : 0 }}><span>{props.refLine.label}</span></div>
+              </div>
+              <span></span>
+            </div>
+          ) : null}
+          {data.map(function (d) {
+            var vis = pos[d.key] != null;
+            var idx = vis ? pos[d.key] : visible.length;
+            var w = on && vis ? Math.max(1.5, d.value / max * 100) : 0;
+            var c = d.hl ? color : (d.muted ? NEUTRAL : (props.barColor || 'var(--text-mid)'));
+            return (
+              <div key={d.key} className={'cad-hbar-row' + (d.hl ? ' is-hl' : '') + (d.region ? ' is-region' : '')}
+                   onMouseEnter={function () { setHov(d.key); }} onMouseLeave={function () { setHov(null); }}
+                   style={{ top: idx * ROWH + (props.refLine ? 22 : 0), height: ROWH, opacity: vis ? 1 : 0, pointerEvents: vis ? 'auto' : 'none', transition: 'top .6s ' + ease + ', opacity .35s ease' }}>
+                <span className="cad-hbar-lab" title={d.label}>{d.label}{d.tag ? <em>{d.tag}</em> : null}</span>
+                <div className="cad-hbar-track">
+                  <div className="cad-hbar-fill" style={{ width: w + '%', background: c, opacity: d.region ? 0.55 : 1, transition: 'width 1s ' + ease + ' ' + (idx * 45) + 'ms' }}></div>
+                </div>
+                <span className="cad-hbar-val">{hov === d.key && vis ? '#' + (idx + 1) + ' · ' : ''}{d.display || (frNum(d.value, d.value % 1 ? 1 : 0) + (props.unit || ''))}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  /* Colonnes verticales animées (catégories), une colonne surlignée possible. */
+  function CadColumns(props) {
+    var iv = useInView(); var ref = iv[0], on = iv[1];
+    var data = props.data || [];
+    var max = props.max || Math.max.apply(null, data.map(function (d) { return d.value; }));
+    var color = props.color || BRAND;
+    var ease = 'cubic-bezier(.22,1,.36,1)';
+    return (
+      <div ref={ref} className="cad-cols" style={{ height: props.height || 190 }} role="img" aria-label={props.aria || 'Colonnes'}>
+        {data.map(function (d, i) {
+          var h = on ? Math.max(2, d.value / max * 100) : 0;
+          var c = d.hl ? color : (d.color || NEUTRAL);
+          return (
+            <div key={i} className="cad-col">
+              <div className="cad-col-area">
+                <div className="cad-col-bar" style={{ height: h + '%', background: c, boxShadow: d.hl ? '0 0 14px ' + color + '55' : 'none', transition: 'height 1s ' + ease + ' ' + (i * 110) + 'ms' }}>
+                  <span className="cad-col-val" style={{ color: d.hl ? color : 'var(--text)', opacity: on ? 1 : 0, transition: 'opacity .4s ease ' + (i * 110 + 700) + 'ms' }}>{d.display != null ? d.display : d.value}</span>
+                </div>
+              </div>
+              <span className="cad-col-lab">{d.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* Jauge demi-cercle 0→max avec zones colorées et aiguille pilotée par un curseur. */
+  function CadGauge(props) {
+    var iv = useInView(); var ref = iv[0], on = iv[1];
+    var zones = props.zones || [];
+    var max = props.max || 10;
+    var vs = React.useState(props.initial != null ? props.initial : max / 2); var val = vs[0], setVal = vs[1];
+    var cx = 150, cy = 150, R = 118;
+    function pt(v, r) { var a = Math.PI * (1 - v / max); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; }
+    function arc(a, b) {
+      var p = pt(a, R), q = pt(b, R);
+      return 'M' + p[0] + ',' + p[1] + ' A' + R + ',' + R + ' 0 0 1 ' + q[0] + ',' + q[1];
+    }
+    var shown = on ? val : 0;
+    var zone = zones.filter(function (z) { return val >= z.from && val <= z.to; })[0] || zones[zones.length - 1];
+    var angle = -90 + 180 * shown / max;
+    var ticks = []; for (var t = 0; t <= max; t++) ticks.push(t);
+    return (
+      <div ref={ref} className="cad-gauge">
+        <svg width="100%" viewBox="0 0 300 172" role="img" aria-label={(props.aria || 'Jauge') + ' : ' + val} style={{ display: 'block', maxWidth: 360, margin: '0 auto' }}>
+          {zones.map(function (z, i) {
+            var a = i === 0 ? z.from : (zones[i - 1].to + z.from) / 2;
+            var b = i === zones.length - 1 ? z.to : (z.to + zones[i + 1].from) / 2;
+            var active = zone === z;
+            return <path key={i} d={arc(a, b)} fill="none" stroke={z.color} strokeWidth={active ? 20 : 14} opacity={active ? 1 : 0.35} style={{ transition: 'all .3s ease' }} />;
+          })}
+          {ticks.map(function (t) {
+            var p = pt(t, R - 22);
+            return <text key={t} x={p[0]} y={p[1] + 3} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, fill: 'var(--text-dim)' }}>{t}</text>;
+          })}
+          <g style={{ transform: 'rotate(' + angle + 'deg)', transformOrigin: cx + 'px ' + cy + 'px', transition: 'transform .9s cubic-bezier(.34,1.4,.64,1)' }}>
+            <line x1={cx} y1={cy} x2={cx} y2={cy - R + 34} stroke="var(--text)" strokeWidth={3} strokeLinecap="round" />
+          </g>
+          <circle cx={cx} cy={cy} r={8} fill="var(--text)" />
+          <circle cx={cx} cy={cy} r={3} fill="var(--bg-card)" />
+        </svg>
+        <input type="range" min={0} max={max} step={props.step || 0.5} value={val} aria-label={props.inputLabel || 'Score'}
+               onChange={function (e) { setVal(parseFloat(e.target.value)); }} className="cad-range" style={{ accentColor: zone ? zone.color : BRAND }} />
+        <div className="cad-gauge-out">
+          <b style={{ color: zone ? zone.color : 'var(--text)' }}>{frNum(val, val % 1 ? 1 : 0)} / {max}</b>
+          <span>{zone ? zone.text : ''}</span>
+        </div>
+      </div>
+    );
+  }
+
+  Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily, CadLineChart: CadLineChart,
+    CadUseInView: useInView, CadCountUp: CadCountUp, CadDumbbell: CadDumbbell, CadWaffle: CadWaffle, CadHBars: CadHBars, CadColumns: CadColumns, CadGauge: CadGauge });
 })();

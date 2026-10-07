@@ -136,7 +136,7 @@
         .cad-statrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
         .cad-stat-big { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 18px 20px; }
         .cad-stat-big b { display: block; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: 34px; color: var(--text); line-height: 1; }
-        .cad-stat-big span { display: block; margin-top: 8px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); }
+        .cad-stat-big > span { display: block; margin-top: 8px; font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); }
         @media (max-width: 720px) { .cad-statrow { grid-template-columns: 1fr; } }
         .cad-note-src { margin-top: 12px; font-family: var(--font-body); font-size: 11px; color: var(--text-dim); line-height: 1.55; }
         .cad-tl { display: grid; gap: 16px; margin-top: 16px; }
@@ -158,6 +158,104 @@
           .cad-tl-age { margin-top: 0; }
         }
         .cad-reveal { margin-top: 14px; }
+        /* ── Démonstration v3 : figures, graphiques, piliers, sources ── */
+        .cad-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+        .cad-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+        @media (max-width: 980px) { .cad-grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 760px) { .cad-grid2, .cad-grid3 { grid-template-columns: minmax(0, 1fr); } }
+        .cad-fig { min-width: 0; display: flex; flex-direction: column; }
+        .cad-fig-k { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brand); margin-bottom: 4px; }
+        .cad-fig-t { font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.3; color: var(--text); margin: 0 0 14px; }
+        .cad-fig-c { font-family: var(--font-body); font-size: 12.5px; line-height: 1.55; color: var(--text-mid); margin-top: 12px; }
+        .cad-fig-c strong { color: var(--text); }
+        .cad-statrow--4 { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 980px) { .cad-statrow--4 { grid-template-columns: repeat(2, 1fr); } }
+        .cad-stat-big b { font-variant-numeric: tabular-nums; }
+        .cad-stat-big { position: relative; overflow: hidden; }
+        .cad-stat-big::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-gradient); }
+        .cad-fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .cad-fchip { padding: 6px 12px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text-mid); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; cursor: pointer; transition: all .15s; }
+        .cad-fchip[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); border-color: transparent; }
+        .cad-waffle-wrap { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+        .cad-waffle { display: grid; grid-template-columns: repeat(10, 15px); gap: 4px; flex: 0 0 auto; }
+        .cad-waffle i { width: 15px; height: 15px; border-radius: 4px; display: block; }
+        .cad-waffle-side { flex: 1; min-width: 150px; }
+        .cad-waffle-n { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: -0.03em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .cad-waffle-l { font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); margin-top: 6px; }
+        .cad-hbars { position: relative; }
+        .cad-hbar-row { position: absolute; left: 0; right: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr) 92px; align-items: center; gap: 12px; }
+        .cad-hbar-lab { font-family: var(--font-body); font-size: 13px; color: var(--text-mid); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cad-hbar-lab em { font-style: normal; font-family: var(--font-mono); font-size: 9.5px; color: var(--text-dim); margin-left: 6px; padding: 1px 5px; border: 1px solid var(--border-mid); border-radius: 4px; }
+        .cad-hbar-row.is-hl .cad-hbar-lab { color: var(--brand); font-weight: 700; }
+        .cad-hbar-row.is-region .cad-hbar-lab { font-style: italic; }
+        .cad-hbar-row:hover .cad-hbar-lab { color: var(--text); }
+        .cad-hbar-track { height: 12px; border-radius: 999px; background: rgba(128,140,160,0.14); overflow: hidden; }
+        .cad-hbar-fill { height: 100%; border-radius: 999px; }
+        .cad-hbar-val { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; }
+        .cad-hbar-ref { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed var(--brand); transition: opacity .6s ease .8s; }
+        .cad-hbar-ref span { position: absolute; top: -2px; left: 6px; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; color: var(--brand); white-space: nowrap; }
+        @media (max-width: 640px) { .cad-hbar-row { grid-template-columns: 104px minmax(0, 1fr) 64px; gap: 8px; } .cad-hbar-lab { font-size: 11.5px; } .cad-hbar-lab em { display: none; } }
+        .cad-cols { display: flex; align-items: stretch; gap: 10px; }
+        .cad-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .cad-col-area { flex: 1; display: flex; align-items: flex-end; border-bottom: 1px solid var(--border-mid); padding-top: 22px; }
+        .cad-col-bar { width: 100%; max-width: 64px; margin: 0 auto; border-radius: 8px 8px 2px 2px; position: relative; }
+        .cad-col-val { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -4px); font-family: var(--font-display); font-weight: 800; font-size: 14px; white-space: nowrap; }
+        .cad-col-lab { font-family: var(--font-body); font-size: 11.5px; line-height: 1.3; color: var(--text-mid); text-align: center; }
+        .cad-range { width: 100%; max-width: 360px; display: block; margin: 6px auto 0; }
+        .cad-gauge-out { text-align: center; margin-top: 10px; }
+        .cad-gauge-out b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 24px; }
+        .cad-gauge-out span { display: block; font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; color: var(--text-mid); margin-top: 4px; }
+        .cad-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+        @media (max-width: 980px) { .cad-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .cad-fact { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 14px; }
+        .cad-fact b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--text); letter-spacing: -0.02em; }
+        .cad-fact i { display: block; font-style: normal; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); margin-bottom: 6px; }
+        .cad-fact span { display: block; font-family: var(--font-body); font-size: 12px; line-height: 1.45; color: var(--text-mid); margin-top: 6px; }
+        .cad-pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+        @media (max-width: 1080px) { .cad-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 640px) { .cad-pillars { grid-template-columns: minmax(0, 1fr); } }
+        .cad-pillar { background: var(--bg-card); border: 1px solid var(--border-mid); border-top: 4px solid var(--pc, var(--brand)); border-radius: var(--radius-lg); padding: 18px; display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.22,1,.36,1); }
+        .cad-pillar.is-on { opacity: 1; transform: none; }
+        .cad-pillar h4 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--text); }
+        .cad-pillar .why { font-family: var(--font-body); font-size: 12.5px; color: var(--pc, var(--brand)); font-weight: 700; }
+        .cad-pillar p, .cad-pillar li { font-family: var(--font-body); font-size: 13px; line-height: 1.55; color: var(--text-mid); margin: 0; }
+        .cad-pillar ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+        .cad-pillar .dose { display: grid; gap: 6px; margin-top: auto; }
+        .cad-pillar .dose div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; background: var(--bg-card-2); border-radius: var(--radius-md); padding: 8px 10px; }
+        .cad-pillar .dose small { display: block; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-pillar .dose span { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.35; text-align: right; }
+        html.reduce-motion .cad-pillar, .cad-pillar.no-anim { opacity: 1; transform: none; transition: none; }
+        .cad-plan-tot { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 14px 0 10px; }
+        .cad-plan-tot b { font-family: var(--font-display); font-weight: 800; font-size: 40px; letter-spacing: -0.03em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+        .cad-plan-tot span { font-family: var(--font-body); font-size: 13px; color: var(--text-mid); }
+        .cad-stack { display: flex; height: 18px; border-radius: 999px; overflow: hidden; background: rgba(128,140,160,0.14); }
+        .cad-stack i { display: block; height: 100%; transition: width .9s cubic-bezier(.22,1,.36,1); }
+        .cad-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+        .cad-wday { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 10px 8px; min-height: 112px; display: flex; flex-direction: column; gap: 6px; }
+        .cad-wday > small { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-sess { border-radius: 8px; padding: 6px 7px; color: #fff; font-family: var(--font-body); font-size: 11.5px; font-weight: 600; line-height: 1.25; animation: cadPop .45s cubic-bezier(.22,1,.36,1) both; }
+        .cad-sess small { display: block; font-weight: 500; opacity: .9; font-size: 10.5px; }
+        .cad-rest { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); font-style: italic; }
+        @keyframes cadPop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+        @media (max-width: 760px) { .cad-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cad-wday { min-height: 0; } }
+        @media (prefers-reduced-motion: reduce) { .cad-pillar { opacity: 1; transform: none; transition: none; } .cad-sess { animation: none; } }
+        .cad-support { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+        @media (max-width: 760px) { .cad-support { grid-template-columns: minmax(0, 1fr); } }
+        .cad-support > div { background: var(--bg-card-2); border: 1px dashed var(--border-mid); border-radius: var(--radius-lg); padding: 16px 18px; }
+        .cad-support h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--text); }
+        .cad-support p { font-family: var(--font-body); font-size: 13px; line-height: 1.55; color: var(--text-mid); margin: 6px 0 0; }
+        .cad-support p strong { color: var(--text); }
+        .cad-tier { display: flex; align-items: center; gap: 10px; margin-top: 26px; font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-tier::after { content: ''; flex: 1; height: 1px; background: var(--border-mid); }
+        .cad-quote { margin: 18px 0 0; padding: 14px 18px; border-left: 3px solid var(--brand); background: var(--bg-card-2); border-radius: 0 var(--radius-md) var(--radius-md) 0; font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.5; color: var(--text); max-width: 920px; }
+        .cad-src { margin-top: 18px; border-top: 1px solid var(--border-mid); padding-top: 12px; }
+        .cad-src summary { cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--text-mid); list-style: none; }
+        .cad-src summary::-webkit-details-marker { display: none; }
+        .cad-src ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 5px; }
+        .cad-src li { font-family: var(--font-body); font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+        .cad-src a { color: var(--brand); text-decoration: none; word-break: break-word; }
+        .cad-src a:hover { text-decoration: underline; }
+        .cad-src .note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.5; }
         .cad-scrollcue { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
         @media (max-width: 640px) { .cad-preview-grid, .cad-two { grid-template-columns: 1fr !important; } .cad-preview-grid { justify-items: center; } .cad-stats { grid-template-columns: repeat(2, 1fr); } .cad-act-t { font-size: 22px; } .cad-act-lead { font-size: 16px; } .cad-manifesto { gap: 44px; } }
       `}</style>

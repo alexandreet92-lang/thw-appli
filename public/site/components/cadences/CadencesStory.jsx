@@ -114,83 +114,317 @@
     );
   }
 
-  function Sources() {
+
+  /* ── Sources : liste cliquable sous chaque acte ─────────────────────── */
+  function Sources(props) {
     return (
-      <div className="cad-note-src">
-        Courbes illustratives · moyennes de population. Repères : déclin du VO₂max environ deux fois plus lent chez
-        les athlètes masters que chez les sédentaires ; perte musculaire de 3 à 8 %/décennie après 30 ans ;
-        testostérone ~−1 %/an après 30 ; pic de densité osseuse vers 30 ans ; pratiquants de 57-80 ans à vie
-        conservant masse musculaire, immunité et cholestérol d’un jeune (≈ +9 ans d’âge biologique).
+      <details className="cad-src" open>
+        <summary>Sources et articles ({props.items.length}) ▾</summary>
+        <ol>
+          {props.items.map(function (s, i) {
+            return <li key={i}>{s.t}{s.u ? <span> — <a href={s.u} target="_blank" rel="noopener noreferrer">{s.u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</a></span> : null}</li>;
+          })}
+        </ol>
+        {props.note ? <p className="note">{props.note}</p> : null}
+      </details>
+    );
+  }
+
+  function Fig(props) {
+    return (
+      <div className={'cad-card cad-fig' + (props.className ? ' ' + props.className : '')} style={props.style}>
+        {props.k ? <div className="cad-fig-k">{props.k}</div> : null}
+        {props.t ? <div className="cad-fig-t">{props.t}</div> : null}
+        {props.children}
+        {props.c ? <div className="cad-fig-c">{props.c}</div> : null}
       </div>
     );
   }
 
-  // Constat générationnel — grands chiffres + comparaison + sources.
+  /* ════════ ACTE 1 — Le constat ════════ */
   var GEN_STATS = [
-    { n: '−15 %', l: 'd’endurance chez les enfants d’aujourd’hui, vs leurs parents au même âge' },
-    { n: '−16 %', l: 'de force de poigne chez les hommes de 20-34 ans, vs 1985' },
-    { n: '1 / 3', l: 'adulte dans le monde ne bouge pas assez (OMS, 2022)' },
+    { v: 17, pre: '−', suf: ' %', l: 'de force de poigne chez les hommes de 20-24 ans, par rapport à 1985' },
+    { v: 7.3, dec: 1, pre: '−', suf: ' %', l: 'd’endurance cardio chez les enfants entre 1981 et 2014' },
+    { v: 81, suf: ' %', l: 'des 11-17 ans dans le monde ne font pas leur heure d’activité par jour' },
+    { v: 31, suf: ' %', l: 'des adultes sous le minimum OMS en 2022, soit 1,8 milliard de personnes' },
   ];
   function StatCards() {
+    var CU = window.CadCountUp;
     return (
-      <div className="cad-statrow">
+      <div className="cad-statrow cad-statrow--4">
         {GEN_STATS.map(function (s, i) {
-          return <div key={i} className="cad-stat-big"><b>{s.n}</b><span>{s.l}</span></div>;
+          return <div key={i} className="cad-stat-big"><b>{CU ? <CU value={s.v} decimals={s.dec} prefix={s.pre} suffix={s.suf} /> : (s.pre || '') + s.v + s.suf}</b><span>{s.l}</span></div>;
         })}
       </div>
     );
   }
-  function GripBars() {
-    var PF = window.CadPointsByFamily;
-    return (
-      <div className="cad-card" style={{ maxWidth: 580 }}>
-        <div className="cad-h3" style={{ marginBottom: 12 }}>Force de poigne — homme 20-34 ans (kg)</div>
-        {PF ? <PF data={[{ label: '1985', pts: 53, color: '#94a3b8' }, { label: 'Aujourd’hui', pts: 44, color: '#00c8e0' }]} /> : null}
-      </div>
-    );
-  }
-  function SourcesGen() {
-    return (
-      <div className="cad-note-src">
-        Sources : endurance cardio-respiratoire des enfants −5 %/décennie depuis ~1970 et ≈ 15 % sous la génération
-        précédente (méta-analyses Tomkinson) ; force de poigne des hommes 20-34 ans ~117 lb en 1985 (≈ 53 kg) → ~98 lb
-        aujourd’hui (≈ 44 kg), soit ≈ −16 % (Journal of Hand Therapy) ; inactivité mondiale 23,4 % (2000) → 31,3 % (2022),
-        projetée ~35 % en 2030 (Lancet Global Health / OMS).
-      </div>
-    );
-  }
+
+  // Force de poigne (main droite, 20-24 ans) : normes 1985 vs mesures 2016
+  // (121 → 101 lb chez l'homme, ~70 → 60 lb chez la femme), converties en kg.
+  var GRIP = [
+    { label: 'Hommes', a: 54.9, b: 45.8 },
+    { label: 'Femmes', a: 31.8, b: 27.2 },
+  ];
+
+  // Inactivité des adultes : % insuffisamment actifs (critère OMS).
+  // Année indiquée sur chaque barre : 2022 (Strain 2024) ou 2016 (Guthold 2018).
+  var COUNTRIES = [
+    { key: 'kw', label: 'Koweït', value: 67, tag: '2016', group: 'Moyen-Orient' },
+    { key: 'in', label: 'Inde', value: 49.4, tag: '2022', group: 'Asie' },
+    { key: 'r-apac', label: 'Japon · Corée · Singapour', value: 48, tag: '2022', groups: ['Asie', 'Régions'], region: true, muted: true },
+    { key: 'br', label: 'Brésil', value: 47, tag: '2016', group: 'Amériques' },
+    { key: 'ph', label: 'Philippines', value: 46, tag: '2022', group: 'Asie' },
+    { key: 'pk', label: 'Pakistan', value: 45.7, tag: '2022', group: 'Asie' },
+    { key: 'r-sas', label: 'Asie du Sud', value: 45, tag: '2022', groups: ['Asie', 'Régions'], region: true, muted: true },
+    { key: 'us', label: 'États-Unis', value: 40, tag: '2016', group: 'Amériques' },
+    { key: 'ca', label: 'Canada', value: 37.2, tag: '2022', group: 'Amériques' },
+    { key: 'uk', label: 'Royaume-Uni', value: 35.9, tag: '2016', group: 'Europe' },
+    { key: 'fr', label: 'France', value: 29, tag: '2016', group: 'Europe', hl: true },
+    { key: 'r-west', label: 'Occident riche', value: 28, tag: '2022', groups: ['Europe', 'Amériques', 'Océanie', 'Régions'], region: true, muted: true },
+    { key: 'r-afr', label: 'Afrique (région OMS)', value: 16, tag: '2022', groups: ['Afrique', 'Régions'], region: true, muted: true },
+    { key: 'cn', label: 'Chine', value: 14, tag: '2016', group: 'Asie' },
+    { key: 'r-oce', label: 'Océanie (îles)', value: 14, tag: '2022', groups: ['Océanie', 'Régions'], region: true, muted: true },
+    { key: 'de', label: 'Allemagne', value: 12, tag: '2022', group: 'Europe' },
+  ];
+  var COUNTRY_GROUPS = ['Tous', 'Europe', 'Amériques', 'Asie', 'Moyen-Orient', 'Afrique', 'Océanie', 'Régions'];
+
   function InactivityTrend() {
     var LC = window.CadLineChart;
     return (
-      <div className="cad-card">
-        <div className="cad-h3" style={{ marginBottom: 8 }}>Adultes qui ne bougent pas assez — dans le monde (%)</div>
-        {LC ? <LC xUnit="" series={[{ key: 'ina', label: 'Inactivité', color: '#ef4444', endLabel: '≈35 %', points: [[2000, 23.4], [2010, 26.4], [2016, 27.5], [2022, 31.3], [2030, 35]] }]}
-                  markers={[{ x: 2022, y: 31.3, color: '#ef4444', label: '31 % (2022)', below: true }]}
+      <Fig k="Le monde" t="Adultes qui ne bougent pas assez (%)"
+           c={<span>+8 points en 22 ans. Si rien ne change, <strong>~35 % en 2030</strong> : l’objectif OMS de baisse de 15 % est hors d’atteinte.</span>}>
+        {LC ? <LC xUnit="" draw={true} hover={true} cursorLabel="Année" height={240}
+                  series={[{ key: 'ina', label: 'Inactivité', color: '#ef4444', points: [[2000, 23.4], [2010, 26.4], [2016, 27.5], [2022, 31.3], [2030, 35]] }]}
+                  markers={[{ x: 2000, y: 23.4, color: '#ef4444', label: '23 %', below: true }, { x: 2022, y: 31.3, color: '#ef4444', label: '31 %', below: true }]}
                   xDomain={[2000, 2030]} xTicks={[2000, 2010, 2020, 2030]} yDomain={[0, 40]} yTicks={[0, 10, 20, 30, 40]}
                   aria="Inactivité physique mondiale 2000-2030" /> : null}
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>La tendance monte : +8 points depuis 2000, projetée à ~35 % en 2030.</div>
-      </div>
+      </Fig>
     );
   }
+  function KidsTrend() {
+    var LC = window.CadLineChart;
+    return (
+      <Fig k="Les enfants" t="Endurance cardio des enfants (indice 100 = 1981)"
+           c={<span>965 000 enfants, 19 pays : <strong>−7,3 % en 33 ans</strong>. La baisse a été la plus rapide avant 2000, puis a ralenti — sans jamais s’inverser.</span>}>
+        {LC ? <LC xUnit="" draw={true} hover={true} cursorLabel="Année" height={240}
+                  series={[{ key: 'crf', label: 'Endurance', color: '#00c8e0', endLabel: '−7,3 %', points: [[1981, 100], [2014, 92.7]] }]}
+                  markers={[{ x: 1981, y: 100, color: '#00c8e0', label: '100', below: true }, { x: 2014, y: 92.7, color: '#00c8e0', label: '92,7', below: true }]}
+                  xDomain={[1980, 2015]} xTicks={[1980, 1990, 2000, 2010]} yDomain={[88, 101]} yTicks={[88, 92, 96, 100]}
+                  aria="Endurance cardio-respiratoire des enfants 1981-2014" /> : null}
+      </Fig>
+    );
+  }
+
+  var SRC_CONSTAT = [
+    { t: 'Fain & Weatherford, « Comparative study of millennials’ grip and lateral pinch with the norms », Journal of Hand Therapy, 2016 (237 personnes de 20-34 ans)', u: 'https://www.wgbh.org/news/2016-06-13/millennials-may-be-losing-their-grip' },
+    { t: 'Tomkinson et al., « Temporal trends in the cardiorespiratory fitness of children and adolescents », British Journal of Sports Medicine, 2019 (965 264 jeunes, 19 pays, 1981-2014)', u: 'https://bjsm.bmj.com/content/53/8/478' },
+    { t: 'Tomkinson — les enfants ~15 % moins endurants que leurs parents (Université d’Australie-Méridionale)', u: 'https://www.unisa.edu.au/Media-Centre/Releases/2018/Is-the-tide-turning-for-kids-fitness' },
+    { t: 'Guthold et al., « Global trends in insufficient physical activity among adolescents », Lancet Child & Adolescent Health, 2019 (1,6 M d’élèves, 146 pays)', u: 'https://www.thelancet.com/journals/lanchi/article/PIIS2352-4642(19)30323-2/fulltext' },
+    { t: 'Strain et al., « National, regional, and global trends in insufficient physical activity among adults from 2000 to 2022 », Lancet Global Health, 2024 (507 enquêtes, 5,7 M de personnes)', u: 'https://www.thelancet.com/journals/langlo/article/PIIS2214-109X(24)00150-5/fulltext' },
+    { t: 'OMS — « Nearly 1.8 billion adults at risk of disease from not doing enough physical activity » (régions 2022), 26 juin 2024', u: 'https://www.who.int/news/item/26-06-2024-nearly-1.8-billion-adults-at-risk-of-disease-from-not-doing-enough-physical-activity' },
+    { t: 'Guthold et al., « Worldwide trends in insufficient physical activity from 2001 to 2016 », Lancet Global Health, 2018 (168 pays — valeurs 2016)', u: 'https://www.thelancet.com/journals/langlo/article/PIIS2214-109X(18)30357-7/fulltext' },
+    { t: 'Inde : 22,3 % (2000) → 49,4 % (2022), d’après Strain 2024', u: 'https://thesouthfirst.com/south-shots/half-of-indian-adult-population-lacks-physical-activity-lancet-study/' },
+    { t: 'Philippines : 46 % (2022), d’après Strain 2024', u: 'https://tribune.net.ph/2024/06/26/sedentary-world' },
+    { t: 'Canada : 37,2 % (2022), contre 25,6 % en 2000', u: 'https://globalnews.ca/news/10587001/physical-inactivity-who-report-canada' },
+    { t: 'Allemagne : 12 % (2022), l’un des rares pays en bonne voie', u: 'https://www.apotheken-umschau.de/news/die-menschen-sind-faul-die-deutschen-nicht-1117885.html' },
+    { t: 'Afrique (région OMS) : 16 % (2022)', u: 'https://africanews.com/2024/06/27/one-third-of-adults-worldwide-at-risk-of-disease-from-not-doing-enough-physical-activity/' },
+    { t: 'Pentagone, Qualified Military Available Study 2020 : 77 % des 17-24 ans inaptes sans dérogation', u: 'https://www.moaa.org/content/publications-and-media/news-articles/2022-news-articles/new-study-finds-even-more-young-americans-are-unfit-to-serve/' },
+  ];
+
+  /* ════════ ACTE 2 — Ce que ça coûte ════════ */
   function MortalityBars() {
-    var PF = window.CadPointsByFamily;
+    var COLS = window.CadColumns;
     return (
-      <div className="cad-card">
-        <div className="cad-h3" style={{ marginBottom: 12 }}>Risque de mortalité selon le niveau cardio (× vs élite)</div>
-        {PF ? <PF data={[{ label: 'Élite', pts: 0.2, color: '#22c55e' }, { label: 'Au-dessus', pts: 1, color: '#84cc16' }, { label: 'En-dessous', pts: 1.4, color: '#f59e0b' }, { label: 'Faible', pts: 5, color: '#ef4444' }]} /> : null}
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>Un cardio faible = <strong style={{ color: 'var(--text)' }}>×5 de risque de mortalité</strong> vs un cardio d’élite (JAMA, 122 000 personnes).</div>
+      <Fig k="Le cardio" t="Risque de décès selon le niveau d’endurance (× vs élite)"
+           c={<span>122 007 patients testés sur tapis : un cardio faible = <strong>×5 de risque</strong> par rapport à l’élite. Aucun autre facteur suivi (tabac, diabète, tension) ne pesait autant.</span>}>
+        {COLS ? <COLS data={[{ label: 'Cardio élite', value: 1, display: '×1 (réf.)', color: '#22c55e' }, { label: 'Cardio faible', value: 5.04, display: '×5', hl: true }]} max={5.04} color="#ef4444" height={200} aria="Risque de décès : cardio faible contre élite" /> : null}
+      </Fig>
+    );
+  }
+  var AREM = [
+    { label: 'Inactif', value: 0, display: 'réf.' },
+    { label: '< 1×', value: 20, display: '−20 %' },
+    { label: '1-2×', value: 31, display: '−31 %' },
+    { label: '2-3×', value: 37, display: '−37 %' },
+    { label: '3-5×', value: 39, display: '−39 %', hl: true },
+    { label: '≥ 10×', value: 31, display: '−31 %' },
+  ];
+  var PUSHUPS = [
+    { label: 'Moins de 10 pompes', value: 100, display: 'référence' },
+    { label: 'Plus de 40 pompes', value: 4, display: '−96 %', hl: true },
+  ];
+  var SITRISE = [
+    { from: 0, to: 3, color: '#ef4444', text: 'Risque de décès ≈ ×5,4 par rapport au groupe 8-10.' },
+    { from: 3.5, to: 5.5, color: '#f59e0b', text: 'Risque de décès ≈ ×3,4 par rapport au groupe 8-10.' },
+    { from: 6, to: 7.5, color: '#eab308', text: 'Risque de décès ≈ ×1,8 par rapport au groupe 8-10.' },
+    { from: 8, to: 10, color: '#22c55e', text: 'Groupe de référence : le risque le plus bas.' },
+  ];
+  var SRC_COUT = [
+    { t: 'Mandsager et al., « Association of cardiorespiratory fitness with long-term mortality », JAMA Network Open, 2018 (122 007 patients)', u: 'https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2707428' },
+    { t: 'Leong et al., « Prognostic value of grip strength » (étude PURE), The Lancet, 2015 (≈ 140 000 adultes, 17 pays)', u: 'https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(14)62000-6/fulltext' },
+    { t: 'Yang et al., « Association between push-up exercise capacity and future cardiovascular events », JAMA Network Open, 2019 (1 104 pompiers, 10 ans)', u: 'https://hsph.harvard.edu/news/push-up-capacity-cardiovascular-disease-events-men' },
+    { t: 'Harvard Gazette — « Pushup capacity may be inexpensive way to assess cardiovascular disease risk »', u: 'https://content.news.harvard.edu/gazette/story/2019/02/pushup-capacity-may-be-inexpensive-way-to-assess-cardiovascular-disease-risk/' },
+    { t: 'Araújo et al., « Ability to sit and rise from the floor as a predictor of all-cause mortality », European Journal of Preventive Cardiology (2 002 adultes de 51-80 ans)', u: 'https://www.sciencedaily.com/releases/2012/12/121213085202.htm' },
+    { t: 'Arem et al., « Leisure time physical activity and mortality: a detailed pooled analysis of the dose-response relationship », JAMA Internal Medicine, 2015 (661 137 personnes)', u: 'https://ascopost.com/issues/may-25-2015/just-engaging-in-some-leisure-time-physical-activity-reduces-overall-and-cancer-specific-mortality' },
+    { t: 'BMJ Heart blog — « Relationship between physical activity and mortality » (Arem 2015)', u: 'https://blogs.bmj.com/heart/2015/05/05/relationship-between-physical-activity-and-mortality/' },
+    { t: 'Momma et al., « Muscle-strengthening activities are associated with lower risk and mortality », British Journal of Sports Medicine, 2022 (méta-analyse)', u: 'https://bjsm.bmj.com/content/56/13/755' },
+    { t: 'OMS — Rapport mondial sur l’activité physique 2022 : ~500 M de nouveaux cas évitables d’ici 2030, ~27 Md$ par an', u: 'https://www.who.int/news/item/19-10-2022-who-highlights-high-cost-of-physical-inactivity-in-first-ever-global-report' },
+  ];
+
+  /* ════════ ACTE 3 — Comment le corps vieillit ════════ */
+  var DECLINE = [
+    { key: 'testo', label: 'Testostérone', value: 10, display: '≈ −10 %' },
+    { key: 'vo2', label: 'VO₂max (sédentaire)', value: 10, display: '≈ −10 %' },
+    { key: 'pow', label: 'Puissance de saut', value: 9.5, display: '−9,5 %' },
+    { key: 'spr', label: 'Vitesse de sprint', value: 5.5, display: '−5 à 6 %' },
+    { key: 'mus', label: 'Masse musculaire', value: 5.5, display: '−3 à 8 %' },
+  ];
+  var FACTS = [
+    { k: 'Muscle', n: '−3 à 8 %', l: 'de masse par décennie dès 30 ans, plus vite après 60.' },
+    { k: 'VO₂max', n: '≈ −10 %', l: 'par décennie chez le sédentaire — environ moitié moins chez l’entraîné.' },
+    { k: 'Puissance', n: 'en 1er', l: 'Les fibres rapides partent avant la force : on perd le « jus » avant le « moteur ».' },
+    { k: 'Os', n: 'pic ~30 ans', l: 'Ensuite on ne fait que préserver — d’où l’intérêt de charger tôt et longtemps.' },
+    { k: 'Hormones', n: '≈ −1 %/an', l: 'de testostérone après 30-40 ans ; chute brutale des œstrogènes à la ménopause.' },
+  ];
+  var SRC_AGE = [
+    { t: 'Why are masters sprinters slower than their younger counterparts? (sprint −5 à 6 %/décennie, 17-88 ans)', u: 'https://pure.ul.ie/en/publications/why-are-masters-sprinters-slower-than-their-younger-counterparts-/' },
+    { t: 'Étude longitudinale sur 10 ans de sprinteurs masters : puissance de saut −9,5 % (Université de Jyväskylä)', u: 'https://jyx.jyu.fi/handle/123456789/101704' },
+    { t: 'Déclin du VO₂max : athlètes masters vs sédentaires (environ deux fois plus lent chez l’entraîné)', u: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9517884/' },
+    { t: 'Speed training for veterans — pourquoi la vitesse et la puissance partent en premier', u: 'https://www.sportsperformancebulletin.com/training/masters/speed-training-for-veterans-how-to-combat-the-decline-of-speed-and-power' },
+  ];
+
+  /* ════════ ACTE 4 — Pas une fatalité ════════ */
+  var SRC_MAIS = [
+    { t: 'Déclin du VO₂max environ deux fois plus lent chez les athlètes masters', u: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9517884/' },
+    { t: 'Duggal et al., Aging Cell, 2018 — cyclistes de 55-79 ans pratiquant à vie : immunité et profil d’un adulte jeune', u: 'https://doi.org/10.1111/acel.12750' },
+  ];
+
+  /* ════════ ACTE 7 — Que faire concrètement ════════ */
+  var PILLARS = [
+    { key: 'force', name: 'Force', color: COL.muscle, why: 'Le muscle, c’est ton assurance-vie.',
+      what: 'Soulever lourd et maîtriser ton poids de corps.',
+      ex: ['Charges : squat, soulevé de terre, développé, rowing, fentes', 'Poids du corps : pompes, tractions, dips, gainage', '3 à 5 séries de 5 à 12 répétitions, proche de l’échec'],
+      min: '2 séances · 60 min', ideal: '3 séances · 2 h' },
+    { key: 'vit', name: 'Vitesse & explosivité', color: COL.brain, why: 'Ce qui part en premier.',
+      what: 'Aller vite, changer de rythme, sauter.',
+      ex: ['Sprints : 6 à 10 × 10-30 m, récupération complète', 'Changements de rythme (fartlek), côtes courtes', 'Sauts : bonds, sauts pieds joints, box jumps, corde'],
+      min: '1 bloc · 15 min', ideal: '2 blocs · 30 min' },
+    { key: 'end', name: 'Endurance', color: COL.vo2, why: 'Le cœur, premier prédicteur de longévité.',
+      what: 'Course, vélo, natation, rameur, marche rapide.',
+      ex: ['80 % du temps en aisance (tu peux parler)', '20 % plus dur : fractionné, seuil', 'Une sortie longue le week-end'],
+      min: '150 min modéré', ideal: '240 min, dont 1-2 séances intenses' },
+    { key: 'mob', name: 'Souplesse & mobilité', color: COL.os, why: 'Garder l’amplitude, éviter les blessures.',
+      what: 'Étirements et mobilité articulaire.',
+      ex: ['Hanches, épaules, chevilles, colonne', '30-60 s par groupe musculaire', 'Idéal en fin de séance ou le soir'],
+      min: '2 × 10 min', ideal: '5 × 10 min' },
+  ];
+  var PCOL = { force: COL.muscle, vit: COL.brain, end: COL.vo2, mob: COL.os };
+  var PNAME = { force: 'Force', vit: 'Vitesse', end: 'Endurance', mob: 'Mobilité' };
+  var WEEK = {
+    min: [
+      [{ p: 'force', m: 30, t: 'Force — haut + bas' }],
+      [{ p: 'end', m: 50, t: 'Footing / vélo' }],
+      [{ p: 'mob', m: 10, t: 'Mobilité' }],
+      [{ p: 'force', m: 30, t: 'Force — poids du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      [],
+      [{ p: 'end', m: 50, t: 'Endurance' }, { p: 'vit', m: 15, t: 'Sprints + sauts' }],
+      [{ p: 'end', m: 50, t: 'Sortie tranquille' }],
+    ],
+    ideal: [
+      [{ p: 'force', m: 40, t: 'Force — bas du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      [{ p: 'end', m: 60, t: 'Fractionné' }, { p: 'vit', m: 15, t: 'Sprints' }],
+      [{ p: 'force', m: 40, t: 'Force — haut du corps' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      [{ p: 'end', m: 60, t: 'Endurance' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      [{ p: 'force', m: 40, t: 'Force — complet' }, { p: 'vit', m: 15, t: 'Sauts + côtes' }],
+      [{ p: 'end', m: 90, t: 'Sortie longue' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+      [{ p: 'end', m: 30, t: 'Récup active' }, { p: 'mob', m: 10, t: 'Mobilité' }],
+    ],
+  };
+  var DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  function fmtH(min) { var h = Math.floor(min / 60), m = min % 60; return h + ' h ' + (m < 10 ? '0' : '') + m; }
+
+  function Pillars() {
+    var hook = window.CadUseInView;
+    var iv = hook ? hook({ threshold: 0.15 }) : [null, true];
+    return (
+      <div ref={iv[0]} className="cad-pillars">
+        {PILLARS.map(function (p, i) {
+          return (
+            <div key={p.key} className={'cad-pillar' + (iv[1] ? ' is-on' : '')} style={{ '--pc': p.color, transitionDelay: (i * 120) + 'ms' }}>
+              <h4>{p.name}</h4>
+              <div className="why">{p.why}</div>
+              <p>{p.what}</p>
+              <ul>{p.ex.map(function (e, j) { return <li key={j}>{e}</li>; })}</ul>
+              <div className="dose">
+                <div><small>Minimum</small><span>{p.min}</span></div>
+                <div><small>Idéal</small><span>{p.ideal}</span></div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   }
-  function SourcesCout() {
+
+  function WeekPlanner() {
+    var ms = React.useState('min'); var mode = ms[0], setMode = ms[1];
+    var hook = window.CadUseInView;
+    var iv = hook ? hook({ threshold: 0.25 }) : [null, true];
+    var week = WEEK[mode];
+    var tot = { force: 0, vit: 0, end: 0, mob: 0 };
+    week.forEach(function (d) { d.forEach(function (s) { tot[s.p] += s.m; }); });
+    var all = tot.force + tot.vit + tot.end + tot.mob;
+    var SCALE = 480;
     return (
-      <div className="cad-note-src">
-        Sources : cardio faible vs élite = HR 5,04 de mortalité toutes causes, +1 MET ≈ −13 % (Mandsager, JAMA Open 2018,
-        122 007 patients) ; chaque −5 kg de force de poigne = +16 % de mortalité, meilleur prédicteur que la tension systolique
-        (Leong, Lancet 2015, PURE, 140 000 adultes).
+      <div ref={iv[0]} className="cad-card" style={{ marginTop: 18 }}>
+        <div style={{ display: 'flex', gap: 8, maxWidth: 320 }}>
+          <button type="button" className="cad-pill" aria-pressed={mode === 'min'} onClick={function () { setMode('min'); }}>Minimum</button>
+          <button type="button" className="cad-pill" aria-pressed={mode === 'ideal'} onClick={function () { setMode('ideal'); }}>Idéal</button>
+        </div>
+        <div className="cad-plan-tot">
+          <b>{fmtH(all)}</b>
+          <span>par semaine · {mode === 'min' ? 'pour rester en bonne santé et garder ses qualités' : 'pour être en très bonne forme, à tout âge'}</span>
+        </div>
+        <div className="cad-stack" role="img" aria-label={'Répartition hebdomadaire : ' + fmtH(all)}>
+          {['force', 'vit', 'end', 'mob'].map(function (k) {
+            return <i key={k} style={{ width: (iv[1] ? tot[k] / SCALE * 100 : 0) + '%', background: PCOL[k] }}></i>;
+          })}
+        </div>
+        <div className="cad-legend">
+          {['force', 'vit', 'end', 'mob'].map(function (k) {
+            return <span key={k}><i style={{ background: PCOL[k] }}></i>{PNAME[k]} · {tot[k]} min</span>;
+          })}
+        </div>
+        <div className="cad-week">
+          {week.map(function (d, i) {
+            return (
+              <div key={mode + i} className="cad-wday">
+                <small>{DAYS[i]}</small>
+                {d.length ? d.map(function (s, j) {
+                  return <div key={j} className="cad-sess" style={{ background: PCOL[s.p], animationDelay: (i * 60 + j * 40) + 'ms' }}>{s.t}<small>{s.m} min</small></div>;
+                }) : <span className="cad-rest">Repos</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="cad-fig-c">
+          {mode === 'min'
+            ? <span>C’est le plancher OMS (150 min d’endurance + 2 séances de renfort), complété par un peu de vitesse et de mobilité — les deux qualités que personne ne travaille et qui partent en premier.</span>
+            : <span>L’endurance passe à 4 h, dont 1-2 séances intenses qui <strong>comptent double</strong> pour l’OMS ; la force passe à 3 séances, la vitesse à 2 blocs. Tu te rapproches de la zone où le bénéfice sur la mortalité plafonne (3-5× le minimum, −39 %).</span>}
+        </div>
       </div>
     );
   }
+
+  var SRC_FAIRE = [
+    { t: 'OMS — Lignes directrices 2020 : 150-300 min d’activité modérée (ou 75-150 min intense) + renforcement musculaire ≥ 2 jours/semaine', u: 'https://www.who.int/news-room/fact-sheets/detail/physical-activity' },
+    { t: 'Arem et al., JAMA Internal Medicine, 2015 — bénéfice maximal à 3-5× le minimum', u: 'https://blogs.bmj.com/heart/2015/05/05/relationship-between-physical-activity-and-mortality/' },
+    { t: 'Momma et al., BJSM, 2022 — 30-60 min/semaine de renforcement : −10 à −20 % de mortalité ; le combiné force + endurance fait mieux', u: 'https://bjsm.bmj.com/content/56/13/755' },
+    { t: 'Garber et al., ACSM Position Stand, Medicine & Science in Sports & Exercise, 2011 — souplesse ≥ 2-3 jours/semaine', u: 'https://pubmed.ncbi.nlm.nih.gov/21694556/' },
+    { t: 'Sprinteurs masters : la vitesse et la puissance partent en premier', u: 'https://pure.ul.ie/en/publications/why-are-masters-sprinters-slower-than-their-younger-counterparts-/' },
+    { t: 'Cappuccio et al., « Sleep duration and all-cause mortality », Sleep, 2010 (1,38 M de personnes, 16 études)', u: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC2864873/' },
+    { t: 'Morton et al., « Protein supplementation and resistance training », British Journal of Sports Medicine, 2018 (49 essais, 1 863 participants)', u: 'https://bjsm.bmj.com/content/52/6/376' },
+  ];
 
   function Act(props) {
     var head = (
@@ -203,13 +437,16 @@
     );
     if (props.media) {
       return (
-        <section className="cad-act cad-act--split">
-          <div className="cad-act-col">{head}</div>
-          <div className="cad-act-media">{props.media}</div>
+        <section className="cad-act">
+          <div className="cad-act--split">
+            <div className="cad-act-col">{head}</div>
+            <div className="cad-act-media">{props.media}</div>
+          </div>
+          {props.after || null}
         </section>
       );
     }
-    return <section className="cad-act">{head}</section>;
+    return <section className="cad-act">{head}{props.after || null}</section>;
   }
 
   function CadManifesto(props) {
@@ -217,38 +454,88 @@
     var ov = React.useState(false); var open = ov[0], setOpen = ov[1];
     var rpv = React.useState(0); var rp = rpv[0], setRp = rpv[1];
     var sys = sex === 'F' ? SYS_F : SYS_M;
-    var LC = window.CadLineChart;
+    var LC = window.CadLineChart, DB = window.CadDumbbell, WF = window.CadWaffle, HB = window.CadHBars, COLS = window.CadColumns, GA = window.CadGauge;
 
     return (
       <div className="cad-manifesto">
-        {/* 1. Le constat générationnel */}
-        <Act eye="Le constat" title="On vit plus vieux. Pas plus fort.">
-          <p className="cad-act-p">On n’a jamais vécu aussi longtemps. Et pourtant, en une seule génération, le <strong>niveau physique moyen a reculé</strong> — chez les enfants comme chez les adultes.</p>
+        {/* 1. Le constat */}
+        <Act eye="Le constat" title="On vit plus vieux. Pas plus fort."
+             lead={<span>On n’a jamais vécu aussi longtemps. Et on n’a jamais été aussi peu capables physiquement. Ce n’est pas un « c’était mieux avant » : <strong>c’est mesuré, sur des millions de personnes, dans des dizaines de pays.</strong></span>}>
           <StatCards />
-          <p className="cad-act-p">Les enfants d’aujourd’hui mettent <strong>~1 min 30 de plus</strong> pour courir un kilomètre que leurs parents au même âge. Leur endurance baisse d’<strong>environ 5 % par décennie</strong> depuis les années 70 ; ils sont <strong>~15 % moins endurants</strong>. Plus grands, plus lourds — mais plus faibles : <strong>−10 %</strong> de force de poigne chez un garçon de 12 ans entre 1981 et 2007.</p>
-          <p className="cad-act-p">Chez l’adulte, même pente : un homme de 20-34 ans a <strong>~16 % de poigne en moins</strong> qu’en 1985. Et <strong>1 adulte sur 3</strong> dans le monde ne bouge pas assez — un chiffre qui grimpe encore.</p>
-          <GripBars />
-          <InactivityTrend />
-          <p className="cad-act-p">Le pire ? On mesure tout — poids, tension, cholestérol — <strong>sauf</strong> notre condition physique. On ne sait pas vraiment où on en est. <strong>CADENCES comble ce trou.</strong></p>
-          <SourcesGen />
+
+          <p className="cad-act-p"><strong>Les adultes d’abord.</strong> En 2016, des chercheurs américains ont refait les mesures de force de poigne de 1985 sur des jeunes de 20 à 34 ans. Résultat : un homme de 20-24 ans serre aujourd’hui <strong>environ 46 kg</strong>, contre <strong>55 kg</strong> pour son père au même âge. Les femmes ont suivi la même pente. La poigne n’est pas un détail de laboratoire : c’est un <strong>indicateur de la force de tout le corps</strong> — et, on va le voir, de l’espérance de vie.</p>
+          <div className="cad-grid2">
+            <Fig k="La force" t="Force de poigne, 20-24 ans (kg, main droite)"
+                 c={<span>Plus grands, plus lourds — et pourtant plus faibles. La différence vient du mode de vie : moins de travail manuel, moins de jeu dehors, plus d’écrans.</span>}>
+              {DB ? <DB rows={GRIP} domain={[20, 60]} unit="kg" aLabel="1985" bLabel="2016" aria="Force de poigne 1985 contre 2016" /> : null}
+            </Fig>
+            <KidsTrend />
+          </div>
+
+          <p className="cad-act-p"><strong>Les enfants ensuite.</strong> Leur endurance baisse d’environ <strong>5 % par décennie</strong> depuis les années 70. Un enfant d’aujourd’hui est <strong>~15 % moins endurant</strong> que ses parents au même âge : sur 1,6 km, ça représente <strong>environ 1 min 30 de plus</strong>. Et à l’adolescence, le décrochage s’installe : dans le monde, <strong>4 ados sur 5</strong> ne font pas l’heure d’activité quotidienne recommandée — les filles encore plus que les garçons.</p>
+          <div className="cad-grid2">
+            <Fig k="Les ados" t="11-17 ans qui ne bougent pas assez (sur 100)"
+                 c={<span>1,6 million d’élèves dans 146 pays. De 66 % au Bangladesh à 94 % en Corée du Sud : <strong>aucun pays</strong> n’a une majorité d’ados assez actifs.</span>}>
+              {WF ? <WF caption="n’atteignent pas 60 min d’activité par jour" options={[{ label: 'Tous', value: 81 }, { label: 'Filles', value: 85 }, { label: 'Garçons', value: 78 }]} /> : null}
+            </Fig>
+            <InactivityTrend />
+          </div>
+
+          <p className="cad-act-p"><strong>Et partout dans le monde.</strong> Près d’<strong>1 adulte sur 3</strong> n’atteint pas le minimum OMS (150 min d’activité modérée par semaine). Les pays riches et urbanisés ne sont pas épargnés, au contraire : en Asie-Pacifique riche (Japon, Corée, Singapour), c’est presque un adulte sur deux. En Inde, la part d’adultes insuffisamment actifs a <strong>plus que doublé</strong> en 22 ans (22 % → 49 %). Au Koweït, en Arabie saoudite ou en Irak, c’est plus d’un adulte sur deux. À l’inverse, l’Allemagne fait figure d’exception (12 %), et l’Afrique et l’Océanie restent les régions les plus actives.</p>
+          <Fig k="Tous les continents" t="Adultes insuffisamment actifs, par pays et par région (%)" style={{ marginTop: 18 }}
+               c={<span>Filtre par continent ; survole une barre pour voir son rang. Chaque barre porte l’<strong>année de l’estimation OMS</strong> : 2022 (dernière vague, 197 pays) ou 2016 (vague précédente, 168 pays) quand la valeur 2022 du pays n’est pas publiée en accès libre. Les barres grises en italique sont des moyennes régionales. La ligne pointillée : moyenne mondiale 2022.</span>}>
+            {HB ? <HB data={COUNTRIES} groups={COUNTRY_GROUPS} refLine={{ value: 31.3, label: 'Monde 31 %' }} max={70} unit=" %" /> : null}
+          </Fig>
+
+          <p className="cad-act-p">Conséquence très concrète : aux États-Unis, <strong>77 % des 17-24 ans</strong> ne pourraient pas entrer dans l’armée sans dérogation — surpoids, condition physique, santé. Six points de plus qu’en 2017.</p>
+          <div className="cad-callrow">
+            <div className="cad-callout-big"><b>77 %</b><span>des jeunes Américains inaptes au service militaire sans dérogation (Pentagone, 2020)</span></div>
+            <div className="cad-callout-big"><b>×2,2</b><span>d’adultes inactifs en Inde entre 2000 et 2022 (22 % → 49 %)</span></div>
+            <div className="cad-callout-big"><b>~35 %</b><span>d’adultes inactifs dans le monde en 2030 si la tendance continue</span></div>
+          </div>
+          <p className="cad-act-p">Le pire ? On mesure tout — poids, tension, cholestérol — <strong>sauf</strong> notre condition physique. On ne sait pas vraiment où on en est. Or, c’est elle qui décide de la suite.</p>
+          <Sources items={SRC_CONSTAT} />
         </Act>
 
         {/* 2. Ce que ça coûte */}
         <Act eye="Ce que ça coûte" title="La condition physique, c’est de la santé mesurable."
-             lead={<span>Le VO₂max et la force comptent parmi les <strong>meilleurs prédicteurs</strong> de santé, d’autonomie et de longévité — souvent plus que les examens de routine.</span>}
-             media={<MortalityBars />}>
-          <p className="cad-act-p">Pourtant, on surveille son poids, sa tension, son cholestérol… presque jamais sa condition physique. On navigue à l’aveugle.</p>
-          <div className="cad-callrow">
-            <div className="cad-callout-big"><b>−13 %</b><span>de mortalité par +1 MET de cardio gagné</span></div>
-            <div className="cad-callout-big"><b>+16 %</b><span>de mortalité par −5 kg de force de poigne</span></div>
+             lead={<span>Le cardio et la force sont parmi les <strong>meilleurs prédicteurs</strong> de santé, d’autonomie et de longévité — souvent plus que les examens de routine. Et quelques exercices simples suffisent à les lire.</span>}>
+          <p className="cad-act-p"><strong>Le cardio, d’abord.</strong> À la Cleveland Clinic, 122 007 patients ont passé un test d’effort, puis ont été suivis pendant des années. Les moins endurants avaient <strong>5 fois plus de risque de mourir</strong> que les plus endurants — un écart comparable, voire supérieur, à celui du tabac, du diabète ou de la maladie coronarienne. Chaque palier de forme gagné (+1 MET) ≈ <strong>−13 % de mortalité</strong>. Et il n’y a pas de plafond : l’élite fait mieux que les « bons ».</p>
+          <p className="cad-act-p"><strong>La dose compte — mais pas besoin d’être un marathonien.</strong> Sur 661 137 personnes, faire ne serait-ce qu’<em>un peu</em> d’activité réduit déjà le risque de 20 %. Atteindre le minimum OMS : −31 %. Le bénéfice plafonne vers <strong>3 à 5 fois le minimum</strong> (−39 %) — environ 2 h 15 de course ou 7 h de marche rapide par semaine. Au-delà, aucun danger, mais plus de gain.</p>
+          <div className="cad-grid2">
+            <MortalityBars />
+            <Fig k="La dose" t="Baisse du risque de décès selon l’activité (× minimum OMS)"
+                 c={<span>Le gros du bénéfice arrive <strong>dès qu’on s’y met</strong>. La zone 3-5× est l’optimum : on y revient dans « Que faire concrètement ».</span>}>
+              {COLS ? <COLS data={AREM} max={45} aria="Baisse du risque de décès selon la dose d'activité" /> : null}
+            </Fig>
           </div>
-          <p className="cad-act-p"><strong>Le VO₂max est le meilleur prédicteur de longévité</strong> — devant le poids, la tension, le cholestérol et le tabac. CADENCES donne enfin ce chiffre, à suivre dans le temps.</p>
-          <SourcesCout />
+
+          <p className="cad-act-p"><strong>La force, ensuite.</strong> Dans l’étude PURE (≈ 140 000 adultes, 17 pays), chaque <strong>−5 kg de force de poigne</strong> était associé à <strong>+16 % de mortalité</strong> toutes causes — un meilleur prédicteur que la tension artérielle. Et 30 à 60 minutes de renforcement par semaine suffisent pour faire baisser la mortalité de <strong>10 à 20 %</strong> ; combiné à l’endurance, c’est encore mieux.</p>
+          <p className="cad-act-p"><strong>Des tests de salon qui en disent long.</strong> Chez 1 104 pompiers suivis 10 ans, ceux qui enchaînaient <strong>plus de 40 pompes</strong> avaient <strong>96 % d’accidents cardio-vasculaires en moins</strong> que ceux qui en faisaient moins de 10. Et le <strong>test assis-debout</strong> — s’asseoir au sol et se relever sans appui — prédit la mortalité des 51-80 ans : <strong>chaque point gagné sur 10 ≈ −21 % de risque</strong>. Essaie : déplace le curseur sur ton score.</p>
+          <div className="cad-grid2">
+            <Fig k="Pompes" t="Accidents cardio-vasculaires sur 10 ans (base 100)"
+                 c={<span>Risque relatif ≈ 0,04 au-delà de 40 pompes. Un test gratuit, faisable partout — et plus parlant qu’un test sur tapis pour prédire le risque.</span>}>
+              {COLS ? <COLS data={PUSHUPS} max={100} height={200} aria="Pompes et risque cardio-vasculaire" /> : null}
+            </Fig>
+            <Fig k="Assis-debout" t="Ton score au test assis-debout (sur 10)"
+                 c={<span><strong>Comment faire :</strong> pieds nus, croise les jambes et assieds-toi au sol, puis relève-toi — sans les mains si possible. 5 points pour descendre, 5 pour remonter ; <strong>−1 par appui</strong> (main, genou, avant-bras), −0,5 si tu perds l’équilibre.</span>}>
+              {GA ? <GA zones={SITRISE} max={10} initial={6} aria="Score assis-debout" inputLabel="Ton score assis-debout" /> : null}
+            </Fig>
+          </div>
+
+          <div className="cad-callrow">
+            <div className="cad-callout-big"><b>−13 %</b><span>de mortalité par palier de cardio gagné (+1 MET)</span></div>
+            <div className="cad-callout-big"><b>+16 %</b><span>de mortalité par −5 kg de force de poigne</span></div>
+            <div className="cad-callout-big"><b>−10 à −20 %</b><span>de mortalité avec 30-60 min de renforcement par semaine</span></div>
+            <div className="cad-callout-big"><b>~500 M</b><span>de nouveaux cas de maladies évitables d’ici 2030 liés à l’inactivité (OMS) — ~27 Md$ par an</span></div>
+          </div>
+          <p className="cad-act-p">Ces chiffres ne tombent pas du ciel : ils suivent la façon dont le corps vieillit — et surtout, <strong>l’ordre dans lequel il lâche</strong>.</p>
+          <Sources items={SRC_COUT} />
         </Act>
 
         {/* 3. Comment ton corps vieillit */}
         <Act eye="Comment ton corps vieillit" title="Ton corps a un pic. Puis il décline."
-             lead={<span>VO₂max, muscle, hormones, os, vitesse du cerveau : chaque système culmine autour de la trentaine, puis baisse. <strong>C’est inévitable.</strong></span>}
+             lead={<span>VO₂max, muscle, hormones, os, vitesse du cerveau : chaque système culmine entre 25 et 35 ans, puis baisse. <strong>C’est inévitable</strong> — mais pas au même rythme pour tout le monde, ni pour chaque qualité.</span>}
              media={
                <div className="cad-card" style={{ position: 'relative' }}>
                  <div style={{ display: 'flex', gap: 8, maxWidth: 260, marginBottom: 14 }}>
@@ -260,10 +547,31 @@
                    {Legend(sys)}
                    <button type="button" className="cad-link" onClick={function () { setRp(rp + 1); }}>↻ Rejouer</button>
                  </div>
-                 <Sources />
+                 <div className="cad-note-src">Courbes illustratives (moyennes de population), construites à partir des taux de déclin publiés — sources ci-dessous.</div>
                </div>
+             }
+             after={
+               <React.Fragment>
+                 <div className="cad-facts">
+                   {FACTS.map(function (f) { return <div key={f.k} className="cad-fact"><i>{f.k}</i><b>{f.n}</b><span>{f.l}</span></div>; })}
+                 </div>
+                 <div className="cad-grid2">
+                   <Fig k="Ce qui part en premier" t="Perte par décennie, à partir de ~30-40 ans"
+                        c={<span>Même chez des <strong>sprinteurs entraînés</strong>, la vitesse recule de 5-6 % par décennie et la puissance de saut de près de 10 % en 10 ans : les fibres rapides sont les plus fragiles. C’est pour ça qu’on doit les travailler <strong>exprès</strong>.</span>}>
+                     {HB ? <HB data={DECLINE} max={12} rowHeight={38} /> : null}
+                   </Fig>
+                   <Fig k="Ce que ça change" t="Pourquoi c’est grave"
+                        c={null}>
+                     <p className="cad-p">On ne perd pas « un peu de muscle ». On perd, dans cet ordre : la capacité à <strong>sprinter</strong> pour attraper un bus, à <strong>sauter</strong> un obstacle, à <strong>se rattraper</strong> quand on trébuche, à <strong>monter un escalier</strong> sans souffler, puis à <strong>se relever du sol</strong> seul.</p>
+                     <p className="cad-p">Ce sont exactement les qualités que mesurent les tests de l’acte précédent — pompes, assis-debout, poigne, cardio. Et ce sont celles que le quotidien moderne ne sollicite plus jamais.</p>
+                     <p className="cad-p" style={{ margin: 0 }}>Chez la femme, la chute des œstrogènes à la ménopause accélère la perte osseuse et musculaire : le travail de force devient encore plus décisif.</p>
+                   </Fig>
+                 </div>
+                 <Sources items={SRC_AGE} />
+               </React.Fragment>
              }>
-          <p className="cad-act-p">Tout grimpe jusqu’à ~25-30 ans, puis redescend — mais pas au même rythme. <strong>Le VO₂max et le muscle lâchent les premiers</strong> ; l’os et la coordination tiennent plus longtemps. Passe la souris sur la courbe pour lire chaque système à l’âge voulu, et compare homme / femme (chez la femme, la chute des œstrogènes et de l’os s’accélère à la ménopause).</p>
+          <p className="cad-act-p">Tout grimpe jusqu’à ~25-30 ans, puis redescend — mais pas au même rythme. <strong>La puissance, la vitesse et le VO₂max lâchent les premiers</strong> ; l’os et la coordination tiennent plus longtemps. Passe la souris sur la courbe pour lire chaque système à l’âge voulu, et compare homme / femme.</p>
+          <p className="cad-act-p">Le plus trompeur : jusqu’à 40 ans, on ne sent presque rien. Le déclin est lent, silencieux, et il se cumule. Quand on s’en rend compte, on a souvent déjà perdu 10 à 20 % de ce qu’on avait.</p>
         </Act>
 
         {/* 4. Pas une fatalité — sédentaire vs entraîné */}
@@ -272,9 +580,10 @@
              media={
                <div className="cad-card">
                  {LC ? <LC series={COMPARE} xDomain={[25, 80]} xTicks={[30, 40, 50, 60, 70, 80]} yTicks={[40, 60, 80, 100]} yDomain={[30, 100]} areaBetween={{ a: 'entr', b: 'sed', color: '#00c8e0' }} aria="VO2max : sédentaire contre entraîné" /> : null}
-                 <Sources />
+                 <div className="cad-note-src">VO₂max en % du pic — courbes illustratives.</div>
                </div>
-             }>
+             }
+             after={<Sources items={SRC_MAIS} />}>
           <p className="cad-act-p">La question n’est pas <em>si</em> on décline, mais <strong>à quelle vitesse</strong>. Et là, on a une vraie prise. À 80 ans, l’entraîné garde le VO₂max que le sédentaire avait <strong>~20 ans plus tôt</strong> : l’aire grise, ce sont ces <strong>années gagnées</strong> — pas sur un exploit, mais sur la régularité.</p>
           <div className="cad-callrow">
             <div className="cad-callout-big"><b>~2× plus lent</b><span>le déclin du VO₂max, entraînement maintenu vs sédentaire</span></div>
@@ -282,7 +591,7 @@
           </div>
         </Act>
 
-        {/* e. Les deux garçons */}
+        {/* 5. Les deux garçons */}
         <Act eye="Deux garçons, même départ" title="La régularité, pendant soixante ans"
              lead={<span>Même âge, même ossature, mêmes qualités de départ. Un seul détail les sépare : <strong>la constance.</strong></span>}>
           <p className="cad-act-p">Pour rendre ça concret, suivons deux parcours de vie opposés — les mêmes gènes au départ, deux façons de les dépenser.</p>
@@ -295,20 +604,48 @@
           </div>
         </Act>
 
-        {/* f. Trajectoire A vs B */}
+        {/* 6. Trajectoire A vs B */}
         <Act eye="Trajectoire A vs B" title="Capacité physique globale, de 5 à 80 ans"
              media={
                <div className="cad-card">
                  {LC ? <LC series={LIFE} markers={LIFE_MARKERS} xDomain={[5, 80]} xTicks={[10, 20, 30, 40, 50, 60, 70, 80]} aria="Capacité physique de deux parcours de vie" /> : null}
+                 <div className="cad-note-src">Récit et courbes illustratifs.</div>
                </div>
              }>
           <p className="cad-act-p">Les courbes divergent tôt et ne se rejoignent jamais. À 80 ans, <strong>A</strong> a la capacité d’un sexagénaire et vit en autonomie ; <strong>B</strong> a basculé dans la dépendance. Même capital de départ, deux façons de le dépenser.</p>
           <p className="cad-act-p">La différence ne s’est pas jouée à la salle un jour donné, mais sur <strong>des milliers de petites séances</strong>, répétées pendant soixante ans.</p>
         </Act>
 
-        {/* g. La réponse */}
+        {/* 7. Que faire concrètement */}
+        <Act eye="Que faire concrètement" title="Le minimum pour rester fort. L’idéal pour être en très bonne forme."
+             lead={<span>La bonne nouvelle : la recette est connue, et elle tient en <strong>quelques heures par semaine</strong>. Quatre piliers d’entraînement — puis deux piliers de soutien.</span>}>
+          <p className="cad-act-p">Beaucoup ne font qu’une seule chose : courir, <em>ou</em> soulever, <em>ou</em> s’étirer. Or chaque qualité vieillit à sa façon — et celles qu’on ne travaille pas partent quand même. Un corps en très bonne forme, c’est un corps <strong>fort, rapide, endurant et mobile</strong>.</p>
+          <div className="cad-tier">1 · L’entraînement — le moteur</div>
+          <Pillars />
+          <p className="cad-act-p" style={{ marginTop: 20 }}><strong>Combien d’heures ?</strong> Bascule entre la semaine minimum et la semaine idéale : le total, la répartition et un exemple de semaine.</p>
+          <WeekPlanner />
+          <p className="cad-act-p">Les repères à viser ? Tu les as vus plus haut : <strong>plus de 40 pompes</strong>, <strong>8 sur 10 ou plus</strong> au test assis-debout, une poigne qui ne baisse pas d’une année sur l’autre. CADENCES les mesure toutes, avec un barème détaillé pour chaque épreuve.</p>
+
+          <div className="cad-tier">2 · Le sommeil et la nutrition — le carburant</div>
+          <div className="cad-support">
+            <div>
+              <h4>Sommeil</h4>
+              <p><strong>7 à 9 h par nuit.</strong> Sur 1,38 million de personnes, dormir régulièrement <strong>moins de 6 h</strong> est associé à <strong>+12 % de mortalité</strong> prématurée. Dormir beaucoup plus que 9 h l’est aussi — souvent le signe d’un autre problème de santé.</p>
+              <p>C’est la nuit que le muscle se reconstruit et que les hormones se rééquilibrent : sans sommeil, l’entraînement ne « paie » pas.</p>
+            </div>
+            <div>
+              <h4>Nutrition</h4>
+              <p><strong>Protéines : ~1,6 g/kg/jour</strong> si tu t’entraînes en force — au-delà, 49 essais n’ont pas trouvé de gain supplémentaire sur le muscle ou la force.</p>
+              <p>Pour le reste : des aliments peu transformés, des légumes et des fruits à chaque repas, de l’eau. Pas de régime miracle — de la régularité, comme pour l’entraînement.</p>
+            </div>
+          </div>
+          <div className="cad-quote">Bien dormir et bien manger sans s’entraîner ne construit rien. S’entraîner sans dormir ni manger ne construit pas longtemps.</div>
+          <Sources items={SRC_FAIRE} />
+        </Act>
+
+        {/* 8. La réponse */}
         <Act eye="Pourquoi CADENCES" title="Pour piloter ça, il faut mesurer."
-             lead={<span>Chaque année, le même protocole : voir où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>. C’est exactement ce que fait CADENCES.</span>}>
+             lead={<span>Tu sais maintenant quoi travailler. CADENCES te dit <strong>où tu en es</strong> sur chacune de ces qualités — et te le redit dans 3 mois, puis chaque année : où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>.</span>}>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {props.makeCta ? props.makeCta() : null}
             <span className="cad-scrollcue">↓ Le test en détail, juste en dessous</span>

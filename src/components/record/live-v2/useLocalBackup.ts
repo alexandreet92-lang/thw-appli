@@ -10,7 +10,8 @@ import type { GPSPoint } from '@/hooks/useGPSTracking'
 import type { SessionLap } from '@/types/session'
 
 export interface LiveSnapshot {
-  sport: 'cycling'
+  // Sport de la séance ('cycling' par défaut, 'trail' depuis l'alignement trail→live-v2).
+  sport: string
   startedAtISO: string
   endedAtISO: string
   durationSec: number

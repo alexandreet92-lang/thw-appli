@@ -9,10 +9,27 @@
 // ════════════════════════════════════════════════════════════════════
 import { useI18n } from '@/lib/i18n'
 import { GPSStatus } from '@/hooks/useGPSTracking'
-import { fieldById, type DataPage } from '@/types/cycling'
+import { fieldById, type DataField, type DataPage } from '@/types/cycling'
+import { trailFieldById } from '@/types/trail'
 import { formatHMS, frNum } from './liveMachine'
 import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
 import { RkGrid, RkCell } from '../kit/RecordKit'
+
+/** Métadonnées d'un champ : champs vélo d'abord, puis champs trail (allure,
+ *  VAP, D+/D- lap…) pour que les pages trail aient libellés et unités corrects. */
+function resolveField(id: string): DataField | undefined {
+  return fieldById(id) ?? trailFieldById(id)
+}
+
+/** Allure « m:ss » par unité de distance affichée, à partir de la vitesse DÉJÀ
+ *  convertie dans cette unité (km/h ou mph). « — » à l'arrêt / vitesse nulle. */
+function paceStr(dispSpeed: number): string {
+  if (dispSpeed <= 0.3) return '—'
+  const secPerUnit = 3600 / dispSpeed
+  const m = Math.floor(secPerUnit / 60)
+  const s = Math.round(secPerUnit % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 export interface FieldCtx {
   started: boolean
@@ -50,9 +67,10 @@ function unitLabel(raw: string | undefined, units?: LiveUnits): string | undefin
 function fieldDisplay(id: string, ctx: FieldCtx): { value: string; unit?: string } {
   const df = distFactor(ctx.units)
   const af = altFactor(ctx.units)
-  const f = fieldById(id)
+  const f = resolveField(id)
   const naUnit = unitLabel(f?.unit, ctx.units)
   const na = { value: '—', unit: naUnit }
+  const paceUnit = `min/${getUnitLabel('km', ctx.units) ?? 'km'}`
   switch (id) {
     case 'duration':
     case 'moving_time':
@@ -71,6 +89,15 @@ function fieldDisplay(id: string, ctx: FieldCtx): { value: string; unit?: string
       return { value: frNum(ctx.maxSpeedKmh * df, 1), unit: getUnitLabel('km/h', ctx.units) }
     case 'lap_speed':
       return { value: frNum((ctx.lapSec > 0 ? (ctx.lapDistM / ctx.lapSec) * 3.6 : 0) * df, 1), unit: getUnitLabel('km/h', ctx.units) }
+    // Allure (sports à pied) — dérivée des mêmes vitesses que ci-dessus.
+    case 'pace':
+      return { value: ctx.started ? paceStr((ctx.dim ? 0 : ctx.speedKmh) * df) : '—', unit: paceUnit }
+    case 'avg_pace':
+      return { value: paceStr(ctx.avgSpeedKmh * df), unit: paceUnit }
+    case 'best_pace':
+      return { value: paceStr(ctx.maxSpeedKmh * df), unit: paceUnit }
+    case 'lap_pace':
+      return { value: paceStr((ctx.lapSec > 0 ? (ctx.lapDistM / ctx.lapSec) * 3.6 : 0) * df), unit: paceUnit }
     case 'elevation_gain':
       return { value: String(Math.round(ctx.elevGainM * af)), unit: getUnitLabel('m', ctx.units) }
     case 'altitude':
@@ -113,7 +140,7 @@ export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccu
 
   const heroId = page.bigFieldId && page.fields.includes(page.bigFieldId) ? page.bigFieldId : page.fields[0]
   const gridIds = page.fields.filter(id => id !== heroId)
-  const heroField = heroId ? fieldById(heroId) : undefined
+  const heroField = heroId ? resolveField(heroId) : undefined
   const heroLabel = heroField?.labelKey ? t(heroField.labelKey) : heroField?.label ?? ''
   const hero = heroId ? fieldDisplay(heroId, ctx) : { value: '—' }
   // Héro plus compact quand la valeur est longue (h:mm:ss) pour tenir sur une ligne.
@@ -121,7 +148,7 @@ export default function ConfigDataPage({ page, ctx, dataSize, gpsStatus, gpsAccu
   const heroSize = Math.round((heroLen >= 7 ? 64 : heroLen >= 5 ? 76 : 88) * f)
   const cellSize = Math.round((gridIds.length > 6 ? 32 : 38) * f)
 
-  const labelOf = (id: string) => { const ff = fieldById(id); return ff?.labelKey ? t(ff.labelKey) : ff?.label ?? id }
+  const labelOf = (id: string) => { const ff = resolveField(id); return ff?.labelKey ? t(ff.labelKey) : ff?.label ?? id }
 
   return (
     <div style={{

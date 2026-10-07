@@ -272,11 +272,16 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         position: 'absolute', top: embedded ? 8 : 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 50,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
       }}>
-        <div style={{ width: '100%', pointerEvents: 'auto' }}>
-          <TurnBanner big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub} kind={banner.kind} pending={banner.pending}
-            onOpen={hasRoute ? () => setBannerOpen(o => !o) : undefined} open={bannerOpen} openLabel={t('record.routeNavFollowRoute')}
-            onClose={!embedded && onClose ? onClose : undefined} closeLabel={t('record.routeNavClose')} />
-        </div>
+        {/* Liste des virages ouverte → bandeau (« Recherche de votre
+            position… », ✕/chevron) masqué : il recouvrirait la liste. Il
+            réapparaît dès la fermeture de la liste. */}
+        {!(bannerOpen && hasRoute) && (
+          <div style={{ width: '100%', pointerEvents: 'auto' }}>
+            <TurnBanner big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub} kind={banner.kind} pending={banner.pending}
+              onOpen={hasRoute ? () => setBannerOpen(o => !o) : undefined} open={bannerOpen} openLabel={t('record.routeNavFollowRoute')}
+              onClose={!embedded && onClose ? onClose : undefined} closeLabel={t('record.routeNavClose')} />
+          </div>
+        )}
         {afterStep && afterGap != null && nextStep && !bannerOpen && (
           <div style={{ marginLeft: 10, pointerEvents: 'auto' }}>
             <ThenPill>

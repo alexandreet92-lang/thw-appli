@@ -49,7 +49,24 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
   const addPiece = () => onChange([...pieces, newPiece(step)])
   const removePiece = (id: string) => onChange(pieces.filter(p => p.id !== id))
   const updatePiece = (id: string, patch: Partial<RowingPiece>) => onChange(pieces.map(p => p.id === id ? { ...p, ...patch } : p))
+  const duplicatePiece = (id: string) => {
+    const i = pieces.findIndex(p => p.id === id)
+    if (i < 0) return
+    const copy: RowingPiece = { ...pieces[i], id: `p_${Date.now()}_${Math.random()}` }
+    onChange([...pieces.slice(0, i + 1), copy, ...pieces.slice(i + 1)])
+  }
+  const movePiece = (id: string, dir: -1 | 1) => {
+    const i = pieces.findIndex(p => p.id === id)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= pieces.length) return
+    const c = [...pieces]
+    const tmp = c[i]; c[i] = c[j]; c[j] = tmp
+    onChange(c)
+  }
   const applyPreset = (count: number, dist: number) => onChange(Array.from({ length: count }, () => newPiece(dist)))
+
+  const miniBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 'var(--r-sm)', border: 'none', background: cardBg, color: dim, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16, lineHeight: 1 }
+  const ico = (d: React.ReactNode) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{d}</svg>
 
   const totalDist = pieces.reduce((s, p) => s + p.distanceM, 0)
   const totalDur = pieces.reduce((s, p) => s + p.durationSec, 0)
@@ -83,9 +100,12 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
           const watts = calcWatts(split)
           return (
             <div key={p.id} style={{ background:cardBg, border:`1px solid ${border}`, borderRadius: 'var(--r-md)', padding:'12px 14px' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                <span style={{ fontSize:12, fontWeight:700, color:ACCENT }}>{t('record.rowingPiecesSet', { n: idx+1 })}</span>
-                <button onClick={() => removePiece(p.id)} style={{ background:'none', border:'none', cursor:'pointer', color:dim, fontSize:18, lineHeight:1, padding:'0 4px' }}>×</button>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <span style={{ flex:1, fontSize:12, fontWeight:700, color:ACCENT }}>{t('record.rowingPiecesSet', { n: idx+1 })}</span>
+                <button type="button" aria-label={t('record.commonMoveUp')} disabled={idx===0} onClick={() => movePiece(p.id, -1)} style={{ ...miniBtn, opacity: idx===0?0.4:1 }}>{ico(<path d="m18 15-6-6-6 6" />)}</button>
+                <button type="button" aria-label={t('record.commonMoveDown')} disabled={idx===pieces.length-1} onClick={() => movePiece(p.id, 1)} style={{ ...miniBtn, opacity: idx===pieces.length-1?0.4:1 }}>{ico(<path d="m6 9 6 6 6-6" />)}</button>
+                <button type="button" aria-label={t('record.htDuplicate')} onClick={() => duplicatePiece(p.id)} style={miniBtn}>{ico(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>)}</button>
+                <button type="button" aria-label={t('record.commonDelete')} onClick={() => removePiece(p.id)} style={{ ...miniBtn, color:'var(--danger)' }}>{ico(<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />)}</button>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                 <div>

@@ -11,6 +11,9 @@ import { useI18n } from '@/lib/i18n'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import HRMiniChart from './workout/HRMiniChart'
+import HeartRatePanel from './workout/HeartRatePanel'
+import { useHeartRate } from '@/lib/record/useHeartRate'
+import { autoReconnectSensors } from '@/lib/sensors/bluetooth'
 
 interface Props {
   sport: 'gym' | 'hyrox'
@@ -32,10 +35,13 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
   const [showSave, setShowSave] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [startedAt] = useState(new Date().toISOString())
-  const [hrSamples, setHrSamples] = useState<number[]>([])
+  // FC RÉELLE via le capteur BLE (magasin partagé) — plus de données simulées.
+  const hrState = useHeartRate()
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
+  // Reconnecte le capteur cardio mémorisé dès l'ouverture (app native).
+  useEffect(() => { autoReconnectSensors() }, [])
 
   useEffect(() => {
     if (!running) return
@@ -49,16 +55,8 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
     return () => { wakeLockRef.current?.release() }
   }, [running])
 
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => {
-      setHrSamples(prev => [...prev.slice(-59), Math.round(120 + Math.random() * 40)])
-    }, 5000)
-    return () => clearInterval(t)
-  }, [running])
-
   const calories = Math.round(elapsed / 60 * 7)
-  const hr = hrSamples.length > 0 ? hrSamples[hrSamples.length - 1] : null
+  const hr = hrState.bpm
   const label = sport === 'gym' ? t('record.freeModeGym') : 'Hyrox'
 
   const handleClose = () => {
@@ -104,11 +102,13 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
             <RkCell label={t('record.freeModeCaloriesEst')} value={String(calories)} unit="kcal" />
           </RkGrid>
         </div>
-        {hrSamples.length > 2 && (
+        {hrState.samples.length > 2 && (
           <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: '12px 14px', display: 'flex', justifyContent: 'center' }}>
-            <HRMiniChart samples={hrSamples} isDark={isDark} height={60} width={320} />
+            <HRMiniChart samples={hrState.samples} isDark={isDark} height={60} width={320} />
           </div>
         )}
+        {/* Capteur cardio : connexion + valeur en direct (comme en séance guidée). */}
+        <div style={{ margin: '0 -16px' }}><HeartRatePanel hr={hrState} accent={sport === 'gym' ? 'var(--sport-gym)' : 'var(--sport-hyrox)'} /></div>
       </div>
 
       {/* Contrôles : Démarrer → pause ronde → Reprendre / Terminer */}

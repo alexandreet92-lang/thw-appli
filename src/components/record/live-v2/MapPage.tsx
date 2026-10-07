@@ -60,6 +60,16 @@ function tileUrl(layer: LayerId): string {
 
 interface LatLng { lat: number; lng: number }
 
+/** Allure « m:ss » par unité de distance affichée (km ou mile), à partir de la
+ *  vitesse DÉJÀ convertie dans cette unité (km/h ou mph). « — » à l'arrêt. */
+function paceFromDispSpeed(dispSpeed: number): string {
+  if (dispSpeed <= 0.3) return '—'
+  const secPerUnit = 3600 / dispSpeed
+  const m = Math.floor(secPerUnit / 60)
+  const s = Math.round(secPerUnit % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 function haversine(a: LatLng, b: LatLng): number {
   const R = 6371000
   const dLat = (b.lat - a.lat) * Math.PI / 180
@@ -193,6 +203,8 @@ interface Props {
   route: NavRouteInput | null
   defaultLayer: BaseLayerId
   units?: LiveUnits
+  /** Sports à pied (trail/running) : affiche l'allure (min/km) au lieu de la vitesse. */
+  paceMode?: boolean
   /** Vrai quand la séance est en pause/pause auto (bouton central = reprendre, lap masqué). */
   paused: boolean
   /** Vrai uniquement en pause MANUELLE → drapeau « enregistrer » visible (pas en pause auto). */
@@ -222,7 +234,7 @@ interface Props {
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
-  points, currentPos, route, defaultLayer, units, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
+  points, currentPos, route, defaultLayer, units, paceMode, paused, showFlag, showPlayIcon, onCenter, onLap, onFlag,
   onStart, canStart, onLock, swap, onClose, onBottomInset, onOverlayChange,
 }: Props) {
   const { t } = useI18n()
@@ -455,7 +467,9 @@ export default function MapPage({
     live: [
       { value: powerW != null ? String(Math.round(powerW)) : '—', unit: 'W' },
       { value: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—', unit: 'bpm', dot: heartRateBpm != null ? 'var(--danger)' : undefined },
-      { value: frNum(speedKmh * df, 1), unit: getUnitLabel('km/h', units) ?? 'km/h' },
+      paceMode
+        ? { value: paceFromDispSpeed(speedKmh * df), unit: `min/${kmUnit}` }
+        : { value: frNum(speedKmh * df, 1), unit: getUnitLabel('km/h', units) ?? 'km/h' },
     ],
     cols: [
       { label: t('w2c.remainingLabel'), value: frNum(((started ? remainingM : totalM) / 1000) * df, 1), unit: kmUnit, sub: started ? t('w2c.doneShort', { v: frNum((distanceDoneM / 1000) * df, 1) }) : null },
@@ -536,17 +550,22 @@ export default function MapPage({
         position: 'absolute', top: 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12, zIndex: 50,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none',
       }}>
-        <div className="rk-fade-up" style={{ width: '100%', pointerEvents: 'auto' }}>
-          <TurnBanner
-            big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub}
-            kind={banner.kind} pending={banner.pending}
-            onOpen={hasRoute && !locked ? () => { setGuideOpen(o => !o); setCollapseKey(k => k + 1) } : undefined}
-            open={guideOpen}
-            openLabel={t('w3a.follow_route')}
-            onClose={onClose && !locked ? onClose : undefined}
-            closeLabel={t('w2c.close')}
-          />
-        </div>
+        {/* Liste des virages ouverte → le bandeau (« Recherche de votre
+            position… », ✕/chevron) est masqué : il recouvrirait la liste et
+            n'a plus d'utilité. Il réapparaît dès la fermeture de la liste. */}
+        {!guideShown && (
+          <div className="rk-fade-up" style={{ width: '100%', pointerEvents: 'auto' }}>
+            <TurnBanner
+              big={banner.big} instruction={banner.instruction} road={banner.road} sub={banner.sub}
+              kind={banner.kind} pending={banner.pending}
+              onOpen={hasRoute && !locked ? () => { setGuideOpen(o => !o); setCollapseKey(k => k + 1) } : undefined}
+              open={guideOpen}
+              openLabel={t('w3a.follow_route')}
+              onClose={onClose && !locked ? onClose : undefined}
+              closeLabel={t('w2c.close')}
+            />
+          </div>
+        )}
         {thenPill && !guideShown && <div style={{ marginLeft: 10, pointerEvents: 'auto' }}>{thenPill}</div>}
       </div>
 

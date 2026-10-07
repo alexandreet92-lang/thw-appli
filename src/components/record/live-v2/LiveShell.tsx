@@ -50,6 +50,9 @@ const RING_CIRC = 2 * Math.PI * 58 // anneau 132⌀, r 58
 
 export interface LiveShellProps {
   sportTitle: string
+  /** Sport de la séance ('cycling' par défaut). Pilote le sport enregistré,
+   *  le sport par défaut du résumé et l'affichage allure vs vitesse (trail). */
+  sport?: string
   gps: GPSState
   resetTracking: () => void
   restoreTracking: (seed: { points: GPSState['points']; distance: number; elevationGain: number; maxSpeed: number }) => void
@@ -64,9 +67,11 @@ export interface LiveShellProps {
 }
 
 export default function LiveShell({
-  sportTitle, gps, resetTracking, restoreTracking, settings, pages, route, isDark, onExit, onFinished, onOpenSettings,
+  sportTitle, sport = 'cycling', gps, resetTracking, restoreTracking, settings, pages, route, isDark, onExit, onFinished, onOpenSettings,
 }: LiveShellProps) {
   const { t } = useI18n()
+  // Sports « à pied » : la carte affiche l'allure (min/km) au lieu de la vitesse.
+  const paceMode = sport === 'trail' || sport === 'running' || sport === 'hiking'
   const [machine, send] = useReducer(liveReducer, LIVE_INIT)
   const [timer, setTimer] = useState<LiveTimer>(TIMER_INIT)
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -272,7 +277,7 @@ export default function LiveShell({
     const dur = timerElapsedSec(timer, now)
     const distM = Math.round(gps.distance)
     return {
-      sport: 'cycling',
+      sport,
       startedAtISO: new Date(timer.startedAt).toISOString(),
       endedAtISO: new Date(now).toISOString(),
       durationSec: dur,
@@ -284,7 +289,7 @@ export default function LiveShell({
       gpsPts: [...gps.points],
       laps: [...laps],
     }
-  }, [timer, gps.distance, gps.elevationGain, gps.maxSpeed, gps.points, laps])
+  }, [sport, timer, gps.distance, gps.elevationGain, gps.maxSpeed, gps.points, laps])
   useLocalBackup(started, buildSnapshot)
 
   // Sauvegarde IMMÉDIATE quand l'app passe en arrière-plan / se ferme : la
@@ -560,6 +565,7 @@ export default function LiveShell({
                 route={route}
                 defaultLayer={settings.navigation.defaultMapType}
                 units={settings.units}
+                paceMode={paceMode}
                 paused={pausedLike}
                 showFlag={machine.phase === 'paused'}
                 showPlayIcon={showPlayIcon}
@@ -779,7 +785,7 @@ export default function LiveShell({
         <SummaryScreen
           snap={summarySnap}
           units={settings.units}
-          initialSport={route?.sport ?? null}
+          initialSport={route?.sport ?? sport}
           canResume={summaryFromLiveRef.current}
           isDark={isDark}
           photos={photoUrls}

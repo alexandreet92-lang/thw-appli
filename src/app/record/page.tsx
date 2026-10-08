@@ -291,8 +291,8 @@ export default function RecordPage() {
   // ── PANNEAU DE DIAGNOSTIC GPS (temporaire) ─────────────────────────────────
   // Affiche en direct l'état RÉEL du GPS pour débugger sans Safari/alertes.
   // GPS_DEBUG_TAG change à chaque build → confirme que le rebuild a bien déployé.
-  const GPS_DEBUG = true
-  const GPS_DEBUG_TAG = 'DBG-4'
+  const GPS_DEBUG = false
+  const GPS_DEBUG_TAG = 'DBG-5'
   const [dbg, setDbg] = useState<string>('(diagnostic en cours…)')
   useEffect(() => {
     if (!GPS_DEBUG) return

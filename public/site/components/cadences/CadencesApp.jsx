@@ -521,6 +521,8 @@
         .cad-split-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
         .cad-split-lg span { font-family: var(--font-body); font-size: 11px; color: var(--text-mid); display: inline-flex; align-items: center; gap: 5px; }
         .cad-split-lg em { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+        .cad-prev2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .cad-prev2-t { font-family: var(--font-body); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); margin-bottom: 2px; }
         .cad-try { display: grid; gap: 4px; min-width: 0; }
         .cad-try > span { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
         .cad-try .cad-input { font-family: var(--font-mono); font-size: 17px; padding: 12px 12px; }
@@ -533,8 +535,8 @@
         .cad-timer b { display: block; font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--text); }
         .cad-timer.is-done b { color: #22c55e; }
         .cad-timer-btns { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .cad-dash { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; align-items: center; margin-top: 16px; }
-        @media (max-width: 680px) { .cad-dash { grid-template-columns: 1fr; justify-items: center; } }
+        .cad-dash { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: center; margin-top: 16px; }
+        @media (max-width: 760px) { .cad-dash { grid-template-columns: 1fr; justify-items: center; } .cad-dash > div { width: 100%; } }
         .cad-dash-kpis { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         .cad-dash-kpis > div:not(.cad-dash-mode) { background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 8px 14px; min-width: 86px; }
         .cad-dash-kpis b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--text); line-height: 1.1; }
@@ -544,9 +546,24 @@
         .cad-dash-note { font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); text-align: center; max-width: 180px; line-height: 1.4; }
         .cad-dash-bar { height: 8px; border-radius: 999px; background: rgba(128,140,160,0.16); overflow: hidden; }
         .cad-dash-bar i { display: block; height: 100%; border-radius: 999px; background: var(--brand-gradient); transition: width .8s cubic-bezier(.22,1,.36,1); }
-        .cad-res-hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 26px; align-items: center; margin-top: 16px; border-top: 4px solid var(--brand); }
+        .cad-res-hero { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 26px; align-items: center; margin-top: 16px; border-top: 4px solid var(--brand); }
         @media (max-width: 720px) { .cad-res-hero { grid-template-columns: minmax(0, 1fr); justify-items: center; } .cad-res-hero > div { width: 100%; } }
+        .cad-res-donuts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .cad-res-donut { display: grid; justify-items: center; gap: 2px; }
+        .cad-res-dlab { font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--text-mid); }
+        .cad-res-dlab em { font-style: normal; font-family: var(--font-display); font-weight: 800; }
         .cad-res-lvl { font-family: var(--font-display); font-weight: 800; font-size: 34px; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 6px; }
+        .cad-res-lvl2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 2px 0 8px; }
+        .cad-res-lvl2 span { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 1; }
+        .cad-res-lvl2 small { font-family: var(--font-body); font-size: 11px; color: var(--text-dim); margin-right: 6px; }
+        .cad-res-row2 { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px 18px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--border); }
+        .cad-res-row2.is-head { border-top: none; padding: 2px 0; }
+        .cad-res-row2.is-head span { font-family: var(--font-body); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); text-align: right; }
+        .cad-res-cell { text-align: right; white-space: nowrap; min-width: 86px; }
+        .cad-res-cell b { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+        .cad-res-cell span { font-family: var(--font-body); font-size: 11px; color: var(--text-dim); margin-left: 4px; }
+        .cad-up { color: #22c55e; } .cad-dn { color: #ef4444; } .cad-eq { color: var(--text-dim); }
+        @media (max-width: 520px) { .cad-res-row2 { gap: 6px 10px; } .cad-res-cell { min-width: 64px; } .cad-res-cell b { font-size: 15px; } .cad-res-n b { font-size: 12.5px; } }
         .cad-res-delta { display: inline-flex; align-items: baseline; gap: 8px; background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 6px 14px; margin-bottom: 4px; }
         .cad-res-delta b { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--brand); }
         .cad-res-delta span { font-family: var(--font-body); font-size: 12px; color: var(--text-mid); }
@@ -735,8 +752,7 @@
           </div>
         </div>
 
-        {window.CadTestIntro ? <window.CadTestIntro catalog={cat} /> : null}
-        <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Et d'abord, pourquoi ce test</div>
+        <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Pourquoi ce test, et en quoi il consiste</div>
 
         {window.CadManifesto ? <window.CadManifesto catalog={cat} makeCta={makeCta} /> : null}
 
@@ -1130,7 +1146,9 @@
     var camp = rep.campaign;
     var results = rep.results || [];
     var resultBySlug = {}; results.forEach(function (r) { resultBySlug[r.test_slug] = r; });
-    var score = (rep.scores && rep.scores[props.mode]) || { total: 0, globalLevel: cat.levels[0].label, byQuality: {}, byTest: {} };
+    var empty = { total: 0, globalLevel: cat.levels[0].label, byQuality: {}, byTest: {} };
+    var score = (rep.scores && rep.scores.general) || empty;      // général (primaire)
+    var scoreA = (rep.scores && rep.scores.age) || empty;          // ajusté à l'âge
     var start = getStart(camp);
 
     var ds = React.useState(function () {
@@ -1242,7 +1260,7 @@
           ) : (
             <TestStep key={cur.slug} t={cur} idx={stepIdx} n={tests.length} cat={cat} camp={camp} mode={props.mode}
                       draft={drafts[cur.slug]} setDraft={function (p) { setDraft(cur.slug, p); }}
-                      result={resultBySlug[cur.slug]} score={(score.byTest && score.byTest[cur.slug]) || null}
+                      result={resultBySlug[cur.slug]} score={(score.byTest && score.byTest[cur.slug]) || null} scoreA={(scoreA.byTest && scoreA.byTest[cur.slug]) || null}
                       onValidate={function () { validate(cur, function () { goStep(stepIdx + 1); }); }}
                       onSkip={function (reason) { skip(cur, reason, function () { goStep(stepIdx + 1); }); }}
                       onClear={function () { clear(cur); }}
@@ -1267,19 +1285,28 @@
         <p className="cad-p" style={{ marginTop: 6 }}>Barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg · jour 1 le {fmtDay(dateAt(start, 0))}</p>
 
         <section className="cad-card cad-dash">
-          <div className="cad-dash-score">
-            <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={missing ? 'Provisoire' : score.globalLevel} color={missing ? 'var(--brand)' : gColor} size={170}/>
-            {missing ? <div className="cad-dash-note">Points acquis à ce stade. Le palier tombe à la clôture.</div> : null}
+          <div className="cad-res-donuts cad-dash-score">
+            <div className="cad-res-donut">
+              <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={missing ? 'Provisoire' : score.globalLevel} color={missing ? 'var(--brand)' : gColor} size={150}/>
+              <div className="cad-res-dlab">Général</div>
+            </div>
+            <div className="cad-res-donut">
+              <CadScoreDonut total={scoreA.total} totalMax={cat.totalPoints} level={missing ? 'Provisoire' : scoreA.globalLevel} color={missing ? 'var(--brand-alt)' : levelColor(cat.palette, scoreA.globalLevel)} size={150}/>
+              <div className="cad-res-dlab">Ajusté à l’âge</div>
+            </div>
           </div>
           <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
             <div className="cad-dash-kpis">
               <div><b>{validated}</b><span>validées</span></div>
               <div><b>{skippedN}</b><span>passées</span></div>
               <div><b>{missing}</b><span>restantes</span></div>
-              <div className="cad-dash-mode"><ModeToggle mode={props.mode} setMode={props.setMode}/></div>
             </div>
+            {missing ? <div className="cad-dash-note" style={{ textAlign: 'left', maxWidth: 'none' }}>Points acquis à ce stade. Le palier tombe à la clôture.</div> : null}
             <div className="cad-dash-bar"><i style={{ width: (validated + skippedN) / cat.totalTests * 100 + '%' }}></i></div>
+            <div className="cad-ec-h">Qualités · général</div>
             <CadQualityRings items={qualityItemsFrom(cat, score, true)}/>
+            <div className="cad-ec-h">Qualités · ajusté à l’âge</div>
+            <CadQualityRings items={qualityItemsFrom(cat, scoreA, true)}/>
           </div>
         </section>
 
@@ -1365,8 +1392,10 @@
     var skipped = r && r.status === 'skipped';
     var agg = aggDraft(t, d);
     var derived = agg != null ? F().derivedData(t, agg, camp.body_weight_kg) : [];
-    var prev = previewScore(cat, t, d, camp, props.mode);
+    var prev = previewScore(cat, t, d, camp, 'general');
+    var prevA = previewScore(cat, t, d, camp, 'age');
     var pColor = prev ? levelColor(cat.palette, prev.level) : 'var(--text-dim)';
+    var pColorA = prevA ? levelColor(cat.palette, prevA.level) : 'var(--text-dim)';
     var rec = recupSec(t);
     var hyroxKg = null;
     if (t.slug === 'hyrox_circuit' && cat.hyroxThrusterKg) {
@@ -1488,27 +1517,39 @@
             <div className="cad-ec-h">Aperçu des points</div>
             {prev ? (
               <div>
-                <div className="cad-preview-n" style={{ color: pColor }}>{(Math.round(prev.points * 10) / 10).toFixed(1).replace('.', ',')}<small> / {t.pts_max}</small></div>
-                <div className="cad-preview-l"><span style={{ background: pColor }}></span>{prev.level} · {Math.round(prev.pct * 100)} %</div>
-                <div className="cad-dash-bar" style={{ marginTop: 10 }}><i style={{ width: Math.min(100, prev.pct / 1.2 * 100) + '%', background: pColor }}></i></div>
-                <p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>Calcul indicatif ({props.mode === 'age' ? 'barème ajusté à l’âge' : 'barème général'}). Le score officiel est recalculé à la validation.</p>
+                <div className="cad-prev2">
+                  <div>
+                    <div className="cad-prev2-t">Général</div>
+                    <div className="cad-preview-n" style={{ color: pColor }}>{(Math.round(prev.points * 10) / 10).toFixed(1).replace('.', ',')}<small> / {t.pts_max}</small></div>
+                    <div className="cad-preview-l"><span style={{ background: pColor }}></span>{prev.level} · {Math.round(prev.pct * 100)} %</div>
+                  </div>
+                  <div>
+                    <div className="cad-prev2-t">Ajusté à l’âge</div>
+                    <div className="cad-preview-n" style={{ color: pColorA, fontSize: 32 }}>{(Math.round(prevA.points * 10) / 10).toFixed(1).replace('.', ',')}<small> / {t.pts_max}</small></div>
+                    <div className="cad-preview-l"><span style={{ background: pColorA }}></span>{prevA.level} · {Math.round(prevA.pct * 100)} %</div>
+                  </div>
+                </div>
+                <p className="cad-p" style={{ fontSize: 12, margin: '10px 0 0' }}>Calcul indicatif. Le score officiel est recalculé à la validation.</p>
               </div>
             ) : (
-              <p className="cad-p" style={{ margin: 0 }}>Saisis ton résultat : les points et le palier s’affichent ici en direct.</p>
+              <p className="cad-p" style={{ margin: 0 }}>Saisis ton résultat : les points et le palier s’affichent ici en direct, dans les deux notations.</p>
             )}
-            {validated && sc ? <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>Enregistré : <strong>{(Math.round(sc.points * 10) / 10).toString().replace('.', ',')} pts · {sc.level}</strong></p> : null}
+            {validated && sc ? <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>Enregistré : <strong>{(Math.round(sc.points * 10) / 10).toString().replace('.', ',')} pts</strong> (général){props.scoreA ? <span> · <strong>{(Math.round(props.scoreA.points * 10) / 10).toString().replace('.', ',')} pts</strong> (âge)</span> : null}</p> : null}
           </div>
 
           {(function () {
-            var pb = personalBareme(cat, t, camp, props.mode);
+            var pbG = personalBareme(cat, t, camp, 'general');
+            var pbA = personalBareme(cat, t, camp, 'age');
             var best = critPts(t, 'best'), sum = critPts(t, 'sum');
             return (
               <div className="cad-card">
                 <div className="cad-ec-h">Ton barème</div>
-                <p className="cad-p" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg{t.kind === 'ratio' ? ' · au poids de corps' : ''}{props.mode === 'age' ? ' · ajusté à l’âge' : ''}.</p>
+                <p className="cad-p" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg{t.kind === 'ratio' ? ' · au poids de corps' : ''}.</p>
                 <div className="cad-bar2">
-                  <div><span>Référence · 60 %</span><b>{F().formatValue(t, pb.ref)}</b></div>
-                  <div><span>Maximum · 100 %</span><b style={{ color: 'var(--brand)' }}>{F().formatValue(t, pb.max)}</b></div>
+                  <div><span>Réf · général</span><b>{F().formatValue(t, pbG.ref)}</b></div>
+                  <div><span>Max · général</span><b style={{ color: 'var(--brand)' }}>{F().formatValue(t, pbG.max)}</b></div>
+                  <div><span>Réf · à l’âge</span><b>{F().formatValue(t, pbA.ref)}</b></div>
+                  <div><span>Max · à l’âge</span><b style={{ color: 'var(--brand-alt)' }}>{F().formatValue(t, pbA.max)}</b></div>
                 </div>
                 {t.criteria && (best || sum) ? (
                   <div style={{ marginTop: 12 }}>
@@ -1553,17 +1594,21 @@
     if (!score) {
       return <div><h1 className="t-h1">Résultats CADENCES</h1><p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Aucun score figé pour cette campagne.</p><button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button></div>;
     }
-    var prevScore = prevRep && prevRep.scores ? prevRep.scores[props.mode] : null;
-    var gColor = levelColor(cat.palette, score.globalLevel);
-    var desc = (window.CadLevelDesc || {})[score.globalLevel] || '';
+    // Double notation : on affiche toujours les deux (général + ajusté à l'âge).
+    var sG = (rep.scores && rep.scores.general) || score;
+    var sA = (rep.scores && rep.scores.age) || score;
+    var colG = levelColor(cat.palette, sG.globalLevel), colA = levelColor(cat.palette, sA.globalLevel);
+    var prevG = prevRep && prevRep.scores ? prevRep.scores.general : null;
+    var prevA = prevRep && prevRep.scores ? prevRep.scores.age : null;
+    var gColor = colG;
+    var descG = (window.CadLevelDesc || {})[sG.globalLevel] || '';
     var LS = window.CadLevelScale;
-    var tests = cat.tests.filter(function (t) { return score.byTest && score.byTest[t.slug]; });
-    var sorted = tests.slice().sort(function (a, b) { return score.byTest[b.slug].pct - score.byTest[a.slug].pct; });
-    var quals = cat.qualities.map(function (q) { var s = (score.byQuality && score.byQuality[q.key]) || {}; return { key: q.key, label: q.label === 'VO2max' ? 'VO₂max' : q.label, pct: s.pct || 0, level: s.level }; })
-      .sort(function (a, b) { return b.pct - a.pct; });
+    var tests = cat.tests.filter(function (t) { return sG.byTest && sG.byTest[t.slug]; });
+    var sorted = tests.slice().sort(function (a, b) { return sG.byTest[b.slug].pct - sG.byTest[a.slug].pct; });
     var doneOn = camp.completed_on || camp.started_on;
     var next1 = dateAt(String(doneOn).slice(0, 10), 365), next6 = dateAt(String(doneOn).slice(0, 10), 182);
     function delta(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(Math.round(v)); }
+    function deltaCls2(v) { return v > 0 ? 'cad-up' : v < 0 ? 'cad-dn' : 'cad-eq'; }
     // Résumé des conditions extérieures du test (si renseignées).
     var outdoorRes = (rep.results || []).filter(function (r) { return r.venue === 'outdoor' && r.temperature_c != null; });
     var condSummary = null;
@@ -1574,13 +1619,17 @@
       condSummary = { range: tmin === tmax ? (tmin + ' °C') : (tmin + '–' + tmax + ' °C'), weathers: ws };
     }
 
+    function RowHead() {
+      return <div className="cad-res-row2 is-head"><span></span><span>Général</span><span>Ajusté à l’âge</span></div>;
+    }
     function Row(t) {
-      var s = score.byTest[t.slug]; var col = levelColor(cat.palette, s.level); var raw = rawBySlug[t.slug];
+      var g = sG.byTest[t.slug] || {}, a = sA.byTest[t.slug] || {};
+      var cg = levelColor(cat.palette, g.level), ca = levelColor(cat.palette, a.level); var raw = rawBySlug[t.slug];
       return (
-        <div key={t.slug} className="cad-res-row">
+        <div key={t.slug} className="cad-res-row2">
           <div className="cad-res-n"><b>{t.name.replace(/\s*\(.*\)$/, '')}</b><span>{raw != null ? F().formatValue(t, raw) : ''}</span></div>
-          <div className="cad-dash-bar"><i style={{ width: Math.min(100, s.pct / 1.2 * 100) + '%', background: col }}></i></div>
-          <div className="cad-res-p"><b style={{ color: col }}>{Math.round(s.points)}</b><span>/ {t.pts_max} · {s.level}</span></div>
+          <div className="cad-res-cell"><b style={{ color: cg }}>{Math.round(g.points)}</b><span>/ {t.pts_max} · {g.level}</span></div>
+          <div className="cad-res-cell"><b style={{ color: ca }}>{Math.round(a.points)}</b><span>/ {t.pts_max} · {a.level}</span></div>
         </div>
       );
     }
@@ -1593,19 +1642,32 @@
           </div>
           <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
         </div>
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <ModeToggle mode={props.mode} setMode={props.setMode}/>
-          <span className="cad-p" style={{ margin: 0 }}>{props.mode === 'general' ? 'Barème général (21–35 ans).' : 'Barème ajusté à l’âge (tranche ' + camp.age_band + ').'} {camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg.</span>
+        <div style={{ marginTop: 12 }}>
+          <span className="cad-p" style={{ margin: 0 }}>Deux notations : <strong>Général</strong> (référence 21–35 ans) <strong>et Ajusté à l’âge</strong> (tranche {camp.age_band}). {camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg.</span>
         </div>
 
         <section className="cad-card cad-res-hero" style={{ borderTopColor: gColor }}>
-          <CadScoreDonut total={score.total} totalMax={cat.totalPoints} level={score.globalLevel} color={gColor} size={200}/>
+          <div className="cad-res-donuts">
+            <div className="cad-res-donut">
+              <CadScoreDonut total={sG.total} totalMax={cat.totalPoints} level={sG.globalLevel} color={colG} size={158}/>
+              <div className="cad-res-dlab">Général{prevG ? <em className={deltaCls2(sG.total - prevG.total)}> {delta(sG.total - prevG.total)}</em> : null}</div>
+            </div>
+            <div className="cad-res-donut">
+              <CadScoreDonut total={sA.total} totalMax={cat.totalPoints} level={sA.globalLevel} color={colA} size={158}/>
+              <div className="cad-res-dlab">Ajusté à l’âge{prevA ? <em className={deltaCls2(sA.total - prevA.total)}> {delta(sA.total - prevA.total)}</em> : null}</div>
+            </div>
+          </div>
           <div style={{ minWidth: 0 }}>
             <div className="cad-ec-h">Ton niveau</div>
-            <div className="cad-res-lvl" style={{ color: gColor }}>{score.globalLevel}</div>
-            <p className="cad-p" style={{ fontSize: 14 }}>{desc}</p>
-            {prevScore ? <div className="cad-res-delta"><b>{delta(score.total - prevScore.total)} pts</b><span>vs ton test du {frDate(prevCamp.completed_on || prevCamp.started_on)} ({Math.round(prevScore.total)})</span></div> : null}
-            {LS ? <LS cat={cat} you={score.total} compact /> : null}
+            <div className="cad-res-lvl2">
+              <span style={{ color: colG }}>{sG.globalLevel}</span>
+              <small>général</small>
+              <span style={{ color: colA }}>{sA.globalLevel}</span>
+              <small>à l’âge</small>
+            </div>
+            <p className="cad-p" style={{ fontSize: 14 }}>{descG}</p>
+            {prevG ? <div className="cad-res-delta"><b>{delta(sG.total - prevG.total)} pts</b><span>en général vs ton test du {frDate(prevCamp.completed_on || prevCamp.started_on)} ({Math.round(prevG.total)})</span></div> : null}
+            {LS ? <LS cat={cat} you={sG.total} compact /> : null}
           </div>
         </section>
 
@@ -1619,37 +1681,33 @@
         <div className="cad-grid2">
           <div className="cad-card">
             <h3 className="cad-h3">Tes points forts</h3>
+            <RowHead/>
             {sorted.slice(0, 3).map(Row)}
-            <div className="cad-ti-tags is-q" style={{ marginTop: 10 }}>{quals.slice(0, 2).map(function (q) { return <span key={q.key}>{q.label} · {Math.round(q.pct * 100)} %</span>; })}</div>
           </div>
           <div className="cad-card">
             <h3 className="cad-h3">À travailler en priorité</h3>
+            <RowHead/>
             {sorted.slice(-3).reverse().map(Row)}
-            <div className="cad-ti-tags" style={{ marginTop: 10 }}>{quals.slice(-2).reverse().map(function (q) { return <span key={q.key}>{q.label} · {Math.round(q.pct * 100)} %</span>; })}</div>
           </div>
         </div>
 
         <div className="cad-grid2">
           <section className="cad-card" style={{ display: 'grid', placeItems: 'center' }}>
             <h3 className="cad-h3" style={{ justifySelf: 'start' }}>Profil des 7 qualités</h3>
-            <CadRadar items={qualityItemsFrom(cat, score)} color={gColor} size={300}/>
+            <CadRadar items={qualityItemsFrom(cat, sG)} items2={qualityItemsFrom(cat, sA)} color={colG} color2={colA} size={300}/>
           </section>
           <section className="cad-card">
             <h3 className="cad-h3">Par qualité</h3>
-            <CadQualityRings items={qualityItemsFrom(cat, score)}/>
-            {prevScore ? (
-              <div className="cad-ti-tags" style={{ marginTop: 14 }}>
-                {cat.qualities.map(function (q) {
-                  var a = (score.byQuality[q.key] || {}).pct || 0, b = ((prevScore.byQuality || {})[q.key] || {}).pct || 0;
-                  return <span key={q.key}>{q.label === 'VO2max' ? 'VO₂max' : q.label} {delta((a - b) * 100)} %</span>;
-                })}
-              </div>
-            ) : null}
+            <div className="cad-ec-h" style={{ marginBottom: 6 }}>Général</div>
+            <CadQualityRings items={qualityItemsFrom(cat, sG)}/>
+            <div className="cad-ec-h" style={{ margin: '14px 0 6px' }}>Ajusté à l’âge</div>
+            <CadQualityRings items={qualityItemsFrom(cat, sA)}/>
           </section>
         </div>
 
         <section className="cad-card" style={{ marginTop: 18 }}>
           <h3 className="cad-h3">Détail par jour</h3>
+          <RowHead/>
           {cat.days.filter(function (d) { return !d.rest; }).map(function (d) {
             var ts = tests.filter(function (t) { return t.day === d.day; }).sort(function (a, b) { return a.order_in_day - b.order_in_day; });
             if (!ts.length) return null;

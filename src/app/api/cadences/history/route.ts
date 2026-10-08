@@ -10,7 +10,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { levelFor } from '@/lib/cadences/engine'
 import { CONFIG } from '@/lib/cadences/catalog'
-import type { Mode } from '@/lib/cadences/types'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -31,14 +30,18 @@ export async function GET(request: Request): Promise<NextResponse> {
     .order('completed_on', { ascending: true })
   if (!camps || !camps.length) return NextResponse.json({ tests: [] })
 
-  // Instantanés du mode demandé pour ces campagnes.
+  // Instantanés des DEUX modes (général + ajusté à l'âge) pour ces campagnes.
   const ids = camps.map((c) => c.id)
   const { data: snaps } = await sb
     .from('cadences_snapshots')
-    .select('campaign_id, total_points, quality_scores, test_scores')
+    .select('campaign_id, age_mode, total_points, quality_scores, test_scores')
     .in('campaign_id', ids)
-    .eq('age_mode', mode)
-  const snapById = new Map((snaps ?? []).map((s) => [s.campaign_id, s]))
+  const byCamp = new Map<string, { general?: Snap; age?: Snap }>()
+  for (const s of (snaps ?? []) as Snap[]) {
+    const e = byCamp.get(s.campaign_id) ?? {}
+    if (s.age_mode === 'age') e.age = s; else e.general = s
+    byCamp.set(s.campaign_id, e)
+  }
 
   // Conditions (température / météo) des épreuves extérieures, agrégées par
   // campagne. Tolérant : si les colonnes n'existent pas encore (migration non
@@ -67,39 +70,47 @@ export async function GET(request: Request): Promise<NextResponse> {
   const ptsMax: Record<string, number> = {}
   CONFIG.tests.forEach((t) => { ptsMax[t.slug] = t.pts_max })
 
-  const tests = camps.flatMap((c) => {
-    const s = snapById.get(c.id)
-    if (!s) return []
+  // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} }.
+  const mapSnap = (s?: Snap) => {
+    if (!s) return null
     const total = Number(s.total_points)
-    // byTest (jsonb) → { slug: { points, level, value, max } }
     const byTest = (s.test_scores ?? {}) as Record<string, { points?: number; level?: string; valueUsed?: number }>
     const testsMap: Record<string, { points: number; level: string; value: number | null; max: number }> = {}
     for (const slug of Object.keys(byTest)) {
       const r = byTest[slug]
       testsMap[slug] = { points: Number(r.points ?? 0), level: String(r.level ?? ''), value: r.valueUsed ?? null, max: ptsMax[slug] ?? 0 }
     }
-    // byQuality (jsonb) → { key: { pct, level } }
     const byQual = (s.quality_scores ?? {}) as Record<string, { pct?: number; level?: string }>
     const qualMap: Record<string, { pct: number; level: string }> = {}
     for (const key of Object.keys(byQual)) {
       qualMap[key] = { pct: Number(byQual[key].pct ?? 0), level: String(byQual[key].level ?? '') }
     }
+    return { total: Math.round(total), level: levelFor(total / max, CONFIG), tests: testsMap, qualities: qualMap }
+  }
+
+  const tests = camps.flatMap((c) => {
+    const e = byCamp.get(c.id)
+    const g = mapSnap(e?.general)
+    const a = mapSnap(e?.age) ?? g
+    if (!g) return []
     const cond = condOf(c.id)
     return [{
       id: c.id,
       date: c.completed_on ?? c.started_on,
-      score: Math.round(total),
-      level: levelFor(total / max, CONFIG),
       sex: c.scale_sex,
       age: c.age_at_start,
       weight: Number(c.body_weight_kg),
       tempC: cond.tempC,
       outdoor: cond.outdoor,
       weatherLabel: cond.weatherLabel,
-      tests: testsMap,
-      qualities: qualMap,
+      // Général (primaire)
+      score: g.total, level: g.level, tests: g.tests, qualities: g.qualities,
+      // Ajusté à l'âge
+      scoreA: a!.total, levelA: a!.level, testsA: a!.tests, qualitiesA: a!.qualities,
     }]
   })
 
   return NextResponse.json({ tests })
 }
+
+type Snap = { campaign_id: string; age_mode: string; total_points: number; quality_scores: unknown; test_scores: unknown }

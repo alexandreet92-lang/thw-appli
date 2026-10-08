@@ -112,12 +112,15 @@
   function CadRadar(props) {
     var en = useEnter(); var enRef = en[0], on = en[1];
     var items = props.items || [];
+    var items2 = props.items2 || null;     // 2e série optionnelle (ex. ajusté à l'âge)
     var n = items.length || 7;
     var size = props.size || 300;
     var PAD = 52;                 // marge pour les libellés (hors du cercle)
     var cx = size / 2, cy = size / 2;
     var R = size / 2 - 10;
     var color = props.color || BRAND;
+    var color2 = props.color2 || '#5b6fff';
+    var dual = !!items2;
     var SHORT = { 'Puissance': 'Puiss.', 'Explosivité': 'Explo.', 'Endurance': 'Endur.', 'VO2max': 'VO₂max', 'Coordination': 'Coord.' };
     function pt(i, rad) {
       var a = -Math.PI / 2 + i * (2 * Math.PI / n);
@@ -126,10 +129,12 @@
     function polyAt(frac) {
       return items.map(function (_, i) { var p = pt(i, R * frac); return p[0] + ',' + p[1]; }).join(' ');
     }
-    var valPoly = items.map(function (q, i) {
-      var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.1)) : 0;
-      var p = pt(i, R * f); return p[0] + ',' + p[1];
-    }).join(' ');
+    function serie(arr) {
+      return arr.map(function (q, i) {
+        var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.1)) : 0;
+        var p = pt(i, R * f); return p[0] + ',' + p[1];
+      }).join(' ');
+    }
     return (
       <div ref={enRef} style={{ display: 'grid', placeItems: 'center' }}>
         <svg width={size} height={size} viewBox={(-PAD) + ' ' + (-PAD) + ' ' + (size + 2 * PAD) + ' ' + (size + 2 * PAD)} role="img" aria-label="Radar des 7 qualités">
@@ -140,13 +145,15 @@
           })}
           {/* axes */}
           {items.map(function (_, i) { var p = pt(i, R); return <line key={i} x1={cx} y1={cy} x2={p[0]} y2={p[1]} stroke={GRID} strokeWidth={0.6}/>; })}
-          {/* valeur */}
-          <polygon points={valPoly} fill={color + '33'} stroke={color} strokeWidth={2} strokeLinejoin="round"
+          {/* 2e série (âge) d'abord, en dessous */}
+          {dual ? <polygon points={serie(items2)} fill={color2 + '22'} stroke={color2} strokeWidth={1.8} strokeDasharray="4 3" strokeLinejoin="round" style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/> : null}
+          {/* série principale (général) */}
+          <polygon points={serie(items)} fill={color + (dual ? '22' : '33')} stroke={color} strokeWidth={2} strokeLinejoin="round"
                    style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/>
           {items.map(function (q, i) {
             var f = on ? Math.max(0, Math.min(1, (q.pct || 0) / 1.1)) : 0;
             var p = pt(i, R * f);
-            return <circle key={i} cx={p[0]} cy={p[1]} r={2.6} fill={q.color || color} style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/>;
+            return <circle key={i} cx={p[0]} cy={p[1]} r={2.6} fill={dual ? color : (q.color || color)} style={{ transition: 'all .9s cubic-bezier(.22,1,.36,1)' }}/>;
           })}
           {/* libellés */}
           {items.map(function (q, i) {
@@ -156,6 +163,12 @@
                          style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{SHORT[q.label] || q.label}</text>;
           })}
         </svg>
+        {dual ? (
+          <div style={{ display: 'flex', gap: 16, marginTop: 6, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 3, background: color, display: 'inline-block', borderRadius: 2 }}></em>Général</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 0, borderTop: '2px dashed ' + color2, display: 'inline-block' }}></em>Ajusté à l’âge</span>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -607,12 +620,15 @@
   function CadTrendLine(props) {
     var en = useInView(); var enRef = en[0], on = en[1];
     var pts = props.points || [];
+    var pts2 = (props.points2 && props.points2.length === pts.length) ? props.points2 : null;  // 2e série (âge)
+    var col2 = props.color2 || '#5b6fff';
     var max = props.max || 1000;
     var levels = props.levels || [];
     var palette = props.palette || {};
     var hv = React.useState(-1); var hi = hv[0], setHi = hv[1];
     if (!pts.length) return null;
-    var maxScore = Math.max.apply(null, pts.map(function (p) { return p.score; }));
+    var allScores = pts.map(function (p) { return p.score; }).concat(pts2 ? pts2.map(function (p) { return p.score; }) : []);
+    var maxScore = Math.max.apply(null, allScores);
     var yTop = Math.min(1100, Math.max(600, Math.ceil((maxScore + 60) / 200) * 200));
     var W = 680, H = 280, PL = 46, PR = 16, PT = 18, PB = 36;
     var iw = W - PL - PR, ih = H - PT - PB;
@@ -627,6 +643,7 @@
     }
     var ticks = []; for (var t = 0; t <= yTop; t += 200) ticks.push(t);
     var line = pts.map(function (p, idx) { return x(idx) + ',' + y(p.score); }).join(' ');
+    var line2 = pts2 ? pts2.map(function (p, idx) { return x(idx) + ',' + y(p.score); }).join(' ') : null;
     return (
       <div ref={enRef} style={{ position: 'relative' }}>
         <svg width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label="Score global dans le temps" style={{ display: 'block', overflow: 'visible' }}>
@@ -644,6 +661,8 @@
               <text x={PL - 8} y={y(tk) + 3} textAnchor="end" style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, fill: 'var(--text-dim)' }}>{tk}</text>
             </g>;
           })}
+          {line2 ? <polyline points={line2} fill="none" stroke={col2} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" strokeLinecap="round" style={{ opacity: on ? 1 : 0, transition: 'opacity .7s ease' }} /> : null}
+          {line2 ? pts2.map(function (p, idx) { return <circle key={'a' + idx} cx={x(idx)} cy={y(p.score)} r={3.4} fill={col2} stroke="var(--bg-card)" strokeWidth={1.2} style={{ opacity: on ? 1 : 0, transition: 'opacity .5s ease ' + (idx * 90) + 'ms' }} />; }) : null}
           <polyline points={line} fill="none" stroke="var(--text-mid)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
                     style={{ opacity: on ? 1 : 0, transition: 'opacity .7s ease' }} />
           {pts.map(function (p, idx) {
@@ -660,15 +679,24 @@
                          onMouseEnter={function () { setHi(idx); }} onMouseLeave={function () { setHi(-1); }} />;
           })}
           {hi >= 0 ? (function () {
-            var p = pts[hi]; var bx = Math.max(PL, Math.min(x(hi) - 70, W - PR - 148)); var by = Math.max(0, y(p.score) - 68);
+            var p = pts[hi]; var pa = pts2 ? pts2[hi] : null;
+            var h = pa ? 72 : 56;
+            var bx = Math.max(PL, Math.min(x(hi) - 70, W - PR - 150)); var by = Math.max(0, y(p.score) - h - 10);
             return <g>
-              <rect x={bx} y={by} width={148} height={56} rx={8} fill="var(--bg-card)" stroke="var(--border-mid)" strokeWidth={1} style={{ filter: 'drop-shadow(0 6px 16px rgba(8,20,40,.18))' }} />
-              <text x={bx + 12} y={by + 19} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, fill: 'var(--text)' }}>{p.score}<tspan style={{ fontSize: 10, fill: 'var(--text-dim)' }}> / {max}</tspan></text>
-              <text x={bx + 12} y={by + 34} style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, fill: p.color || BRAND }}>{p.level}</text>
-              <text x={bx + 12} y={by + 48} style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: 'var(--text-mid)' }}>{p.sub || ''}</text>
+              <rect x={bx} y={by} width={150} height={h} rx={8} fill="var(--bg-card)" stroke="var(--border-mid)" strokeWidth={1} style={{ filter: 'drop-shadow(0 6px 16px rgba(8,20,40,.18))' }} />
+              <text x={bx + 12} y={by + 18} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, fill: 'var(--text)' }}>{p.score}<tspan style={{ fontSize: 10, fill: 'var(--text-dim)' }}> / {max}</tspan> <tspan style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 700, fill: p.color || BRAND }}>{p.level}</tspan></text>
+              {pa ? <text x={bx + 12} y={by + 33} style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: col2 }}>âge : <tspan style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 12 }}>{pa.score}</tspan> · {pa.level}</text> : null}
+              <text x={bx + 12} y={by + (pa ? 49 : 36)} style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: 'var(--text-mid)' }}>{p.label}</text>
+              <text x={bx + 12} y={by + (pa ? 63 : 50)} style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: 'var(--text-mid)' }}>{p.sub || ''}</text>
             </g>;
           })() : null}
         </svg>
+        {pts2 ? (
+          <div style={{ display: 'flex', gap: 16, marginTop: 4, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 16, height: 3, background: 'var(--text-mid)', display: 'inline-block', borderRadius: 2 }}></em>Général</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 16, height: 0, borderTop: '2px dashed ' + col2, display: 'inline-block' }}></em>Ajusté à l’âge</span>
+          </div>
+        ) : null}
       </div>
     );
   }

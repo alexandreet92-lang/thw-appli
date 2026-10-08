@@ -664,12 +664,14 @@
           <Sources items={SRC_FAIRE} />
         </Act>
 
+        {/* Le test, concrètement — juste avant la réponse « Pourquoi CADENCES ». */}
+        {window.CadTestIntro ? <window.CadTestIntro catalog={props.catalog} /> : null}
+
         {/* 8. La réponse */}
         <Act eye="Pourquoi CADENCES" title="Pour piloter ça, il faut mesurer."
-             lead={<span>Tu sais maintenant quoi travailler. CADENCES te dit <strong>où tu en es</strong> sur chacune de ces qualités — et te le redit dans 3 mois, puis chaque année : où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>.</span>}>
+             lead={<span>Tu sais maintenant quoi travailler, et en quoi consiste le test. CADENCES te dit <strong>où tu en es</strong> sur chacune de ces qualités — et te le redit dans 3 mois, puis chaque année : où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>.</span>}>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {props.makeCta ? props.makeCta() : null}
-            <span className="cad-scrollcue">↓ Le test en détail, juste en dessous</span>
           </div>
         </Act>
       </div>

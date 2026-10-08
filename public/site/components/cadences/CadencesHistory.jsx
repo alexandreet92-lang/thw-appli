@@ -70,8 +70,10 @@
         .cad-hcmp-side b { font-family: var(--font-display); font-weight: 800; font-size: 22px; display: block; }
         .cad-hcmp-side em { font-style: normal; font-family: var(--font-body); font-size: 12px; color: var(--text-mid); }
         .cad-hcmp-vs { font-family: var(--font-display); font-weight: 800; color: var(--text-dim); font-size: 14px; }
-        .cad-hcmp-q { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; }
-        .cad-hcmp-q b { font-family: var(--font-display); font-weight: 800; }
+        .cad-hcmp-q { display: grid; grid-template-columns: 1fr 64px 64px; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; align-items: baseline; }
+        .cad-hcmp-q b { font-family: var(--font-display); font-weight: 800; text-align: right; }
+        .cad-hcmp-q.is-head { border-bottom: 1px solid var(--border-mid); }
+        .cad-hcmp-q.is-head b, .cad-hcmp-q.is-head span { font-family: var(--font-body); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
         .cad-hnote { border-left: 4px solid #f59e0b; }
         .cad-hdelta-up { color: #22c55e; } .cad-hdelta-dn { color: #ef4444; } .cad-hdelta-eq { color: var(--text-dim); }
       `}</style>
@@ -126,11 +128,16 @@
     else if (sort === 'best') rows.sort(function (a, b) { return b.score - a.score; });
     else if (extraCol) rows.sort(function (a, b) { return extraCol.raw(b) - extraCol.raw(a); });
 
-    // Points de la courbe (chronologique).
+    // Points des deux courbes (chronologique) : général + ajusté à l'âge.
+    function colorOfA(e) { return levelColor(cat, e.levelA); }
     var tpoints = hist.map(function (e) {
       return { label: shortDate(e.date), score: e.score, level: e.level, color: colorOf(e),
         sub: frNum(e.weight) + ' kg · ' + condLabel(e), flag: flagVs(e, latest) };
     });
+    var tpoints2 = hist.map(function (e) {
+      return { label: shortDate(e.date), score: e.scoreA != null ? e.scoreA : e.score, level: e.levelA || e.level, color: colorOfA(e) };
+    });
+    var hasA = hist.some(function (e) { return e.scoreA != null && e.scoreA !== e.score; });
 
     // Affichage d'une valeur d'épreuve : fourni (maquette) ou formaté depuis la
     // valeur brute + l'unité du catalogue via le formateur du site.
@@ -187,7 +194,7 @@
         <section className="cad-card">
           <h3 className="cad-h3">Score global dans le temps</h3>
           <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Survole un point pour voir le détail. ⚠ = conditions assez différentes du dernier test.</p>
-          {window.CadTrendLine ? <window.CadTrendLine points={tpoints} max={cat.totalPoints} levels={cat.levels} palette={cat.palette} /> : null}
+          {window.CadTrendLine ? <window.CadTrendLine points={tpoints} points2={hasA ? tpoints2 : null} max={cat.totalPoints} levels={cat.levels} palette={cat.palette} /> : null}
         </section>
 
         {/* ② Tableau de tous les tests */}
@@ -196,7 +203,7 @@
           <div className="cad-htable-wrap">
             <table className="cad-htable">
               <thead><tr>
-                <th>Date</th><th>Score</th><th>Palier</th><th>Poids</th><th>Âge</th><th>🌡️ Temp.</th><th>Conditions</th>
+                <th>Date</th><th>Général</th><th>Ajusté à l’âge</th><th>Poids</th><th>Âge</th><th>🌡️ Temp.</th><th>Conditions</th>
                 {extraCol ? <th>{extraCol.title}</th> : null}<th></th>
               </tr></thead>
               <tbody>
@@ -204,8 +211,8 @@
                   return (
                     <tr key={e.id} onClick={function () { props.onOpen && props.onOpen(e.id); }}>
                       <td>{frDate(e.date)} {flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}</td>
-                      <td><span className="cad-hscore" style={{ color: colorOf(e) }}>{e.score}</span><span className="num" style={{ color: 'var(--text-dim)', fontSize: 11 }}> / {cat.totalPoints}</span></td>
-                      <td>{Lcell(e.level)}</td>
+                      <td><span className="cad-hscore" style={{ color: colorOf(e) }}>{e.score}</span> {Lcell(e.level)}</td>
+                      <td><span className="cad-hscore" style={{ color: colorOfA(e) }}>{e.scoreA != null ? e.scoreA : e.score}</span> {Lcell(e.levelA || e.level)}</td>
                       <td className="num">{frNum(e.weight)} kg</td>
                       <td className="num">{e.age}</td>
                       <td className="num">{e.tempC != null ? frNum(e.tempC) + ' °C' : '—'}</td>
@@ -223,17 +230,20 @@
         {/* ③ Progression par qualité */}
         <section className="cad-card" style={{ marginTop: 18 }}>
           <h3 className="cad-h3">Progression par qualité</h3>
+          <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Trait plein = général · trait pointillé (indigo) = ajusté à l’âge.</p>
           <div className="cad-hq">
             {qualities.map(function (q) {
-              var series = hist.map(function (e) { return (e.qualities[q.key] ? e.qualities[q.key].pct : 0) * 100; });
-              var d = series[series.length - 1] - series[0];
-              var lastLv = latest.qualities[q.key] ? latest.qualities[q.key].level : 'Sédentaire';
-              var col = levelColor(cat, lastLv);
+              var serie = function (key) { return hist.map(function (e) { var o = (e[key] && e[key][q.key]); return (o ? o.pct : 0) * 100; }); };
+              var sG = serie('qualities'), sA = serie('qualitiesA');
+              var dG = sG[sG.length - 1] - sG[0], dA = sA[sA.length - 1] - sA[0];
+              var lvG = latest.qualities[q.key] ? latest.qualities[q.key].level : 'Sédentaire';
+              var lvA = (latest.qualitiesA && latest.qualitiesA[q.key]) ? latest.qualitiesA[q.key].level : lvG;
+              var colG = levelColor(cat, lvG), colA = levelColor(cat, lvA);
               return (
                 <div key={q.key} className="cad-hq-card">
-                  <div className="cad-hq-top"><b>{q.label}</b><span className={'cad-hq-d ' + deltaCls(d)}>{deltaStr(Math.round(d))}</span></div>
-                  {window.CadSparkline ? <window.CadSparkline values={series} color={col} aria={q.label} /> : null}
-                  <div className="cad-hq-foot"><span>{frNum(series[0])} %</span><span style={{ color: col, fontWeight: 700 }}>{frNum(series[series.length - 1])} % · {lastLv}</span></div>
+                  <div className="cad-hq-top"><b>{q.label}</b><span className={'cad-hq-d ' + deltaCls(dG)}>{deltaStr(Math.round(dG))}<em style={{ fontStyle: 'normal', color: colA, fontSize: 11, marginLeft: 6 }}>{deltaStr(Math.round(dA))}</em></span></div>
+                  {window.CadSparkline ? <window.CadSparkline values={sG} color={colG} aria={q.label + ' général'} /> : null}
+                  <div className="cad-hq-foot"><span style={{ color: colG, fontWeight: 700 }}>gén. {frNum(sG[sG.length - 1])} %</span><span style={{ color: colA, fontWeight: 700 }}>âge {frNum(sA[sA.length - 1])} %</span></div>
                 </div>
               );
             })}
@@ -264,27 +274,31 @@
               <select className="cad-hsel" style={{ marginBottom: 8, width: '100%' }} value={cmpA} onChange={function (e) { setCmpA(e.target.value); }}>
                 {byRecent.map(function (e) { return <option key={e.id} value={e.id}>{frDate(e.date)}</option>; })}
               </select>
-              <b style={{ color: colorOf(ea) }}>{ea.score}</b>
-              <em>{ea.level} · {frNum(ea.weight)} kg · {condLabel(ea)}</em>
+              <b style={{ color: colorOf(ea) }}>{ea.score}</b> <b style={{ color: colorOfA(ea), fontSize: 16 }}>/ {ea.scoreA != null ? ea.scoreA : ea.score}</b>
+              <em>gén. {ea.level} · âge {ea.levelA || ea.level} · {frNum(ea.weight)} kg · {condLabel(ea)}</em>
             </div>
             <div className="cad-hcmp-vs">vs</div>
             <div className="cad-hcmp-side">
               <select className="cad-hsel" style={{ marginBottom: 8, width: '100%' }} value={cmpB} onChange={function (e) { setCmpB(e.target.value); }}>
                 {byRecent.map(function (e) { return <option key={e.id} value={e.id}>{frDate(e.date)}</option>; })}
               </select>
-              <b style={{ color: colorOf(eb) }}>{eb.score}</b>
-              <em>{eb.level} · {frNum(eb.weight)} kg · {condLabel(eb)}</em>
+              <b style={{ color: colorOf(eb) }}>{eb.score}</b> <b style={{ color: colorOfA(eb), fontSize: 16 }}>/ {eb.scoreA != null ? eb.scoreA : eb.score}</b>
+              <em>gén. {eb.level} · âge {eb.levelA || eb.level} · {frNum(eb.weight)} kg · {condLabel(eb)}</em>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
             <span className="cad-p" style={{ margin: 0 }}>Écart total</span>
-            <b className={'cad-hq-d ' + deltaCls(ea.score - eb.score)} style={{ fontSize: 22 }}>{deltaStr(ea.score - eb.score)} pts</b>
+            <b className={'cad-hq-d ' + deltaCls(ea.score - eb.score)} style={{ fontSize: 22 }}>{deltaStr(ea.score - eb.score)} <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>gén.</span></b>
+            <b className={'cad-hq-d ' + deltaCls((ea.scoreA || ea.score) - (eb.scoreA || eb.score))} style={{ fontSize: 22 }}>{deltaStr((ea.scoreA || ea.score) - (eb.scoreA || eb.score))} <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>âge</span></b>
             {flagVs(ea, eb) ? <Badge warn>⚠ conditions différentes</Badge> : null}
           </div>
+          <div className="cad-hcmp-q is-head"><span>Qualité</span><b>Général</b><b>Âge</b></div>
           {qualities.map(function (q) {
             var va = ea.qualities[q.key] ? ea.qualities[q.key].pct * 100 : 0;
             var vb = eb.qualities[q.key] ? eb.qualities[q.key].pct * 100 : 0;
-            return <div key={q.key} className="cad-hcmp-q"><span>{q.label}</span><b className={deltaCls(va - vb)}>{deltaStr(Math.round(va - vb))} pts</b></div>;
+            var aa = (ea.qualitiesA && ea.qualitiesA[q.key]) ? ea.qualitiesA[q.key].pct * 100 : va;
+            var ab = (eb.qualitiesA && eb.qualitiesA[q.key]) ? eb.qualitiesA[q.key].pct * 100 : vb;
+            return <div key={q.key} className="cad-hcmp-q"><span>{q.label}</span><b className={deltaCls(va - vb)}>{deltaStr(Math.round(va - vb))}</b><b className={deltaCls(aa - ab)}>{deltaStr(Math.round(aa - ab))}</b></div>;
           })}
         </section>
 

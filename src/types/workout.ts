@@ -1,4 +1,7 @@
-export type WorkoutMode = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
+// 'warmup' = bloc d'échauffement (muscu/Hyrox/boxe/hybrid) : pas de séries ni de
+// reps, juste une durée (durationSec) + une description libre optionnelle (note).
+// Additif & rétro-compatible : aucun ancien bloc ne porte ce mode.
+export type WorkoutMode = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata' | 'warmup'
 
 export interface WorkoutExercise {
   id: string
@@ -9,6 +12,8 @@ export interface WorkoutExercise {
   weightKg: number
   restSec: number
   durationSec?: number
+  // Échauffement (mode 'warmup') : « ce que l'on doit faire », facultatif.
+  note?: string
   // Récup avant le bloc/circuit SUIVANT (s) — prioritaire sur restSec/circuitRestSec
   // pour la transition inter-blocs (additif, rétro-compatible).
   restAfterSec?: number
@@ -40,6 +45,8 @@ export function roundsFieldForMode(mode: WorkoutMode): 'sets' | 'circuitRounds' 
 }
 
 export function getRounds(ex: WorkoutExercise): number {
+  // Échauffement : pas de tours (passage unique).
+  if (ex.mode === 'warmup') return 1
   const field = roundsFieldForMode(ex.mode)
   const raw = ex[field]
   if (typeof raw === 'number' && raw > 0) return raw
@@ -51,6 +58,8 @@ export function getRounds(ex: WorkoutExercise): number {
 }
 
 export function withRounds(ex: WorkoutExercise, rounds: number): WorkoutExercise {
+  // Échauffement : aucun tour à ajuster.
+  if (ex.mode === 'warmup') return ex
   const n = Math.max(1, Math.min(30, Math.round(rounds)))
   return { ...ex, [roundsFieldForMode(ex.mode)]: n }
 }

@@ -81,7 +81,15 @@ export interface ComposedMove {
 // Circuit : un GROUPE de moves répété N tours, avec une récup entre tours. Une
 // séance peut contenir PLUSIEURS circuits (ex. circuit 1 = 3× sac 8 min, puis
 // circuit 2 = autre chose). Chaque move référence son circuit via circuitId.
-export interface ComposedCircuit { id: string; name?: string; rounds: number; restSec: number; restAfterSec?: number }
+export interface ComposedCircuit {
+  id: string; name?: string; rounds: number; restSec: number; restAfterSec?: number
+  // Bloc ÉCHAUFFEMENT : un circuit sans moves, avec une durée (min) et une
+  // description libre facultative (« ce que l'on doit faire »). Additif &
+  // rétro-compatible — persiste tel quel dans validation_data.
+  warmup?: boolean
+  warmupDurationMin?: number
+  warmupDescription?: string
+}
 
 // Définition d'un type de move (drive l'UI du builder).
 export interface MoveDef {
@@ -176,6 +184,8 @@ export function sumComposedMinutes(moves: ComposedMove[], circuits?: ComposedCir
   const firstId = list[0].id
   let total = 0
   for (const c of list) {
+    // Échauffement : durée fixe, aucun move.
+    if (c.warmup) { total += c.warmupDurationMin ?? 0; continue }
     const cm = moves.filter(m => (m.circuitId ?? firstId) === c.id)
     const perRound = cm.reduce((s, m) => s + moveMinutes(m) + (m.restAfterSec ?? 0) / 60, 0)
     const rounds = Math.max(1, c.rounds)

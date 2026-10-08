@@ -5,7 +5,9 @@
 // charge… + sa mesure. Le move « round » (boxe) a une jauge d'intensité 1→10
 // réglable PAR round. Sortie = ComposedMove[] + ComposedCircuit[].
 import { useState } from 'react'
-import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { IconPlus, IconTrash, IconChevronUp, IconChevronDown, IconFlame } from '@tabler/icons-react'
+import { haptic } from '@/lib/haptics'
 import {
   type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch, type PunchSide,
   movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes, composedMoveLabel, newCircuitId,
@@ -48,6 +50,7 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
   onCircuitsChange: (c: ComposedCircuit[]) => void
 }) {
   const defs = movesForSport(sport)
+  const reduce = useReducedMotion()
   // Au moins un circuit doit exister.
   const circList = circuits.length ? circuits : [{ id: 'c1', rounds: 1, restSec: 0 }]
   const firstId = circList[0].id
@@ -96,6 +99,11 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
   function addCircuit() {
     onCircuitsChange([...circList, { id: newCircuitId(), name: `Circuit ${circList.length + 1}`, rounds: 1, restSec: 0 }])
   }
+  // Bloc ÉCHAUFFEMENT : circuit sans move, durée (min) + description libre.
+  function addWarmup() {
+    haptic('light')
+    onCircuitsChange([...circList, { id: newCircuitId(), name: 'Échauffement', rounds: 1, restSec: 0, warmup: true, warmupDurationMin: 10, warmupDescription: '' }])
+  }
   function patchCircuit(id: string, p: Partial<ComposedCircuit>) {
     onCircuitsChange(circList.map(c => c.id === id ? { ...c, ...p } : c))
   }
@@ -106,6 +114,15 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
     onChange(moves.map(m => circuitOf(m) === id ? { ...m, circuitId: remaining[0].id } : m))
     onCircuitsChange(remaining)
   }
+  // Réordonne les blocs (circuits + échauffements) par haut/bas, avec haptique.
+  function moveCircuit(ci: number, dir: -1 | 1) {
+    const j = ci + dir
+    if (j < 0 || j >= circList.length) return
+    haptic('light')
+    const next = [...circList]
+    ;[next[ci], next[j]] = [next[j], next[ci]]
+    onCircuitsChange(next)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -113,12 +130,49 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
         const cMoves = moves.filter(m => circuitOf(m) === circuit.id)
         const cIds = cMoves.map(m => m.id)
         const isMulti = circList.length > 1
+        // Flèches de réordonnancement des blocs (haut / bas).
+        const reorderArrows = isMulti ? (
+          <>
+            <button onClick={() => moveCircuit(ci, -1)} disabled={ci === 0} aria-label="Monter le bloc" style={{ ...iconBtn, opacity: ci === 0 ? 0.3 : 1 }}><IconChevronUp size={16} /></button>
+            <button onClick={() => moveCircuit(ci, 1)} disabled={ci === circList.length - 1} aria-label="Descendre le bloc" style={{ ...iconBtn, opacity: ci === circList.length - 1 ? 0.3 : 1 }}><IconChevronDown size={16} /></button>
+          </>
+        ) : null
+
+        // ── Bloc ÉCHAUFFEMENT : durée + description libre (pas de moves) ──
+        if (circuit.warmup) {
+          return (
+            <motion.div key={circuit.id} layout={!reduce} style={{ border: '1px solid var(--zone-med-border)', borderRadius: 'var(--r-md)', padding: 12, background: 'var(--zone-med-bg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <IconFlame size={18} style={{ color: 'var(--zone-3)', flexShrink: 0 }} />
+                <input value={circuit.name ?? 'Échauffement'} onChange={e => patchCircuit(circuit.id, { name: e.target.value })}
+                  style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
+                {reorderArrows}
+                {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer l'échauffement" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                <Field label="Durée (min)">
+                  <input type="number" min={0} defaultValue={circuit.warmupDurationMin ?? 10} key={`wd${circuit.warmupDurationMin ?? 10}`}
+                    onBlur={e => patchCircuit(circuit.id, { warmupDurationMin: Math.max(0, +e.target.value || 0) })} style={inp} />
+                </Field>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Field label="Description (optionnel)">
+                  <textarea defaultValue={circuit.warmupDescription ?? ''} key={`wdesc${circuit.id}`}
+                    onBlur={e => patchCircuit(circuit.id, { warmupDescription: e.target.value.trim() || undefined })}
+                    placeholder="Ce que l'on doit faire…" rows={3}
+                    style={{ ...inp, resize: 'vertical', lineHeight: 1.4 }} />
+                </Field>
+              </div>
+            </motion.div>
+          )
+        }
         return (
-          <div key={circuit.id} style={{ border: `1px solid ${accent}33`, borderRadius: 'var(--r-md)', padding: 12, background: 'var(--bg-card)' }}>
+          <motion.div key={circuit.id} layout={!reduce} style={{ border: `1px solid ${accent}33`, borderRadius: 'var(--r-md)', padding: 12, background: 'var(--bg-card)' }}>
             {/* En-tête circuit */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <input value={circuit.name ?? `Circuit ${ci + 1}`} onChange={e => patchCircuit(circuit.id, { name: e.target.value })}
                 style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', padding: 0 }} />
+              {reorderArrows}
               {isMulti && <button onClick={() => removeCircuit(circuit.id)} aria-label="Supprimer le circuit" style={{ ...iconBtn, color: 'var(--danger)' }}><IconTrash size={16} /></button>}
             </div>
             {/* Tours + récup du circuit (+ récup avant le circuit suivant si multi). */}
@@ -275,15 +329,21 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuits, onCi
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         )
       })}
 
-      {/* Ajouter un circuit */}
-      <button onClick={addCircuit} style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 'var(--r-md)',
-        border: `1px dashed ${accent}66`, background: 'transparent', color: accent, cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 700,
-      }}><IconPlus size={16} /> Ajouter un circuit</button>
+      {/* Ajouter un circuit / un échauffement */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={addCircuit} style={{
+          flex: '1 1 160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 'var(--r-md)',
+          border: `1px dashed ${accent}66`, background: 'transparent', color: accent, cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 700,
+        }}><IconPlus size={16} /> Ajouter un circuit</button>
+        <button onClick={addWarmup} style={{
+          flex: '1 1 160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 'var(--r-md)',
+          border: '1px dashed var(--zone-med-border)', background: 'transparent', color: 'var(--zone-3)', cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 700,
+        }}><IconFlame size={16} /> Ajouter un échauffement</button>
+      </div>
     </div>
   )
 }

@@ -83,7 +83,9 @@ export function estDurationMin(exos: ExerciseItem[], circuits: ExoCircuit[], map
     return Math.round(sec / 60)
   }
   let sec = 0
-  const withExos = circuits.filter(c => exos.some(e => (map[e.id] ?? 'default') === c.id))
+  // Échauffements : durée fixe, comptée même sans exercice rattaché.
+  for (const c of circuits) if (c.type === 'warmup') sec += (c.warmupDurationMin ?? 0) * 60
+  const withExos = circuits.filter(c => c.type !== 'warmup' && exos.some(e => (map[e.id] ?? 'default') === c.id))
   withExos.forEach((c, ci) => {
     const list = exos.filter(e => (map[e.id] ?? 'default') === c.id)
     const type = c.type ?? 'series'
@@ -129,7 +131,18 @@ export function blocksToExercises(blocks: Block[], sport: 'gym' | 'hyrox'): { ex
   let current: ExoCircuit | null = null
   const fallback: ExoCategory = sport === 'hyrox' ? 'hyrox' : 'mixte'
   for (const b of blocks) {
-    if (b.type === 'circuit_header') {
+    if (b.type === 'warmup') {
+      // Bloc échauffement (muscu/Hyrox) : circuit dédié sans exercice.
+      // La description « ce que l'on doit faire » est persistée dans `value`.
+      circuits.push({
+        id: b.id, name: b.label || 'Échauffement', type: 'warmup',
+        rounds: 1, restBetweenRoundsSec: 0,
+        warmupDurationMin: b.durationMin || 0,
+        warmupDescription: b.value ? b.value : undefined,
+      })
+      // N'affecte pas `current` : les exercices suivants restent rattachés au
+      // dernier circuit réel (ou au circuit par défaut).
+    } else if (b.type === 'circuit_header') {
       current = {
         id: b.id, name: b.label || 'Circuit', type: b.mode as string,
         rounds: b.zone || 3, restBetweenRoundsSec: Math.round((b.recoveryMin ?? 0) * 60),
@@ -182,6 +195,9 @@ export function blocksToWorkoutExercises(blocks: Block[], sport: 'gym' | 'hyrox'
   const { exercises, circuits, map } = blocksToExercises(blocks, sport)
   const out: WorkoutExercise[] = []
   for (const c of circuits) {
+    // Échauffement : non tracké dans l'enregistreur live (pas d'exercice à
+    // valider) — on le saute, comme tout circuit sans exercice.
+    if (c.type === 'warmup') continue
     const exos = exercises.filter(e => (map[e.id] ?? circuits[0]?.id) === c.id)
     if (exos.length === 0) continue
     const mode = (['series', 'circuit', 'superset', 'emom', 'tabata'].includes(c.type) ? c.type : 'series') as WorkoutMode

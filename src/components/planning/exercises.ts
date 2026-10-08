@@ -26,11 +26,16 @@ export interface ExerciseItem {
 export interface ExoCircuit {
   id: string
   name: string
-  type: string          // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
+  type: string          // 'series' | 'circuit' | 'superset' | 'emom' | 'tabata' | 'warmup'
   rounds: number
   restBetweenRoundsSec: number      // récup entre chaque tour du circuit
   restAfterCircuitSec?: number      // récup avant le circuit suivant (additif, rétro-compatible)
   targetTimeSec?: number
+  // Bloc ÉCHAUFFEMENT (type === 'warmup') : durée (min) + description libre
+  // facultative (« ce que l'on doit faire »). Pas d'exercices rattachés.
+  // Additif & rétro-compatible : absent des circuits existants.
+  warmupDurationMin?: number
+  warmupDescription?: string
 }
 
 export const EXO_CATEGORY_COLOR: Record<ExoCategory, string> = {

@@ -14,6 +14,7 @@
  * en haut du module planning/page.tsx avant le call site.
  */
 import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
+import { haptic } from '@/lib/haptics'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
@@ -197,6 +198,25 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
     onChange(next)
   }
 
+  // Bloc ÉCHAUFFEMENT : circuit sans exercice, durée (min) + description libre.
+  function addWarmup() {
+    haptic('light')
+    const wu: ExoCircuit = { id: `circuit_${Date.now()}`, name: t('planning.warmup'), type: 'warmup', rounds: 1, restBetweenRoundsSec: 0, warmupDurationMin: 10 }
+    setCircuits(prev => [...prev, wu])
+    setShowCircuitTypeMenu(false)
+  }
+  // Réordonne les blocs (circuits + échauffements) par haut / bas, avec haptique.
+  function moveCircuit(ci: number, dir: -1 | 1) {
+    setCircuits(prev => {
+      const j = ci + dir
+      if (j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[ci], next[j]] = [next[j], next[ci]]
+      return next
+    })
+    haptic('light')
+  }
+
   function fmtTime(sec: number): string {
     if (!sec) return ''
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
@@ -213,8 +233,52 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
 
   return (
     <div>
-      {circuits.map(circuit => {
+      {circuits.map((circuit, ci) => {
         const circuitExercises = getBlocksForCircuit(circuit.id)
+        const multi = circuits.length > 1
+        // Flèches de réordonnancement des blocs (haut / bas), glyphes texte
+        // (cohérent avec le reste de ce builder legacy).
+        const reorderArrows = multi ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+            <button onClick={() => moveCircuit(ci, -1)} disabled={ci === 0} aria-label={t('ht.moveUp')}
+              style={{ background: 'none', border: 'none', color: ci === 0 ? 'var(--border)' : 'var(--text-dim)', cursor: ci === 0 ? 'default' : 'pointer', fontSize: 11, padding: '0 3px', lineHeight: 1 }}>▲</button>
+            <button onClick={() => moveCircuit(ci, 1)} disabled={ci === circuits.length - 1} aria-label={t('ht.moveDown')}
+              style={{ background: 'none', border: 'none', color: ci === circuits.length - 1 ? 'var(--border)' : 'var(--text-dim)', cursor: ci === circuits.length - 1 ? 'default' : 'pointer', fontSize: 11, padding: '0 3px', lineHeight: 1 }}>▼</button>
+          </div>
+        ) : null
+
+        // ── Bloc ÉCHAUFFEMENT : durée + description libre (pas d'exercice) ──
+        if (circuit.type === 'warmup') {
+          return (
+            <div key={circuit.id} style={{
+              marginBottom: 16, borderRadius: 'var(--r-md)',
+              border: '1px solid var(--zone-med-border)', background: 'var(--zone-med-bg)', overflow: 'hidden',
+            }}>
+              <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {reorderArrows}
+                <span style={{ fontSize: 15, flexShrink: 0 }} aria-hidden>🔥</span>
+                <input value={circuit.name} onChange={e => updateCircuit(circuit.id, { name: e.target.value })}
+                  style={{ flex: '1 1 80px', minWidth: 70, padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--zone-med-border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('planning.duration')} (min)</span>
+                  <input type="number" min={0} value={circuit.warmupDurationMin ?? 0}
+                    onChange={e => updateCircuit(circuit.id, { warmupDurationMin: Math.max(0, parseInt(e.target.value) || 0) })}
+                    style={{ width: 60, padding: '5px 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--zone-med-border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', textAlign: 'center' as const }} />
+                </div>
+                {multi && (
+                  <button onClick={() => removeCircuit(circuit.id)} aria-label={t('sed.cancel')}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+                )}
+              </div>
+              <div style={{ padding: '0 14px 12px' }}>
+                <textarea value={circuit.warmupDescription ?? ''}
+                  onChange={e => updateCircuit(circuit.id, { warmupDescription: e.target.value || undefined })}
+                  placeholder={t('planning.warmupDescPlaceholder')} rows={3}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--zone-med-border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 12, outline: 'none', resize: 'vertical', lineHeight: 1.4, fontFamily: 'inherit' }} />
+              </div>
+            </div>
+          )
+        }
         return (
           <div key={circuit.id} style={{
             marginBottom: 16, borderRadius: 'var(--r-md)',
@@ -225,6 +289,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
             {/* En-tête circuit */}
             <div style={{ padding: '10px 14px', background: `${accentColor}12`, borderBottom: `1px solid ${accentColor}22` }}>
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 8 }}>
+                {reorderArrows}
                 {/* Badge type — cliquable pour changer */}
                 <button
                   onClick={() => setChangingTypeFor(changingTypeFor === circuit.id ? null : circuit.id)}
@@ -503,12 +568,18 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
 
       {/* Bouton ajouter un circuit — avec sélecteur de type */}
       {!showCircuitTypeMenu ? (
-        <button onClick={() => setShowCircuitTypeMenu(true)} style={{
-          width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
-          background: 'transparent', border: `2px dashed ${accentColor}44`,
-          color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          marginTop: 4,
-        }}>+ Ajouter un circuit</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginTop: 4 }}>
+          <button onClick={() => setShowCircuitTypeMenu(true)} style={{
+            flex: '1 1 160px', padding: '10px', borderRadius: 'var(--r-sm)',
+            background: 'transparent', border: `2px dashed ${accentColor}44`,
+            color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>+ Ajouter un circuit</button>
+          <button onClick={addWarmup} style={{
+            flex: '1 1 160px', padding: '10px', borderRadius: 'var(--r-sm)',
+            background: 'transparent', border: '2px dashed var(--zone-med-border)',
+            color: 'var(--zone-3)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>🔥 {t('planning.addWarmup')}</button>
+        </div>
       ) : (
         <div style={{
           marginTop: 4, padding: '12px 14px', borderRadius: 'var(--r-md)',
@@ -4501,6 +4572,21 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   function exercisesToBlocks(exos: ExerciseItem[], circuits: ExoCircuit[], map: Record<string, string>): Block[] {
     const result: Block[] = []
     for (const circuit of circuits) {
+      // Bloc ÉCHAUFFEMENT : persisté comme un bloc type 'warmup' (durée +
+      // description dans `value`). Pas d'exercices → émis avant le skip.
+      if (circuit.type === 'warmup') {
+        result.push({
+          id: circuit.id,
+          mode: 'single' as BlockMode,
+          type: 'warmup' as BlockType,
+          durationMin: circuit.warmupDurationMin ?? 0,
+          zone: 0,
+          value: circuit.warmupDescription ?? '',
+          hrAvg: '',
+          label: circuit.name || 'Échauffement',
+        })
+        continue
+      }
       const circuitExos = exos.filter(e => (map[e.id] ?? 'default') === circuit.id)
       if (circuitExos.length === 0) continue
       result.push({
@@ -4555,7 +4641,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const parcoursFlowTss = computeParcoursFlowTSS()
     // Mobilité : jamais de charge (TSS) — elle ne compte pas dans le volume.
     const finalTss = sport === 'mobilite' ? undefined : ((aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : sessionStats.tssHigh) || undefined)
-    const finalBlocks = isStrength && exercises.length > 0
+    // Sérialise dès qu'il y a des exercices OU au moins un bloc échauffement
+    // (une séance peut n'être qu'un échauffement).
+    const hasStrengthContent = exercises.length > 0 || gymCircuitsRef.current.some(c => c.type === 'warmup')
+    const finalBlocks = isStrength && hasStrengthContent
       ? exercisesToBlocks(exercises, gymCircuitsRef.current, gymCircuitMapRef.current)
       : aiFlowStep === 'parcours' && parcoursData
         ? buildParcoursBlocks()

@@ -5,7 +5,9 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState, Fragment } from 'react'
 import type { ReactNode } from 'react'
-import { IconPlus, IconRefresh, IconDotsVertical, IconTrash, IconSearch, IconArrowNarrowDown } from '@tabler/icons-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { IconPlus, IconRefresh, IconDotsVertical, IconTrash, IconSearch, IconArrowNarrowDown, IconFlame, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
+import { haptic } from '@/lib/haptics'
 import { searchExercises, type ExoDefinition } from '../exercises'
 import {
   type ExerciseItem, type ExoCircuit, itemFromDef, customItem, genCircuitId, fmtSec,
@@ -32,6 +34,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 }) {
   const { t: tr } = useI18n()
   const isM = useSeM()
+  const reduce = useReducedMotion()
   const addBtnS = (accent: string): React.CSSProperties => isM ? { ...addBtn(accent), minHeight: 44, padding: '0 4px', fontSize: 14, fontWeight: 700 } : addBtn(accent)
   const [adding, setAdding] = useState<string | null>(null)
   // Remplacement d'un exercice : rouvre le sélecteur en conservant reps/charge/repos.
@@ -66,6 +69,21 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
     const d = circuitDefaults(t)
     setCircuits([...circuits, { id: genCircuitId(), name: `${ct?.label ?? tr('planning.seriesPlural')} ${n}`, type: t, rounds: d.rounds, restBetweenRoundsSec: d.rest }])
     setTypeMenu(null)
+  }
+  // Bloc ÉCHAUFFEMENT : circuit sans exercice, durée (min) + description libre.
+  function addWarmup() {
+    haptic('light')
+    setCircuits([...circuits, { id: genCircuitId(), name: tr('planning.warmup'), type: 'warmup', rounds: 1, restBetweenRoundsSec: 0, warmupDurationMin: 10, warmupDescription: undefined }])
+    setTypeMenu(null)
+  }
+  // Réordonne les blocs (circuits + échauffements) par haut / bas, avec haptique.
+  function moveCircuit(ci: number, dir: -1 | 1) {
+    const j = ci + dir
+    if (j < 0 || j >= circuits.length) return
+    haptic('light')
+    const next = [...circuits]
+    ;[next[ci], next[j]] = [next[j], next[ci]]
+    setCircuits(next)
   }
   function changeCircuitType(cid: string, typeId: CircuitType) {
     const d = circuitDefaults(typeId)
@@ -112,13 +130,67 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
       {circuits.map((c, ci) => {
         const ctype = (c.type ?? 'series') as string
         const isLastCircuit = ci === circuits.length - 1
+        const multi = circuits.length > 1
         // Récup entre tours : pertinente dès que le circuit enchaîne des tours
         // (Lap / Superset / Hyrox) — pas en Séries (repos porté par l'exo) ni
         // EMOM/Tabata (cadence imposée).
         const showRoundRest = variant === 'hyrox' || ctype === 'circuit' || ctype === 'superset'
+        // Flèches de réordonnancement des blocs (haut / bas).
+        const reorderBtn = (dir: -1 | 1, disabled: boolean) => (
+          <button type="button" onClick={() => moveCircuit(ci, dir)} disabled={disabled}
+            aria-label={dir === -1 ? tr('ht.moveUp') : tr('ht.moveDown')}
+            style={{ width: isM ? 34 : 26, height: isM ? 40 : 24, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.3 : 1, display: 'grid', placeItems: 'center', padding: 0, flexShrink: 0 }}>
+            {dir === -1 ? <IconChevronUp size={17} /> : <IconChevronDown size={17} />}
+          </button>
+        )
+        const reorderArrows = multi ? <>{reorderBtn(-1, ci === 0)}{reorderBtn(1, isLastCircuit)}</> : null
+        // Connecteur vertical entre deux blocs (plein si échauffement, avec le
+        // stepper « récup avant circuit suivant » pour les circuits réels).
+        const plainConnector = !isLastCircuit ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: 2, height: 16, background: 'var(--se-rule)' }} />
+          </div>
+        ) : null
+
+        // ── Bloc ÉCHAUFFEMENT : durée + description libre (pas d'exercice) ──
+        if (c.type === 'warmup') {
+          return (
+            <Fragment key={c.id}>
+              <motion.div layout={!reduce} style={isM
+                ? { borderRadius: 'var(--r-lg)', padding: 16, marginBottom: isLastCircuit ? 12 : 0, background: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }
+                : { border: '1px solid var(--zone-med-border)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: isLastCircuit ? 14 : 0, background: 'var(--zone-med-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <IconFlame size={isM ? 20 : 17} style={{ color: 'var(--zone-3)', flexShrink: 0 }} />
+                  <input value={c.name} onChange={e => updateCircuit(c.id, { name: e.target.value })}
+                    className="se-fr" style={{ flex: 1, minWidth: 0, minHeight: isM ? 40 : undefined, background: 'transparent', border: 'none', outline: 'none', fontSize: isM ? 17 : 15, fontWeight: isM ? 800 : 600, color: 'var(--se-text)' }} />
+                  {reorderArrows}
+                  <button type="button" onClick={() => removeCircuit(c.id)} aria-label={tr('planning.deleteGroup')}
+                    style={isM ? { width: 36, height: 44, border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 } : { border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconTrash size={17} /></button>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <FieldLabel>{tr('planning.duration')}</FieldLabel>
+                  <div style={{ width: 150 }}>
+                    <Stepper value={String(c.warmupDurationMin ?? 0)} unit="min"
+                      onChange={v => updateCircuit(c.id, { warmupDurationMin: Math.max(0, parseInt(v) || 0) })}
+                      onDec={() => updateCircuit(c.id, { warmupDurationMin: Math.max(0, (c.warmupDurationMin ?? 0) - 1) })}
+                      onInc={() => updateCircuit(c.id, { warmupDurationMin: (c.warmupDurationMin ?? 0) + 1 })} />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>{tr('planning.description')}</FieldLabel>
+                  <textarea defaultValue={c.warmupDescription ?? ''} key={`wdesc${c.id}`}
+                    onBlur={e => updateCircuit(c.id, { warmupDescription: e.target.value.trim() || undefined })}
+                    placeholder={tr('planning.warmupDescPlaceholder')} rows={3}
+                    style={{ width: '100%', boxSizing: 'border-box', background: isM ? 'var(--sem-field)' : 'var(--se-card)', border: isM ? 'none' : '1px solid var(--se-rule)', borderRadius: 'var(--r-sm)', padding: '10px 12px', fontSize: isM ? 16 : 13, color: 'var(--se-text)', outline: 'none', resize: 'vertical', lineHeight: 1.4, fontFamily: 'inherit' }} />
+                </div>
+              </motion.div>
+              {plainConnector}
+            </Fragment>
+          )
+        }
         return (
         <Fragment key={c.id}>
-        <div style={isM
+        <motion.div layout={!reduce} style={isM
           ? { borderRadius: 'var(--r-lg)', padding: 16, marginBottom: isLastCircuit ? 12 : 0, background: 'var(--surface-card)' }
           : { border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: isLastCircuit ? 14 : 0, background: 'var(--se-card2)' }}>
           {/* En-tête de groupe */}
@@ -141,6 +213,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
                 {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? tr('planning.seriesPlural')}
               </button>
             )}
+            {reorderArrows}
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} aria-label={tr('planning.deleteGroup')} style={isM ? { width: 36, height: 44, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 } : { border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
               {menu === c.id && (
@@ -229,7 +302,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               <IconPlus size={15} /> {variant === 'hyrox' ? tr('planning.addStationExercise') : tr('planning.addExercise')}
             </button>
           )}
-        </div>
+        </motion.div>
         {/* ── Connecteur ENTRE les circuits : récup avant le circuit suivant ── */}
         {!isLastCircuit && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 0 0' }}>
@@ -263,6 +336,13 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
           <IconRefresh size={15} /> {tr('planning.addCircuit')}
         </button>
       )}
+
+      {/* Bloc échauffement — disponible pour muscu ET hyrox */}
+      <button type="button" onClick={addWarmup} style={isM
+        ? { ...mAddCircuit, marginTop: 10, background: 'var(--zone-med-bg)', color: 'var(--zone-3)' }
+        : { ...addBtn(accent), marginTop: 10, border: '1px dashed var(--zone-med-border)', color: 'var(--zone-3)', width: '100%', justifyContent: 'center' }}>
+        <IconFlame size={15} /> {tr('planning.addWarmup')}
+      </button>
     </div>
   )
 }

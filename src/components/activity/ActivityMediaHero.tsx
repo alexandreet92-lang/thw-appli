@@ -158,11 +158,9 @@ export function ActivityMediaHero({ activityId, initialMedia, points, bottomInse
                 : <img src={media[0].url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
         </button>
       )}
-      {/* Bouton ajouter (à droite de la vignette, ou seul si aucune photo) */}
-      <button onClick={() => inputRef.current?.click()} disabled={busy} aria-label={t('w3f.add_photo')} style={{
-        ...addBtnStyle, position: 'absolute', zIndex: 11,
-        left: media.length > 0 ? 12 + insetSize + 8 : 12, bottom: bottomInset + 16 + (media.length > 0 ? (insetSize - 40) / 2 : 0),
-      }}>{busy ? <IconLoader2 size={18} className="thw-spin" /> : <IconPlus size={20} />}</button>
+      {/* Ajout de média : plus de bouton « + » flottant gris sur la carte.
+          L'ajout de photo/vidéo se fait désormais via la sur-page « Modifier »
+          (composant ActivityMedia), pour une carte propre façon Strava. */}
       <style>{'@keyframes thwSpin{to{transform:rotate(360deg)}}.thw-spin{animation:thwSpin .8s linear infinite}'}</style>
     </>
   )

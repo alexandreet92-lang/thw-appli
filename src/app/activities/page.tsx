@@ -7114,7 +7114,8 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
     const ty = snapTy(sheetPos)
     currentTyRef.current = ty
     if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
+      // Ressort doux type iOS/Strava (pas de palier brusque).
+      sheetRef.current.style.transition = 'transform 0.46s cubic-bezier(0.32,0.72,0,1)'
       sheetRef.current.style.transform  = `translateY(${ty}px)`
     }
     setMapBottomInset(insetForTy(ty))
@@ -7140,10 +7141,20 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
     const snap = (pos: 'low' | 'mid' | 'full') => pos === 'low' ? winHRef.current * 0.80 : pos === 'full' ? 0 : winHRef.current * 0.46
     const nearest = (ty: number) => (['low', 'mid', 'full'] as const)
       .map(p => ({ p, v: snap(p) })).reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b)
+    // Crans triés par position (px depuis le haut) croissante : full (0) → mid → low.
+    const ordered = () => (['full', 'mid', 'low'] as const).map(p => ({ p, v: snap(p) })).sort((x, y) => x.v - y.v)
+    // Ressort doux (identique au repositionnement hors drag) → glisse, ne saute pas.
+    const SPRING = 'transform 0.46s cubic-bezier(0.32,0.72,0,1)'
+    const FLICK = 0.35 // px/ms : au-delà, on respecte l'élan (snap directionnel).
     let sy = 0, sty = 0, active = false, decided = false
-    const onStart = (e: TouchEvent) => { sy = e.touches[0].clientY; sty = currentTyRef.current; active = false; decided = false }
+    let lastY = 0, lastT = 0, vy = 0
+    const onStart = (e: TouchEvent) => {
+      sy = e.touches[0].clientY; sty = currentTyRef.current; active = false; decided = false
+      lastY = sy; lastT = (typeof performance !== 'undefined' ? performance.now() : Date.now()); vy = 0
+    }
     const onMove = (e: TouchEvent) => {
-      const delta = e.touches[0].clientY - sy
+      const cy = e.touches[0].clientY
+      const delta = cy - sy
       // Décider AU 1ER mouvement : sinon iOS verrouille le geste en scroll et
       // preventDefault arrive trop tard → la feuille ne bouge plus.
       if (!decided) {
@@ -7158,6 +7169,11 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
       }
       if (!active) return
       e.preventDefault()
+      // Vitesse instantanée (px/ms) lissée → sert au snap directionnel au relâché.
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now())
+      const dt = now - lastT
+      if (dt > 0) vy = 0.8 * ((cy - lastY) / dt) + 0.2 * vy
+      lastY = cy; lastT = now
       const ty = Math.max(0, Math.min(snap('low'), sty + delta))
       currentTyRef.current = ty
       el.style.transform = `translateY(${ty}px)`
@@ -7165,12 +7181,23 @@ export function ActivityDetail({ a, onClose, closing = false, zones, profile, al
     const onEnd = () => {
       if (!active) return
       active = false; isDraggingRef.current = false
-      const n = nearest(currentTyRef.current)
-      currentTyRef.current = n.v
-      el.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
-      el.style.transform = `translateY(${n.v}px)`
-      setSheetPos(n.p)
-      setMapBottomInset(Math.max(0, winHRef.current - n.v))
+      const curTy = currentTyRef.current
+      const list = ordered()
+      let target: { p: 'low' | 'mid' | 'full'; v: number }
+      if (vy < -FLICK) {
+        // Élan vers le HAUT → cran suivant au-dessus (v plus petit).
+        target = [...list].reverse().find(s => s.v < curTy - 1) ?? list[0]
+      } else if (vy > FLICK) {
+        // Élan vers le BAS → cran suivant en dessous (v plus grand).
+        target = list.find(s => s.v > curTy + 1) ?? list[list.length - 1]
+      } else {
+        target = nearest(curTy)
+      }
+      currentTyRef.current = target.v
+      el.style.transition = SPRING
+      el.style.transform = `translateY(${target.v}px)`
+      setSheetPos(target.p)
+      setMapBottomInset(Math.max(0, winHRef.current - target.v))
     }
     el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: false })

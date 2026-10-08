@@ -33,11 +33,11 @@ function FitBounds({ points, bottomInset = 0 }: { points: LatLng[]; bottomInset?
     if (points.length < 2) return
     const latlngs = points.map(p => [p.lat, p.lng] as [number, number])
     map.invalidateSize()
-    map.fitBounds(latlngs, {
+    // Recentrage animé en douceur (vol) plutôt qu'un saut instantané.
+    map.flyToBounds(latlngs, {
       paddingTopLeft: [24, 24],
       paddingBottomRight: [24, 24 + Math.max(0, bottomInset)],
-      animate: true,
-      duration: 0.4,
+      duration: 0.6,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomInset])
@@ -102,6 +102,15 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
         zoom={13}
         zoomControl={false}
         attributionControl={false}
+        // ── Fluidité type Strava : zoom continu (pas de palier), molette douce,
+        //    animations de zoom/marqueur, inertie au pan. ──
+        zoomSnap={0}
+        zoomDelta={0.4}
+        wheelPxPerZoomLevel={120}
+        zoomAnimation
+        markerZoomAnimation
+        inertia
+        inertiaDeceleration={2600}
         style={{ width: '100%', height: '100%' }}
       >
         <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTRIBUTION} />

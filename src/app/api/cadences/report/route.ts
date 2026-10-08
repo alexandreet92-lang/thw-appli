@@ -31,7 +31,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const { data: results } = await sb
     .from('cadences_results')
-    .select('test_slug, raw_value, raw_parts, equipment, variant, timing_method, pool_length_m, status, skip_reason')
+    .select('test_slug, raw_value, raw_parts, equipment, variant, timing_method, pool_length_m, venue, temperature_c, weather, status, skip_reason')
     .eq('campaign_id', campaignId)
 
   let scores: Record<Mode, unknown>

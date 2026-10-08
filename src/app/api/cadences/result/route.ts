@@ -27,6 +27,20 @@ export async function PUT(request: Request): Promise<NextResponse> {
     return NextResponse.json({ erreur: 'Valeur invalide.' }, { status: 400 })
   }
 
+  // Lieu effectif : extérieur imposé, intérieur imposé, ou choix (vélo).
+  const venueEff: 'indoor' | 'outdoor' =
+    test.venue === 'outdoor' ? 'outdoor'
+      : test.venue === 'toggle' ? (b?.venue === 'outdoor' ? 'outdoor' : 'indoor')
+        : 'indoor'
+  const temp = b?.temperatureC == null || b?.temperatureC === '' ? null : Number(b.temperatureC)
+  const tempOk = temp != null && Number.isFinite(temp) && temp >= -30 && temp <= 55
+  // En extérieur, la température est obligatoire pour valider (un peu de contexte
+  // pour comparer les tests entre eux).
+  if (statut === 'validated' && venueEff === 'outdoor' && !tempOk) {
+    return NextResponse.json({ erreur: 'Température requise pour une épreuve en extérieur (°C).' }, { status: 400 })
+  }
+  const weather = venueEff === 'outdoor' && typeof b?.weather === 'string' && b.weather.trim() ? b.weather.slice(0, 40) : null
+
   const row: Record<string, unknown> = {
     campaign_id: campaignId,
     test_slug: slug,
@@ -38,6 +52,9 @@ export async function PUT(request: Request): Promise<NextResponse> {
     equipment: ['normales', 'pointes', 'sans', 'ceinture'].includes(b?.equipment as string) ? b?.equipment : null,
     timing_method: ['manuel', 'cellules', 'montre'].includes(b?.timingMethod as string) ? b?.timingMethod : null,
     pool_length_m: b?.poolLength === 25 || b?.poolLength === 50 ? b?.poolLength : null,
+    venue: venueEff,
+    temperature_c: venueEff === 'outdoor' && tempOk ? temp : null,
+    weather,
     status: statut,
     skip_reason: statut === 'skipped' && typeof b?.skipReason === 'string' ? b.skipReason.slice(0, 300) : null,
     notes: typeof b?.notes === 'string' ? b.notes.slice(0, 500) : null,

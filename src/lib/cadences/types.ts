@@ -37,6 +37,9 @@ export interface TestConfig {
   weights: Weights
   day: number
   order_in_day: number
+  /** Lieu de l'épreuve : 'outdoor' demande température + météo à la saisie ;
+   *  'toggle' (vélo) laisse la personne choisir intérieur/extérieur ; sinon intérieur. */
+  venue?: 'indoor' | 'outdoor' | 'toggle'
   equipment?: EquipmentRule
   age_time_exponent?: number
   attempts?: number

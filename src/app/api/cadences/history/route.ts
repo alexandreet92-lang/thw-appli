@@ -40,6 +40,29 @@ export async function GET(request: Request): Promise<NextResponse> {
     .eq('age_mode', mode)
   const snapById = new Map((snaps ?? []).map((s) => [s.campaign_id, s]))
 
+  // Conditions (température / météo) des épreuves extérieures, agrégées par
+  // campagne. Tolérant : si les colonnes n'existent pas encore (migration non
+  // appliquée), on continue sans conditions (tempC = null).
+  const condByCamp = new Map<string, { temps: number[]; weathers: string[] }>()
+  const { data: conds } = await sb
+    .from('cadences_results')
+    .select('campaign_id, venue, temperature_c, weather')
+    .in('campaign_id', ids)
+    .eq('venue', 'outdoor')
+  for (const r of conds ?? []) {
+    const c = condByCamp.get(r.campaign_id) ?? { temps: [], weathers: [] }
+    if (r.temperature_c != null && Number.isFinite(Number(r.temperature_c))) c.temps.push(Number(r.temperature_c))
+    if (typeof r.weather === 'string' && r.weather.trim()) c.weathers.push(r.weather.trim())
+    condByCamp.set(r.campaign_id, c)
+  }
+  const condOf = (id: string) => {
+    const c = condByCamp.get(id)
+    if (!c || !c.temps.length) return { outdoor: false, tempC: null as number | null, weatherLabel: '' }
+    const avg = Math.round(c.temps.reduce((a, b) => a + b, 0) / c.temps.length)
+    const uniq = Array.from(new Set(c.weathers))
+    return { outdoor: true, tempC: avg, weatherLabel: uniq.slice(0, 3).join(', ') }
+  }
+
   const max = CONFIG.total_points
   const ptsMax: Record<string, number> = {}
   CONFIG.tests.forEach((t) => { ptsMax[t.slug] = t.pts_max })
@@ -61,6 +84,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     for (const key of Object.keys(byQual)) {
       qualMap[key] = { pct: Number(byQual[key].pct ?? 0), level: String(byQual[key].level ?? '') }
     }
+    const cond = condOf(c.id)
     return [{
       id: c.id,
       date: c.completed_on ?? c.started_on,
@@ -69,10 +93,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       sex: c.scale_sex,
       age: c.age_at_start,
       weight: Number(c.body_weight_kg),
-      // Conditions pas encore collectées (migration à venir) → non renseignées.
-      tempC: null,
-      outdoor: false,
-      weatherLabel: '',
+      tempC: cond.tempC,
+      outdoor: cond.outdoor,
+      weatherLabel: cond.weatherLabel,
       tests: testsMap,
       qualities: qualMap,
     }]

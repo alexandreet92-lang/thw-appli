@@ -508,6 +508,19 @@
         @media (max-width: 900px) { .cad-step-side { position: static; } }
         .cad-step-note { margin-top: 12px; font-family: var(--font-body); font-size: 12.5px; color: var(--text); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); padding: 8px 11px; }
         .cad-tries { display: grid; gap: 10px; margin-top: 6px; }
+        .cad-cond { border-top: 1px dashed var(--border-mid); margin-top: 14px; padding-top: 4px; }
+        .cad-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cad-chip { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--text-mid); background: var(--bg-card-2); border: 1px solid var(--border-mid); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+        .cad-chip.on { color: var(--brand); border-color: var(--brand); background: rgba(0,200,224,.08); }
+        .cad-bar2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .cad-bar2 > div { background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+        .cad-bar2 span { display: block; font-family: var(--font-body); font-size: 10.5px; color: var(--text-dim); }
+        .cad-bar2 b { font-family: var(--font-display); font-weight: 800; font-size: 17px; color: var(--text); }
+        .cad-split { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
+        .cad-split i { display: block; }
+        .cad-split-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+        .cad-split-lg span { font-family: var(--font-body); font-size: 11px; color: var(--text-mid); display: inline-flex; align-items: center; gap: 5px; }
+        .cad-split-lg em { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
         .cad-try { display: grid; gap: 4px; min-width: 0; }
         .cad-try > span { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
         .cad-try .cad-input { font-family: var(--font-mono); font-size: 17px; padding: 12px 12px; }
@@ -985,11 +998,17 @@
     return F().aggregate(t, parsed);
   }
   function pad(a, n) { var o = a.slice(0, n); while (o.length < n) o.push(''); return o; }
+  // Lieu effectif d'une épreuve : extérieur imposé, choix pour le vélo, sinon intérieur.
+  function effVenue(t, d) { return t.venue === 'outdoor' ? 'outdoor' : t.venue === 'toggle' ? ((d && d.venue) || 'indoor') : 'indoor'; }
+  function needsCond(t, d) { return effVenue(t, d) === 'outdoor'; }
+  // Météo (le temps) proposée pour les épreuves en extérieur.
+  var WEATHER = ['☀️ sec', '⛅ nuageux', '🌧️ pluie', '🌬️ vent', '🔥 chaleur', '❄️ froid'];
   function emptyDraft(t) {
     return {
       parts: new Array(partCountOf(t)).fill(''), partialReps: '',
       equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : null,
       timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.hasVariant ? 'box' : null,
+      venue: t.venue === 'toggle' ? 'indoor' : null, tempC: '', weather: '',
     };
   }
   // Valeur enregistrée → texte du champ (temps ≥ 1 min en m:ss, 2 décimales max).
@@ -1008,6 +1027,7 @@
       partialReps: t.isAmrap ? (parts[1] != null ? String(parts[1]) : '') : '',
       equipment: r.equipment || base.equipment, timing: r.timing_method || base.timing,
       pool: r.pool_length_m || base.pool, variant: r.variant || base.variant,
+      venue: r.venue || base.venue, tempC: r.temperature_c != null ? String(r.temperature_c) : '', weather: r.weather || '',
     };
   }
 
@@ -1050,6 +1070,24 @@
     var pct = points / t.pts_max;
     var lvl = cat.levels[0].label; cat.levels.forEach(function (l) { if (pct >= l.min_pct) lvl = l.label; });
     return { points: points, pct: pct, level: lvl };
+  }
+
+  // Barème personnalisé (sexe + âge + poids) : seuils Référence / Maximum
+  // exprimés dans l'unité de l'épreuve (valeur absolue, poids de corps inclus
+  // pour les épreuves en ratio). Même ajustement d'âge que l'aperçu des points.
+  function personalBareme(cat, t, camp, mode) {
+    var base = camp.scale_sex === 'M' ? t.male : t.female;
+    var ref = base.ref, max = base.max;
+    if (mode === 'age') {
+      var pf = (cat.age && cat.age.pf && cat.age.pf[camp.age_band]) || null;
+      if (pf) {
+        var f = 0; QK.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
+        if (t.direction === 'higher_is_better') { ref *= f; max *= f; }
+        else { var dv = Math.pow(f, t.ageTimeExponent == null ? 1 : t.ageTimeExponent); ref /= dv; max /= dv; }
+      }
+    }
+    if (t.kind === 'ratio') { ref *= camp.body_weight_kg; max *= camp.body_weight_kg; }
+    return { ref: ref, max: max };
   }
 
   // Récupération conseillée entre essais (secondes).
@@ -1122,9 +1160,16 @@
       if (t.criteria && d.parts.some(function (p) { return parsePart(t, p) == null; })) {
         setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' essais' + (t.unit === 'm' ? ' (0 pour un saut raté).' : '.')); return;
       }
+      var venue = effVenue(t, d);
+      var temp = String(d.tempC == null ? '' : d.tempC).replace(',', '.').trim();
+      var tempN = temp === '' ? null : Number(temp);
+      if (venue === 'outdoor' && (tempN == null || !isFinite(tempN) || tempN < -30 || tempN > 55)) {
+        setErr(t.name + ' : renseigne la température (°C) — épreuve en extérieur.'); return;
+      }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
-      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: d.variant, timingMethod: d.timing, poolLength: d.pool })
+      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: d.variant, timingMethod: d.timing, poolLength: d.pool,
+            venue: venue, temperatureC: venue === 'outdoor' ? tempN : null, weather: venue === 'outdoor' ? d.weather : null })
         .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
     function skip(t, reason, after) {
@@ -1384,6 +1429,34 @@
             {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
             {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
           </div>
+
+          {(t.venue === 'outdoor' || t.venue === 'toggle') ? (
+            <div className="cad-cond">
+              <div className="cad-ec-h" style={{ marginTop: 14 }}>Conditions{t.venue === 'outdoor' ? ' · épreuve en extérieur' : ''}</div>
+              {t.venue === 'toggle' ? (
+                <div style={{ display: 'flex', gap: 8, margin: '8px 0' }}>
+                  <button type="button" className="cad-pill" aria-pressed={effVenue(t, d) === 'indoor'} onClick={function () { props.setDraft({ venue: 'indoor' }); }}>Intérieur (home-trainer)</button>
+                  <button type="button" className="cad-pill" aria-pressed={effVenue(t, d) === 'outdoor'} onClick={function () { props.setDraft({ venue: 'outdoor' }); }}>Extérieur</button>
+                </div>
+              ) : null}
+              {effVenue(t, d) === 'outdoor' ? (
+                <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
+                  <label className="cad-try" style={{ maxWidth: 220 }}>
+                    <span>Température (°C) · obligatoire</span>
+                    <input className="cad-input" inputMode="decimal" placeholder="ex. 15" value={d.tempC} onChange={function (e) { props.setDraft({ tempC: e.target.value }); }} aria-label="Température en °C"/>
+                  </label>
+                  <div>
+                    <div className="cad-ec-h" style={{ marginBottom: 6 }}>Le temps (optionnel)</div>
+                    <div className="cad-chips">
+                      {WEATHER.map(function (w) { return <button key={w} type="button" className={'cad-chip' + (d.weather === w ? ' on' : '')} onClick={function () { props.setDraft({ weather: d.weather === w ? '' : w }); }}>{w}</button>; })}
+                    </div>
+                  </div>
+                  <p className="cad-p" style={{ fontSize: 11.5, margin: 0 }}>Garde une trace des conditions : un score plus bas par forte chaleur ou grand froid n’est pas forcément une régression.</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {derived.length ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12, marginTop: 10 }}>
               {derived.map(function (dd, i) { return <span key={i} style={{ color: 'var(--text-mid)' }}>{dd.label} : <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{dd.value}</strong></span>; })}
@@ -1425,6 +1498,35 @@
             )}
             {validated && sc ? <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>Enregistré : <strong>{(Math.round(sc.points * 10) / 10).toString().replace('.', ',')} pts · {sc.level}</strong></p> : null}
           </div>
+
+          {(function () {
+            var pb = personalBareme(cat, t, camp, props.mode);
+            var best = critPts(t, 'best'), sum = critPts(t, 'sum');
+            return (
+              <div className="cad-card">
+                <div className="cad-ec-h">Ton barème</div>
+                <p className="cad-p" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg{t.kind === 'ratio' ? ' · au poids de corps' : ''}{props.mode === 'age' ? ' · ajusté à l’âge' : ''}.</p>
+                <div className="cad-bar2">
+                  <div><span>Référence · 60 %</span><b>{F().formatValue(t, pb.ref)}</b></div>
+                  <div><span>Maximum · 100 %</span><b style={{ color: 'var(--brand)' }}>{F().formatValue(t, pb.max)}</b></div>
+                </div>
+                {t.criteria && (best || sum) ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="cad-ec-h" style={{ marginBottom: 6 }}>Répartition des {t.pts_max} points</div>
+                    <div className="cad-split">
+                      <i style={{ flex: best, background: 'var(--brand)' }}></i>
+                      <i style={{ flex: sum, background: 'var(--brand-alt)' }}></i>
+                    </div>
+                    <div className="cad-split-lg">
+                      <span><em style={{ background: 'var(--brand)' }}></em>Meilleur essai · {best} pts</span>
+                      <span><em style={{ background: 'var(--brand-alt)' }}></em>Total des {partCountOf(t)} · {sum} pts</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
+
           {rec ? <div className="cad-card"><RecupTimer key={t.slug} sec={rec} /><p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>Entre chaque essai. {rec >= 180 ? 'Récupération complète : ne raccourcis pas.' : ''}</p></div> : null}
         </div>
       </div>
@@ -1462,6 +1564,15 @@
     var doneOn = camp.completed_on || camp.started_on;
     var next1 = dateAt(String(doneOn).slice(0, 10), 365), next6 = dateAt(String(doneOn).slice(0, 10), 182);
     function delta(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(Math.round(v)); }
+    // Résumé des conditions extérieures du test (si renseignées).
+    var outdoorRes = (rep.results || []).filter(function (r) { return r.venue === 'outdoor' && r.temperature_c != null; });
+    var condSummary = null;
+    if (outdoorRes.length) {
+      var temps = outdoorRes.map(function (r) { return Number(r.temperature_c); });
+      var tmin = Math.min.apply(null, temps), tmax = Math.max.apply(null, temps);
+      var ws = []; outdoorRes.forEach(function (r) { if (r.weather && ws.indexOf(r.weather) === -1) ws.push(r.weather); });
+      condSummary = { range: tmin === tmax ? (tmin + ' °C') : (tmin + '–' + tmax + ' °C'), weathers: ws };
+    }
 
     function Row(t) {
       var s = score.byTest[t.slug]; var col = levelColor(cat.palette, s.level); var raw = rawBySlug[t.slug];
@@ -1497,6 +1608,13 @@
             {LS ? <LS cat={cat} you={score.total} compact /> : null}
           </div>
         </section>
+
+        {condSummary ? (
+          <section className="cad-card" style={{ marginTop: 12, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="cad-ec-h" style={{ margin: 0 }}>Conditions extérieures</div>
+            <span className="cad-p" style={{ margin: 0 }}>🌡️ {condSummary.range}{condSummary.weathers.length ? ' · ' + condSummary.weathers.join(', ') : ''}</span>
+          </section>
+        ) : null}
 
         <div className="cad-grid2">
           <div className="cad-card">
@@ -1550,6 +1668,11 @@
             <h3 className="cad-h3" style={{ fontSize: 19 }}>Le {frDate(isoOf(next1))}</h3>
             <p className="cad-p" style={{ margin: 0 }}>Même période, même protocole : c’est ce qui rend la comparaison juste. Envie d’un suivi plus serré ? Refais-le dans 6 mois, le {frDate(isoOf(next6))}.</p>
           </div>
+        </section>
+
+        <section className="cad-card" style={{ marginTop: 18, borderLeft: '4px solid #f59e0b' }}>
+          <h3 className="cad-h3">Lire ce score avec prudence</h3>
+          <p className="cad-p" style={{ marginBottom: 0 }}>Un score plus bas qu’une fois précédente ne veut pas forcément dire que tu as régressé. Pour comparer juste : <strong>même période de l’année, en bonne forme, ni blessé ni malade, et une température proche</strong>. Retrouve tous tes tests et leurs conditions dans <strong>Mon historique</strong>.</p>
         </section>
       </div>
     );

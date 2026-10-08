@@ -116,6 +116,14 @@ function monotonePath(pts: [number, number][]): string {
   return d
 }
 
+/** Rectangle à coins supérieurs arrondis — couronne des barres empilées */
+function topRoundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
+  const rr = Math.max(0, Math.min(r, w / 2, h))
+  const X = x.toFixed(1), X2 = (x + w).toFixed(1), Y = y.toFixed(1)
+  const YB = (y + h).toFixed(1), YR = (y + rr).toFixed(1)
+  return `M${X},${YB} L${X},${YR} Q${X},${Y} ${(x + rr).toFixed(1)},${Y} L${(x + w - rr).toFixed(1)},${Y} Q${X2},${Y} ${X2},${YR} L${X2},${YB} Z`
+}
+
 /** Chemin d'aire sous la courbe monotone, fermé à baseY */
 function monotonoArea(pts: [number, number][], baseY: number): string {
   const curve = monotonePath(pts)
@@ -4476,15 +4484,31 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
   const c1MaxVal = c1CompareMode
     ? Math.max(1, ...c1CompareYears.flatMap(yr => c1PointVals(c1CompareSport, yr)))
     : Math.max(1, ...c1Sports.flatMap(sp => c1PointVals(sp.id)))
+  // Totaux empilés par période (mode normal) → hauteur de barre = somme des sports
+  const c1Totals   = Array.from({ length: C1_N }, (_, i) =>
+    c1Sports.reduce((acc, sp) => acc + c1PointVals(sp.id)[i], 0))
+  const c1MaxTotal = Math.max(1, ...c1Totals)
+  // Échelle Y : totaux empilés (normal) ou valeur simple (comparer)
+  const c1ScaleMax = c1CompareMode ? c1MaxVal : c1MaxTotal
+  // Total de l'année affichée + Δ vs année précédente (mode normal)
+  const c1YearTotal = c1Totals.reduce((a, b) => a + b, 0)
+  const c1PrevYear  = String(Number(chart1Year) - 1)
+  const c1PrevTotal = Number.isFinite(Number(chart1Year))
+    ? YD_SPORTS.reduce((acc, sp) => acc + c1PointVals(sp.id, c1PrevYear).reduce((a, b) => a + b, 0), 0)
+    : 0
+  const c1DeltaPct  = c1PrevTotal > 0 ? ((c1YearTotal - c1PrevTotal) / c1PrevTotal) * 100 : null
   // Mobile : viewBox plus haut + largeur fixe 728px en mode Semaine (scroll horizontal)
   const C1_H    = isMobile ? 230 : 155
   const C1_SVG_W = (isMobile && chart1Period === 'semaine') ? 728 : SVG_W
   const C1_PL = 44, C1_PR = 10, C1_PT = 16, C1_PB = 32
   const c1PlotW = C1_SVG_W - C1_PL - C1_PR
   const c1PlotH = C1_H - C1_PT - C1_PB
-  // Diviseur protégé contre C1_N = 1
-  const c1X = (i: number) => C1_PL + (i / Math.max(1, C1_N - 1)) * c1PlotW
-  const c1Y = (v: number) => C1_PT + c1PlotH - (v / c1MaxVal) * c1PlotH
+  // Géométrie barres empilées : une bande par période, barre centrée dans sa bande
+  const c1Band  = c1PlotW / C1_N
+  const c1BarW  = Math.max(3, Math.min(chart1Period === 'mois' ? 28 : 11, c1Band * 0.62))
+  // X = centre de bande — aligne barres empilées, courbes (comparer) et marqueurs
+  const c1X = (i: number) => C1_PL + c1Band * (i + 0.5)
+  const c1Y = (v: number) => C1_PT + c1PlotH - (v / c1ScaleMax) * c1PlotH
   // Helper format valeur tooltip
   const c1FmtVal = (v: number): string =>
     chart1Metric === 'heures'     ? `${v.toFixed(1)} h`
@@ -5204,25 +5228,47 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
           )}
         </div>
 
+        {/* ── En-tête total période + Δ vs année précédente (mode normal) ── */}
+        {!c1CompareMode && c1Sports.length > 0 && (
+          <div className="yd-reveal" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {chart1Year}
+            </span>
+            <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }}>
+              {c1FmtVal(c1YearTotal)}
+            </span>
+            {c1DeltaPct !== null && Math.abs(c1DeltaPct) >= 0.5 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+                color: c1DeltaPct >= 0 ? 'var(--low, #22c55e)' : 'var(--text-dim)' }}>
+                <span aria-hidden>{c1DeltaPct >= 0 ? '↑' : '↓'}</span>
+                <span className="tnum" style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.abs(c1DeltaPct).toFixed(0)}%</span>
+                <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>{t('vol.vsPrevYear')}</span>
+              </span>
+            )}
+          </div>
+        )}
+
         {/* ── Contenu chart ── */}
         {(c1CompareMode ? c1CompareYears.length > 0 : c1Sports.length > 0) ? (
           <div style={{ position: 'relative', minHeight: isMobile ? 280 : 'auto' }}>
 
-            {/* ── Tooltip crosshair ancré en haut-droite (hors scroll) ── */}
+            {/* ── Carte tooltip ancrée en haut-droite (hors scroll) — fondu à l'apparition ── */}
             {(hoveredPoint !== null || c1HoveredRace || c1HoveredInjury) && (
               <div style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 'var(--r-sm)', padding: '10px 12px', minWidth: 140, maxWidth: 200,
+                borderRadius: 'var(--r-md)', padding: '10px 12px', minWidth: 160, maxWidth: 220,
+                boxShadow: 'var(--shadow-float, var(--shadow-card, 0 6px 20px rgba(0,0,0,0.12)))',
+                animation: 'ydEnter 150ms ease-out both',
               }}>
                 {hoveredPoint !== null && (
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, margin: '0 0 5px', color: 'var(--text-mid)' }}>
-                    {C1_LABELS[hoveredPoint]}
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, margin: '0 0 7px', color: 'var(--text)', textTransform: 'capitalize' }}>
+                    {C1_LABELS[hoveredPoint]} <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>· {chart1Year}</span>
                   </p>
                 )}
                 {/* Section compétition */}
                 {c1HoveredRace && (
-                  <div style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                  <div style={{ marginBottom: 7, borderBottom: '1px solid var(--border)', paddingBottom: 7 }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 4 }}>
                       🏆 {t('perf2.competition')}
                     </p>
@@ -5237,7 +5283,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 )}
                 {/* Section blessure */}
                 {c1HoveredInjury && (
-                  <div style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                  <div style={{ marginBottom: 7, borderBottom: '1px solid var(--border)', paddingBottom: 7 }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', margin: '0 0 3px' }}>⚡ {t('perf2.injury')}</p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{c1HoveredInjury.nom}</p>
                     <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{c1HoveredInjury.type}</p>
@@ -5255,35 +5301,44 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                     if (v === 0) return null
                     const color = C1_CMP_COLORS[yr] ?? '#9ca3af'
                     return (
-                      <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color }}>{yr}</span>
-                        <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text-dim)', marginLeft: 4 }}>
+                      <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{yr}</span>
+                        <span className="tnum" style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
                           {c1FmtVal(v)}
                         </span>
                       </div>
                     )
                   })
-                ) : (
-                  /* Mode normal : ligne par sport */
-                  c1Sports.map(sp => {
-                    const v = c1PointVals(sp.id)[hoveredPoint]
-                    if (v === 0) return null
-                    return (
-                      <div key={sp.id} style={{ marginBottom: 4 }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, fontWeight: 600, color: sp.color }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
+                ) : (() => {
+                  /* Mode normal : total + une ligne par sport (tri décroissant) */
+                  const rows = c1Sports
+                    .map(sp => ({ sp, v: c1PointVals(sp.id)[hoveredPoint] }))
+                    .filter(r => r.v > 0)
+                    .sort((a, b) => b.v - a.v)
+                  if (rows.length === 0) {
+                    return <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('vol.noVolumePeriod')}</p>
+                  }
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{t('vol.total')}</span>
+                        <span className="tnum" style={{ fontSize: 12, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                          {c1FmtVal(c1Totals[hoveredPoint])}
                         </span>
-                        <div style={{ paddingLeft: 10 }}>
-                          <p style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text-dim)', margin: '1px 0' }}>
-                            {c1FmtVal(v)}
-                          </p>
-                        </div>
                       </div>
-                    )
-                  })
-                ))}
+                      {rows.map(({ sp, v }) => (
+                        <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)' }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
+                          <span className="tnum" style={{ fontSize: 11, fontFamily: 'var(--font-body)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                            {c1FmtVal(v)}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )
+                })())}
               </div>
             )}
 
@@ -5308,7 +5363,10 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
               onMouseMove={e => {
                 const rect  = e.currentTarget.getBoundingClientRect()
                 const svgX  = ((e.clientX - rect.left) / rect.width) * C1_SVG_W
-                const rawI  = Math.round(((svgX - C1_PL) / c1PlotW) * (C1_N - 1))
+                // Mode comparer (courbes) = point le plus proche ; mode normal (barres) = bande sous le curseur
+                const rawI  = c1CompareMode
+                  ? Math.round((svgX - C1_PL) / c1Band - 0.5)
+                  : Math.floor((svgX - C1_PL) / c1Band)
                 setHoveredPoint(Math.max(0, Math.min(C1_N - 1, rawI)))
                 // Détection hover marqueur course (±10px, seulement si visible)
                 const nearRace = c1ShowRaces
@@ -5336,8 +5394,8 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
               {/* Grid */}
               {(() => {
                 const ticks = chart1Metric === 'heures'
-                  ? Array.from({ length: Math.floor(c1MaxVal / 5) + 1 }, (_, i) => i * 5).filter(v => v <= c1MaxVal + 0.1)
-                  : [0, 0.5, 1].map(f => c1MaxVal * f)
+                  ? Array.from({ length: Math.floor(c1ScaleMax / 5) + 1 }, (_, i) => i * 5).filter(v => v <= c1ScaleMax + 0.1)
+                  : [0, 0.5, 1].map(f => c1ScaleMax * f)
                 return ticks.map(v => {
                   const y = c1Y(v)
                   return (
@@ -5387,21 +5445,57 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 )
               })}
 
-              {/* Courbes — mode normal */}
-              {!c1CompareMode && c1Sports.map(sp => {
-                const vals  = c1PointVals(sp.id)
-                const pts: [number, number][] = vals.map((v, i) => [c1X(i), c1Y(v)] as [number, number])
+              {/* ── Surlignage de la bande survolée (mode barres) ── */}
+              {!c1CompareMode && hoveredPoint !== null && c1Totals[hoveredPoint] > 0 && (
+                <rect
+                  x={C1_PL + c1Band * hoveredPoint} y={C1_PT}
+                  width={c1Band} height={c1PlotH}
+                  fill="var(--bg-card2)" rx={4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+
+              {/* ── Barres empilées par période — mode normal ── */}
+              {!c1CompareMode && c1Totals.map((total, i) => {
+                if (total <= 0) return null
+                const bx   = c1X(i) - c1BarW / 2
+                const base = C1_PT + c1PlotH
+                // Segments bas → haut, sautant les sports sans volume
+                let acc = 0
+                const segs = c1Sports.map(sp => {
+                  const v = c1PointVals(sp.id)[i]
+                  if (v <= 0) return null
+                  const y1 = c1Y(acc + v)   // haut du segment
+                  const y0 = c1Y(acc)       // bas du segment
+                  acc += v
+                  return { sp, v, y0, y1 }
+                }).filter((s): s is { sp: typeof c1Sports[number]; v: number; y0: number; y1: number } => s !== null)
+                const topY  = c1Y(total)
+                const totH  = base - topY
+                const clipId = `c1clip-${chart1Period}-${i}`
+                const isHov = hoveredPoint === i
+                const rTop  = Math.min(4, c1BarW / 2)
                 return (
-                  <g key={sp.id}>
-                    <path d={monotonePath(pts)} fill="none" stroke={sp.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                    {vals.map((v, i) => v > 0 ? (
-                      <circle key={i}
-                        cx={c1X(i)} cy={c1Y(v)}
-                        r={hoveredPoint === i ? 3 : 0}
-                        fill={sp.color} stroke={sp.color} strokeWidth="1.5"
-                        opacity={hoveredPoint === i ? 1 : 0}
-                      />
-                    ) : null)}
+                  <g key={i} className="yd-bar" style={{ animation: `ydBarEnter 520ms cubic-bezier(0.22,0.61,0.36,1) ${Math.min(i * 26, 360)}ms both` }}>
+                    <defs>
+                      <clipPath id={clipId}>
+                        <path d={topRoundedRectPath(bx, topY, c1BarW, totH, rTop)} />
+                      </clipPath>
+                    </defs>
+                    <g clipPath={`url(#${clipId})`}>
+                      {segs.map((seg, si) => {
+                        // 1px de respiration entre segments (laisse voir le fond de carte)
+                        const gap = si > 0 ? 1 : 0
+                        const h   = Math.max(0.6, seg.y0 - seg.y1 - gap)
+                        return (
+                          <rect key={seg.sp.id}
+                            x={bx} y={seg.y1} width={c1BarW} height={h}
+                            fill={seg.sp.color} opacity={isHov ? 1 : 0.9}
+                            style={{ pointerEvents: 'none', transition: 'opacity 0.15s' }}
+                          />
+                        )
+                      })}
+                    </g>
                   </g>
                 )
               })}
@@ -5421,8 +5515,8 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 )
               })}
 
-              {/* Crosshair vertical */}
-              {hoveredPoint !== null && (
+              {/* Crosshair vertical — uniquement en mode Comparer (courbes) */}
+              {c1CompareMode && hoveredPoint !== null && (
                 <line
                   x1={c1X(hoveredPoint)} y1={C1_PT}
                   x2={c1X(hoveredPoint)} y2={C1_PT + c1PlotH}
@@ -5449,23 +5543,23 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
             </svg>
             </div>{/* fin scroll wrapper */}
 
-            {/* Légende */}
-            <div className="perf-chart1-legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+            {/* Légende — pastilles colorées */}
+            <div className="perf-chart1-legend" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
               {c1CompareMode
                 ? c1CompareYears.map(yr => {
                     const color = C1_CMP_COLORS[yr] ?? '#9ca3af'
                     return (
-                      <div key={yr} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <div style={{ width: 14, height: 3, borderRadius: 2, background: color }} />
-                        <span style={{ fontSize: 10, color }}>{yr}</span>
-                      </div>
+                      <span key={yr} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{yr}</span>
+                      </span>
                     )
                   })
                 : c1Sports.map(sp => (
-                    <div key={sp.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 14, height: 3, borderRadius: 2, background: sp.color }} />
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
-                    </div>
+                    <span key={sp.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: sp.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)' }}>{t(YD_SPORT_KEY[sp.id] ?? '') || sp.label}</span>
+                    </span>
                   ))
               }
             </div>
@@ -5624,9 +5718,15 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
       {!mobile && (chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
           <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
-              {t('perf2.comparisonByYear')} — {t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label}
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+                {t('perf2.comparisonByYear')}
+              </h3>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 'var(--r-pill)', background: 'var(--bg-card2)' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: sportDef.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)' }}>{t(YD_SPORT_KEY[activeSport] ?? '') || sportDef.label}</span>
+              </span>
+            </div>
             <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
               style={{ padding: '5px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
               {sportMetrics.map(mk => <option key={mk} value={mk}>{t(YD_METRIC_KEY[mk] ?? '') || YD_METRICS[mk]?.label}</option>)}
@@ -5662,25 +5762,28 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                     const val = chartVals[i], bh = Math.max(0, (val / yMax) * plotH)
                     const bx = lPad + i * (barW + gap) + gap / 2, by = tPad + plotH - bh
                     const cx = bx + barW / 2
-                    const col = SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR
+                    const col = sportDef.color ?? YEAR_DEFAULT_COLOR
                     const sel = selectedYear === yr, hov = hoveredBar?.year === yr
+                    const rTop = Math.min(4, barW / 2)
                     return (
                       <g key={yr} style={{ cursor: 'pointer' }}
                         onMouseEnter={() => setHoveredBar({ year: yr, val, svgX: cx })}
                         onClick={() => setSelectedYear(yr)}>
-                        <rect
-                          x={bx} y={by} width={barW} height={bh} rx={4}
-                          fill={col} opacity={hov || sel ? 1.0 : 0.75}
-                          className="yd-bar"
-                          style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
-                        />
-                        {sel && <rect x={bx - 1} y={by - 1} width={barW + 2} height={bh + 1} rx={4} fill="none" stroke={col} strokeWidth="1.5" />}
-                        {(!isMobile || barW >= 18) && (
-                          <text x={cx} y={svgH - 5} textAnchor="middle"
-                            style={{ fontSize: isMobile ? 8 : 9, fontFamily: 'var(--font-body)', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? '700' : '400' }}>
-                            {yr.slice(2)}
+                        <g className="yd-bar" style={{ animation: `ydBarEnter 420ms cubic-bezier(0.22,0.61,0.36,1) ${i * 30}ms both` }}>
+                          {val > 0
+                            ? <path d={topRoundedRectPath(bx, by, barW, bh, rTop)} fill={col} opacity={hov || sel ? 1.0 : 0.78} />
+                            : null}
+                        </g>
+                        {val > 0 && (hov || sel) && (
+                          <text x={cx} y={by - 4} textAnchor="middle" className="tnum"
+                            style={{ fontSize: 10, fontFamily: 'var(--font-body)', fill: 'var(--text)', fontWeight: 700 }}>
+                            {metricDef.fmt(val)}
                           </text>
                         )}
+                        <text x={cx} y={svgH - 5} textAnchor="middle"
+                          style={{ fontSize: 10, fontFamily: 'var(--font-body)', fill: sel ? col : 'var(--text-dim)', fontWeight: sel ? 700 : 400 }}>
+                          {yr.slice(2)}
+                        </text>
                       </g>
                     )
                   })}
@@ -5692,7 +5795,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                     right: hoveredBar.svgX >= SVG_W / 2 ? `calc(${((SVG_W - hoveredBar.svgX) / SVG_W * 100).toFixed(1)}% + 10px)` : undefined,
                     background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '5px 10px', whiteSpace: 'nowrap',
                   }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: SPORT_DS_COLOR[activeSport] ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px', color: sportDef.color ?? YEAR_DEFAULT_COLOR }}>{hoveredBar.year}</p>
                     <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', margin: 0 }}>
                       {t(YD_METRIC_KEY[metricDef.key] ?? '') || metricDef.label}: <strong>{metricDef.fmt(hoveredBar.val)}</strong>
                     </p>

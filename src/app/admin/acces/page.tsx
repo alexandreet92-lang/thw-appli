@@ -42,6 +42,7 @@ export default function AccesOffertPage() {
   const [kind, setKind] = useState<Kind>('coach')
   const [tier, setTier] = useState<Tier>('premium')
   const [jours, setJours] = useState<number | null>(60)
+  const [joursPerso, setJoursPerso] = useState('')
 
   const [acces, setAcces] = useState<Acces[]>([])
   const [message, setMessage] = useState('')
@@ -150,9 +151,26 @@ export default function AccesOffertPage() {
 
         <div style={{ display: 'grid', gap: 6 }}>
           <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>Durée</span>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {DUREES.map((d) => <Choix key={String(d.v)} actif={jours === d.v} onClick={() => setJours(d.v)}>{d.label}</Choix>)}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {DUREES.map((d) => <Choix key={String(d.v)} actif={joursPerso === '' && jours === d.v} onClick={() => { setJoursPerso(''); setJours(d.v) }}>{d.label}</Choix>)}
+            <input
+              type="number" min={1} inputMode="numeric" placeholder="N jours"
+              value={joursPerso}
+              onChange={(e) => {
+                const raw = e.target.value
+                setJoursPerso(raw)
+                const n = parseInt(raw, 10)
+                if (raw !== '' && Number.isFinite(n) && n > 0) setJours(n)
+              }}
+              aria-label="Durée personnalisée en jours"
+              style={{ width: 96, minHeight: 44, padding: '0 var(--space-4)', borderRadius: 'var(--r-pill)',
+                border: joursPerso !== '' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--text-high)', fontSize: 14 }}
+            />
           </div>
+          <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>
+            Tu décides : clique une durée ou saisis le nombre de jours exact.
+          </span>
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>

@@ -22,7 +22,6 @@ export const runtime = 'nodejs'
 
 const SCEAU = 'comp'
 const TIERS = ['premium', 'pro', 'expert'] as const
-const DUREES = [30, 60, 90] as const
 // Illimité côté coach : une date si lointaine qu'elle ne tombe jamais. Côté
 // athlète, l'illimité est simplement une date de fin absente (NULL).
 const TRES_LOIN = '2099-01-01T00:00:00.000Z'
@@ -60,7 +59,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
   const kind = (body?.kind === 'coach' ? 'coach' : 'athlete') as Kind
   const tier = (TIERS.includes(body?.tier as Tier) ? body?.tier : 'premium') as Tier
-  const jours = DUREES.includes(body?.jours as 30) ? (body?.jours as number) : null // null = illimité
+  // Durée : null/0 = illimité ; sinon n'importe quel entier positif (durée libre),
+  // borné à 10 ans pour éviter les valeurs aberrantes.
+  const joursRaw = body?.jours
+  const jours = (typeof joursRaw === 'number' && Number.isFinite(joursRaw) && joursRaw > 0)
+    ? Math.min(Math.floor(joursRaw), 3650)
+    : null // null = illimité
 
   if (!email) return NextResponse.json({ erreur: 'E-mail manquant.' }, { status: 400 })
 

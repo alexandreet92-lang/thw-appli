@@ -29,6 +29,18 @@ export interface ClarifyingQuestions {
 
 export interface Answer { selected: string[]; other: string }
 
+/** Une étape est « répondue » dès qu'une option est cochée ou le champ libre rempli. */
+function isAnswered(ans: Answer | undefined): boolean {
+  return !!ans && (ans.selected.length > 0 || ans.other.trim().length > 0)
+}
+/** Réponse affichable en ligne compacte (dérivée des données réelles, jamais inventée). */
+function answerText(ans: Answer | undefined, fallback: string): string {
+  if (!ans) return fallback
+  const parts = [...ans.selected]
+  if (ans.other.trim()) parts.push(ans.other.trim())
+  return parts.length ? parts.join(', ') : fallback
+}
+
 type CQProps = {
   data: ClarifyingQuestions
   onSubmit: (recap: string, answers?: Answer[]) => void
@@ -140,6 +152,8 @@ function CoachQuestionDesktop({
 
   const goNext = () => { if (!isLast && canProceed) { setAnim('next'); setPage(p => p + 1) } }
   const goPrev = () => { if (page > 0) { setAnim('prev'); setPage(p => p - 1) } }
+  // Rouvrir une étape déjà répondue (clic sur sa ligne compacte) pour la corriger.
+  const goTo = (to: number) => { if (to !== page) { setAnim(to > page ? 'next' : 'prev'); setPage(to) } }
   const submit = () => {
     const lines = qs.map((qq, i) => {
       const ans = answers[i]
@@ -192,7 +206,12 @@ function CoachQuestionDesktop({
         )}
       </div>
 
-      {/* Contenu swipeable */}
+      {/* Étapes déjà répondues AVANT la courante → lignes compactes repliées. */}
+      {qs.map((qq, i) => (i < page && isAnswered(answers[i])) ? (
+        <CollapsedRowDesktop key={`c${i}`} question={qq.question} answer={answerText(answers[i], t('ai.noAnswer'))} label={t('ai2.q.edit')} onClick={() => goTo(i)} />
+      ) : null)}
+
+      {/* Question courante — formulaire complet, swipeable */}
       <div style={{ overflow: 'hidden' }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div ref={wrapRef} key={page} style={{ animation: anim ? `cq_${anim} 0.24s ease` : undefined }}>
           <p style={{ margin: '0 0 6px', fontSize: 16.5, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.35, fontFamily: 'var(--font-body)' }}>{q.question}</p>
@@ -246,6 +265,11 @@ function CoachQuestionDesktop({
         </div>
       </div>
 
+      {/* Étapes déjà répondues APRÈS la courante (ex. retour arrière) → lignes compactes. */}
+      {qs.map((qq, i) => (i > page && isAnswered(answers[i])) ? (
+        <CollapsedRowDesktop key={`c${i}`} question={qq.question} answer={answerText(answers[i], t('ai.noAnswer'))} label={t('ai2.q.edit')} onClick={() => goTo(i)} />
+      ) : null)}
+
       {/* « Générer maintenant » — saute les questions restantes (actions rapides) */}
       {onSkip && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
@@ -271,6 +295,8 @@ function CoachQuestionDesktop({
       <style>{`
         @keyframes cq_next { from { transform: translateX(36px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
         @keyframes cq_prev { from { transform: translateX(-36px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+        @keyframes cq_row { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }
+        @media (prefers-reduced-motion: reduce) { .cq-row { animation: none !important } }
       `}</style>
     </div>
   )
@@ -280,6 +306,30 @@ function CoachQuestionDesktop({
 const cardStyle: React.CSSProperties = { border: '1px solid var(--ai-border)', borderRadius: 'var(--r-md)', padding: 14, background: 'var(--ai-bg)', marginTop: 4 }
 const chip: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-mid)', background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', padding: '3px 8px', borderRadius: 'var(--r-sm)', fontFamily: 'var(--font-body)' }
 const checkBadge: React.CSSProperties = { width: 18, height: 18, borderRadius: '50%', background: '#3C90D5', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+
+/** Ligne compacte « répondu » (bureau) : question discrète + réponse, cliquable pour corriger. */
+function CollapsedRowDesktop({ question, answer, label, onClick }: { question: string; answer: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      className="cq-row"
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 9, width: '100%', textAlign: 'left',
+        background: 'transparent', border: 'none', borderBottom: '1px solid var(--ai-border)',
+        padding: '9px 2px', cursor: 'pointer', animation: 'cq_row 0.22s ease',
+      }}
+    >
+      <span style={{ ...checkBadge, width: 15, height: 15, marginTop: 1 }}>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--ai-dim)', fontFamily: 'var(--font-body)', lineHeight: 1.3 }}>{question}</span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'var(--font-body)', marginTop: 2, lineHeight: 1.3 }}>{answer}</span>
+      </span>
+    </button>
+  )
+}
 
 // ══════════════════════════════════════════════════════════════
 // MOBILE (≤ 767 px) — maquette validée « a2-questions » :
@@ -330,6 +380,32 @@ function CheckDot({ on }: { on: boolean }) {
         )}
       </AnimatePresence>
     </span>
+  )
+}
+
+/** Ligne compacte « répondu » (mobile) : question discrète + réponse, tap pour corriger. */
+function CollapsedRowMobile({ question, answer, label, onClick, reduce }: { question: string; answer: string; label: string; onClick: () => void; reduce: boolean }) {
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      transition={{ duration: 0.26, ease: AIM_EASE }}
+      style={{ overflow: 'hidden' }}
+    >
+      <AimPress
+        onClick={onClick}
+        ariaLabel={label}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 2px', borderTop: '1px solid var(--border)' }}
+      >
+        <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', background: 'var(--primary)', color: 'var(--on-primary)' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.3 }}>{question}</span>
+          <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700, color: 'var(--text)', marginTop: 2, lineHeight: 1.3 }}>{answer}</span>
+        </span>
+      </AimPress>
+    </motion.div>
   )
 }
 
@@ -460,6 +536,11 @@ function CoachQuestionMobile({ data, onSubmit, initialAnswers, onSkip, enableVoi
         />
       </div>
 
+      {/* Étapes déjà répondues AVANT la courante → lignes compactes repliées. */}
+      {qs.map((qq, i) => (i < page && isAnswered(answers[i])) ? (
+        <CollapsedRowMobile key={`c${i}`} question={qq.question} answer={answerText(answers[i], t('ai.noAnswer'))} label={t('ai2.q.edit')} onClick={() => go(i)} reduce={!!reduce} />
+      ) : null)}
+
       {/* Question courante — glissable */}
       <div style={{ overflow: 'hidden', margin: '0 -16px', padding: '0 16px' }}>
         <AnimatePresence mode="popLayout" initial={false} custom={dir}>
@@ -522,6 +603,11 @@ function CoachQuestionMobile({ data, onSubmit, initialAnswers, onSkip, enableVoi
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Étapes déjà répondues APRÈS la courante (ex. retour arrière) → lignes compactes. */}
+      {qs.map((qq, i) => (i > page && isAnswered(answers[i])) ? (
+        <CollapsedRowMobile key={`c${i}`} question={qq.question} answer={answerText(answers[i], t('ai.noAnswer'))} label={t('ai2.q.edit')} onClick={() => go(i)} reduce={!!reduce} />
+      ) : null)}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <AimPill onClick={() => go(page - 1)} disabled={page === 0} flex={1} style={page === 0 ? { opacity: 0.45 } : undefined}>{t('ai.previous')}</AimPill>

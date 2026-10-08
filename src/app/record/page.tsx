@@ -292,7 +292,7 @@ export default function RecordPage() {
   // Affiche en direct l'état RÉEL du GPS pour débugger sans Safari/alertes.
   // GPS_DEBUG_TAG change à chaque build → confirme que le rebuild a bien déployé.
   const GPS_DEBUG = true
-  const GPS_DEBUG_TAG = 'DBG-3'
+  const GPS_DEBUG_TAG = 'DBG-4'
   const [dbg, setDbg] = useState<string>('(diagnostic en cours…)')
   useEffect(() => {
     if (!GPS_DEBUG) return
@@ -326,6 +326,41 @@ export default function RecordPage() {
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const dbgLog = (s: string) => setDbg(d => `${d}\n${s}`)
+  // TEST 1 : plugin @capacitor/geolocation (CLLocationManager standard).
+  const dbgTestPlugin = async () => {
+    dbgLog('— TEST1 plugin… (fenêtre ?)')
+    try {
+      const { Geolocation } = await import('@capacitor/geolocation')
+      const r = await Geolocation.requestPermissions({ permissions: ['location'] })
+      dbgLog(`TEST1 req=${r.location}`)
+      try {
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 })
+        dbgLog(`TEST1 pos OK=${pos.coords.latitude.toFixed(4)},${pos.coords.longitude.toFixed(4)}`)
+        setGpsPerm('granted')
+      } catch (e) { dbgLog(`TEST1 pos ERR=${e instanceof Error ? e.message : String(e)}`) }
+    } catch (e) { dbgLog(`TEST1 req ERR=${e instanceof Error ? e.message : String(e)}`) }
+  }
+  // TEST 2 : plugin @capacitor-community/background-geolocation (addWatcher).
+  const dbgTestBg = async () => {
+    dbgLog('— TEST2 background… (fenêtre ?)')
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const bg = registerPlugin<{ addWatcher: (o: object, cb: (p: { latitude: number; longitude: number } | null, e?: { message?: string }) => void) => Promise<string>; removeWatcher: (o: { id: string }) => Promise<void> }>('BackgroundGeolocation')
+      let gotId: string | null = null
+      const id = await bg.addWatcher(
+        { requestPermissions: true, stale: false, backgroundTitle: 'Hybrid', backgroundMessage: 'Test GPS', distanceFilter: 5 },
+        (p, e) => {
+          if (e) { dbgLog(`TEST2 ERR=${e.message ?? 'err'}`); return }
+          if (p) { dbgLog(`TEST2 pos OK=${p.latitude.toFixed(4)},${p.longitude.toFixed(4)}`); setGpsPerm('granted')
+            if (gotId) { try { void bg.removeWatcher({ id: gotId }) } catch { /* ignore */ } } }
+        },
+      )
+      gotId = id
+      dbgLog(`TEST2 watcher=${id.slice(0, 6)}`)
+    } catch (e) { dbgLog(`TEST2 ERR=${e instanceof Error ? e.message : String(e)}`) }
+  }
 
   // ── Capteurs BLE (puces Cardio / Puissance) ──
   const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
@@ -667,8 +702,18 @@ export default function RecordPage() {
       {GPS_DEBUG && (
         <div style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 4px)', left: 8, right: 8, zIndex: 99999,
           background: 'rgba(0,0,0,0.88)', color: '#0f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.35,
-          padding: '8px 10px', borderRadius: 'var(--r-sm)', whiteSpace: 'pre-wrap', border: '1px solid #0f0', pointerEvents: 'none' }}>
+          padding: '8px 10px', borderRadius: 'var(--r-sm)', whiteSpace: 'pre-wrap', border: '1px solid #0f0', pointerEvents: 'auto' }}>
           {`GPS DEBUG\n${dbg}`}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={() => void dbgTestPlugin()}
+              style={{ flex: 1, padding: '8px 4px', background: '#0a0', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700 }}>
+              TEST 1 (natif)
+            </button>
+            <button type="button" onClick={() => void dbgTestBg()}
+              style={{ flex: 1, padding: '8px 4px', background: '#06c', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 12, fontWeight: 700 }}>
+              TEST 2 (backgr.)
+            </button>
+          </div>
         </div>
       )}
       <div className="rk-rec-top">

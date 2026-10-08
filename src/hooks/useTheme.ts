@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { isDaytime } from '@/lib/theme/sun'
 import { coordsFromTimezone, type Coords } from '@/lib/theme/timezoneCoords'
+import { isNativeApp } from '@/lib/native/platform'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -55,7 +56,10 @@ export function useTheme() {
 
     // Si la géoloc est DÉJÀ autorisée, on récupère la position exacte (sans prompt)
     // pour un lever/coucher précis, puis on recalcule.
-    if (!saved && typeof navigator !== 'undefined' && navigator.permissions && navigator.geolocation) {
+    // Natif iOS : on n'appelle JAMAIS navigator.geolocation (crée un état de
+    // permission WebKit parasite « Lors de mon partage » qui bloque le prompt
+    // natif CLLocationManager). Le fuseau horaire suffit pour le thème jour/nuit.
+    if (!saved && !isNativeApp() && typeof navigator !== 'undefined' && navigator.permissions && navigator.geolocation) {
       navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(res => {
         if (res.state !== 'granted') return
         navigator.geolocation.getCurrentPosition(

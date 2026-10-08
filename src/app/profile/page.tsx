@@ -19,6 +19,7 @@ import { getDevicePushState, enableDevicePush, disableDevicePush, sendTestPush, 
 import { SaveButton } from '@/components/ui/SaveButton'
 import { hidePricing, openWebsite, isNativeApp } from '@/lib/native/platform'
 import { openAppSettings } from '@/lib/native/appSettings'
+import { checkNativeGeoPermission, ensureNativeGeoPermission, type GeoPermission } from '@/lib/native/geo'
 import { openIapStore } from '@/lib/iap/store-events'
 import NativeBilling from '@/components/iap/NativeBilling'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
@@ -2201,14 +2202,18 @@ function AutorisationsBloc() {
       if (typeof Notification === 'undefined') setNotif('unsupported')
       else setNotif(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'prompt')
     } catch { setNotif('unsupported') }
-    // Géolocalisation (Permissions API)
-    try {
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'geolocation' as PermissionName })
-          .then(r => setGeo(r.state as PermState))
-          .catch(() => setGeo('unsupported'))
-      } else setGeo('unsupported')
-    } catch { setGeo('unsupported') }
+    // Géolocalisation — natif iOS : CLLocationManager (jamais navigator.geolocation)
+    if (isNativeApp()) {
+      checkNativeGeoPermission().then(p => setGeo(mapGeoPerm(p))).catch(() => setGeo('unsupported'))
+    } else {
+      try {
+        if (navigator.permissions) {
+          navigator.permissions.query({ name: 'geolocation' as PermissionName })
+            .then(r => setGeo(r.state as PermState))
+            .catch(() => setGeo('unsupported'))
+        } else setGeo('unsupported')
+      } catch { setGeo('unsupported') }
+    }
   }, [])
 
   async function askNotif() {
@@ -2219,7 +2224,19 @@ function AutorisationsBloc() {
     } catch { /* ignore */ }
   }
 
-  function askGeo() {
+  function mapGeoPerm(p: GeoPermission): PermState {
+    if (p === 'granted') return 'granted'
+    if (p === 'denied' || p === 'disabled') return 'denied'
+    if (p === 'prompt') return 'prompt'
+    return 'unsupported'
+  }
+
+  async function askGeo() {
+    // Natif iOS : déclenche le vrai prompt CLLocationManager via le hub.
+    if (isNativeApp()) {
+      try { setGeo(mapGeoPerm(await ensureNativeGeoPermission())) } catch { setGeo('denied') }
+      return
+    }
     if (!('geolocation' in navigator)) return
     navigator.geolocation.getCurrentPosition(() => setGeo('granted'), () => setGeo('denied'))
   }

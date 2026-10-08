@@ -19,6 +19,7 @@ import { GymRecords } from './GymRecords'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
 import { LinkActivitySheet } from './LinkActivitySheet'
+import { RecordRouteTrace } from './RecordRouteTrace'
 import { currentLocale } from '@/lib/i18n'
 import {
   PerfMobileContext, usePerfMobile, M_CARD, M_ICONS, MCard, MRow, MLink, MChips, MSeg, MBars, MHint, MEmpty,
@@ -1485,7 +1486,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           </SCard>
         </SSection>
         {mCond && <SSection label={t('perf2.conditions')}><SCard>{mCond}</SCard></SSection>}
-        {(sport === 'run' || sport === 'swim' || sport === 'bike') && onOpenLink && (
+        {(sport === 'run' || sport === 'swim' || sport === 'bike' || sport === 'rowing') && onOpenLink && (
           <SGroup>
             <SRow first label={t('perf2.linkedActivity')} sub={activityId ? t('perf2.activityLinked') : t('perf2.noActivityLinked')}
               right={<span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -1494,6 +1495,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
               </span>} />
           </SGroup>
         )}
+        {activityId && <RecordRouteTrace activityId={activityId} color="var(--primary)" />}
         {validItems.length > 0 && (
           <SSection label={t('perf2.summary')}>
             <SCard><SStats items={validItems.map(i => ({ label: i.label, value: i.value }))} /></SCard>
@@ -1548,8 +1550,8 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
           {perfSec}
           {condSec}
 
-          {/* Lier une activité (course / natation / vélo) */}
-          {(sport === 'run' || sport === 'swim' || sport === 'bike') && onOpenLink && (
+          {/* Lier une activité (course / natation / vélo / aviron) */}
+          {(sport === 'run' || sport === 'swim' || sport === 'bike' || sport === 'rowing') && onOpenLink && (
             <div style={{ background:'var(--bg-card2)', borderRadius: 'var(--r-md)', padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
               <div style={{ minWidth:0 }}>
                 <p style={{ ...secLbl, margin:0 }}>{t('perf2.linkedActivity')}</p>
@@ -1567,6 +1569,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
               </div>
             </div>
           )}
+          {activityId && <RecordRouteTrace activityId={activityId} color="var(--primary)" />}
 
           {/* Résumé */}
           {validItems.length > 0 && (
@@ -3448,9 +3451,9 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
       )}
 
       {/* Surpage « Lier une activité » depuis le RecordDrawer */}
-      {linkSheetOpen && drawerSpec && (drawerSpec.sport === 'run' || drawerSpec.sport === 'swim' || drawerSpec.sport === 'bike') && (
+      {linkSheetOpen && drawerSpec && (drawerSpec.sport === 'run' || drawerSpec.sport === 'swim' || drawerSpec.sport === 'bike' || drawerSpec.sport === 'rowing') && (
         <LinkActivitySheet
-          segment={drawerSpec.sport === 'bike' ? 'bike' : drawerSpec.sport === 'swim' ? 'swim' : 'run'}
+          segment={drawerSpec.sport === 'bike' ? 'bike' : drawerSpec.sport === 'swim' ? 'swim' : drawerSpec.sport === 'rowing' ? 'row' : 'run'}
           onClose={() => setLinkSheetOpen(false)}
           onLink={(a) => { setEditActivityId(a.id); setLinkSheetOpen(false) }}
         />

@@ -240,24 +240,13 @@ export default function RecordPage() {
   // on ouvre les Réglages de l'app. Tap manuel (bouton) ou auto à l'ouverture.
   const requestGps = async (): Promise<void> => {
     if (!isNativeApp()) return
-    let before = 'unknown'
-    let after = 'unknown'
-    try {
-      const { Geolocation } = await import('@capacitor/geolocation')
-      try { before = (await Geolocation.checkPermissions()).location } catch (e) { before = 'check-err:' + (e instanceof Error ? e.message : String(e)) }
-      if (before === 'granted') { setGpsPerm('granted'); return }
-      // 'prompt' → la fenêtre iOS s'affiche ; 'denied' → iOS ne la réaffiche plus.
-      try { after = (await Geolocation.requestPermissions({ permissions: ['location'] })).location } catch (e) { after = 'req-err:' + (e instanceof Error ? e.message : String(e)) }
-    } catch (e) { after = 'plugin-err:' + (e instanceof Error ? e.message : String(e)) }
-    if (after === 'granted') { setGpsPerm('granted'); return }
-    // Diagnostic (temporaire) : alerte native (impossible à rater) qui montre
-    // l'état exact renvoyé par iOS, puis ouvre les Réglages de l'app.
-    try { window.alert(`GPS iOS → avant: ${before} · après: ${after}\n\nSi \"denied\" : active Position dans les Réglages.\nSi \"prompt\" : la fenêtre système ne s'affiche pas (clé Info.plist).`) } catch { /* ignore */ }
-    setToast(`GPS: ${before} → ${after}`)
-    setGpsPerm(after === 'denied' || before === 'denied' ? 'denied' : 'prompt')
-    // Pas accordé (refus, bloqué, ou fenêtre non affichée) → Réglages de l'app
-    // pour activer la position à la main.
-    void openAppSettings()
+    // ensureNativeGeoPermission tente le natif PUIS, en repli, la voie WebKit
+    // (navigator.geolocation) qui fonctionne sur iOS 15+ même quand la fenêtre
+    // native ne s'affiche pas. Résout le blocage « Autoriser » en boucle.
+    const r = await ensureNativeGeoPermission()
+    setGpsPerm(r)
+    // Refus réel (natif ET WebKit) ou service de localisation coupé → Réglages.
+    if (r === 'denied' || r === 'disabled') void openAppSettings()
   }
   // À l'ouverture de l'écran (sport GPS, app native) : lit l'autorisation ;
   // si jamais demandée, affiche la fenêtre iOS tout de suite (comme Strava).
@@ -268,7 +257,12 @@ export default function RecordPage() {
       const p = await checkNativeGeoPermission()
       if (!alive) return
       setGpsPerm(p)
-      if (p !== 'granted' && p !== 'denied' && p !== 'disabled' && !gpsRequestedRef.current) {
+      // Dès que ce n'est pas déjà accordé (y compris « refusé » côté natif), on
+      // tente une fois : ensureNativeGeoPermission essaie le natif puis, en repli,
+      // la voie WebKit (iOS 15+) qui débloque le cas où la fenêtre native ne
+      // s'affiche jamais. Sans régression pour qui accorde le natif normalement
+      // (la fenêtre native répond « granted » avant tout repli WebKit).
+      if (p !== 'granted' && !gpsRequestedRef.current) {
         gpsRequestedRef.current = true
         const r = await ensureNativeGeoPermission()
         if (alive) setGpsPerm(r)

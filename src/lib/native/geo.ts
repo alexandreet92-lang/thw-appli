@@ -77,31 +77,85 @@ function bgPlugin(): Promise<BackgroundGeolocationPlugin | null> {
   return bgPluginPromise
 }
 
+// ── Filet de sécurité WebKit (navigator.geolocation) ────────────────────────
+// Sur iOS 15+, la WKWebView possède sa PROPRE géolocalisation (navigator.
+// geolocation), indépendante de CLLocationManager / du plugin natif. Elle a sa
+// propre autorisation (iOS l'affiche « Lors de mon partage ») et peut très bien
+// fonctionner alors que la permission native reste coincée en « attente » et que
+// sa fenêtre système ne s'affiche jamais. Pour ne JAMAIS laisser l'utilisateur
+// sans GPS, on sonde puis on écoute cette voie WebKit en repli du plugin natif.
+
+/** Vrai si navigator.geolocation obtient une position. Déclenche son propre
+ *  prompt WebKit si l'autorisation n'est pas encore donnée. N'est appelé qu'en
+ *  REPLI (après échec du plugin natif) pour ne pas doubler le prompt natif. */
+function webkitCanLocate(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { resolve(false); return }
+    let done = false
+    const finish = (v: boolean) => { if (!done) { done = true; resolve(v) } }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        () => finish(true),
+        () => finish(false),
+        { enableHighAccuracy: false, maximumAge: 60000, timeout: 6000 },
+      )
+    } catch { finish(false) }
+    setTimeout(() => finish(false), 7000)
+  })
+}
+
+let webkitWatchId: number | null = null
+/** Démarre un watch navigator.geolocation (WebKit) qui alimente les mêmes
+ *  abonnés que le plugin natif. Repli uniquement : utilisé quand le plugin natif
+ *  ne fournit aucun point. */
+function startWebkitFallback(): void {
+  if (webkitWatchId != null || !subs.size || backgroundMode) return
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return
+  try {
+    webkitWatchId = navigator.geolocation.watchPosition(
+      p => { lastFix = p; lastFixAt = Date.now(); for (const s of subs) s.onPos(p) },
+      () => { /* le plugin natif gère déjà les erreurs ; on reste silencieux */ },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
+    )
+  } catch { /* ignore */ }
+}
+function stopWebkitFallback(): void {
+  if (webkitWatchId == null) return
+  const id = webkitWatchId
+  webkitWatchId = null
+  try { navigator.geolocation.clearWatch(id) } catch { /* ignore */ }
+}
+
 /** Vérifie puis, si besoin, demande l'autorisation (prompt iOS « Lorsque
- *  l'app est active »). Ne bloque jamais indéfiniment côté appelant. */
+ *  l'app est active »). Ne bloque jamais indéfiniment côté appelant. Si la voie
+ *  native n'aboutit pas, on tente la voie WebKit (qui marche sur iOS 15+). */
 export async function ensureNativeGeoPermission(): Promise<GeoPermission> {
   const Geo = await plugin()
   let st: string
   try {
     st = (await Geo.checkPermissions()).location
   } catch (e) {
+    // Plugin natif indisponible → la WKWebView peut quand même géolocaliser.
+    if (await webkitCanLocate()) return 'granted'
     return classifyGeoError(e).kind === 'disabled' ? 'disabled' : 'unknown'
   }
   if (st === 'granted') return 'granted'
-  if (st === 'denied') return 'denied'
-  // 'prompt' / 'prompt-with-rationale' → demande système. Si la clé Info.plist
-  // NSLocationWhenInUseUsageDescription manque, iOS n'affiche RIEN et la
-  // promesse ne se résout jamais : on le signale en console au bout de 20 s.
-  const warn = setTimeout(() => {
-    console.warn('[geo] requestPermissions sans réponse — vérifier NSLocationWhenInUseUsageDescription dans ios/App/App/Info.plist')
-  }, 20000)
+  // Natif refusé : la WKWebView a sa propre autorisation → si elle marche, GPS OK.
+  if (st === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
+  // 'prompt' / 'prompt-with-rationale' → on demande au système natif.
   try {
     const r = await Geo.requestPermissions({ permissions: ['location'] })
-    return r.location === 'granted' ? 'granted' : r.location === 'denied' ? 'denied' : 'prompt'
+    if (r.location === 'granted') return 'granted'
+    if (r.location === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
   } catch (e) {
     const k = classifyGeoError(e).kind
-    return k === 'disabled' ? 'disabled' : k === 'denied' ? 'denied' : 'unknown'
-  } finally { clearTimeout(warn) }
+    if (k === 'disabled') return 'disabled'
+    if (k === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
+  }
+  // La fenêtre native ne s'est pas affichée / pas de réponse exploitable :
+  // dernier recours, la voie WebKit (déclenche son propre prompt si besoin).
+  if (await webkitCanLocate()) return 'granted'
+  return 'prompt'
 }
 
 /** Lit l'autorisation SANS la demander (pas de prompt iOS). Web : 'granted'
@@ -163,6 +217,7 @@ function toW3C(p: { timestamp: number; coords: { latitude: number; longitude: nu
 
 async function stopNativeWatch(): Promise<void> {
   clearSilenceWatchdog()
+  stopWebkitFallback()
   const id = nativeWatchId
   nativeWatchId = null
   if (id == null) return
@@ -243,6 +298,13 @@ async function startNativeWatch(): Promise<void> {
     )
     nativeWatchId = id
     armSilenceWatchdog()
+    // Filet de sécurité iOS : si le plugin natif n'a fourni AUCUN point rapidement
+    // (permission native coincée alors que la WKWebView, elle, géolocalise), on
+    // bascule sur navigator.geolocation. Sans effet quand le natif fonctionne
+    // (lastFixAt récent → la condition est fausse, aucun watch WebKit créé).
+    setTimeout(() => {
+      if (subs.size && !backgroundMode && (lastFix == null || Date.now() - lastFixAt > 4000)) startWebkitFallback()
+    }, 4000)
     if (!subs.size) await stopNativeWatch()
   } catch (e) {
     const err = classifyGeoError(e)

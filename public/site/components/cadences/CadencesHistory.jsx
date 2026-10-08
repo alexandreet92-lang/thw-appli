@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — Mon historique / Progression.
+   Decaform (site) — Mon historique / Progression.
    Lit les instantanés de tests (score total, scores par qualité et par
    épreuve) + le profil (poids, âge) + les conditions (température, météo,
    intérieur/extérieur). Graphiques SVG maison (aucune lib).
@@ -101,7 +101,7 @@
           <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
           <div className="cad-act-eye" style={{ marginTop: 14 }}>Mon historique</div>
           <h1 className="cad-act-t" style={{ fontSize: 30 }}>Pas encore de test</h1>
-          <p className="cad-p">Réalise ton premier test CADENCES : il s'affichera ici, et chaque nouveau test viendra nourrir tes courbes de progression.</p>
+          <p className="cad-p">Réalise ton premier test Decaform : il s'affichera ici, et chaque nouveau test viendra nourrir tes courbes de progression.</p>
           <button type="button" className="thw-btn-primary" onClick={props.onStart}>Démarrer un test</button>
         </div>
       );
@@ -165,7 +165,7 @@
         <HistStyle />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div className="cad-act-eye">Mon historique CADENCES</div>
+            <div className="cad-act-eye">Mon historique Decaform</div>
             <h1 className="cad-act-t" style={{ fontSize: 30 }}>{hist.length} test{hist.length > 1 ? 's' : ''} · progression</h1>
           </div>
           <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>

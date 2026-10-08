@@ -105,7 +105,7 @@ export default function DecouverteAdminPage() {
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, margin: 0 }}>Découverte — QR Hybrid</h1>
       <p style={{ margin: 'var(--space-3) 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)' }}>
         Crée un QR par établissement partenaire. Le QR ouvre, sur le site (jamais l’app), une page
-        qui présente le test CADENCES et invite à créer un compte gratuit. Pour un restaurant,
+        qui présente le test Decaform et invite à créer un compte gratuit. Pour un restaurant,
         indique le nombre de tables : tu auras un QR par table.
       </p>
 

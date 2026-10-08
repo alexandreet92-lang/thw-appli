@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES — le test physique SUR LE SITE (public/site).
+   Decaform — le test physique SUR LE SITE (public/site).
    Présentation → démarrer → saisie J1→J12 + score en direct → clôture →
    résultats. Compte du site (THWAccount), appels /api/cadences/* en
    same-origin (cookies). Design du site (Syne/DM Sans/DM Mono, cyan).
@@ -26,7 +26,7 @@
   }
   var QK = ['vitesse', 'force', 'puissance', 'explosivite', 'endurance', 'vo2max', 'coordination'];
 
-  // ── Styles propres à CADENCES (le reste vient de colors_and_type.css / site.css) ──
+  // ── Styles propres à Decaform (le reste vient de colors_and_type.css / site.css) ──
   function CadStyle() {
     return (
       <style>{`
@@ -739,12 +739,12 @@
       <div>
         <div className="cad-hero">
           <div className="t-label" style={{ color: 'var(--brand)' }}>Test de condition générale</div>
-          <h1 className="t-display" style={{ margin: '10px 0 0' }}>CADENCES</h1>
+          <h1 className="t-display" style={{ margin: '10px 0 0' }}>Decaform</h1>
           <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, lineHeight: 1.4, margin: '14px 0 0', color: 'var(--text)', maxWidth: 640 }}>
             Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.
           </p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.6, margin: '12px 0 0', color: 'var(--text-mid)', maxWidth: 640 }}>
-            {cat.totalTests} épreuves · 12 jours · score sur {cat.totalPoints} · 7 qualités · barème général ou ajusté à l'âge · 18 à 80 ans.
+            {cat.totalTests} épreuves · 12 jours · score sur {cat.totalPoints} · 7 qualités · double notation : barème général et ajusté à l'âge · 18 à 80 ans.
           </p>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {makeCta()}
@@ -860,7 +860,7 @@
       <div className="cad-run">
         <button type="button" className="cad-link" onClick={props.onCancel}>← Retour</button>
         <div className="cad-act-eye" style={{ marginTop: 14 }}>Nouveau test</div>
-        <h1 className="cad-act-t" style={{ fontSize: 30 }}>Démarrer CADENCES</h1>
+        <h1 className="cad-act-t" style={{ fontSize: 30 }}>Démarrer Decaform</h1>
         <div className="cad-wiz-steps">
           {STEPS.map(function (s, i) {
             var n = i + 1;
@@ -1277,7 +1277,7 @@
       <div className="cad-run">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div className="cad-act-eye">Mon test CADENCES</div>
+            <div className="cad-act-eye">Mon test Decaform</div>
             <h1 className="cad-act-t" style={{ fontSize: 30 }}>{curDay ? 'Jour ' + curDay + ' aujourd’hui' : 'Ton calendrier'}</h1>
           </div>
           <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
@@ -1592,7 +1592,7 @@
     }, [prevCamp && prevCamp.id]);
 
     if (!score) {
-      return <div><h1 className="t-h1">Résultats CADENCES</h1><p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Aucun score figé pour cette campagne.</p><button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button></div>;
+      return <div><h1 className="t-h1">Résultats Decaform</h1><p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Aucun score figé pour cette campagne.</p><button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button></div>;
     }
     // Double notation : on affiche toujours les deux (général + ajusté à l'âge).
     var sG = (rep.scores && rep.scores.general) || score;
@@ -1638,7 +1638,7 @@
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div className="cad-act-eye">Tes résultats</div>
-            <h1 className="cad-act-t" style={{ fontSize: 30 }}>CADENCES · {frDate(doneOn)}</h1>
+            <h1 className="cad-act-t" style={{ fontSize: 30 }}>Decaform · {frDate(doneOn)}</h1>
           </div>
           <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
         </div>

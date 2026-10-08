@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — schémas des mouvements avec SIMULATION animée.
+   Decaform (site) — schémas des mouvements avec SIMULATION animée.
    Chaque parcours/saut est un tracé continu ordonné : un point (l'athlète)
    le parcourt au clic sur « ▶ Lancer la simulation », avec l'indication de
    la phase en cours (Avant, Pas chassés, Sprint 30 m…). Lisible clair/sombre.

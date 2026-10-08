@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — Manifeste d'ouverture « Pourquoi ce test ».
+   Decaform (site) — Manifeste d'ouverture « Pourquoi ce test ».
    Intro déroulante AU-DESSUS des onglets : le constat du vieillissement,
    graphiques animés (systèmes par âge, sédentaire vs entraîné), l'histoire
    des deux garçons A/B (frise + récit dépliable), puis « pourquoi mesurer ».
@@ -645,7 +645,7 @@
           <Pillars />
           <p className="cad-act-p" style={{ marginTop: 20 }}><strong>Combien de séances ?</strong> Bascule entre la semaine minimum et la semaine idéale : le nombre de séances, le temps total et un exemple de semaine.</p>
           <WeekPlanner />
-          <p className="cad-act-p">Les repères à viser ? Tu les as vus plus haut : <strong>plus de 40 pompes</strong>, <strong>8 sur 10 ou plus</strong> au test assis-debout, une poigne qui ne baisse pas d’une année sur l’autre. CADENCES les mesure toutes, avec un barème détaillé pour chaque épreuve.</p>
+          <p className="cad-act-p">Les repères à viser ? Tu les as vus plus haut : <strong>plus de 40 pompes</strong>, <strong>8 sur 10 ou plus</strong> au test assis-debout, une poigne qui ne baisse pas d’une année sur l’autre. Decaform les mesure toutes, avec un barème détaillé pour chaque épreuve.</p>
 
           <div className="cad-tier">2 · Le sommeil et la nutrition — le carburant</div>
           <div className="cad-support">
@@ -664,12 +664,12 @@
           <Sources items={SRC_FAIRE} />
         </Act>
 
-        {/* Le test, concrètement — juste avant la réponse « Pourquoi CADENCES ». */}
+        {/* Le test, concrètement — juste avant la réponse « Pourquoi Decaform ». */}
         {window.CadTestIntro ? <window.CadTestIntro catalog={props.catalog} /> : null}
 
         {/* 8. La réponse */}
-        <Act eye="Pourquoi CADENCES" title="Pour piloter ça, il faut mesurer."
-             lead={<span>Tu sais maintenant quoi travailler, et en quoi consiste le test. CADENCES te dit <strong>où tu en es</strong> sur chacune de ces qualités — et te le redit dans 3 mois, puis chaque année : où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>.</span>}>
+        <Act eye="Pourquoi Decaform" title="Pour piloter ça, il faut mesurer."
+             lead={<span>Tu sais maintenant quoi travailler, et en quoi consiste le test. Decaform te dit <strong>où tu en es</strong> sur chacune de ces qualités — et te le redit dans 3 mois, puis chaque année : où tu progresses, où tu déclines, et <strong>comment ralentir la baisse</strong>.</span>}>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {props.makeCta ? props.makeCta() : null}
           </div>
@@ -682,7 +682,7 @@
 })();
 
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — « Le test, concrètement » : présentation placée juste
+   Decaform (site) — « Le test, concrètement » : présentation placée juste
    sous le titre (organisation, durée, public, matériel, période, qualités,
    lecture du score avec les 7 paliers). Données issues du catalogue.
    Publie window.CadTestIntro.
@@ -734,7 +734,7 @@
     var cur = segs.filter(function (s) { return s.label === hov; })[0];
     return (
       <div ref={iv[0]}>
-        <div className="cad-lvl-bar" role="img" aria-label="Paliers de niveau du score CADENCES">
+        <div className="cad-lvl-bar" role="img" aria-label="Paliers de niveau du score Decaform">
           {segs.map(function (s, i) {
             return (
               <button key={s.label} type="button" className={'cad-lvl-seg' + (hov === s.label ? ' is-on' : '')}
@@ -838,8 +838,8 @@
           <h3 className="cad-ti-h">Comment lire ton score</h3>
           <div className="cad-ti-score-t">Ce test note sévèrement. C’est voulu.</div>
           <p>Un score de <strong>400 / 1000</strong> peut sembler, à première vue, en dessous de la moyenne. Ce n’est pas le cas : avec 400, <strong>tu es au-dessus du niveau physique moyen de la population</strong> — en France comme ailleurs dans le monde.</p>
-          <p>CADENCES ne te compare pas à la moyenne d’aujourd’hui, parce que cette moyenne est <strong>mauvaise — très mauvaise</strong> — et qu’elle se dégrade <strong>année après année</strong>. Bientôt, monter 10 étages à 30 ans suffira pour être au-dessus de la moyenne.</p>
-          <p className="cad-ti-punch">CADENCES te note par rapport à ce que le niveau physique d’un être humain devrait être.</p>
+          <p>Decaform ne te compare pas à la moyenne d’aujourd’hui, parce que cette moyenne est <strong>mauvaise — très mauvaise</strong> — et qu’elle se dégrade <strong>année après année</strong>. Bientôt, monter 10 étages à 30 ans suffira pour être au-dessus de la moyenne.</p>
+          <p className="cad-ti-punch">Decaform te note par rapport à ce que le niveau physique d’un être humain devrait être.</p>
           <LevelScale cat={cat} />
         </div>
       </section>

@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — graphiques SVG bruts (aucune lib de chart).
+   Decaform (site) — graphiques SVG bruts (aucune lib de chart).
    Donut (G1), 7 anneaux (G3), radar 7 axes (G4), barres (G5).
    Animés à l'entrée (coupés si prefers-reduced-motion). Pistes lisibles
    en clair ET sombre. Publie CadScoreDonut, CadQualityRings, CadRadar,

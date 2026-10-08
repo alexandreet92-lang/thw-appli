@@ -1,11 +1,11 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════════
-// LE DÉFI HYBRID — vitrine publique du test CADENCES, ouverte par un QR.
+// LE DÉFI HYBRID — vitrine publique du test Decaform, ouverte par un QR.
 //
-// Pas de test sur place : CADENCES est une vraie batterie d'athlète (terrain,
+// Pas de test sur place : Decaform est une vraie batterie d'athlète (terrain,
 // piste, salle, 18+), impossible à faire à une table. La page PRÉSENTE ce que
-// CADENCES mesure et invite à créer un compte gratuit pour le faire dans l'app,
+// Decaform mesure et invite à créer un compte gratuit pour le faire dans l'app,
 // à son rythme. On suit, par établissement/table : ouvertures, clics « compte »,
 // et les mots laissés. AUCUNE connexion requise pour voir cette page.
 // ══════════════════════════════════════════════════════════════════
@@ -49,7 +49,7 @@ export function DefiClient({ code, table }: { code: string | null; table: number
         {/* Accroche */}
         <section style={sCarte}>
           <span style={sKicker2}>Le test physique</span>
-          <h1 style={sTitre}>CADENCES</h1>
+          <h1 style={sTitre}>Decaform</h1>
           <p style={sLead}>Mesurez vraiment où vous en êtes, physiquement.</p>
           <p style={sTexte}>
             Une batterie de 21 épreuves, réparties en trois qualités. Vous obtenez un score et un
@@ -78,7 +78,7 @@ export function DefiClient({ code, table }: { code: string | null; table: number
         {/* Honnêteté : ce que c'est vraiment */}
         <section style={sCarteSobre}>
           <p style={sTexte}>
-            CADENCES est un <strong style={{ color: 'var(--text)' }}>vrai test d’athlète</strong> : terrain, piste, salle.
+            Decaform est un <strong style={{ color: 'var(--text)' }}>vrai test d’athlète</strong> : terrain, piste, salle.
             Réservé aux 18 ans et plus. Pas besoin de tout faire d’un coup — l’app vous guide, épreuve
             par épreuve, et garde vos résultats.
           </p>

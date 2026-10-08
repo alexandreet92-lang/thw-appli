@@ -99,7 +99,7 @@ function Discover() {
             }}>
               <div style={{ minWidth: 240, flex: '1 1 320px' }}>
                 <div className="eyebrow">Nouveau · Test de condition générale</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 'clamp(20px,3vw,26px)', letterSpacing: '-0.02em', margin: '6px 0 6px', color: 'var(--text)' }}>CADENCES</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 'clamp(20px,3vw,26px)', letterSpacing: '-0.02em', margin: '6px 0 6px', color: 'var(--text)' }}>Decaform</div>
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, lineHeight: 1.55, color: 'var(--text-mid)', margin: 0, maxWidth: 560 }}>
                   24 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test <strong style={{ color: 'var(--text)' }}>exigeant</strong>, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
                 </p>

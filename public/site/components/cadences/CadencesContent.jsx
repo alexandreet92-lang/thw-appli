@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   CADENCES (site) — CONTENU RICHE (statique, aucune API).
+   Decaform (site) — CONTENU RICHE (statique, aucune API).
    Sections : aperçu animé, 7 qualités, protocole 12 jours complet,
    barèmes & charges, calcul du score, avertissements. Tiré de la spéc
    et de la config (source de vérité — rien d'inventé). Publie window.CadContent.
@@ -657,7 +657,7 @@
   // ── Avertissements & limites ────────────────────────────────────────
   function warnings(catalog) {
     var W = [
-      { t: 'Avis médical conseillé', d: 'CADENCES demande des efforts intenses et maximaux. Consulte un médecin avant de tester, surtout après 40 ans ou en cas d’antécédent.' },
+      { t: 'Avis médical conseillé', d: 'Decaform demande des efforts intenses et maximaux. Consulte un médecin avant de tester, surtout après 40 ans ou en cas d’antécédent.' },
       { t: 'Pas un diagnostic', d: 'C’est un test de condition physique, pas un examen médical ni une prescription.' },
       { t: 'Pour des pratiquants réguliers', d: 'Conçu pour des personnes qui s’entraînent déjà, avec un certain niveau — pas pour débuter.' },
       { t: 'Barèmes d’âge estimés', d: 'Les coefficients par âge sont des estimations (littérature masters), calibrées pour des pratiquants réguliers, à affiner avec de vraies données.' },

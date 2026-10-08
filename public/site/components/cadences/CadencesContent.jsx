@@ -16,27 +16,32 @@
   };
 
   // Glossaire complet des qualités physiques (définitions d'Alex).
-  // principal = parmi les principales ; tested = évaluée par CADENCES (11).
+  // principal = parmi les principales. state : 'mesuree' = notée par une épreuve ;
+  // 'sollicitee' = travaillée par le protocole mais pas notée directement ;
+  // 'hors' = ni notée ni travaillée. how = où elle est sollicitée.
   var QUALITY_GLOSSARY = [
-    { t: 'Force maximale', d: 'Tension maximale développée par un muscle contre une résistance.', principal: true, tested: true },
-    { t: 'Vitesse maximale', d: 'Accomplir un mouvement ou un déplacement dans le temps le plus court possible.', principal: true, tested: true },
-    { t: 'Endurance fondamentale', d: 'Maintenir un effort d\'intensité faible à modérée sur une longue durée.', principal: true, tested: true },
-    { t: 'Coordination', d: 'Synchroniser système nerveux et muscles pour un mouvement fluide.', principal: true, tested: true },
-    { t: 'Souplesse', d: 'Réaliser des mouvements avec la plus grande amplitude articulaire possible.', principal: true, tested: false },
-    { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', tested: true },
-    { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', tested: true },
-    { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', tested: true },
-    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', tested: true },
-    { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', tested: true },
-    { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', tested: true },
-    { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', tested: true },
-    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', tested: false },
-    { t: 'Équilibre', d: 'Maintenir la stabilité du corps, à l\'arrêt comme en mouvement.', tested: false },
-    { t: 'Précision', d: 'Contrôler exactement la trajectoire d\'un geste ou d\'un projectile.', tested: false },
-    { t: 'Temps de réaction', d: 'Délai entre la perception d\'un signal et le début du mouvement.', tested: false },
-    { t: 'Dissociation segmentaire', d: 'Bouger une partie du corps indépendamment des autres.', tested: false },
-    { t: 'Rythme', d: 'Percevoir et reproduire une cadence précise dans l\'effort.', tested: false },
+    { t: 'Force maximale', d: 'Tension maximale développée par un muscle contre une résistance.', principal: true, state: 'mesuree' },
+    { t: 'Vitesse maximale', d: 'Accomplir un mouvement ou un déplacement dans le temps le plus court possible.', principal: true, state: 'mesuree' },
+    { t: 'Endurance fondamentale', d: 'Maintenir un effort d\'intensité faible à modérée sur une longue durée.', principal: true, state: 'mesuree' },
+    { t: 'Coordination', d: 'Synchroniser système nerveux et muscles pour un mouvement fluide.', principal: true, state: 'mesuree' },
+    { t: 'Souplesse', d: 'Réaliser des mouvements avec la plus grande amplitude articulaire possible.', principal: true, state: 'hors' },
+    { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', state: 'mesuree' },
+    { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', state: 'mesuree' },
+    { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', state: 'mesuree' },
+    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par l\'AMRAP et le circuit Hyrox (répétitions sous charge dans la durée).' },
+    { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', state: 'mesuree' },
+    { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', state: 'mesuree' },
+    { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', state: 'mesuree' },
+    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', state: 'sollicitee', how: 'Travaillée par l\'AMRAP et le circuit Hyrox.' },
+    { t: 'Temps de réaction', d: 'Délai entre la perception d\'un signal et le début du mouvement.', state: 'sollicitee', how: 'Travaillé par les départs de sprint et les parcours de coupelles.' },
+    { t: 'Rythme', d: 'Percevoir et reproduire une cadence précise dans l\'effort.', state: 'sollicitee', how: 'Travaillé par le slalom et la cadence des pas chassés.' },
+    { t: 'Équilibre', d: 'Maintenir la stabilité du corps, à l\'arrêt comme en mouvement.', state: 'sollicitee', how: 'Travaillé par les réceptions de sauts et les appuis d\'agilité.' },
+    { t: 'Dissociation segmentaire', d: 'Bouger une partie du corps indépendamment des autres.', state: 'sollicitee', how: 'Travaillée par les pas chassés (Square, Move).' },
+    { t: 'Précision', d: 'Contrôler exactement la trajectoire d\'un geste ou d\'un projectile.', state: 'hors' },
   ];
+  // Libellé + classe du badge selon l'état d'une qualité.
+  var QSTATE = { mesuree: { label: 'mesurée', cls: ' is-in' }, sollicitee: { label: 'sollicitée', cls: ' is-work' }, hors: { label: 'hors test', cls: '' } };
+  function qstate(q) { return QSTATE[q.state] || QSTATE.hors; }
 
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
   function levelFor(pct, levels) { var lab = levels[0].label; for (var i = 0; i < levels.length; i++) if (pct >= levels[i].min_pct) lab = levels[i].label; return lab; }
@@ -266,10 +271,11 @@
         <h3 className="cad-h3" style={{ marginTop: 'var(--space-6)' }}>Les 5 qualités principales</h3>
         <div className="cad-gl-main">
           {principales.map(function (q) {
+            var st = qstate(q);
             return (
               <div key={q.t} className="cad-gl-card">
-                <div className="cad-gl-h"><b>{q.t}</b><span className={'cad-gl-tag' + (q.tested ? ' is-in' : '')}>{q.tested ? 'mesurée' : 'hors test'}</span></div>
-                <p>{q.d}</p>
+                <div className="cad-gl-h"><b>{q.t}</b><span className={'cad-gl-tag' + st.cls}>{st.label}</span></div>
+                <p>{q.d}{q.how ? ' ' + q.how : ''}</p>
               </div>
             );
           })}
@@ -277,12 +283,13 @@
         <h3 className="cad-h3" style={{ marginTop: 'var(--space-5)' }}>Les autres qualités</h3>
         <div className="cad-gl-list">
           {autres.map(function (q) {
+            var st = qstate(q);
             return (
               <div key={q.t} className="cad-gl-row">
-                <span className={'cad-gl-dot' + (q.tested ? ' is-in' : '')}></span>
+                <span className={'cad-gl-dot' + st.cls}></span>
                 <b>{q.t}</b>
-                <span className="cad-gl-d">{q.d}</span>
-                <span className={'cad-gl-tag' + (q.tested ? ' is-in' : '')}>{q.tested ? 'mesurée' : 'hors test'}</span>
+                <span className="cad-gl-d">{q.d}{q.how ? ' ' + q.how : ''}</span>
+                <span className={'cad-gl-tag' + st.cls}>{st.label}</span>
               </div>
             );
           })}

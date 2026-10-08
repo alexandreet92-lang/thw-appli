@@ -601,6 +601,98 @@
     );
   }
 
+  /* G6 — courbe du score global dans le temps. Fond en bandes de paliers,
+     points colorés par palier, survol = date/score/palier + sous-titre.
+     Un point marqué `flag` (conditions très différentes) reçoit un anneau orange. */
+  function CadTrendLine(props) {
+    var en = useInView(); var enRef = en[0], on = en[1];
+    var pts = props.points || [];
+    var max = props.max || 1000;
+    var levels = props.levels || [];
+    var palette = props.palette || {};
+    var hv = React.useState(-1); var hi = hv[0], setHi = hv[1];
+    if (!pts.length) return null;
+    var maxScore = Math.max.apply(null, pts.map(function (p) { return p.score; }));
+    var yTop = Math.min(1100, Math.max(600, Math.ceil((maxScore + 60) / 200) * 200));
+    var W = 680, H = 280, PL = 46, PR = 16, PT = 18, PB = 36;
+    var iw = W - PL - PR, ih = H - PT - PB;
+    function x(i) { return PL + (pts.length === 1 ? iw / 2 : iw * i / (pts.length - 1)); }
+    function y(v) { return PT + ih * (1 - Math.min(v, yTop) / yTop); }
+    var bands = [];
+    for (var i = 0; i < levels.length; i++) {
+      var from = levels[i].min_pct * max;
+      if (from >= yTop) break;
+      var to = (i + 1 < levels.length ? levels[i + 1].min_pct * max : yTop);
+      bands.push({ from: from, to: Math.min(to, yTop), label: levels[i].label, color: palette[levels[i].label] || '#9ca3af' });
+    }
+    var ticks = []; for (var t = 0; t <= yTop; t += 200) ticks.push(t);
+    var line = pts.map(function (p, idx) { return x(idx) + ',' + y(p.score); }).join(' ');
+    return (
+      <div ref={enRef} style={{ position: 'relative' }}>
+        <svg width="100%" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label="Score global dans le temps" style={{ display: 'block', overflow: 'visible' }}>
+          {bands.map(function (b, idx) {
+            return <rect key={idx} x={PL} y={y(b.to)} width={iw} height={Math.max(0, y(b.from) - y(b.to))} fill={b.color} opacity={0.10} />;
+          })}
+          {bands.map(function (b, idx) {
+            var yc = (y(b.from) + y(b.to)) / 2;
+            if (y(b.from) - y(b.to) < 14) return null;
+            return <text key={idx} x={W - PR} y={yc + 3} textAnchor="end" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: b.color, opacity: 0.85 }}>{b.label}</text>;
+          })}
+          {ticks.map(function (tk) {
+            return <g key={tk}>
+              <line x1={PL} y1={y(tk)} x2={PL + iw} y2={y(tk)} stroke={GRID} strokeWidth={0.5} opacity={0.5} />
+              <text x={PL - 8} y={y(tk) + 3} textAnchor="end" style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, fill: 'var(--text-dim)' }}>{tk}</text>
+            </g>;
+          })}
+          <polyline points={line} fill="none" stroke="var(--text-mid)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
+                    style={{ opacity: on ? 1 : 0, transition: 'opacity .7s ease' }} />
+          {pts.map(function (p, idx) {
+            return <text key={'d' + idx} x={x(idx)} y={H - 12} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: hi === idx ? 'var(--text)' : 'var(--text-dim)', fontWeight: hi === idx ? 700 : 500 }}>{p.label}</text>;
+          })}
+          {pts.map(function (p, idx) {
+            return <g key={'p' + idx} style={{ opacity: on ? 1 : 0, transition: 'opacity .5s ease ' + (idx * 90) + 'ms' }}>
+              {p.flag ? <circle cx={x(idx)} cy={y(p.score)} r={9} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2 2" /> : null}
+              <circle cx={x(idx)} cy={y(p.score)} r={hi === idx ? 6 : 5} fill={p.color || BRAND} stroke="var(--bg-card)" strokeWidth={1.5} />
+            </g>;
+          })}
+          {pts.map(function (p, idx) {
+            return <rect key={'h' + idx} x={x(idx) - iw / (2 * Math.max(1, pts.length))} y={PT} width={iw / Math.max(1, pts.length)} height={ih} fill="transparent"
+                         onMouseEnter={function () { setHi(idx); }} onMouseLeave={function () { setHi(-1); }} />;
+          })}
+          {hi >= 0 ? (function () {
+            var p = pts[hi]; var bx = Math.max(PL, Math.min(x(hi) - 70, W - PR - 148)); var by = Math.max(0, y(p.score) - 68);
+            return <g>
+              <rect x={bx} y={by} width={148} height={56} rx={8} fill="var(--bg-card)" stroke="var(--border-mid)" strokeWidth={1} style={{ filter: 'drop-shadow(0 6px 16px rgba(8,20,40,.18))' }} />
+              <text x={bx + 12} y={by + 19} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, fill: 'var(--text)' }}>{p.score}<tspan style={{ fontSize: 10, fill: 'var(--text-dim)' }}> / {max}</tspan></text>
+              <text x={bx + 12} y={by + 34} style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, fill: p.color || BRAND }}>{p.level}</text>
+              <text x={bx + 12} y={by + 48} style={{ fontFamily: 'var(--font-body)', fontSize: 10, fill: 'var(--text-mid)' }}>{p.sub || ''}</text>
+            </g>;
+          })() : null}
+        </svg>
+      </div>
+    );
+  }
+
+  /* Mini-courbe (sparkline) — progression d'une série, dernier point marqué. */
+  function CadSparkline(props) {
+    var vals = (props.values || []).slice();
+    if (vals.length === 1) vals = [vals[0], vals[0]];
+    if (!vals.length) return null;
+    var w = props.w || 132, h = props.h || 34, pad = 4;
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rng = (mx - mn) || 1;
+    function X(i) { return pad + (w - 2 * pad) * i / (vals.length - 1); }
+    function Y(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / rng); }
+    var d = vals.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
+    var col = props.color || BRAND;
+    return (
+      <svg width={w} height={h} viewBox={'0 0 ' + w + ' ' + h} role="img" aria-label={props.aria || 'progression'} style={{ display: 'block' }}>
+        <path d={d} fill="none" stroke={col} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={X(vals.length - 1)} cy={Y(vals[vals.length - 1])} r={2.8} fill={col} />
+      </svg>
+    );
+  }
+
   Object.assign(window, { CadScoreDonut: CadScoreDonut, CadQualityRings: CadQualityRings, CadRadar: CadRadar, CadTestBar: CadTestBar, CadPointsByFamily: CadPointsByFamily, CadLineChart: CadLineChart,
-    CadUseInView: useInView, CadCountUp: CadCountUp, CadDumbbell: CadDumbbell, CadWaffle: CadWaffle, CadHBars: CadHBars, CadColumns: CadColumns, CadGauge: CadGauge });
+    CadUseInView: useInView, CadCountUp: CadCountUp, CadDumbbell: CadDumbbell, CadWaffle: CadWaffle, CadHBars: CadHBars, CadColumns: CadColumns, CadGauge: CadGauge,
+    CadTrendLine: CadTrendLine, CadSparkline: CadSparkline });
 })();

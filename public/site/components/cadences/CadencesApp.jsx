@@ -339,6 +339,9 @@
         .cad-gl-card p { margin: 6px 0 0; font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--text-mid); }
         .cad-gl-tag { flex: 0 0 auto; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: var(--text-dim); border: 1px solid var(--border-mid); white-space: nowrap; }
         .cad-gl-tag.is-in { color: var(--brand); border-color: rgba(0,200,224,.4); background: rgba(0,200,224,.08); }
+        .cad-gl-tag.is-work { color: #b45309; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.1); }
+        html.dark .cad-gl-tag.is-work { color: #fcd34d; }
+        .cad-gl-dot.is-work { background: #f59e0b; }
         .cad-gl-list { display: grid; margin-top: 8px; border: 1px solid var(--border-mid); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); }
         .cad-gl-row { display: grid; grid-template-columns: 10px 190px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
         .cad-gl-row:last-child { border-bottom: none; }
@@ -559,6 +562,7 @@
     var cat = React.useState(null); var catalog = cat[0], setCatalog = cat[1];
     var cp = React.useState([]); var campaigns = cp[0], setCampaigns = cp[1];
     var rp = React.useState(null); var report = rp[0], setReport = rp[1];
+    var hs = React.useState(null); var history = hs[0], setHistory = hs[1];
     var md = React.useState('general'); var mode = md[0], setMode = md[1];
     var er = React.useState(null); var error = er[0], setError = er[1];
     var coS = React.useState(false); var crossOrigin = coS[0], setCrossOrigin = coS[1];
@@ -607,6 +611,13 @@
     }
     function reload() { return report && report.campaign ? loadReport(report.campaign.id) : Promise.resolve(); }
 
+    // Historique : liste des tests avec leurs scores (instantanés) et conditions.
+    function loadHistory(nextView) {
+      return api('/api/cadences/history')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { var list = (j && j.tests) || []; setHistory(list); if (nextView) setView(nextView); return list; });
+    }
+
     if (!catalog) {
       return (
         <div><CadStyle/><SiteHeader active="cadences"/>
@@ -633,11 +644,17 @@
                       onClosed={function () { reload().then(function () { setView('results'); }); }}/>;
     } else if (view === 'results' && report) {
       body = <CadResults catalog={catalog} report={report} campaigns={campaigns} mode={mode} setMode={setMode} onBack={function () { setView('intro'); }}/>;
+    } else if (view === 'history') {
+      body = <CadHistory catalog={catalog} history={history || []} mode={mode}
+                         onBack={function () { setView('intro'); }}
+                         onStart={function () { setView('start'); }}
+                         onOpen={function (id) { loadReport(id, 'results'); }}/>;
     } else {
       body = <CadIntro catalog={catalog} loggedIn={loggedIn} campaigns={campaigns}
                        crossOrigin={crossOrigin} appUrl={appTestUrl}
                        onStart={function () { setView('start'); }}
                        onResume={function (id) { loadReport(id, 'test'); }}
+                       onHistory={function () { loadHistory('history'); }}
                        onOpenResults={function (id) { loadReport(id, 'results'); }}/>;
     }
 
@@ -725,7 +742,10 @@
 
         {!props.crossOrigin && terminees.length ? (
           <div style={{ marginTop: 'var(--space-8)' }}>
-            <div className="t-h2" style={{ marginBottom: 10 }}>Mes passages</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
+              <div className="t-h2">Mes passages</div>
+              {terminees.length > 1 && props.onHistory ? <button type="button" className="cad-link" onClick={props.onHistory}>Voir l’historique complet →</button> : null}
+            </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {terminees.map(function (c) {
                 return (

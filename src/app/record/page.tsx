@@ -288,6 +288,45 @@ export default function RecordPage() {
   const gpsGranted = !isNativeApp() || gpsPerm === 'granted'
   const { gps: startGps } = useGPSTracking(view === 'home' && gpsGranted && isGpsSport && !isDesktopRec)
 
+  // ── PANNEAU DE DIAGNOSTIC GPS (temporaire) ─────────────────────────────────
+  // Affiche en direct l'état RÉEL du GPS pour débugger sans Safari/alertes.
+  // GPS_DEBUG_TAG change à chaque build → confirme que le rebuild a bien déployé.
+  const GPS_DEBUG = true
+  const GPS_DEBUG_TAG = 'DBG-3'
+  const [dbg, setDbg] = useState<string>('(diagnostic en cours…)')
+  useEffect(() => {
+    if (!GPS_DEBUG) return
+    let alive = true
+    const lines: string[] = []
+    const push = (s: string) => { if (alive) { lines.push(s); setDbg(lines.join('\n')) } }
+    void (async () => {
+      push(`tag=${GPS_DEBUG_TAG}`)
+      push(`native=${isNativeApp()} · navGeo=${typeof navigator !== 'undefined' && !!navigator.geolocation}`)
+      // 1) Plugin natif : checkPermissions
+      try {
+        const { Geolocation } = await import('@capacitor/geolocation')
+        try { const c = await Geolocation.checkPermissions(); push(`plugin.check=${c.location}`) }
+        catch (e) { push(`plugin.check ERR=${e instanceof Error ? e.message : String(e)}`) }
+      } catch (e) { push(`plugin import ERR=${e instanceof Error ? e.message : String(e)}`) }
+      // 2) navigator.geolocation (WebKit) : obtient-il une position ?
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        await new Promise<void>(res => {
+          let done = false
+          const fin = () => { if (!done) { done = true; res() } }
+          navigator.geolocation.getCurrentPosition(
+            p => { push(`navGeo OK=${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`); fin() },
+            e => { push(`navGeo ERR code=${e.code} ${e.message}`); fin() },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+          )
+          setTimeout(fin, 11000)
+        })
+      }
+      push(`gpsPerm(state)=${gpsPerm}`)
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── Capteurs BLE (puces Cardio / Puissance) ──
   const [sensors, setSensors] = useState<SensorState>(() => getSensorState())
   useEffect(() => subscribeSensors(() => setSensors(getSensorState())), [])
@@ -625,6 +664,13 @@ export default function RecordPage() {
           .rk-rec-sheet { left: 50% !important; right: auto !important; width: min(520px, calc(100% - 40px)); transform: translateX(-50%); }
         }
       `}</style>
+      {GPS_DEBUG && (
+        <div style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 4px)', left: 8, right: 8, zIndex: 99999,
+          background: 'rgba(0,0,0,0.88)', color: '#0f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.35,
+          padding: '8px 10px', borderRadius: 'var(--r-sm)', whiteSpace: 'pre-wrap', border: '1px solid #0f0', pointerEvents: 'none' }}>
+          {`GPS DEBUG\n${dbg}`}
+        </div>
+      )}
       <div className="rk-rec-top">
         <span className="rk-rec-close">
           <RkFab label={t('w2c.close')} onClick={() => { if (window.history.length > 1) router.back(); else router.push('/') }}>

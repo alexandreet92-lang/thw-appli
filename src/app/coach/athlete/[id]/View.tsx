@@ -321,8 +321,8 @@ export default function AthleteFiche() {
                         key={x.id}
                         role="link"
                         tabIndex={0}
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); router.push('/injuries') }}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); router.push('/injuries') } }}
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setDrawer('recovery') }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setDrawer('recovery') } }}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}
                       >
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
@@ -349,7 +349,7 @@ export default function AthleteFiche() {
                     {races.map((r, i) => {
                       const d = daysTo(r.start_date); const w = Math.floor(d / 7)
                       return (
-                        <Link key={r.id} href={`/calendar?race=${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
+                        <Link key={r.id} href={`/coach/athlete/${id}/calendar`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
                           <div style={{ ...num, fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, color: d <= 14 ? 'var(--danger)' : 'var(--primary)', width: 54, flexShrink: 0 }}>{t('w1e.dayCountdown', { d })}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || t('w1e.race')}</div>

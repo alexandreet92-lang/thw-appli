@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, useContext, Fragment
 import { AnimatedList, AnimatedItem } from '@/components/motion/AnimatedList'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { resolvePlanningUid, setPlanningScopeUid, PlanningScopeContext } from '@/lib/planning/scope'
+import { resolvePlanningUid, setPlanningScopeUid, PlanningScopeContext, isCoachScoped } from '@/lib/planning/scope'
 import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -9816,7 +9816,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, deepLinkEdit, 
             <span style={{ fontSize: 16 }}>←</span> {t('activities.backToList')}
           </button>
         )}
-        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} initialEdit={deepLinkEdit && selected.id === deepLinkId} autoAnalyze={!!deepLinkAnalyze && selected.id === deepLinkId} />
+        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} readOnly={isCoachScoped()} initialEdit={!isCoachScoped() && deepLinkEdit && selected.id === deepLinkId} autoAnalyze={!isCoachScoped() && !!deepLinkAnalyze && selected.id === deepLinkId} />
       </div>
     )
   }

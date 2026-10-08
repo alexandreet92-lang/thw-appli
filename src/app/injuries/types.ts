@@ -55,6 +55,12 @@ export const SEV: Record<Severity, { label: string; varc: string }> = {
   blessure: { label: 'Blessure', varc: 'var(--charge-hard)' },
 }
 
+// Sévérité numérique 0-10 (maquette mobile) → catégorie existante (analytics,
+// coach, SEV). 0-3 = gêne, 4-6 = douleur, 7-10 = blessure. Aucune donnée inventée.
+export function severityFromScore(v: number): Severity {
+  return v >= 7 ? 'blessure' : v >= 4 ? 'douleur' : 'gene'
+}
+
 export const PHASES: { id: Phase; label: string }[] = [
   { id: 'aigue',           label: 'Aiguë' },
   { id: 'recuperation',    label: 'Récupération' },

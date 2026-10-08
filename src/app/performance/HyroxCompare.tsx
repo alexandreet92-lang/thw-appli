@@ -196,7 +196,6 @@ export function HyroxCompare({ races, onSelect, onEdit, onDelete, mobile, header
               : <MBars bars={ordered.map(({ r, sec }, i) => ({
                   key: r.id, top: segStr(sec, seg), bottom: monthYear(r.date, loc), pct: (sec / maxSec) * 100,
                   color: seg === 'run' ? 'var(--primary)' : HYROX,
-                  best: seg === 'overall' ? sec > 0 && sec === Math.min(...ordered.filter(x => x.sec > 0).map(x => x.sec)) : i === 0,
                   onClick: () => setDetail(r), ariaLabel: `${segStr(sec, seg)} ${monthYear(r.date, loc)}`,
                 }))} />}
           </div>
@@ -241,7 +240,7 @@ export function HyroxCompare({ races, onSelect, onEdit, onDelete, mobile, header
                 <button key={r.id} onClick={() => setDetail(r)}
                   style={{ flex: '1 0 auto', minWidth: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}>
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, color: 'var(--text)' }}>{segStr(sec, seg)}</span>
-                  <div style={{ width: 24, height: 110, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'flex-end', overflow: 'hidden', outline: isBest ? '1px solid var(--primary)' : 'none' }}>
+                  <div style={{ width: 24, height: 110, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
                     <div style={{ width: '100%', height: mounted ? `${(sec / maxSec) * 100}%` : '0%', background: seg === 'run' ? 'var(--primary)' : HYROX, opacity: isBest ? 0.75 : 0.45, transition: 'height 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
                   </div>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{fmtDate(r.date)}</span>

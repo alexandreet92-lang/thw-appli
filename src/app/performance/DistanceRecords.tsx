@@ -69,7 +69,6 @@ export function DistanceRecords(props: DistanceRecordsProps) {
   if (mobile) {
     const loc = currentLocale()
     const done = rows.filter(r => r.sec > 0)
-    const bestLevel = done.length ? Math.max(...done.map(r => r.level)) : -1
     const fmtDist = (r: DistDef) => r.label ?? (r.m >= 1000 && /^\d+m$/.test(r.id) ? `${r.m.toLocaleString(loc)} m` : r.id.replace(/^(\d+)m$/, '$1 m'))
     const listed = showAll ? rows : done.slice(0, 4)
     const hf = showGender && benchF ? (
@@ -89,7 +88,7 @@ export function DistanceRecords(props: DistanceRecordsProps) {
             ? <MEmpty>{t('perf.m.noRecord')}</MEmpty>
             : <MBars height={100} bars={done.map(r => ({
                 key: r.id, top: r.best?.perf ?? '—', bottom: fmtDist(r), pct: r.level * 10, color,
-                best: r.level === bestLevel, onClick: () => onEdit(r.id, r.best?.id ?? null, r.best?.perf ?? ''), ariaLabel: `${t('performance.edit')} ${fmtDist(r)}`,
+                onClick: () => onEdit(r.id, r.best?.id ?? null, r.best?.perf ?? ''), ariaLabel: `${t('performance.edit')} ${fmtDist(r)}`,
               }))} />}
         </MCard>
         <MCard icon={M_ICONS.trophy} title={t('performance.recordsOf', { sport: sportLabel.toLowerCase() })} meta={done.length ? String(done.length) : undefined}>

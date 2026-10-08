@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { getCurrentUser } from '@/lib/auth/currentUser'
 import { resolvePlanningUid, isCoachScoped, getPlanningScopeUid, usePlanningScope } from '@/lib/planning/scope'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
@@ -861,10 +862,15 @@ function usePlanning(weekStartParam?:string) {
     window.dispatchEvent(new Event('thw:sessions-changed'))
   }
 
-  // Silent variant — persiste sans déclencher load() ni fermer les modales
+  // Silent variant — persiste sans déclencher load() ni fermer les modales, et
+  // SANS pastille « Enregistré ». C'est l'auto-save de l'éditeur de séance (à
+  // chaque ajout d'exercice/bloc, ou en quittant une séance modifiée) : ce n'est
+  // PAS une sauvegarde explicite, donc withLocalSaveFeedback() « réclame » les
+  // émissions `thw:save` → la pastille globale les ignore. Seuls un vrai bouton
+  // « Enregistrer » / « Ajouter » affichent la confirmation.
   async function updateSessionSilent(id:string, upd:Partial<Session>) {
-    const { error } = await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
-    if (error) { console.error('[planning] updateSessionSilent a échoué', error); return }
+    const { value, errored } = await withLocalSaveFeedback(async () => await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id))
+    if (errored || value?.error) { console.error('[planning] updateSessionSilent a échoué', value?.error); return }
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     // Pas de thw:sessions-changed → load() ne se déclenche pas → les modales restent ouvertes
   }

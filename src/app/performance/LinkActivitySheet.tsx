@@ -15,7 +15,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
   onLink: (a: ActivityLite) => void
 }) {
   const { t } = useI18n()
-  const SEG_LABEL: Record<Segment, string> = { swim: t('performance.sportSwimming'), bike: t('performance.sportBike'), run: t('performance.sportRun') }
+  const SEG_LABEL: Record<Segment, string> = { swim: t('performance.sportSwimming'), bike: t('performance.sportBike'), run: t('performance.sportRun'), row: t('performance.sportRowing') }
   const [acts, setActs] = useState<ActivityLite[] | null>(null)
   const [q, setQ] = useState('')
   const [closing, setClosing] = useState(false)

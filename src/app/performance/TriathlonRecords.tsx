@@ -11,6 +11,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { TriathlonRadar, type TriFormat } from './RadarChart'
 import { toSec, hmsFull } from './triActivities'
 import { MCard, MSeg, MBars, MHint, MEmpty, MPrimary, M_ICONS, monthYear } from './mobile/kit'
+import { RecordRouteTrace } from './RecordRouteTrace'
 import { useIsMobile, PSheet, SDot, SSection, SCard, SGroup, SRow, SStats, SCalc, SPrimary, SDanger } from './mobile/EditSheet'
 
 const SWIM = '#06b6d4', BIKE = '#3b82f6', RUN = '#f97316' // design-allow-color — teintes sport
@@ -109,14 +110,17 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
           ))}
         </SGroup>
       )}
-      {act && (
+      {(act || rec.activity_id) && (
         <SSection label={t('perf2.linkedActivity')}>
           <SCard>
-            <SCalc items={[
-              act.elevation_gain_m != null && `D+ ${Math.round(act.elevation_gain_m)} m`,
-              act.avg_hr != null && `FC ${act.avg_hr}${act.max_hr ? ` / ${act.max_hr}` : ''} bpm`,
-              act.avg_temp_c != null && `${Math.round(act.avg_temp_c)}°C`,
-            ]} />
+            {rec.activity_id && <RecordRouteTrace activityId={rec.activity_id} color={RUN} compact showData={false} />}
+            {act && (
+              <SCalc items={[
+                act.elevation_gain_m != null && `D+ ${Math.round(act.elevation_gain_m)} m`,
+                act.avg_hr != null && `FC ${act.avg_hr}${act.max_hr ? ` / ${act.max_hr}` : ''} bpm`,
+                act.avg_temp_c != null && `${Math.round(act.avg_temp_c)}°C`,
+              ]} />
+            )}
           </SCard>
         </SSection>
       )}
@@ -169,15 +173,18 @@ function TriRaceOverlay({ rec, act, onEdit, onDelete, onClose }: {
             ))}
           </div>
 
-          {/* Activité liée */}
-          {act && (
+          {/* Activité liée : tracé GPS + profil d'altitude + données réelles */}
+          {(act || rec.activity_id) && (
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('perf2.linkedActivity')}</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
-                {act.elevation_gain_m != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>D+ {Math.round(act.elevation_gain_m)} m</span>}
-                {act.avg_hr != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>FC {act.avg_hr}{act.max_hr ? ` / ${act.max_hr}` : ''} bpm</span>}
-                {act.avg_temp_c != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>{Math.round(act.avg_temp_c)}°C</span>}
-              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>{t('perf2.linkedActivity')}</p>
+              {rec.activity_id && <div style={{ marginBottom: act ? 10 : 0 }}><RecordRouteTrace activityId={rec.activity_id} color={RUN} showData={false} /></div>}
+              {act && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
+                  {act.elevation_gain_m != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>D+ {Math.round(act.elevation_gain_m)} m</span>}
+                  {act.avg_hr != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>FC {act.avg_hr}{act.max_hr ? ` / ${act.max_hr}` : ''} bpm</span>}
+                  {act.avg_temp_c != null && <span className="tnum" style={{ fontSize: 11, color: 'var(--text-mid)' }}>{Math.round(act.avg_temp_c)}°C</span>}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -237,7 +244,7 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete, m
             : <MBars bars={races.map(r => {
                 const sec = toSec(r.performance)
                 const my = monthYear(r.achieved_at, loc)
-                return { key: r.id, top: r.performance, bottom: showAll ? `${r.distance_label} · ${my}` : my, pct: (sec / topSec) * 100, color: TRI, best: sec > 0 && sec === bestSec, onClick: () => setDetail(r), ariaLabel: `${r.distance_label} ${r.performance}` }
+                return { key: r.id, top: r.performance, bottom: showAll ? `${r.distance_label} · ${my}` : my, pct: (sec / topSec) * 100, color: TRI, onClick: () => setDetail(r), ariaLabel: `${r.distance_label} ${r.performance}` }
               })} />}
           {races.length > 0 && <MHint>{t('perf2.tapRaceForBreakdown')}</MHint>}
         </MCard>
@@ -293,7 +300,6 @@ export function TriathlonRecords({ records, profile, actMap, onEdit, onDelete, m
                   <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
                   <div style={{ height: 104, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                     <div style={{ width: 16, height: mounted ? `${hPct}%` : '0%', background: TRI, borderRadius: 'var(--r-sm)',
-                      boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${TRI}` : 'none',
                       transition: 'height 0.9s cubic-bezier(0.25,1,0.5,1)' }} />
                   </div>
                   {showAll && <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>{r.distance_label}</span>}

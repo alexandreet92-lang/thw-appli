@@ -213,13 +213,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               en dégradé), sous les bulles (z 4 < 5) donc les boutons restent nets.
               pointerEvents:none → n'intercepte aucun tap. */}
           {!isRecord && <>
-            {/* Bandes HAUT & BAS — dégradé PLEIN de la couleur de fond → transparent.
-                Volontairement SANS backdrop-filter : le flou « verre dépoli » est
-                bogué dans la WebView iOS (il s'affiche puis disparaît au défilement).
-                Ce dégradé de fond plein est 100 % fiable : plein (jamais see-through)
-                sur la zone des boutons/barre d'état, puis fondu doux vers le contenu
-                → ne cache pas le contenu plus bas. z 4 < 5 (boutons nets), no tap. */}
-            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 56px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 68%, transparent 100%)' }} />
+            {/* Bande HAUT — fond PLEIN (couleur de la page) sur TOUTE la zone
+                barre d'état + boutons ronds + début des onglets, puis court fondu
+                (8 px) vers le contenu. Volontairement SANS backdrop-filter : le flou
+                « verre dépoli » est bogué dans la WebView iOS (il clignote au
+                défilement). La partie pleine va jusqu'à ~54 px sous la safe-area
+                (les boutons finissent à ~51 px) → AUCUN contenu ne transparaît
+                derrière/entre les boutons ; le fondu final n'existe que sous eux,
+                pour une arête basse propre. z 4 < 5 (boutons nets), no tap. */}
+            <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 62px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to bottom, var(--bg) 0, var(--bg) calc(100% - 8px), transparent)' }} />
             {barShown && <div aria-hidden style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-bottom) + 60px)', pointerEvents: 'none', zIndex: 4, background: 'linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%)' }} />}
           </>}
           {isRecord ? (

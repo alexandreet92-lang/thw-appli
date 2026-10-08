@@ -1,182 +1,224 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
-// Blessures — version mobile façon Strava : bouton Signaler, puis une carte
-// par sujet (disponibilité + risque, prévention, en cours, check-in de
-// douleur, historique, analyse). Historique / Analyse s'ouvrent en vue détail
-// native mobile qui glisse de la droite (mêmes calculs que les onglets desktop).
+// Blessures — flux MOBILE simplifié (maquettes validées).
+// Deux onglets : « Actuelles » / « Historique ».
+//  • Actuelles : gros bouton sombre « Déclarer une douleur » + une carte
+//    propre par douleur active (tuile zone, nom, chip de statut, barre de
+//    sévérité 0-10 vert→orange→rouge, sparkline SVG de la fluctuation + tendance,
+//    « Depuis le … · N j », actions « Mettre à jour » / « Marquer guérie »).
+//  • Historique : les douleurs guéries, chacune ouvre une fiche détail
+//    (courbe de fluctuation pic→guérison, frise d'événements, origine, durée).
+// Chaque « Mettre à jour » ajoute un point de sévérité daté (injury_logs) →
+// la fluctuation est réelle, jamais inventée. Tokens uniquement.
 // ══════════════════════════════════════════════════════════════
 
 import { withLocalSaveFeedback } from '@/lib/ui/saveToast'
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
-import { DashCard, Metric, Ring } from '@/components/dashboard/primitives'
+import { IconTile } from '@/components/ai/mobile/MobileKit'
 import { DetailSlide } from '@/components/ui/DetailSlide'
 import { useDetailView } from '@/hooks/useDetailView'
-import { SEV, PHASES, type Injury, type InjuryLog } from '../types'
-import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, preventionAlerts, stats12mo, zonesRanking } from '../lib'
-import { MobileInjuryHistory } from './MobileInjuryHistory'
-import { MobileInjuryAnalysis } from './MobileInjuryAnalysis'
+import type { Injury, InjuryLog } from '../types'
+import {
+  severityPoints, currentSeverity, severityColor, painTrend, daysSince, type TrendDir, type SevPoint,
+} from '../lib'
+import { HistoryList, InjuryHistoryDetail } from './MobileInjuryHistory'
+import { MBlock, MSheetFrame, SegTrack, SliderRow, SoftTextarea, PillButton, MTag, NUM, FB } from './mobileUi'
 
-type View = 'history' | 'analysis'
-const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
-const I = (d: string) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
-)
-const IC = {
-  dispo: I('M22 12h-4l-3 9L9 3l-3 9H2'),
-  alert: I('M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01'),
-  active: I('M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z'),
-  check: I('M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'),
-  trend: I('M3 3v18h18M7 16v-4M12 16V8M17 16v-7'),
-}
-const RISK_COLOR = { none: 'var(--text-mid)', low: 'var(--charge-low)', moderate: 'var(--charge-mid)', high: 'var(--charge-hard)' } as const
+const TREND_COLOR: Record<TrendDir, string> = { down: 'var(--charge-low)', flat: 'var(--text-mid)', up: 'var(--charge-hard)' }
+const TREND_KEY: Record<TrendDir, string> = { down: 'injuries.trendDown', flat: 'injuries.trendFlat', up: 'injuries.trendUp' }
+const TREND_ARROW: Record<TrendDir, string> = { down: '↓', flat: '→', up: '↑' }
 
-function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  const btn: React.CSSProperties = { width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'var(--dash-chip, var(--bg-hover))', color: 'var(--text)', fontSize: 20, fontWeight: 700, cursor: 'pointer', display: 'grid', placeItems: 'center', fontFamily: 'inherit' }
+// ── Sparkline de sévérité (SVG brut, aucune lib) ───────────────────
+function Sparkline({ pts, color }: { pts: SevPoint[]; color: string }) {
+  const W = 240, H = 44, pad = 4, n = pts.length
+  if (n < 2) return null
+  const x = (i: number) => pad + (i / (n - 1)) * (W - pad * 2)
+  const y = (v: number) => pad + (1 - Math.max(0, Math.min(10, v)) / 10) * (H - pad * 2)
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')
+  const area = `M${x(0).toFixed(1)},${(H - pad).toFixed(1)} ` + pts.map((p, i) => `L${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ') + ` L${x(n - 1).toFixed(1)},${(H - pad).toFixed(1)} Z`
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0' }}>
-      <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <button type="button" aria-label="−" className="thw-press" style={btn} onClick={() => onChange(Math.max(0, value - 1))}>−</button>
-        <b style={{ ...NUM, width: 30, textAlign: 'center', fontSize: 20, color: 'var(--text)' }}>{value}</b>
-        <button type="button" aria-label="+" className="thw-press" style={btn} onClick={() => onChange(Math.min(10, value + 1))}>+</button>
-      </span>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden style={{ width: '100%', height: 44, display: 'block' }}>
+      <path d={area} fill={color} opacity={0.12} />
+      <path d={d} fill="none" stroke={color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={x(n - 1)} cy={y(pts[n - 1].v)} r={3} fill={color} />
+    </svg>
+  )
+}
+
+// ── Barre de sévérité 0-10 (dégradé vert→orange→rouge + repère) ────
+function SeverityBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, (value / 10) * 100))
+  return (
+    <div style={{ position: 'relative', height: 8, borderRadius: 'var(--r-pill)', background: 'linear-gradient(90deg, var(--charge-low), var(--charge-mid), var(--charge-hard))' }}>
+      <span aria-hidden style={{ position: 'absolute', top: '50%', left: `${pct}%`, width: 18, height: 18, borderRadius: '50%', background: 'var(--surface-card)', boxShadow: '0 1px 6px rgba(0,0,0,0.22)' /* design-allow-color — ombre du repère de jauge (maquette) */, transform: 'translate(-50%,-50%)' }} />
     </div>
   )
 }
 
-function CheckinBlock({ inj, onLog }: { inj: Injury; onLog: (r: number, e: number) => Promise<void> | void }) {
+// ── Carte d'une douleur active ─────────────────────────────────────
+function PainCard({ inj, logs, onOpen, onUpdate, onResolve }: {
+  inj: Injury; logs: InjuryLog[]
+  onOpen: (i: Injury) => void; onUpdate: (i: Injury) => void; onResolve: (id: string) => void
+}) {
   const { t } = useI18n()
-  const [r, setR] = useState(inj.intensity_rest ?? 0)
-  const [e, setE] = useState(inj.intensity_effort ?? 0)
-  const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const pts = severityPoints(logs, inj.id)
+  const cur = currentSeverity(inj, logs)
+  const col = severityColor(cur)
+  const trend = painTrend(logs, inj.id)
+  const improving = trend?.dir === 'down' || inj.evolution === 'ameliore'
+  const chipColor = improving ? 'var(--charge-low)' : 'var(--primary)'
+  const chipLabel = improving ? t('injc.chipImproving') : t('injc.chipActive')
   const side = inj.side && inj.side !== 'central' ? ` · ${inj.side}` : ''
+  const since = `${t('injm.sinceDate', { date: new Date(inj.onset_date + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) })} · ${daysSince(inj.onset_date)} ${t('injuries.dayUnit')}`
+
   return (
-    <div style={{ padding: '4px 0 8px' }}>
-      <p style={{ margin: '0 0 2px', fontSize: 15, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{inj.zone}{side}</p>
-      <Stepper label={t('injuries.m.painRest')} value={r} onChange={v => { setR(v); setState('idle') }} />
-      <Stepper label={t('injuries.m.painEffort')} value={e} onChange={v => { setE(v); setState('idle') }} />
-      <button type="button" disabled={state === 'saving'} className="thw-press"
-        onClick={async () => { setState('saving'); await withLocalSaveFeedback(() => onLog(r, e)); setState('done') }}
-        style={{ width: '100%', minHeight: 46, marginTop: 6, borderRadius: 'var(--r-pill)', border: 'none', background: state === 'done' ? 'var(--dash-chip, var(--bg-hover))' : 'var(--primary)', color: state === 'done' ? 'var(--success)' : 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-        {state === 'done' ? `✓ ${t('injuries.m.saved')}` : state === 'saving' ? '…' : t('injuries.m.save')}
+    <MBlock>
+      {/* En-tête tappable → fiche complète (interconnexion obligatoire) */}
+      <button type="button" onClick={() => onOpen(inj)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: FB }}>
+        <IconTile color={col} size={44}>
+          <span style={{ ...NUM, fontSize: 17, fontWeight: 800 }}>{inj.zone.slice(0, 1).toUpperCase()}</span>
+        </IconTile>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--text)', textTransform: 'capitalize', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inj.zone}{side}</span>
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>{since}</span>
+        </span>
+        <MTag color={chipColor}>{chipLabel}</MTag>
       </button>
-    </div>
+
+      {/* Sévérité courante */}
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('injc.severity')}</span>
+          <span style={{ ...NUM, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{cur}<span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginLeft: 2 }}>/10</span></span>
+        </div>
+        <SeverityBar value={cur} />
+      </div>
+
+      {/* Fluctuation + tendance */}
+      {pts.length >= 2 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('injc.fluctuation')}</span>
+            {trend && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: TREND_COLOR[trend.dir] }}>
+                {TREND_ARROW[trend.dir]} {t(TREND_KEY[trend.dir])}
+              </span>
+            )}
+          </div>
+          <Sparkline pts={pts} color={col} />
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <PillButton onClick={() => onUpdate(inj)} style={{ minHeight: 48 }}>{t('injc.update')}</PillButton>
+        <PillButton variant="white" onClick={() => void withLocalSaveFeedback(() => onResolve(inj.id))} style={{ minHeight: 48 }}>{t('injuries.markResolved')}</PillButton>
+      </div>
+    </MBlock>
   )
 }
 
-export function MobileInjuries({ injuries, logs, onReport, onOpen, onCheckin }: {
+// ── Feuille « Mettre à jour » : un nouveau point de sévérité daté ──
+function UpdateSheet({ inj, logs, onClose, onAddLog, onUpdate }: {
+  inj: Injury; logs: InjuryLog[]
+  onClose: () => void
+  onAddLog: (log: Omit<InjuryLog, 'id'>) => void
+  onUpdate: (id: string, patch: Partial<Injury>) => void
+}) {
+  const { t } = useI18n()
+  const prev = currentSeverity(inj, logs)
+  const [v, setV] = useState(prev)
+  const [note, setNote] = useState('')
+
+  function save() {
+    const today = new Date().toISOString().slice(0, 10)
+    onAddLog({ injury_id: inj.id, log_date: today, note: note.trim() || null, intensity_rest: null, intensity_effort: v })
+    // Garde l'épisode cohérent (sévérité courante + sens d'évolution) sans
+    // toucher à la catégorie déclarée. Sert au coach et à l'indice de risque.
+    onUpdate(inj.id, { intensity_effort: v, evolution: v < prev ? 'ameliore' : v > prev ? 'aggrave' : 'stable' })
+    onClose()
+  }
+
+  return (
+    <MSheetFrame title={t('injc.updateTitle')} subtitle={inj.zone} onClose={onClose} closeLabel={t('injuries.close')}
+      footer={<PillButton onClick={() => void withLocalSaveFeedback(save)}>{t('injuries.save')}</PillButton>}>
+      <MBlock>
+        <SliderRow label={t('injc.severity')} value={v} onChange={setV} color={severityColor(v)} />
+      </MBlock>
+      <MBlock>
+        <SoftTextarea value={note} onChange={setNote} placeholder={t('injc.notePlaceholder')} ariaLabel={t('injc.notePlaceholder')} rows={3} />
+      </MBlock>
+    </MSheetFrame>
+  )
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <MBlock>
+      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{title}</p>
+      <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.45 }}>{body}</p>
+    </MBlock>
+  )
+}
+
+export function MobileInjuries({ injuries, logs, onReport, onOpen, onAddLog, onUpdate, onResolve }: {
   injuries: Injury[]
   logs: InjuryLog[]
   onReport: () => void
   onOpen: (inj: Injury) => void
-  onCheckin: (inj: Injury, r: number, e: number) => Promise<void> | void
+  onAddLog: (log: Omit<InjuryLog, 'id'>) => void
+  onUpdate: (id: string, patch: Partial<Injury>) => void
+  onResolve: (id: string) => void
 }) {
   const { t } = useI18n()
-  const [view, open, close] = useDetailView<View>()
+  const [tab, setTab] = useState<'current' | 'history'>('current')
+  const [detail, openDetail, closeDetail] = useDetailView<string>()
+  const [updateId, setUpdateId] = useState<string | null>(null)
 
-  if (view) {
+  const detailInj = detail ? injuries.find(i => i.id === detail) ?? null : null
+  const updateInj = updateId ? injuries.find(i => i.id === updateId) ?? null : null
+
+  // Fiche détail Historique (courbe + frise d'événements) : page qui glisse.
+  if (detailInj) {
     return (
-      <div style={{ padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
-        <DetailSlide backLabel={t('injuries.pageTitle')} onBack={close}>
-          {view === 'history'
-            ? <MobileInjuryHistory injuries={injuries} onOpen={onOpen} onReport={onReport} />
-            : <MobileInjuryAnalysis injuries={injuries} logs={logs} onOpen={onOpen} />}
+      <div style={{ padding: '14px 16px 24px', fontFamily: FB }}>
+        <DetailSlide backLabel={t('injc.tabHistory')} onBack={closeDetail}>
+          <InjuryHistoryDetail inj={detailInj} logs={logs} onOpen={onOpen} />
         </DetailSlide>
       </div>
     )
   }
 
-  const active = injuries.filter(i => i.status === 'active')
-  const hasBlessure = active.some(i => i.severity === 'blessure')
-  const avoid = [...new Set(active.flatMap(i => i.impact.avoid))]
-  const okList = [...new Set(active.flatMap(i => i.impact.ok))]
-  const avail = availability12mo(injuries)
-  const risk = riskIndex(injuries)
-  const alerts = preventionAlerts(injuries, logs)
-  const s12 = stats12mo(injuries)
-  const topZone = zonesRanking(injuries)[0]
-  const dispoLabel = hasBlessure ? t('injuries.availRestAdvised') : active.length ? t('injuries.availAdapted') : t('injuries.availAvailable')
+  const active = injuries.filter(i => i.status === 'active').sort((a, b) => b.onset_date.localeCompare(a.onset_date))
+  const resolved = injuries.filter(i => i.status === 'resolved')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: 'var(--font-body)' }}>
-      <button type="button" onClick={onReport} className="thw-press" data-guide="inj-declare"
-        style={{ width: '100%', minHeight: 50, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-        + {t('injuries.m.report')}
-      </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px 24px', fontFamily: FB }}>
+      {/* Onglets Actuelles / Historique */}
+      <SegTrack<'current' | 'history'> value={tab} onChange={setTab}
+        options={[{ v: 'current', l: t('injc.tabCurrent') }, { v: 'history', l: t('injc.tabHistory') }]} />
 
-      <DashCard icon={IC.dispo} title={t('injuries.statAvailability')} meta={t('injuries.m.avail12', { n: avail })}>
-        <Metric label={t('dashboard.today')} value={dispoLabel}
-          sub={avoid.length ? t('injuries.m.avoid', { list: avoid.slice(0, 3).join(', ') }) : t('injuries.availNoLimit')}
-          right={<Ring value={avail / 100} color="var(--success)" />} />
-        {okList.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-mid)' }}>{t('injuries.m.ok', { list: okList.slice(0, 3).join(', ') })}</p>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-          <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{t('injuries.statRisk')}</span>
-          <span style={{ padding: '4px 10px', borderRadius: 'var(--r-pill)', fontSize: 13, fontWeight: 800, color: RISK_COLOR[risk.level], background: `color-mix(in srgb, ${RISK_COLOR[risk.level]} 14%, transparent)` }}>{risk.label}</span>
-          {risk.drivers[0] && <span style={{ fontSize: 13, color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{risk.drivers[0]}</span>}
-        </div>
-      </DashCard>
-
-      {alerts.length > 0 && (
-        <DashCard icon={IC.alert} title={t('injuries.preventionTitle')}>
-          {alerts.map((a, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0, background: a.level === 'high' ? 'var(--charge-hard)' : 'var(--charge-mid)' }} />
-              <span style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.4 }}>{a.text}</span>
-            </div>
-          ))}
-        </DashCard>
+      {tab === 'current' ? (
+        <>
+          <button type="button" onClick={onReport} data-guide="inj-declare" className="thw-press"
+            style={{ width: '100%', minHeight: 54, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+            + {t('injc.declare')}
+          </button>
+          {active.length === 0
+            ? <EmptyState title={t('injc.emptyCurrentTitle')} body={t('injc.emptyCurrentBody')} />
+            : active.map(inj => (
+              <PainCard key={inj.id} inj={inj} logs={logs} onOpen={onOpen} onUpdate={i => setUpdateId(i.id)} onResolve={onResolve} />
+            ))}
+        </>
+      ) : (
+        resolved.length === 0
+          ? <EmptyState title={t('injc.emptyHistoryTitle')} body={t('injc.emptyHistoryBody')} />
+          : <HistoryList injuries={resolved} all={injuries} onOpen={i => openDetail(i.id)} />
       )}
 
-      <DashCard icon={IC.active} title={t('injuries.ongoing')} meta={active.length ? String(active.length) : undefined}>
-        {active.length === 0 ? <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('injuries.noActive')}</p> : active.map((inj, i) => {
-          const c = SEV[inj.severity].varc
-          const ret = returnProgress(inj)
-          const side = inj.side && inj.side !== 'central' ? ` · ${inj.side}` : ''
-          const phase = PHASES.find(p => p.id === inj.phase)?.label ?? inj.phase
-          return (
-            <button key={inj.id} type="button" onClick={() => onOpen(inj)}
-              style={{ display: 'flex', gap: 12, width: '100%', textAlign: 'left', border: 'none', borderTop: i ? '1px solid var(--dash-line, var(--border))' : 'none', background: 'none', padding: i ? '12px 0 0' : 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: c, flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <b style={{ fontSize: 15, color: 'var(--text)', textTransform: 'capitalize' }}>{inj.zone}{side}</b>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: c }}>{SEV[inj.severity].label}</span>
-                </span>
-                <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>
-                  {[inj.structure && inj.structure !== 'inconnu' ? inj.structure : null, t('injuries.m.since', { n: daysSince(inj.onset_date) })].filter(Boolean).join(' · ')}
-                </span>
-                <span style={{ display: 'block', height: 6, borderRadius: 'var(--r-pill)', background: 'var(--bg-hover)', overflow: 'hidden', marginTop: 8 }}>
-                  <i style={{ display: 'block', height: '100%', width: `${phasePct(inj.phase) * 100}%`, background: c, borderRadius: 'var(--r-pill)' }} />
-                </span>
-                <span style={{ display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 4 }}>
-                  {phase}{ret ? ` · ${ret.overdue ? t('injuries.m.overdue', { n: ret.daysLeft }) : t('injuries.m.returnIn', { n: ret.daysLeft })}` : ''}
-                </span>
-              </span>
-            </button>
-          )
-        })}
-      </DashCard>
-
-      {active.length > 0 && (
-        <DashCard icon={IC.check} title={t('injuries.checkinTitle')}>
-          {active.map((inj, i) => (
-            <div key={inj.id} style={{ borderTop: i ? '1px solid var(--dash-line, var(--border))' : 'none', paddingTop: i ? 10 : 0 }}>
-              <CheckinBlock inj={inj} onLog={(r, e) => onCheckin(inj, r, e)} />
-            </div>
-          ))}
-        </DashCard>
-      )}
-
-      <DashCard icon={IC.trend} title={t('injuries.tabHistory')} onOpen={() => open('history')}>
-        <Metric label={t('injuries.m.last12')} value={s12.count} unit={t('injuries.m.episodes', { n: s12.count })}
-          sub={topZone ? t('injuries.m.topZone', { zone: topZone.key }) : t('injuries.m.noEpisode')} />
-      </DashCard>
-
-      <DashCard icon={IC.trend} title={t('injuries.tabAnalysis')} onOpen={() => open('analysis')}>
-        <Metric label={t('injuries.m.avgHealing')} value={s12.avgDuration ?? '—'} unit={s12.avgDuration != null ? t('injuries.m.days') : undefined}
-          sub={[s12.recidiveRate != null ? t('injuries.m.recid', { n: s12.recidiveRate }) : null, s12.avgReturn != null ? t('injuries.m.avgReturn', { n: s12.avgReturn }) : null].filter(Boolean).join(' · ') || undefined} />
-      </DashCard>
+      {updateInj && <UpdateSheet inj={updateInj} logs={logs} onClose={() => setUpdateId(null)} onAddLog={onAddLog} onUpdate={onUpdate} />}
     </div>
   )
 }

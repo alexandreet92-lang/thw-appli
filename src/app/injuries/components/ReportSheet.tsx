@@ -3,9 +3,9 @@
 // segmenté (point de couleur fonctionnel), sliders 0-10, date → « ≈ N j ».
 import { useState } from 'react'
 import { Sheet, primaryBtn } from './Sheet'
-import { SEV, STRUCTURES, SIDES, type Severity, type Side, type Structure, type Mechanism, type Evolution } from '../types'
+import { SEV, STRUCTURES, SIDES, severityFromScore, type Severity, type Side, type Structure, type Mechanism, type Evolution } from '../types'
 import type { NewInjury } from '../useInjuries'
-import { daysSince } from '../lib'
+import { daysSince, severityColor } from '../lib'
 import { useI18n } from '@/lib/i18n'
 import { MBlock, MField, MPills, SegTrack, SliderRow, SoftInput, SoftTextarea, PillButton } from './mobileUi'
 
@@ -51,7 +51,7 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
   const [severity, setSeverity] = useState<Severity>('gene')
   const [zone, setZone] = useState('')
   const [side, setSide] = useState<Side>('central')
-  const [structure, setStructure] = useState<Structure>('muscle')
+  const [structure, setStructure] = useState<Structure>('inconnu')
   const [precision, setPrecision] = useState('')
   const [ir, setIr] = useState(0)
   const [ie, setIe] = useState(0)
@@ -76,57 +76,42 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
     if (id) onClose()
   }
 
-  // ── Mobile : cartes blanches, champs doux, pilules, jauges ─────
+  // ── Mobile : flux simplifié (maquette) — zone, intensité 0-10, origine, date.
+  // L'intensité 0-10 (intensity_effort) pilote la carte et la courbe ; la
+  // catégorie (gêne/douleur/blessure) en est déduite pour l'analyse et le coach.
   const canSave = !!zone.trim() && !saving
+  const setScore = (v: number) => { setIe(v); setSeverity(severityFromScore(v)) }
   const mobile = (
     <>
-      <MBlock>
-        <MField label={t('injuries.fieldSeverity')} last>
-          <SegTrack value={severity} onChange={v => setSeverity(v)}
-            options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, l: <><span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: SEV[v].varc }} />{SEV[v].label}</> }))} />
-        </MField>
-      </MBlock>
       <MBlock>
         <MField label={t('injuries.fieldZone')}>
           <div style={{ marginBottom: 10 }}>
             <MPills value={COMMON_ZONES.find(z => z.toLowerCase() === zone.trim().toLowerCase()) ?? null} onChange={setZone}
-              options={COMMON_ZONES.map(z => ({ v: z, l: z }))} />
+              options={COMMON_ZONES.map(z => ({ v: z, l: z }))} scroll />
           </div>
           <SoftInput value={zone} onChange={setZone} placeholder={t('injuries.zonePlaceholder')} ariaLabel={t('injuries.fieldZone')} />
         </MField>
-        <MField label={t('injuries.fieldSide')}>
+        <MField label={t('injuries.fieldSide')} last>
           <SegTrack value={side} onChange={v => setSide(v)} options={SIDES.map(v => ({ v, l: cap(v) }))} />
         </MField>
-        <MField label={t('injuries.fieldStructure')}>
-          <MPills value={structure} onChange={v => setStructure(v)} options={STRUCTURES.map(v => ({ v, l: cap(v) }))} />
-        </MField>
-        <MField label={t('injuries.fieldPrecision')} last>
-          <SoftInput value={precision} onChange={setPrecision} placeholder={t('injuries.precisionPlaceholder')} ariaLabel={t('injuries.fieldPrecision')} />
-        </MField>
       </MBlock>
       <MBlock>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <SliderRow label={t('injuries.sliderRest')} value={ir} onChange={setIr} color="var(--text-mid)" />
-          <SliderRow label={t('injuries.sliderEffort')} value={ie} onChange={setIe} color="var(--charge-hard)" />
-        </div>
+        <SliderRow label={t('injc.severity')} value={ie} onChange={setScore} color={severityColor(ie)} />
       </MBlock>
-      <MBlock>
-        <MField label={t('injuries.fieldOnsetDate', { days: daysSince(date) })}>
-          <SoftInput type="date" value={date} onChange={setDate} ariaLabel={t('injuries.fieldOnsetDate', { days: daysSince(date) })} />
-        </MField>
+      <MBlock title={t('injc.reportHow')}>
         <MField label={t('injuries.fieldMechanism')}>
           <SegTrack value={mechanism} onChange={v => setMechanism(v)} options={[{ v: 'soudaine' as Mechanism, l: t('injuries.mechSudden') }, { v: 'progressive' as Mechanism, l: t('injuries.mechProgressive') }]} />
         </MField>
         <MField label={t('injuries.fieldActivity')}>
           <SoftInput value={activity} onChange={setActivity} placeholder={t('injuries.activityPlaceholder')} ariaLabel={t('injuries.fieldActivity')} />
         </MField>
-        <MField label={t('injuries.fieldEvolution')} last>
-          <SegTrack value={evolution} onChange={v => setEvolution(v)} options={[{ v: 'aggrave' as Evolution, l: t('injuries.evoWorse') }, { v: 'stable' as Evolution, l: t('injuries.evoStable') }, { v: 'ameliore' as Evolution, l: t('injuries.evoBetter') }]} />
+        <MField label={t('injuries.fieldDescription')} last>
+          <SoftTextarea value={description} onChange={setDescription} placeholder={t('injuries.descriptionPlaceholder')} ariaLabel={t('injuries.fieldDescription')} />
         </MField>
       </MBlock>
       <MBlock>
-        <MField label={t('injuries.fieldDescription')} last>
-          <SoftTextarea value={description} onChange={setDescription} placeholder={t('injuries.descriptionPlaceholder')} ariaLabel={t('injuries.fieldDescription')} />
+        <MField label={t('injuries.fieldOnsetDate', { days: daysSince(date) })} last>
+          <SoftInput type="date" value={date} onChange={setDate} ariaLabel={t('injuries.fieldOnsetDate', { days: daysSince(date) })} />
         </MField>
       </MBlock>
     </>

@@ -364,13 +364,20 @@ function useProfile() {
   const [saving, setSaving] = useState(false)
   const loadedRef = useRef(false)          // évite d'enregistrer pendant le chargement initial
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Signature des données telles que chargées / dernière sauvegarde. L'auto-save
+  // ne se déclenche QUE si la signature courante en diffère → le `setData` du
+  // chargement initial (qui re-déclenche l'effet) ne provoque PLUS d'upsert ni de
+  // pastille « Enregistré » à la simple OUVERTURE des réglages.
+  const savedSig = useRef<string>('')
+  const sigOf = (d: { full_name: string; bio: string; height_cm: string; weight_kg: string; bike_weight_kg: string }) =>
+    JSON.stringify([d.full_name, d.bio, d.height_cm, d.weight_kg, d.bike_weight_kg])
 
   useEffect(() => {
     async function load() {
       const user = await getCurrentUser()
       if (!user) return
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setData({
+      const loaded = {
         full_name:      p?.full_name      ?? '',
         bio:            p?.bio            ?? '',
         height_cm:      p?.height_cm      ? String(p.height_cm) : '',
@@ -378,18 +385,24 @@ function useProfile() {
         bike_weight_kg: p?.bike_weight_kg ? String(p.bike_weight_kg) : '',
         email:          user.email        ?? '',
         avatar_url:     p?.avatar_url     ?? '',
-      })
+      }
+      savedSig.current = sigOf(loaded)
+      setData(loaded)
       loadedRef.current = true
     }
     load()
   }, [])
 
   // Auto-save : toute modification est persistée automatiquement (debounce),
-  // sans bouton « Enregistrer ». Ne se déclenche jamais avant le chargement.
+  // sans bouton « Enregistrer ». Ne se déclenche jamais avant le chargement, ni
+  // pour le `setData` du chargement initial (signature inchangée) → pas de fausse
+  // pastille « Enregistré » à l'ouverture.
   useEffect(() => {
     if (!loadedRef.current) return
+    const sig = sigOf(data)
+    if (sig === savedSig.current) return   // aucune édition réelle (chargement / valeur déjà sauvegardée)
     if (autoTimer.current) clearTimeout(autoTimer.current)
-    autoTimer.current = setTimeout(() => { void save() }, 600)
+    autoTimer.current = setTimeout(() => { savedSig.current = sig; void save() }, 600)
     return () => { if (autoTimer.current) clearTimeout(autoTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.full_name, data.bio, data.height_cm, data.weight_kg, data.bike_weight_kg])

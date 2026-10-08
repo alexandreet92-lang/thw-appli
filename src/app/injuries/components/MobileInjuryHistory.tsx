@@ -1,41 +1,34 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
-// Blessures mobile — vue détail « Historique » (cartes blanches sur page
-// grise, un sujet par carte) : frise des épisodes, liste des épisodes
-// groupée par année (filtre Tous / En cours / Résolus), zones et sports les
-// plus touchés. Chaque épisode est tappable → fiche de suivi (TrackSheet :
-// édition, rééduc, journal, résolution). Aucune donnée inventée.
+// Blessures mobile — onglet « Historique » (douleurs guéries) + fiche détail.
+//  • HistoryList : une ligne par épisode résolu (zone, sévérité, période,
+//    durée), groupée par année, tappable → fiche détail.
+//  • InjuryHistoryDetail : courbe de fluctuation de la sévérité (pic →
+//    guérison), frise d'événements (Déclarée → Aggravée → En amélioration →
+//    Guérie, dates + pastilles de sévérité), origine, durée totale.
+// Tout est dérivé des points réels (injury_logs) — aucune donnée inventée.
 // ══════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
 import { useI18n, currentLocale } from '@/lib/i18n'
-import { DashCard } from '@/components/dashboard/primitives'
-import { SegTrack } from './mobileUi'
-import { AnimatedBar } from '@/components/ui/AnimatedBar'
-import { SEV, type Injury, type Severity } from '../types'
-import { durationDays, isRecidive, zonesRanking, sportsRanking } from '../lib'
+import { SEV, type Injury, type InjuryLog, type Severity } from '../types'
+import {
+  durationDays, isRecidive, severityPoints, severityColor, painTimeline,
+  type SevPoint, type TimelineKind,
+} from '../lib'
+import { MBlock, MRow, MRowText, MTag, PillButton, NUM, FB, Ico } from './mobileUi'
 
-type Filter = 'all' | 'active' | 'resolved'
-const DAY = 86400000
-const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: "'zero' 0" }
 const ts = (d: string) => new Date(d + (d.length === 10 ? 'T12:00:00' : '')).getTime()
-const I = (d: string) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
-)
-const IC = {
-  frise: I('M3 3v18h18M7 16v-4M12 16V8M17 16v-7'),
-  list: I('M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'),
-  zones: I('M22 12h-4l-3 9L9 3l-3 9H2'),
-  sports: I('m3 17 6-6 4 4 8-8M14 7h7v7'),
-}
+
+// Conservés pour MobileInjuryAnalysis (analyse desktop/mobile héritée).
 export const SEV_KEY: Record<Severity, string> = { gene: 'injuries.sevGene', douleur: 'injuries.sevDouleur', blessure: 'injuries.sevBlessure' }
 export const sideLabel = (inj: Injury) => (inj.side && inj.side !== 'central' ? ` · ${inj.side}` : '')
 
 function fmtDay(d: string, withYear: boolean): string {
   return new Date(ts(d)).toLocaleDateString(currentLocale(), withYear ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' })
 }
-
-/** « 2 → 20 juin » / « 28 mai → 3 juin » / « 12 déc. 2025 → 3 janv. 2026 ». */
+function fmtLong(d: string): string {
+  return new Date(ts(d)).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+}
 function fmtRange(a: string, b: string): string {
   const da = new Date(ts(a)), db = new Date(ts(b))
   if (da.getFullYear() !== db.getFullYear()) return `${fmtDay(a, true)} → ${fmtDay(b, true)}`
@@ -44,124 +37,13 @@ function fmtRange(a: string, b: string): string {
 }
 
 const Chevron = () => (
-  <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6" /></svg>
+  <span style={{ color: 'var(--text-dim)', display: 'flex', flexShrink: 0 }}><Ico d={<path d="m9 18 6-6-6-6" />} size={18} /></span>
 )
 
-// ── Frise : une ligne par épisode, barre = durée réelle (début → résolution
-//    ou aujourd'hui), couleur = sévérité. Positions en %, tailles fixes. ──
-function Frise({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) => void }) {
+// ── Liste des épisodes guéris ──────────────────────────────────────
+export function HistoryList({ injuries, all, onOpen }: { injuries: Injury[]; all: Injury[]; onOpen: (i: Injury) => void }) {
   const { t } = useI18n()
-  const rows = [...injuries].sort((a, b) => ts(b.onset_date) - ts(a.onset_date))
-  const now = Date.now()
-  const first = Math.min(...rows.map(i => ts(i.onset_date)))
-  const pad = Math.max((now - first) * 0.04, 3 * DAY)
-  const min = first - pad, max = now + pad
-  const span = max - min || 1
-  const pct = (tm: number) => Math.max(0, Math.min(100, ((tm - min) / span) * 100))
-  const long = now - first > 330 * DAY
-  const ticks = [0, 1, 2, 3, 4].map(k => min + (span * k) / 4)
-
-  return (
-    <div>
-      {rows.map(i => {
-        const c = SEV[i.severity].varc
-        const x1 = pct(ts(i.onset_date))
-        const x2 = pct(i.resolved_date ? ts(i.resolved_date) : now)
-        return (
-          <button key={i.id} type="button" onClick={() => onOpen(i)}
-            aria-label={`${i.zone}${sideLabel(i)} · ${t(SEV_KEY[i.severity])} · ${durationDays(i)} ${t('injuries.dayUnit')}`}
-            style={{ display: 'flex', alignItems: 'center', width: '100%', minHeight: 40, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-            <span style={{ width: 84, flexShrink: 0, paddingRight: 8, fontSize: 13, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'capitalize' }}>{i.zone}</span>
-            <span style={{ position: 'relative', flex: 1, height: 12 }}>
-              <i style={{ position: 'absolute', top: 0, left: `${x1}%`, width: `${Math.max(x2 - x1, 1)}%`, minWidth: 12, height: 12, borderRadius: 'var(--r-pill)', background: c }} />
-            </span>
-          </button>
-        )
-      })}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingLeft: 84 }}>
-        {ticks.map((tk, k) => (
-          <span key={k} style={{ ...NUM, fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
-            {new Date(tk).toLocaleDateString(currentLocale(), long ? { month: 'short', year: '2-digit' } : { month: 'short' })}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function EpisodeRow({ inj, all, first, last, onOpen }: { inj: Injury; all: Injury[]; first: boolean; last: boolean; onOpen: (i: Injury) => void }) {
-  const { t } = useI18n()
-  const active = inj.status === 'active'
-  const when = active || !inj.resolved_date
-    ? `${t('injm.sinceDate', { date: fmtDay(inj.onset_date, new Date(ts(inj.onset_date)).getFullYear() !== new Date().getFullYear()) })} · ${t('injm.ongoing')}`
-    : `${fmtRange(inj.onset_date, inj.resolved_date)} · ${durationDays(inj)} ${t('injuries.dayUnit')}`
-  return (
-    <button type="button" onClick={() => onOpen(inj)}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 44, textAlign: 'left', border: 'none', borderTop: first ? 'none' : '1px solid var(--dash-line, var(--border))', background: 'none', padding: `${first ? 0 : 12}px 0 ${last ? 0 : 12}px`, cursor: 'pointer', fontFamily: 'inherit' }}>
-      <span aria-hidden style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: SEV[inj.severity].varc, flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-          <b style={{ fontSize: 15, color: 'var(--text)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inj.zone}{sideLabel(inj)}</b>
-          {isRecidive(inj, all) && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', flexShrink: 0 }}>{t('injuries.recidiveTag')}</span>}
-        </span>
-        <span style={{ ...NUM, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {t(SEV_KEY[inj.severity])} · {when}
-        </span>
-      </span>
-      <Chevron />
-    </button>
-  )
-}
-
-function RankCard({ icon, title, data, color }: { icon: React.ReactNode; title: string; data: { key: string; count: number }[]; color: string }) {
-  const max = Math.max(...data.map(d => d.count), 1)
-  return (
-    <DashCard icon={icon} title={title}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {data.slice(0, 5).map(d => (
-          <div key={d.key}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 14, marginBottom: 5 }}>
-              <span style={{ fontWeight: 600, color: 'var(--text)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.key}</span>
-              <span style={{ ...NUM, color: 'var(--text-mid)', flexShrink: 0 }}>{d.count}</span>
-            </div>
-            <AnimatedBar pct={(d.count / max) * 100} color={color} height={8} />
-          </div>
-        ))}
-      </div>
-    </DashCard>
-  )
-}
-
-export function MobileInjuryHistory({ injuries, onOpen, onReport }: {
-  injuries: Injury[]
-  onOpen: (inj: Injury) => void
-  onReport: () => void
-}) {
-  const { t } = useI18n()
-  const [filter, setFilter] = useState<Filter>('all')
-
-  if (injuries.length === 0) {
-    return (
-      <DashCard icon={IC.frise} title={t('injuries.friseTitle')}>
-        <p style={{ margin: 0, fontSize: 15, color: 'var(--text-mid)' }}>{t('injuries.friseEmpty')}</p>
-        <button type="button" onClick={onReport}
-          style={{ marginTop: 12, minHeight: 44, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: 'var(--primary)' }}>
-          + {t('injuries.m.report')}
-        </button>
-      </DashCard>
-    )
-  }
-
-  const now = Date.now()
-  const first = Math.min(...injuries.map(i => ts(i.onset_date)))
-  const spanMonths = Math.max(1, Math.round((now - first) / (30.44 * DAY)))
-  const hasActive = injuries.some(i => i.status === 'active')
-  const hasResolved = injuries.some(i => i.status === 'resolved')
-
-  const eff: Filter = hasActive && hasResolved ? filter : 'all'
-  const shown = [...injuries]
-    .filter(i => eff === 'all' || i.status === eff)
-    .sort((a, b) => ts(b.onset_date) - ts(a.onset_date))
+  const shown = [...injuries].sort((a, b) => ts(b.onset_date) - ts(a.onset_date))
   const groups: { year: number; items: Injury[] }[] = []
   for (const i of shown) {
     const y = new Date(ts(i.onset_date)).getFullYear()
@@ -170,35 +52,136 @@ export function MobileInjuryHistory({ injuries, onOpen, onReport }: {
     else groups.push({ year: y, items: [i] })
   }
   const showYears = groups.length > 1 || (groups[0] && groups[0].year !== new Date().getFullYear())
-  const sports = sportsRanking(injuries)
+
+  return (
+    <MBlock title={t('injc.tabHistory')} right={<span style={{ ...NUM, fontSize: 15, fontWeight: 700, color: 'var(--text-mid)' }}>{shown.length}</span>}>
+      {groups.map((g, gi) => (
+        <div key={g.year} style={{ marginTop: gi ? 14 : 0 }}>
+          {showYears && (
+            <p style={{ ...NUM, margin: '0 0 4px', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-dim)' }}>{g.year} · {g.items.length}</p>
+          )}
+          {g.items.map((inj, k) => {
+            const when = inj.resolved_date ? `${fmtRange(inj.onset_date, inj.resolved_date)} · ${durationDays(inj)} ${t('injuries.dayUnit')}` : fmtDay(inj.onset_date, true)
+            return (
+              <MRow key={inj.id} first={k === 0} onClick={() => onOpen(inj)} label={`${inj.zone}${sideLabel(inj)}`}>
+                <span aria-hidden style={{ width: 4, alignSelf: 'stretch', minHeight: 36, borderRadius: 4, background: SEV[inj.severity].varc, flexShrink: 0 }} />
+                <MRowText
+                  title={<span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, textTransform: 'capitalize' }}>{inj.zone}{sideLabel(inj)}{isRecidive(inj, all) && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'none' }}>{t('injuries.recidiveTag')}</span>}</span>}
+                  sub={<span style={NUM}>{t(SEV_KEY[inj.severity])} · {when}</span>} />
+                <Chevron />
+              </MRow>
+            )
+          })}
+        </div>
+      ))}
+    </MBlock>
+  )
+}
+
+// ── Courbe de fluctuation (SVG brut, pic → guérison) ───────────────
+function FluctuationCurve({ pts }: { pts: SevPoint[] }) {
+  const { t } = useI18n()
+  const W = 320, H = 176, pl = 24, pr = 10, pt = 12, pb = 26, n = pts.length
+  const peak = pts.reduce((m, p) => Math.max(m, p.v), 0)
+  const col = severityColor(peak)
+  const x = (i: number) => pl + (n === 1 ? (W - pl - pr) / 2 : (i / (n - 1)) * (W - pl - pr))
+  const y = (v: number) => pt + (1 - v / 10) * (H - pt - pb)
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')
+  const area = `M${x(0).toFixed(1)},${(H - pb).toFixed(1)} ` + pts.map((p, i) => `L${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ') + ` L${x(n - 1).toFixed(1)},${(H - pb).toFixed(1)} Z`
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} aria-hidden>
+      {[0, 5, 10].map(v => (
+        <g key={v}>
+          <line x1={pl} y1={y(v)} x2={W - pr} y2={y(v)} stroke="var(--border)" strokeWidth={1} opacity={0.6} />
+          <text x={pl - 5} y={y(v) + 3.5} fontFamily={FB} fontSize={10} fill="var(--text-dim)" textAnchor="end">{v}</text>
+        </g>
+      ))}
+      {n > 1 && <path d={area} fill={col} opacity={0.12} />}
+      {n > 1 && <path d={line} fill="none" stroke={col} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />}
+      {pts.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.v)} r={2.6} fill={col} />)}
+      {n > 0 && <text x={pl} y={H - 7} fontFamily={FB} fontSize={10} fill="var(--text-dim)" textAnchor="start">{fmtDay(pts[0].date, false)}</text>}
+      {n > 1 && <text x={W - pr} y={H - 7} fontFamily={FB} fontSize={10} fill="var(--text-dim)" textAnchor="end">{fmtDay(pts[n - 1].date, false)}</text>}
+      {n < 2 && <text x={W / 2} y={H / 2} fontFamily={FB} fontSize={12} fill="var(--text-dim)" textAnchor="middle">{t('injuries.curveNotEnough')}</text>}
+    </svg>
+  )
+}
+
+const TL_COLOR: Record<TimelineKind, string> = {
+  declared: 'var(--text-mid)', worsened: 'var(--charge-hard)', improving: 'var(--charge-low)', healed: 'var(--charge-low)',
+}
+const TL_KEY: Record<TimelineKind, string> = {
+  declared: 'injc.evDeclared', worsened: 'injc.evWorsened', improving: 'injc.evImproving', healed: 'injc.evHealed',
+}
+
+// ── Fiche détail d'un épisode guéri ────────────────────────────────
+export function InjuryHistoryDetail({ inj, logs, onOpen }: { inj: Injury; logs: InjuryLog[]; onOpen: (i: Injury) => void }) {
+  const { t } = useI18n()
+  const basePts = severityPoints(logs, inj.id)
+  // Guérison = retour à 0 : on prolonge la courbe jusqu'à la date de résolution
+  // (fait réel : plus de douleur), sans inventer de valeur intermédiaire.
+  const pts: SevPoint[] = inj.resolved_date && (!basePts.length || basePts[basePts.length - 1].v > 0)
+    ? [...basePts, { date: inj.resolved_date, v: 0 }]
+    : basePts
+  const events = painTimeline(inj, logs)
+  const origin = [
+    inj.mechanism ? (inj.mechanism === 'soudaine' ? t('injuries.mechSudden') : t('injuries.mechProgressive')) : null,
+    inj.activity,
+    inj.description,
+  ].filter(Boolean) as string[]
 
   return (
     <>
-      <DashCard icon={IC.frise} title={t('injuries.friseTitle')} meta={t('injm.months', { n: spanMonths })}>
-        <Frise injuries={injuries} onOpen={onOpen} />
-      </DashCard>
-
-      <DashCard icon={IC.list} title={t('injuries.tabHistorySub')} meta={String(shown.length)}>
-        {hasActive && hasResolved && (
-          <div style={{ marginBottom: 14 }} role="group" aria-label={t('injuries.tabHistorySub')}>
-            <SegTrack<Filter> value={eff} onChange={setFilter}
-              options={[{ v: 'all', l: t('injm.filterAll') }, { v: 'active', l: t('injuries.ongoing') }, { v: 'resolved', l: t('injm.filterResolved') }]} />
+      <MBlock>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)', textTransform: 'capitalize', letterSpacing: '-0.01em' }}>{inj.zone}{sideLabel(inj)}</h2>
+            <p style={{ ...NUM, margin: '2px 0 0', fontSize: 13, color: 'var(--text-mid)' }}>{inj.resolved_date ? fmtRange(inj.onset_date, inj.resolved_date) : fmtLong(inj.onset_date)}</p>
           </div>
-        )}
-        {groups.map((g, gi) => (
-          <div key={g.year} style={{ marginTop: gi ? 14 : 0 }}>
-            {showYears && (
-              <p style={{ ...NUM, margin: '0 0 8px', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-dim)' }}>
-                {g.year} · {g.items.length}
-              </p>
-            )}
-            {g.items.map((inj, k) => <EpisodeRow key={inj.id} inj={inj} all={injuries} first={k === 0} last={k === g.items.length - 1} onOpen={onOpen} />)}
+          <MTag color="var(--charge-low)">{t('injc.chipHealed')}</MTag>
+        </div>
+        <div style={{ display: 'flex', gap: 24, marginTop: 14 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)' }}>{t('injc.duration')}</p>
+            <p style={{ ...NUM, margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{durationDays(inj)} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>{t('injuries.dayUnit')}</span></p>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)' }}>{t('injc.severity')}</p>
+            <p style={{ ...NUM, margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{t(SEV_KEY[inj.severity])}</p>
+          </div>
+        </div>
+      </MBlock>
+
+      <MBlock title={t('injc.fluctuation')}>
+        <FluctuationCurve pts={pts} />
+      </MBlock>
+
+      <MBlock title={t('injc.timeline')}>
+        {events.map((e, i) => (
+          <div key={i} style={{ position: 'relative', display: 'flex', gap: 12, paddingBottom: i < events.length - 1 ? 16 : 0 }}>
+            <span aria-hidden style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: TL_COLOR[e.kind], marginTop: 3 }} />
+              {i < events.length - 1 && <span style={{ flex: 1, width: 2, background: 'var(--border)', marginTop: 2 }} />}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t(TL_KEY[e.kind])}</span>
+                <span style={{ ...NUM, display: 'block', fontSize: 13, color: 'var(--text-mid)', marginTop: 1 }}>{fmtLong(e.date)}</span>
+              </span>
+              {e.severity != null && <MTag color={severityColor(e.severity)}><span style={NUM}>{e.severity}/10</span></MTag>}
+            </span>
           </div>
         ))}
-      </DashCard>
+      </MBlock>
 
-      <RankCard icon={IC.zones} title={t('injuries.rankZones')} data={zonesRanking(injuries)} color="var(--charge-hard)" />
-      {sports.length > 0 && <RankCard icon={IC.sports} title={t('injuries.rankSports')} data={sports} color="var(--primary)" />}
+      {origin.length > 0 && (
+        <MBlock title={t('injc.origin')}>
+          {inj.activity && <MRow first><MRowText title={inj.activity} sub={inj.mechanism ? (inj.mechanism === 'soudaine' ? t('injuries.mechSudden') : t('injuries.mechProgressive')) : undefined} /></MRow>}
+          {inj.description && <MRow first={!inj.activity}><MRowText title={inj.description} /></MRow>}
+          {!inj.activity && !inj.description && inj.mechanism && <MRow first><MRowText title={inj.mechanism === 'soudaine' ? t('injuries.mechSudden') : t('injuries.mechProgressive')} /></MRow>}
+        </MBlock>
+      )}
+
+      <PillButton variant="white" onClick={() => onOpen(inj)}>{t('injc.fullRecord')}</PillButton>
     </>
   )
 }

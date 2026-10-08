@@ -82,10 +82,19 @@ export function useInjuries() {
     if (!user) return null
     const { data, error } = await sb.from('injuries').insert({ ...inj, user_id: user.id }).select('id').single()
     if (error || !data) return null
+    const newId = String((data as Row).id)
+    // Amorce le 1er point de sévérité à la date d'apparition → la courbe de
+    // fluctuation démarre à la déclaration (donnée réelle saisie, pas inventée).
+    if (inj.intensity_effort != null || inj.intensity_rest != null) {
+      await sb.from('injury_logs').insert({
+        injury_id: newId, log_date: inj.onset_date, note: null,
+        intensity_rest: inj.intensity_rest, intensity_effort: inj.intensity_effort,
+      })
+    }
     // Prévient (côté serveur) le coach de l'athlète qu'une blessure a été déclarée.
     emitServerEvent('injury', { zone: inj.zone })
     await load()
-    return String((data as Row).id)
+    return newId
   }, [load])
 
   const update = useCallback(async (id: string, patch: Partial<Injury>): Promise<void> => {

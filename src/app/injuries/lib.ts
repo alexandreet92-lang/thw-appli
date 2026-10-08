@@ -30,6 +30,50 @@ export function painTrend(logs: InjuryLog[], injuryId: string): PainTrend | null
   return { dir, delta, from, to }
 }
 
+// ── Sévérité 0-10 dans le temps (fluctuation réelle) ──────────────────────
+// La sévérité d'une douleur = `intensity_effort` (0-10). Chaque « Mettre à jour »
+// ajoute un injury_log daté → la courbe et la frise sont RÉELLES, jamais inventées.
+export interface SevPoint { date: string; v: number }
+/** Points de sévérité (effort) triés, du + ancien au + récent. */
+export function severityPoints(logs: InjuryLog[], injuryId: string): SevPoint[] {
+  return logs
+    .filter(l => l.injury_id === injuryId && l.intensity_effort != null)
+    .slice()
+    .sort((a, b) => a.log_date.localeCompare(b.log_date))
+    .map(l => ({ date: l.log_date, v: l.intensity_effort as number }))
+}
+/** Sévérité courante : dernier point relevé, sinon la valeur portée par l'épisode. */
+export function currentSeverity(inj: Injury, logs: InjuryLog[]): number {
+  const pts = severityPoints(logs, inj.id)
+  return pts.length ? pts[pts.length - 1].v : (inj.intensity_effort ?? 0)
+}
+/** Couleur sémantique d'une sévérité 0-10 : vert → orange → rouge (points de charge). */
+export function severityColor(v: number): string {
+  return v >= 7 ? 'var(--charge-hard)' : v >= 4 ? 'var(--charge-mid)' : 'var(--charge-low)'
+}
+
+// ── Frise d'événements d'un épisode (détail Historique) ───────────────────
+// Dérivée UNIQUEMENT des points réels : Déclarée (apparition) → Aggravée (pic
+// si la douleur est montée) → En amélioration (première baisse après le pic)
+// → Guérie (résolution). Pas de point = pas d'événement.
+export type TimelineKind = 'declared' | 'worsened' | 'improving' | 'healed'
+export interface TimelineEvent { kind: TimelineKind; date: string; severity: number | null }
+export function painTimeline(inj: Injury, logs: InjuryLog[]): TimelineEvent[] {
+  const pts = severityPoints(logs, inj.id)
+  const out: TimelineEvent[] = []
+  out.push({ kind: 'declared', date: inj.onset_date, severity: pts.length ? pts[0].v : (inj.intensity_effort ?? null) })
+  if (pts.length >= 2) {
+    let peak = 0
+    for (let i = 1; i < pts.length; i++) if (pts[i].v > pts[peak].v) peak = i
+    if (peak > 0 && pts[peak].v > pts[0].v) out.push({ kind: 'worsened', date: pts[peak].date, severity: pts[peak].v })
+    for (let i = peak + 1; i < pts.length; i++) {
+      if (pts[i].v < pts[peak].v) { out.push({ kind: 'improving', date: pts[i].date, severity: pts[i].v }); break }
+    }
+  }
+  if (inj.status === 'resolved' && inj.resolved_date) out.push({ kind: 'healed', date: inj.resolved_date, severity: 0 })
+  return out.sort((a, b) => a.date.localeCompare(b.date))
+}
+
 /** Adhérence rééducation : exos cochés / total (null si aucun exo). */
 export function rehabAdherence(inj: Injury): { done: number; total: number } | null {
   if (!inj.rehab.length) return null

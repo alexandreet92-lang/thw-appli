@@ -263,8 +263,7 @@ export function MBars({ bars, height = 110, minWidth = 46 }: { bars: MBar[]; hei
         const inner = (
           <>
             <span style={{ ...NUM, fontFamily: FB, fontSize: 12, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>{b.top}</span>
-            <span style={{ display: 'flex', alignItems: 'flex-end', width: 22, height, borderRadius: 'var(--r-sm)', background: TRACK, overflow: 'hidden',
-              outline: b.best ? '2px solid var(--charge-mid)' : 'none', outlineOffset: 2 }}>
+            <span style={{ display: 'flex', alignItems: 'flex-end', width: 22, height, borderRadius: 'var(--r-sm)', background: TRACK, overflow: 'hidden' }}>
               <span style={{ display: 'block', width: '100%', height: grow ? `${Math.max(4, Math.min(100, b.pct))}%` : '0%', borderRadius: 'var(--r-sm)', background: b.color, transition: 'height 0.9s cubic-bezier(0.32,0.72,0,1)' }} />
             </span>
             <span style={{ ...NUM, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{b.bottom}</span>

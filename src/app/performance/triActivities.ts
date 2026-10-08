@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolvePlanningUid } from '@/lib/planning/scope'
 import { currentLocale } from '@/lib/i18n'
 
-export type Segment = 'swim' | 'bike' | 'run'
+export type Segment = 'swim' | 'bike' | 'run' | 'row'
 
 export interface ActivityLite {
   id: string
@@ -31,6 +31,7 @@ const SPORT_FILTER: Record<Segment, string[]> = {
   swim: ['swim'],
   bike: ['bike', 'virtual_bike'],
   run: ['run'],
+  row: ['rowing'],
 }
 
 const COLS = 'id, title, started_at, sport_type, distance_m, moving_time_s, avg_watts, normalized_watts, max_watts, avg_hr, max_hr, avg_cadence, max_cadence, elevation_gain_m, avg_temp_c, avg_pace_s_km, avg_speed_ms'
@@ -46,6 +47,63 @@ export async function fetchActivities(segment: Segment): Promise<ActivityLite[]>
     .order('started_at', { ascending: false })
     .limit(120)
   return (data ?? []) as ActivityLite[]
+}
+
+// ── Tracé GPS + profil d'altitude d'une activité liée ───────────────────────
+// Données RÉELLES issues de la table `activities` (streams / raw_data). Tout est
+// null-safe : une activité sans GPS/altitude renvoie des champs vides, jamais une
+// erreur. Mapping streams obligatoire : r.streams ?? r.raw_data?.streams.
+interface ActStreams { latlng?: number[][] | null; altitude?: number[] | null; distance?: number[] | null }
+interface ActRow {
+  summary_polyline?: string | null
+  streams?: ActStreams | null
+  raw_data?: { streams?: ActStreams | null; map?: { polyline?: string | null; summary_polyline?: string | null } | null } | null
+  distance_m?: number | null
+  elevation_gain_m?: number | null
+  avg_temp_c?: number | null
+}
+
+export interface ActivityTrace {
+  /** Positions [lat, lng] pour RouteMapImage (prioritaire sur polyline). */
+  latlng: number[][] | null
+  /** Polyline Google encodée (repli carte). */
+  polyline: string | null
+  /** Altitudes échantillonnées (profil, raw SVG). */
+  altitude: number[] | null
+  /** Distance cumulée par point (m), alignée sur altitude si présente. */
+  altDistance: number[] | null
+  distance_m: number | null
+  elevation_gain_m: number | null
+  avg_temp_c: number | null
+}
+
+const TRACE_COLS = 'summary_polyline, streams, raw_data, distance_m, elevation_gain_m, avg_temp_c'
+
+/** Charge le tracé GPS + profil d'altitude d'une activité. Renvoie null si introuvable. */
+export async function fetchActivityTrace(activityId: string): Promise<ActivityTrace | null> {
+  if (!activityId) return null
+  const supabase = createClient()
+  const { data } = await supabase.from('activities').select(TRACE_COLS).eq('id', activityId).maybeSingle()
+  if (!data) return null
+  const row = data as ActRow
+  // Mapping streams obligatoire + null-safety (backfill partiel).
+  const streams = row.streams ?? row.raw_data?.streams ?? null
+  const ll = Array.isArray(streams?.latlng) && streams!.latlng!.length >= 2 ? streams!.latlng! : null
+  const polyline = row.summary_polyline
+    ?? row.raw_data?.map?.polyline
+    ?? row.raw_data?.map?.summary_polyline
+    ?? null
+  const altitude = Array.isArray(streams?.altitude) && streams!.altitude!.length >= 2 ? streams!.altitude! : null
+  const altDistance = Array.isArray(streams?.distance) && streams!.distance!.length >= 2 ? streams!.distance! : null
+  return {
+    latlng: ll,
+    polyline: polyline && polyline.length > 0 ? polyline : null,
+    altitude,
+    altDistance,
+    distance_m: row.distance_m ?? null,
+    elevation_gain_m: row.elevation_gain_m ?? null,
+    avg_temp_c: row.avg_temp_c ?? null,
+  }
 }
 
 // ── Formatage ──────────────────────────────────────────────────────────────

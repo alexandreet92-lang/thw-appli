@@ -78,7 +78,7 @@ export default function InjuriesPage() {
     return (
       <>
         <MobileInjuries injuries={injuries} logs={logs} onReport={() => setReport(true)} onOpen={i => setTrackId(i.id)}
-          onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
+          onAddLog={addLog} onUpdate={update} onResolve={resolve} />
         {sheets}
       </>
     )

@@ -14,7 +14,7 @@ import { EXPRESS_TOUR, FULL_TOUR } from './guideRegistry'
 import { GuideSearch } from './GuideSearch'
 import { setGuideDemoId } from './guideDemo'
 import { useCoachAccess } from '@/hooks/useCoachAccess'
-import { MobileSheet, SheetPill, SHEET_CARD_SHADOW, useMobileSafe } from '@/components/ui/BottomSheet'
+import { MobileSheet, SheetPill, useMobileSafe } from '@/components/ui/BottomSheet'
 
 export const GUIDE_FIRSTRUN_KEY = 'thw:guide-firstrun'
 export const GUIDE_SEEN_KEY = 'thw:guide-seen'
@@ -126,8 +126,13 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('thw:start-guide', h as EventListener)
   }, [startSteps])
 
-  const stop = useCallback(() => { setSteps(null); setIdx(0); setRect(null) }, [])
-  const next = useCallback(() => { setIdx(i => { const s = steps; if (s && i + 1 >= s.length) { setSteps(null); setRect(null); return 0 } return i + 1 }) }, [steps])
+  // Persistance : « Passer » comme la fin de la visite marquent le guide comme vu
+  // (on ne le re-propose plus automatiquement au lancement suivant).
+  const persistSeen = useCallback(() => {
+    try { localStorage.setItem(GUIDE_SEEN_KEY, '1'); localStorage.removeItem(GUIDE_FIRSTRUN_KEY) } catch { /* ignore */ }
+  }, [])
+  const stop = useCallback(() => { persistSeen(); setSteps(null); setIdx(0); setRect(null) }, [persistSeen])
+  const next = useCallback(() => { setIdx(i => { const s = steps; if (s && i + 1 >= s.length) { persistSeen(); setSteps(null); setRect(null); return 0 } return i + 1 }) }, [steps, persistSeen])
   const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), [])
 
   const step = steps ? steps[idx] : null
@@ -231,15 +236,43 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
 }
 
 const PAD = 8
+// Scrim du spotlight (voile sombre autour de la cible). Littéral toléré ici
+// (fichier guide, hors périmètre enforced du check couleurs).
+const SCRIM = 'rgba(8,10,14,0.58)' // design-allow-color
+// Emoji d'en-tête par page — purement décoratif, interne au guide (aucune clé i18n).
+const PAGE_EMOJI: Record<string, string> = {
+  'Tableau de bord': '🏠', 'Planning': '🗓️', 'Calendrier': '📅', 'Training': '🏃',
+  'Performance': '📈', 'Nutrition': '🥗', 'Récupération': '🌙', 'Communauté': '👥',
+  'Connexions': '🔗', 'Blessures': '🩹', 'Fil': '📰', 'Coach': '🎯', 'Coachs': '🎯',
+  'Programmes': '📚', 'Messages': '💬', 'Profil': '👤', 'Progression': '📊',
+  'Zones': '🎚️', 'Séance': '🏋️', 'Enregistrement': '⏱️', 'Assistant IA': '✨',
+  'Démarrer': '🚀', 'Espace coach': '🧑‍🏫', 'Studio': '🎬',
+}
+
 // Échappe le HTML puis rend **gras** → <strong> (contenu = nos chaînes statiques).
 function mark(s: string): string {
   const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return esc.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:700">$1</strong>')
 }
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const upd = () => setReduced(mq.matches)
+    upd()
+    mq.addEventListener('change', upd)
+    return () => mq.removeEventListener('change', upd)
+  }, [])
+  return reduced
+}
+
 function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSkip }: {
   step: GuideStep; rect: Rect | null; index: number; total: number; pageInfo: PageInfo | null; onNext: () => void; onPrev: () => void; onSkip: () => void
 }) {
   const { t } = useI18n()
+  const reduced = usePrefersReducedMotion()
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [cardH, setCardH] = useState(0)
   const [vp, setVp] = useState(() => ({ w: typeof window !== 'undefined' ? window.innerWidth : 1200, h: typeof window !== 'undefined' ? window.innerHeight : 800 }))
@@ -249,207 +282,192 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
   }, [])
   const vw = vp.w, vh = vp.h
   const pad = step.pad ?? PAD
+
   // RÈGLE ANTI « PAGE COUPÉE » : le trou de spotlight est TOUJOURS borné à l'écran
-  // visible. Si la cible dépasse (plus haute que le viewport, ou partiellement
-  // hors-champ pendant un reflow / une navigation), on rogne le halo aux bords du
-  // viewport au lieu de laisser le voile et la carte se calculer sur une zone qui
-  // sort de l'écran — ce qui donnait l'impression d'une page coupée.
+  // visible. Si la cible dépasse, on rogne le halo aux bords du viewport.
   const hole = (() => {
     if (!rect) return null
-    const rawTop = rect.top - pad, rawLeft = rect.left - pad
-    const rawBottom = rect.top + rect.height + pad, rawRight = rect.left + rect.width + pad
-    const top = clamp(rawTop, 0, vh)
-    const left = clamp(rawLeft, 0, vw)
-    const bottom = clamp(rawBottom, 0, vh)
-    const right = clamp(rawRight, 0, vw)
+    const top = clamp(rect.top - pad, 0, vh)
+    const left = clamp(rect.left - pad, 0, vw)
+    const bottom = clamp(rect.top + rect.height + pad, 0, vh)
+    const right = clamp(rect.left + rect.width + pad, 0, vw)
     const width = Math.max(0, right - left)
     const height = Math.max(0, bottom - top)
-    // Cible entièrement hors-champ → pas de halo (message centré), jamais de bande coupée.
     if (width < 4 || height < 4) return null
     return { top, left, width, height }
   })()
-  const BW = Math.min(344, vw - 24)
+
+  const BW = Math.min(360, vw - 24)
   const MAXH = vh - 24
-  // Mesure la HAUTEUR RÉELLE de la carte (après rendu) → placement exact, jamais
-  // de bouton coupé. Deux passes : estimation puis mesure (via useLayoutEffect).
+  // Mesure la hauteur réelle de la carte (après rendu) → placement exact.
   useLayoutEffect(() => {
     const el = cardRef.current
     if (el) setCardH(Math.min(el.offsetHeight, MAXH))
   }, [step, rect, vw, vh, MAXH])
-  const H = Math.min(cardH || (150 + (step.lines?.length ?? 0) * 30 + (step.title ? 26 : 0) + (step.message ? 36 : 0)), MAXH)
-  const GAP = 18
+  const H = Math.min(cardH || (170 + (step.lines?.length ?? 0) * 30 + (step.title ? 28 : 0) + (step.message ? 40 : 0)), MAXH)
+  const GAP = 16
 
-  // Position — la carte est TOUJOURS entièrement à l'écran, et la flèche visible
-  // dans l'espace entre la cible et la carte (jamais cachée derrière).
+  // Placement : sous la cible si elle est dans la moitié HAUTE de l'écran,
+  // au-dessus si elle est dans la moitié BASSE. Repli latéral puis coin opposé.
+  // La carte est toujours entièrement visible et ne recouvre jamais la cible.
   const pos = (() => {
-    const centered = { left: Math.round((vw - BW) / 2), top: Math.round(clamp((vh - H) / 2, 12, vh - H - 12)), arrow: null as null | { x: number; y: number; dir: 'up' | 'down' } }
-    if (!hole) return centered
+    if (!hole) {
+      return { left: Math.round((vw - BW) / 2), top: Math.round(clamp((vh - H) / 2, 12, vh - H - 12)), side: 'center' as const, beakX: 0 }
+    }
     const cx = hole.left + hole.width / 2
     const cy = hole.top + hole.height / 2
-    const roomBelow = vh - (hole.top + hole.height) - 12
-    const roomAbove = hole.top - 12
-    const roomRight = vw - (hole.left + hole.width) - 12
-    const roomLeft = hole.left - 12
-    // Ordre de préférence : sous → au-dessus → à droite → à gauche. La carte ne
-    // RECOUVRE JAMAIS la cible : si aucun côté ne rentre, on la met dans le coin
-    // le plus éloigné (sans flèche), pour que la cible reste toujours visible.
-    if (roomBelow >= H + GAP) {
-      const top = hole.top + hole.height + GAP
-      return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top, arrow: { x: clamp(cx, 20, vw - 20), y: hole.top + hole.height + 4, dir: 'down' as const } }
+    const leftFor = () => clamp(cx - BW / 2, 12, vw - BW - 12)
+    const roomBelow = vh - (hole.top + hole.height) - GAP - 12
+    const roomAbove = hole.top - GAP - 12
+    const placeBelow = () => { const left = leftFor(); return { left, top: hole.top + hole.height + GAP, side: 'bottom' as const, beakX: clamp(cx - left, 22, BW - 22) } }
+    const placeAbove = () => { const left = leftFor(); return { left, top: hole.top - H - GAP, side: 'top' as const, beakX: clamp(cx - left, 22, BW - 22) } }
+    const preferBelow = cy < vh / 2
+    if (preferBelow) {
+      if (roomBelow >= H) return placeBelow()
+      if (roomAbove >= H) return placeAbove()
+    } else {
+      if (roomAbove >= H) return placeAbove()
+      if (roomBelow >= H) return placeBelow()
     }
-    if (roomAbove >= H + GAP) {
-      const top = hole.top - H - GAP
-      return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top, arrow: { x: clamp(cx, 20, vw - 20), y: hole.top - 4, dir: 'up' as const } }
-    }
-    if (roomRight >= BW + GAP) {
-      return { left: hole.left + hole.width + GAP, top: clamp(cy - H / 2, 12, vh - H - 12), arrow: null }
-    }
-    if (roomLeft >= BW + GAP) {
-      return { left: hole.left - BW - GAP, top: clamp(cy - H / 2, 12, vh - H - 12), arrow: null }
-    }
-    // Aucun côté ne rentre : coin vertical opposé à la cible (haut si cible en bas,
-    // bas si cible en haut), collé au bord, sans recouvrir le centre de la cible.
-    const putTop = cy > vh / 2 ? 12 : Math.max(12, vh - H - 12)
-    return { left: clamp(cx - BW / 2, 12, vw - BW - 12), top: putTop, arrow: null }
+    // Replis latéraux (cible occupant toute la hauteur).
+    if (vw - (hole.left + hole.width) - GAP - 12 >= BW) return { left: hole.left + hole.width + GAP, top: clamp(cy - H / 2, 12, vh - H - 12), side: 'left' as const, beakX: 0 }
+    if (hole.left - GAP - 12 >= BW) return { left: hole.left - BW - GAP, top: clamp(cy - H / 2, 12, vh - H - 12), side: 'right' as const, beakX: 0 }
+    // Dernier recours : coin vertical opposé, sans recouvrir le centre de la cible.
+    const top = cy > vh / 2 ? 12 : Math.max(12, vh - H - 12)
+    return { left: leftFor(), top, side: 'none' as const, beakX: 0 }
   })()
 
   const lastOfPage = !!pageInfo && pageInfo.posInPage >= pageInfo.pageCount
-  const eyebrow = pageInfo ? `${t('w3g.guide_page')} ${pageInfo.pageNum}/${pageInfo.totalPages} · ${pageInfo.label}` : `${t('w3g.guide_tour')} · ${index + 1}/${total}`
-  // Mobile (≤ 767 px) : bulle blanche radius 20 sans bordure ni liseré, libellé
-  // gris en casse normale, boutons pilule ≥ 44 px (Suivant en cyan).
-  const m = vw <= 767
+  const isClick = !!rect && step.advanceOn === 'click'
+  const label = pageInfo?.label || t('w3g.guide_tour')
+  const emoji = PAGE_EMOJI[label] ?? '✨'
+  // Progression « amicale » : on compte les PAGES (groupes de sens), pas les 113
+  // sous-étapes brutes. Les points représentent les pages, le repère chiffré aussi.
+  const dotCount = pageInfo?.totalPages ?? total
+  const dotActive = (pageInfo?.pageNum ?? index + 1) - 1
+  const stepLabel = `${pageInfo?.pageNum ?? index + 1} / ${dotCount}`
+  const isLast = index + 1 >= total
+
+  const cardTrans = reduced ? 'none' : 'left .5s cubic-bezier(0.22,1,0.36,1), top .5s cubic-bezier(0.22,1,0.36,1)'
+  const geomTrans = reduced ? 'none' : 'top .5s cubic-bezier(0.22,1,0.36,1), left .5s cubic-bezier(0.22,1,0.36,1), width .5s cubic-bezier(0.22,1,0.36,1), height .5s cubic-bezier(0.22,1,0.36,1)'
+  const blur = reduced ? 'blur(2px)' : 'blur(5px)'
 
   return (
     // Conteneur PASS-THROUGH : on peut cliquer/utiliser la page pendant le guide.
     <div style={{ position: 'fixed', inset: 0, zIndex: 100000, pointerEvents: 'none' }}>
-      <style>{`@keyframes gArrow{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}@keyframes gArrowUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes gPulse{0%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}50%{box-shadow:0 0 0 3px var(--primary),0 0 0 12px rgba(6,182,212,0.10)}100%{box-shadow:0 0 0 3px var(--primary),0 0 0 5px rgba(6,182,212,0.35)}}@keyframes gLine{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes gPop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+      <style>{`
+        @keyframes gGlow{0%,100%{box-shadow:0 0 0 9999px ${SCRIM},0 0 0 2px var(--primary),0 0 0 6px var(--primary-dim),0 0 22px 2px var(--primary-dim)}50%{box-shadow:0 0 0 9999px ${SCRIM},0 0 0 2px var(--primary),0 0 0 11px transparent,0 0 30px 6px var(--primary-dim)}}
+        @keyframes gLine{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes gCard{from{opacity:0;transform:translateY(8px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @media (prefers-reduced-motion: reduce){*[data-g-anim]{animation:none !important}}
+      `}</style>
 
-      {/* Voile — visuel seulement (pass-through). Léger si explication, un peu plus marqué autour d'une cible. */}
-      {!hole && <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,14,0.12)', pointerEvents: 'none' }} />}
+      {/* Voile simple quand aucune cible (étape d'explication centrée) */}
+      {!hole && <div style={{ position: 'absolute', inset: 0, background: SCRIM, backdropFilter: blur, WebkitBackdropFilter: blur, pointerEvents: 'none' }} />}
+
+      {/* SPOTLIGHT — 4 panneaux FLOUS autour de la cible (le flou seulement),
+          + un anneau arrondi qui porte le voile sombre, le halo lumineux et la
+          pulsation. Panneaux et anneau glissent vers la cible suivante. */}
       {hole && (
         <>
-          <Dim style={{ top: 0, left: 0, right: 0, height: hole.top }} />
-          <Dim style={{ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} />
-          <Dim style={{ top: hole.top, left: 0, width: hole.left, height: hole.height }} />
-          <Dim style={{ top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} />
-          <div style={{ position: 'absolute', top: hole.top, left: hole.left, width: hole.width, height: hole.height, borderRadius: 'var(--r-md)', animation: 'gPulse 1.5s ease-in-out infinite', pointerEvents: 'none' }} />
+          <BlurPanel reduced={reduced} style={{ top: 0, left: 0, right: 0, height: hole.top }} />
+          <BlurPanel reduced={reduced} style={{ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} />
+          <BlurPanel reduced={reduced} style={{ top: hole.top, left: 0, width: hole.left, height: hole.height }} />
+          <BlurPanel reduced={reduced} style={{ top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} />
+          <div data-g-anim style={{
+            position: 'absolute', top: hole.top, left: hole.left, width: hole.width, height: hole.height,
+            borderRadius: 'var(--r-md)', pointerEvents: 'none',
+            boxShadow: reduced ? `0 0 0 9999px ${SCRIM},0 0 0 2px var(--primary),0 0 0 6px var(--primary-dim)` : undefined,
+            animation: reduced ? undefined : 'gGlow 2s ease-in-out infinite',
+            transition: geomTrans,
+          }} />
         </>
       )}
 
-      {/* Flèche animée pointant la cible */}
-      {pos.arrow && (
-        <div style={{ position: 'absolute', left: pos.arrow.x - 15, top: pos.arrow.dir === 'down' ? pos.arrow.y : pos.arrow.y - 30, animation: `${pos.arrow.dir === 'down' ? 'gArrow' : 'gArrowUp'} 0.9s ease-in-out infinite`, pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: pos.arrow.dir === 'up' ? 'rotate(180deg)' : 'none' }}>
-            <path d="M12 4v15M5 12l7 7 7-7" />
-          </svg>
-        </div>
-      )}
-
-      {/* Bulle — colonne flex : corps scrollable + PIED FIXE (boutons toujours visibles) */}
-      {m ? (
-      <div ref={cardRef} key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH, display: 'flex', flexDirection: 'column', background: 'var(--surface-card)', color: 'var(--text)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-float)', pointerEvents: 'auto', fontFamily: 'var(--font-body)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
-        <div style={{ padding: '16px 16px 8px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: rect && step.advanceOn === 'click' ? 'var(--primary)' : 'var(--text-mid)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {rect && step.advanceOn === 'click' ? t('w3g.guide_click_here') : eyebrow}
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}/{total}</span>
-          </div>
-          <div style={{ height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-chip)', overflow: 'hidden', marginBottom: 12 }}>
-            <div style={{ height: '100%', width: `${((index + 1) / total) * 100}%`, background: 'var(--primary)', borderRadius: 'var(--r-pill)', transition: 'width .35s cubic-bezier(0.4,0,0.2,1)' }} />
-          </div>
-          {step.title && <p style={{ margin: '0 0 6px', fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{step.title}</p>}
-          {step.message && <p style={{ margin: '0 0 10px', fontSize: 15, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
-          {step.lines && step.lines.length > 0 && (
-            <ul key={index} style={{ listStyle: 'none', margin: '0 0 6px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {step.lines.map((ln, i) => (
-                <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 15, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 100}ms` }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, marginTop: 2, display: 'flex' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                  </span>
-                  <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div style={{ flexShrink: 0, padding: '6px 12px 12px' }}>
-          {lastOfPage && pageInfo?.nextLabel && (
-            <p style={{ margin: '0 4px 8px', fontSize: 13, color: 'var(--text-mid)' }}>
-              {t('w3g.guide_next_page')} : <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{pageInfo.nextLabel}</strong>
-            </p>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button type="button" onClick={onSkip} style={{ minHeight: 44, padding: '0 10px', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>{t('w3g.guide_skip')}</button>
-            <span style={{ flex: 1 }} />
-            {index > 0 && <button type="button" onClick={onPrev} style={{ minHeight: 44, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--surface-chip)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>{t('w3g.guide_prev')}</button>}
-            <button type="button" onClick={onNext} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)', boxShadow: SHEET_CARD_SHADOW }}>
-              {index + 1 >= total ? t('w3g.guide_finish') : t('w3g.guide_next')}
-              {index + 1 < total && <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
-            </button>
-          </div>
-        </div>
-      </div>
-      ) : (
-      <div ref={cardRef} key={index} style={{ position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: '0 18px 50px rgba(0,0,0,0.38)', pointerEvents: 'auto', fontFamily: 'var(--font-body, DM Sans, sans-serif)', boxSizing: 'border-box', overflow: 'hidden', animation: 'gPop .3s cubic-bezier(0.34,1.3,0.6,1)' }}>
-        {/* Liseré dégradé */}
-        <div style={{ height: 4, background: GRAD, flexShrink: 0 }} />
-        {/* CORPS — défile si trop haut, sans jamais pousser les boutons hors écran */}
-        <div style={{ padding: '13px 16px 8px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-          {/* En-tête : badge + « Page X/N · Nom » + barre de progression */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
-            <span aria-hidden style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 'var(--r-sm)', background: GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(6,182,212,0.40)' }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" /></svg>
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {rect && step.advanceOn === 'click'
-                ? <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>{t('w3g.guide_click_here')}</span>
-                : <span style={{ display: 'block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{eyebrow}</span>}
-              <div style={{ marginTop: 6, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--border)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${((index + 1) / total) * 100}%`, background: GRAD, borderRadius: 'var(--r-pill)', transition: 'width .35s cubic-bezier(0.4,0,0.2,1)' }} />
+      {/* COACH-MARK — carte propre qui glisse vers la cible, contenu en fondu */}
+      <div ref={cardRef} style={{
+        position: 'absolute', left: pos.left, top: pos.top, width: BW, maxHeight: MAXH,
+        display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', color: 'var(--text)',
+        borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-float)', pointerEvents: 'auto',
+        fontFamily: 'var(--font-body)', boxSizing: 'border-box', overflow: 'visible', transition: cardTrans,
+      }}>
+        {/* Bec pointant la cible (uniquement quand la carte est dessus/dessous) */}
+        {(pos.side === 'top' || pos.side === 'bottom') && (
+          <div style={{
+            position: 'absolute', left: pos.beakX - 7, width: 14, height: 14, background: 'var(--bg-card)',
+            transform: 'rotate(45deg)', borderRadius: '3px',
+            ...(pos.side === 'bottom' ? { top: -6 } : { bottom: -6 }),
+          }} />
+        )}
+        <div key={index} data-g-anim style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRadius: 'var(--r-lg)', animation: reduced ? undefined : 'gCard .36s cubic-bezier(0.22,1,0.36,1)' }}>
+          {/* CORPS — défile si trop haut, sans pousser le pied hors écran */}
+          <div style={{ padding: '18px 18px 10px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <span aria-hidden style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>{emoji}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: isClick ? 'var(--primary)' : 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isClick ? t('w3g.guide_click_here') : label}
+                </div>
+                {/* Points de progression + repère chiffré amical (pages, pas sous-étapes) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                    {Array.from({ length: dotCount }).map((_, i) => (
+                      <span key={i} style={{
+                        width: i === dotActive ? 15 : 5, height: 5, borderRadius: 'var(--r-pill)',
+                        background: i === dotActive ? 'var(--primary)' : i < dotActive ? 'var(--text-dim)' : 'var(--border-mid)',
+                        transition: reduced ? 'none' : 'width .35s cubic-bezier(0.22,1,0.36,1), background .35s ease', flexShrink: 0,
+                      }} />
+                    ))}
+                  </div>
+                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{stepLabel}</span>
+                </div>
               </div>
             </div>
+            {step.title && <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{step.title}</p>}
+            {step.message && <p style={{ margin: '0 0 10px', fontSize: 14, lineHeight: 1.55, color: 'var(--text-mid)' }}>{step.message}</p>}
+            {step.lines && step.lines.length > 0 && (
+              <ul style={{ listStyle: 'none', margin: '2px 0 4px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {step.lines.map((ln, i) => (
+                  <li key={i} data-g-anim style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.45, color: 'var(--text-mid)', opacity: reduced ? 1 : 0, animation: reduced ? undefined : 'gLine .34s ease-out forwards', animationDelay: reduced ? undefined : `${i * 90}ms` }}>
+                    <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, marginTop: 2, display: 'flex' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    </span>
+                    <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {step.title && <p style={{ margin: '0 0 8px', fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 800, lineHeight: 1.15 }}>{step.title}</p>}
-          {step.message && <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{step.message}</p>}
-          {step.lines && step.lines.length > 0 && (
-            <ul key={index} style={{ listStyle: 'none', margin: '0 0 6px', padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {step.lines.map((ln, i) => (
-                <li key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.45, color: 'var(--text-mid)', opacity: 0, animation: `gLine .34s ease-out forwards`, animationDelay: `${i * 100}ms` }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, marginTop: 1, display: 'flex' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                  </span>
-                  <span dangerouslySetInnerHTML={{ __html: mark(ln) }} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {/* PIED FIXE — toujours visible : prochaine page + contrôles */}
-        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '9px 14px 11px', background: 'var(--bg-card)' }}>
-          {lastOfPage && pageInfo?.nextLabel && (
-            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span aria-hidden style={{ color: 'var(--primary)', fontWeight: 800 }}>→</span>{t('w3g.guide_next_page')} : <strong style={{ color: 'var(--text-mid)', fontWeight: 700 }}>{pageInfo.nextLabel}</strong>
-            </p>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={onSkip} style={btnGhost}>{t('w3g.guide_skip')}</button>
-            <span style={{ flex: 1 }} />
-            {index > 0 && <button onClick={onPrev} style={btnGhost}>{t('w3g.guide_prev')}</button>}
-            <button onClick={onNext} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 'var(--r-md)', border: 'none', background: GRAD, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(6,182,212,0.40)' }}>
-              {index + 1 >= total ? t('w3g.guide_finish') : t('w3g.guide_next')}
-              {index + 1 < total && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
-            </button>
+          {/* PIED FIXE — toujours visible : prochaine page + contrôles */}
+          <div style={{ flexShrink: 0, padding: '8px 14px 14px' }}>
+            {lastOfPage && pageInfo?.nextLabel && (
+              <p style={{ margin: '0 4px 9px', fontSize: 12, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span aria-hidden style={{ color: 'var(--primary)', fontWeight: 700 }}>→</span>{t('w3g.guide_next_page')} : <strong style={{ color: 'var(--text-mid)', fontWeight: 600 }}>{pageInfo.nextLabel}</strong>
+              </p>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button type="button" onClick={onSkip} style={btnSkip}>{t('w3g.guide_skip')}</button>
+              <span style={{ flex: 1 }} />
+              {index > 0 && <button type="button" onClick={onPrev} style={btnGhost}>{t('w3g.guide_prev')}</button>}
+              <button type="button" onClick={onNext} style={btnNext}>
+                {isLast ? t('w3g.guide_finish') : t('w3g.guide_next')}
+                {!isLast && <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      )}
     </div>
   )
 }
-const GRAD = 'linear-gradient(135deg,#06B6D4,#3B82F6)'
-function Dim({ style }: { style: React.CSSProperties }) {
-  return <div style={{ position: 'absolute', background: 'rgba(8,10,14,0.5)', pointerEvents: 'none', ...style }} />
+
+function BlurPanel({ style, reduced }: { style: React.CSSProperties; reduced: boolean }) {
+  const blur = reduced ? 'blur(2px)' : 'blur(5px)'
+  return <div style={{ position: 'absolute', backdropFilter: blur, WebkitBackdropFilter: blur, pointerEvents: 'none', transition: reduced ? 'none' : 'top .5s cubic-bezier(0.22,1,0.36,1), left .5s cubic-bezier(0.22,1,0.36,1), width .5s cubic-bezier(0.22,1,0.36,1), height .5s cubic-bezier(0.22,1,0.36,1)', ...style }} />
 }
-const btnGhost: React.CSSProperties = { padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
+
+const btnSkip: React.CSSProperties = { minHeight: 42, padding: '0 10px', border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }
+const btnGhost: React.CSSProperties = { minHeight: 42, padding: '0 16px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }
+const btnNext: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 42, padding: '0 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--text)', color: 'var(--bg-card)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }
+
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, Math.max(lo, hi) === lo ? lo : v)) }

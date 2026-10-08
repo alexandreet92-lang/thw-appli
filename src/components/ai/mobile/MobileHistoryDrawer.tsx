@@ -30,6 +30,7 @@ const LONG_PRESS_MS = 450
 const CSS = `
 :root {
   --aid-bg: #F5F4EF; /* design-allow-color */
+  --aid-bar: rgba(245,244,239,0.72); /* design-allow-color — barre translucide (en-tête/pied), on voit la liste floutée derrière */
   --aid-text: #1A1A18; /* design-allow-color */
   --aid-mid: rgba(26,26,24,0.55); /* design-allow-color */
   --aid-sel: #E8E6E0; /* design-allow-color */
@@ -51,6 +52,7 @@ const CSS = `
 }
 html.dark {
   --aid-bg: #111111; /* design-allow-color */
+  --aid-bar: rgba(17,17,17,0.68); /* design-allow-color — barre translucide (en-tête/pied), on voit la liste floutée derrière */
   --aid-text: #FFFFFF; /* design-allow-color */
   --aid-mid: rgba(255,255,255,0.55); /* design-allow-color */
   --aid-sel: rgba(255,255,255,0.14); /* design-allow-color */
@@ -79,8 +81,44 @@ html.dark {
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--aid-bg); color: var(--aid-text); font-family: var(--font-body);
 }
-.aid-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+/* La liste occupe TOUTE la hauteur et coulisse derrière l'en-tête et le pied
+   (barres translucides floutées). Un masque dégradé la fait fondre en douceur
+   aux deux bords au lieu d'une coupe nette. */
+.aid-scroll {
+  position: absolute; inset: 0; z-index: 1;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding-top: var(--aid-head-h, 56px);
+  padding-bottom: calc(var(--aid-foot-h, 72px) + 4px);
+  -webkit-mask-image: linear-gradient(to bottom,
+    transparent 0,
+    transparent calc(var(--aid-head-h, 56px) - 26px),
+    #000 var(--aid-head-h, 56px),
+    #000 calc(100% - var(--aid-foot-h, 72px)),
+    transparent calc(100% - var(--aid-foot-h, 72px) + 26px),
+    transparent 100%);
+  mask-image: linear-gradient(to bottom,
+    transparent 0,
+    transparent calc(var(--aid-head-h, 56px) - 26px),
+    #000 var(--aid-head-h, 56px),
+    #000 calc(100% - var(--aid-foot-h, 72px)),
+    transparent calc(100% - var(--aid-foot-h, 72px) + 26px),
+    transparent 100%);
+}
 .aid-scroll::-webkit-scrollbar { display: none; }
+/* Barres flottantes : fond translucide + flou (on voit la liste défiler derrière,
+   floutée) et un dégradé doux sur le bord intérieur, pas de filet net. */
+.aid-head, .aid-foot {
+  position: absolute; left: 0; right: 0; z-index: 2;
+  background: var(--aid-bar);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3);
+}
+.aid-head { top: 0; }
+.aid-foot { bottom: 0; }
+.aid-head::after, .aid-foot::before {
+  content: ''; position: absolute; left: 0; right: 0; height: 22px; pointer-events: none;
+}
+.aid-head::after { top: 100%; background: linear-gradient(to bottom, var(--aid-bar), transparent); }
+.aid-foot::before { bottom: 100%; background: linear-gradient(to top, var(--aid-bar), transparent); }
 .aid-btn { appearance: none; border: none; background: transparent; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .aid-press:active, .aid-mi:active { background: var(--aid-press); }
 .aid-row { -webkit-tap-highlight-color: transparent; }
@@ -210,7 +248,7 @@ function ConvRow<C extends DrawerConv>({
       }}
     >
       {icon}
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 19, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 19, fontWeight: selected ? 500 : 450, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
         {conv.title}
       </span>
       {generating ? (
@@ -294,6 +332,24 @@ export function MobileHistoryDrawer<C extends DrawerConv>(props: MobileHistoryDr
   const [lp, setLp] = useState<{ conv: C; rect: LpRect; pinnedRow: boolean } | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
+  const headRef = useRef<HTMLDivElement>(null)
+  const footRef = useRef<HTMLDivElement>(null)
+  const [headH, setHeadH] = useState(56)
+  const [footH, setFootH] = useState(72)
+
+  // Hauteurs réelles des barres (l'en-tête grandit quand la recherche s'ouvre) :
+  // elles pilotent le padding et le masque de la liste défilante.
+  useEffect(() => {
+    const measure = () => {
+      if (headRef.current) setHeadH(headRef.current.offsetHeight)
+      if (footRef.current) setFootH(footRef.current.offsetHeight)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (headRef.current) ro.observe(headRef.current)
+    if (footRef.current) ro.observe(footRef.current)
+    return () => ro.disconnect()
+  }, [])
 
   // Tiroir refermé → on repart d'un état propre.
   useEffect(() => {
@@ -482,11 +538,17 @@ export function MobileHistoryDrawer<C extends DrawerConv>(props: MobileHistoryDr
     </>
   )
 
+  const rootStyle: CSSProperties & Record<string, string | number> = {
+    width,
+    '--aid-head-h': `${headH}px`,
+    '--aid-foot-h': `${footH}px`,
+  }
+
   return (
     <div
       className="aid-drawer"
       data-open={open ? 'true' : 'false'}
-      style={{ width }}
+      style={rootStyle}
       onTouchStart={e => { const p = e.touches[0]; swipeRef.current = { x: p.clientX, y: p.clientY } }}
       onTouchEnd={e => {
         const s = swipeRef.current
@@ -500,9 +562,10 @@ export function MobileHistoryDrawer<C extends DrawerConv>(props: MobileHistoryDr
     >
       <style>{CSS}</style>
 
-      {/* En-tête : marque + recherche */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 12px 4px 24px', flexShrink: 0 }}>
-        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 31, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Hybrid</span>
+      {/* En-tête : marque + recherche — barre translucide floutée */}
+      <div ref={headRef} className="aid-head">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 12px 4px 24px' }}>
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Hybrid</span>
         <button type="button" className="aid-btn aid-press"
           onClick={() => { haptic('light'); setSearchOpen(o => { if (o) setQ(''); return !o }) }}
           aria-label={searchOpen ? t('aip.ui.close') : t('aid.search')} aria-expanded={searchOpen}
@@ -533,33 +596,41 @@ export function MobileHistoryDrawer<C extends DrawerConv>(props: MobileHistoryDr
           </div>
         </div>
       )}
+      </div>
 
       <div className="aid-scroll">
         {query ? searchView() : view === 'all' ? allView() : mainView()}
       </div>
 
-      {/* Bas : avatar + nouvelle conversation */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px calc(14px + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Bas : avatar + nouvelle conversation — barre translucide floutée.
+          Proportions façon Claude : avatar et pilule compacts, cible tactile
+          conservée via le padding des boutons (≥ 44 px). */}
+      <div ref={footRef} className="aid-foot" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px calc(12px + env(safe-area-inset-bottom, 0px))' }}>
         <button type="button" className="aid-btn" onClick={() => { haptic('light'); onOpenProfile() }} aria-label={t('aip.accountSettings')}
           style={{
-            width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', padding: 0,
+            width: 44, height: 44, flexShrink: 0, padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <span style={{
+            width: 35, height: 35, borderRadius: '50%', overflow: 'hidden',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'var(--aid-av-bg)', boxShadow: 'var(--aid-av-shadow)', color: 'var(--aid-text)',
-            fontSize: 19, fontWeight: 700,
+            fontSize: 14, fontWeight: 600,
           }}>
-          {avatarUrl
-            ? /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : (initials || '?')}
+            {avatarUrl
+              ? /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (initials || '?')}
+          </span>
         </button>
         <button type="button" className="aid-btn" onClick={onNew}
           style={{
-            flex: 1, minWidth: 0, height: 52, borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0 8px',
-            background: 'var(--aid-pill-bg)', color: 'var(--aid-pill-text)', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em',
+            flex: 1, minWidth: 0, height: 40, borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px',
+            background: 'var(--aid-pill-bg)', color: 'var(--aid-pill-text)', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em',
             boxShadow: 'var(--aid-av-shadow)',
           }}>
-          <Plus size={18} strokeWidth={2.4} style={{ flexShrink: 0 }} />
+          <Plus size={16} strokeWidth={2.4} style={{ flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('w1i.new_conversation')}</span>
         </button>
       </div>

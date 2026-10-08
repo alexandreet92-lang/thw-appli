@@ -7,8 +7,9 @@
 // ══════════════════════════════════════════════════════════════
 
 import { Switch } from '@/components/shadcn/switch'
-import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, useRef, createContext, useContext, forwardRef } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'
@@ -27,7 +28,6 @@ import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 import { openSubscriptionChange } from '@/lib/subscriptions/startSubscriptionChange'
 import PressPop from '@/components/ui/PressPop'
 import { SlideOverlay } from '@/components/ui/SlideOverlay'
-import { SlideView } from '@/components/ui/SlideView'
 import RoutinesView from '@/components/ai/RoutinesView'
 import { ModelEffigy, type EffigyModel } from '@/components/ai/ModelEffigy'
 import { hasAIConsent, setAIConsent, syncAIConsentFromAccount, AI_CONSENT_EVENT } from '@/components/ai/aiConsent'
@@ -147,6 +147,175 @@ function PresetChip({ onClick, children }: { onClick: () => void; children: Reac
   )
 }
 
+// ── Repli i18n : utilise la clé si elle existe, sinon le texte français fourni.
+// (Les clés `aio.*` ci-dessous sont à ajouter au dictionnaire ; en attendant,
+//  le repli affiche un libellé correct plutôt que la clé brute.)
+function tf(t: (k: string) => string, key: string, fallback: string): string {
+  const v = t(key)
+  return v === key ? fallback : v
+}
+
+// ── Petites icônes partagées des sous-pages premium ──
+function CheckMark({ size = 17 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+}
+function RadioMark({ on }: { on: boolean }) {
+  return (
+    <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: `2px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 0.15s, background 0.15s' }}>
+      {on && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--on-primary)' }} />}
+    </span>
+  )
+}
+
+// Carte « réglage » groupée : en-tête discret + surface neutre arrondie, lignes
+// séparées par un filet (grammaire iOS/Claude). Fond neutre (pas de surface
+// colorée pleine) — la sélection se porte par la teinte primaire sur la ligne.
+function SettingsCard({ title, children, style }: { title?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ marginBottom: 18, ...style }}>
+      {title && <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '0 4px 9px', fontFamily: FB }}>{title}</div>}
+      <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>{children}</div>
+    </div>
+  )
+}
+
+// Ligne d'option sélectionnable (tuile · libellé + description · aperçu · coche).
+function OptionRow({ icon, label, desc, preview, selected, onClick, first }: {
+  icon?: React.ReactNode; label: React.ReactNode; desc?: React.ReactNode; preview?: React.ReactNode
+  selected: boolean; onClick: () => void; first?: boolean
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left', minHeight: 56, padding: '12px 15px', border: 'none', borderTop: first ? 'none' : '1px solid var(--border)', background: selected ? 'var(--primary-dim)' : 'transparent', cursor: 'pointer', fontFamily: FB, transition: 'background 0.15s' }}>
+      {icon}
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: selected ? 'var(--primary)' : 'var(--text)', lineHeight: 1.3 }}>{label}</span>
+        {desc && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.4 }}>{desc}</span>}
+      </span>
+      {preview}
+      <span style={{ width: 20, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', color: 'var(--primary)' }}>{selected && <CheckMark />}</span>
+    </button>
+  )
+}
+
+// Tuile « code langue » (FR / EN / ES) — neutre, non colorée.
+function CodeTile({ code, on }: { code: string; on: boolean }) {
+  return (
+    <span style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, letterSpacing: '0.02em', fontFamily: FB, color: on ? 'var(--primary)' : 'var(--text-mid)', background: on ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-card2)' }}>
+      {code}
+    </span>
+  )
+}
+
+// Aperçu « forme d'onde » du style de voix (douce / neutre / énergique).
+const STYLE_WAVE: Record<string, number[]> = {
+  douce:     [5, 7, 6, 8, 6, 7, 5],
+  neutre:    [5, 10, 7, 12, 7, 10, 5],
+  energique: [4, 14, 7, 16, 6, 13, 5],
+}
+function VoiceWave({ shape, on }: { shape: string; on: boolean }) {
+  const bars = STYLE_WAVE[shape] ?? STYLE_WAVE.neutre
+  const col = on ? 'var(--primary)' : 'var(--text-dim)'
+  return (
+    <svg width={46} height={20} viewBox="0 0 46 20" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      {bars.map((h, i) => (
+        <rect key={i} x={i * 7 + 1} y={10 - h / 2} width={3.4} height={h} rx={1.7} fill={col} opacity={on ? 1 : 0.65} />
+      ))}
+    </svg>
+  )
+}
+
+// Segmenté compact (vitesse) : piste neutre, segment actif surélevé.
+function SpeedSegment({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: readonly (readonly [string, string])[] }) {
+  return (
+    <div style={{ display: 'flex', gap: 3, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
+      {options.map(([v, l]) => {
+        const on = v === value
+        return (
+          <button key={v} type="button" onClick={() => onChange(v)}
+            style={{ flex: 1, minHeight: 42, borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontFamily: FB, fontSize: 14, fontWeight: on ? 700 : 500, color: on ? 'var(--text)' : 'var(--text-mid)', background: on ? 'var(--bg-card)' : 'transparent', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', transition: 'background 0.16s, color 0.16s' }}>{/* design-allow-color — ombre douce du segment actif */}
+            {l}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════
+// Motion drill-down (mobile) — poussée iOS auto-portée : la page entrante
+// glisse depuis la droite, la page parente recule de 30 % ET s'assombrit
+// (opacité) ; retour = inverse. Glissement interactif : depuis le bord gauche
+// OU en tirant la page vers la droite, elle suit le doigt ; relâchée au-delà du
+// seuil elle revient en arrière, sinon ressort. Transform/opacité uniquement.
+// (Copie locale enrichie de ui/SlideView, que je ne possède pas.)
+const PUSH_EDGE = 60
+const pushVw = () => (typeof window === 'undefined' ? 390 : window.innerWidth)
+
+const SettingsPushPage = forwardRef<HTMLDivElement, { children: React.ReactNode; direction: number; reduce: boolean; onBack?: () => void; background: string }>(
+  function SettingsPushPage({ children, direction, reduce, onBack, background }, ref) {
+    const x = useMotionValue(0)
+    const st = useRef({ x0: 0, y0: 0, armed: false, decided: false })
+    const start = (e: React.TouchEvent) => {
+      if (!onBack) return
+      const tt = e.touches[0]
+      st.current = { x0: tt.clientX, y0: tt.clientY, armed: true, decided: false }
+      if (tt.clientX <= PUSH_EDGE) e.stopPropagation()
+    }
+    const move = (e: React.TouchEvent) => {
+      if (!st.current.armed) return
+      const tt = e.touches[0]
+      const dx = tt.clientX - st.current.x0
+      const dy = tt.clientY - st.current.y0
+      if (!st.current.decided) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+        st.current.decided = true
+        // Gauche→droite dominant : c'est un « retour ». Sinon on rend le geste au scroll.
+        const fromEdge = st.current.x0 <= PUSH_EDGE
+        if (Math.abs(dy) > Math.abs(dx) || dx <= 0 || (!fromEdge && Math.abs(dx) < Math.abs(dy) * 1.5)) { st.current.armed = false; return }
+      }
+      e.stopPropagation()
+      x.set(Math.max(0, dx))
+    }
+    const end = () => {
+      if (!st.current.armed) return
+      st.current.armed = false
+      if (x.get() > pushVw() * 0.32) onBack?.()
+      else void animate(x, 0, { type: 'spring', stiffness: 430, damping: 40 })
+    }
+    return (
+      <motion.div ref={ref} custom={direction}
+        style={{ x, background, touchAction: 'pan-y', willChange: 'transform, opacity', position: 'relative' }}
+        variants={{
+          enter:  (d: number) => ({ x: reduce ? 0 : d > 0 ? pushVw() : -pushVw() * 0.3, opacity: reduce ? 1 : d > 0 ? 1 : 0.5 }),
+          center: { x: 0, opacity: 1 },
+          exit:   (d: number) => ({ x: reduce ? 0 : d > 0 ? -pushVw() * 0.3 : pushVw(), opacity: reduce ? 1 : d > 0 ? 0.5 : 1 }),
+        }}
+        initial="enter" animate="center" exit="exit"
+        transition={{ duration: reduce ? 0.12 : 0.36, ease: [0.32, 0.72, 0, 1] }}
+        onTouchStart={start} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}>
+        <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -24, width: 24, pointerEvents: 'none', background: 'var(--edge-shadow)' }} />
+        {children}
+      </motion.div>
+    )
+  },
+)
+
+function SettingsPush({ screenKey, direction, onBack, background, children }: { screenKey: string; direction: number; onBack?: () => void; background: string; children: React.ReactNode }) {
+  const reduce = useReducedMotion() ?? false
+  return (
+    <div style={{ position: 'relative', overflowX: 'clip' }}>
+      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+        <SettingsPushPage key={screenKey} direction={direction} reduce={reduce} onBack={onBack} background={background}>
+          {children}
+        </SettingsPushPage>
+      </AnimatePresence>
+    </div>
+  )
+}
+
 function NotifRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
@@ -211,6 +380,16 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [mVals, setMVals] = useState<{ routines: number | null; systems: number | null; connectors: number | null; tier: string | null }>({ routines: null, systems: null, connectors: null, tier: null })
   const mScrollRef = useRef<HTMLDivElement>(null)
   const mScrollPos = useRef<number[]>([])
+  // Glisser vers le bas pour fermer la surpage mobile (y = décalage vertical).
+  // L'ouverture / fermeture pilote aussi ce `y` (bas → 0 / 0 → bas d'écran).
+  const mSheetY = useMotionValue(typeof window === 'undefined' ? 800 : window.innerHeight)
+  const sheetDrag = useRef<{ y0: number; active: boolean }>({ y0: 0, active: false })
+  useEffect(() => {
+    if (!isMobile) return
+    const h = typeof window === 'undefined' ? 800 : window.innerHeight
+    const controls = animate(mSheetY, shown ? 0 : h, { duration: shown ? 0.36 : 0.3, ease: [0.32, 0.72, 0, 1] })
+    return () => controls.stop()
+  }, [shown, isMobile, mSheetY])
   useEffect(() => { if (open) { setMStack(['root']); setMDir(1) } }, [open])
   const loadRoutineCount = useCallback(() => {
     void listRoutines().then(r => setMVals(v => ({ ...v, routines: r.length }))).catch(() => { /* valeur masquée */ })
@@ -485,22 +664,43 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
       </div>
     )
 
+    // Glisser-pour-fermer : la poignée et l'en-tête (hors boutons) sont saisissables.
+    const onSheetDown = (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button')) return
+      sheetDrag.current = { y0: e.clientY, active: true }
+    }
+    const onSheetMove = (e: React.PointerEvent) => {
+      if (!sheetDrag.current.active) return
+      mSheetY.set(Math.max(0, e.clientY - sheetDrag.current.y0))
+    }
+    const onSheetUp = () => {
+      if (!sheetDrag.current.active) return
+      sheetDrag.current.active = false
+      const h = typeof window === 'undefined' ? 800 : window.innerHeight
+      if (mSheetY.get() > 120) void animate(mSheetY, h, { duration: 0.24, ease: [0.32, 0.72, 0, 1] }).then(() => onClose())
+      else void animate(mSheetY, 0, { type: 'spring', stiffness: 460, damping: 42 })
+    }
+
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 13800, background: PAGE_BG, display: 'flex', flexDirection: 'column', fontFamily: MFB,
-        transform: shown ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' }}>
+      <motion.div style={{ position: 'fixed', inset: 0, zIndex: 13800, background: PAGE_BG, display: 'flex', flexDirection: 'column', fontFamily: MFB, y: mSheetY, willChange: 'transform' }}>
         <style>{`@keyframes thwDDin { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .thw-conn-row:hover { background: var(--bg-hover); }`}</style>
-        <MobileHeader
-          left={<RoundBtn label={t('w1a.retour')} onClick={mPop}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>}
-          title={mLabel(mTop)}
-          right={<RoundBtn label={t('w1a.fermer')} onClick={onClose}><Ico d={ICON.close} size={20} sw={2.2} /></RoundBtn>}
-        />
+        <div onPointerDown={onSheetDown} onPointerMove={onSheetMove} onPointerUp={onSheetUp} onPointerCancel={onSheetUp} style={{ flexShrink: 0, touchAction: 'none' }}>
+          <div aria-hidden style={{ display: 'flex', justifyContent: 'center', paddingTop: 'max(7px, env(safe-area-inset-top))' }}>
+            <span style={{ width: 38, height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-bar)' }} />
+          </div>
+          <MobileHeader
+            left={<RoundBtn label={t('w1a.retour')} onClick={mPop}><Ico d={ICON.back} size={22} sw={2.2} /></RoundBtn>}
+            title={mLabel(mTop)}
+            right={<RoundBtn label={t('w1a.fermer')} onClick={onClose}><Ico d={ICON.close} size={20} sw={2.2} /></RoundBtn>}
+          />
+        </div>
         <div ref={mScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: '4px 16px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
-          <SlideView screenKey={String(mTop)} direction={mDir} variant="push" background={PAGE_BG} onBack={mStack.length > 1 ? mPop : undefined}>
+          <SettingsPush screenKey={String(mTop)} direction={mDir} background={PAGE_BG} onBack={mStack.length > 1 ? mPop : undefined}>
             {mTop === 'root' ? root
               : mTop === 'agents' ? agents
               : mTop === 'confidentialite' ? privacy
               : <MobilePaneCtx.Provider value={true}><div style={{ paddingTop: 8 }}>{sectionPane}</div></MobilePaneCtx.Provider>}
-          </SlideView>
+          </SettingsPush>
         </div>
         {routinesOpen && createPortal(
           <SlideOverlay onClosed={() => { setRoutinesOpen(false); loadRoutineCount() }}>
@@ -508,7 +708,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
           </SlideOverlay>,
           document.body,
         )}
-      </div>
+      </motion.div>
     )
   }
 
@@ -671,16 +871,24 @@ const INSTRUCTION_PRESETS = [
 ]
 function InstructionsSection({ value, setValue, save }: { value: string; setValue: (v: string) => void; save: (v: string) => void }) {
   const { t } = useI18n()
+  const mobile = useContext(MobilePaneCtx)
+  const presets = (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+      {INSTRUCTION_PRESETS.map((_, i) => { const text = t(`w1a.preset_${i}_text`); return <PresetChip key={i} onClick={() => { setValue(text); save(text) }}>{t(`w1a.preset_${i}_label`)}</PresetChip> })}
+    </div>
+  )
+  const field = (
+    <textarea value={value} onChange={e => setValue(e.target.value)} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); save(value) }} rows={7}
+      placeholder={t('w1a.instructionsPh')}
+      style={{ ...inputStyle, fontSize: 14, lineHeight: 1.55, resize: 'vertical', maxWidth: mobile ? '100%' : 640 }} />
+  )
   return (
-    <div>
+    <div style={{ maxWidth: 640 }}>
       <SectionTitle>{t('w1a.navInstructions')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.instructionsLead')}</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {INSTRUCTION_PRESETS.map((_, i) => { const text = t(`w1a.preset_${i}_text`); return <PresetChip key={i} onClick={() => { setValue(text); save(text) }}>{t(`w1a.preset_${i}_label`)}</PresetChip> })}
-      </div>
-      <textarea value={value} onChange={e => setValue(e.target.value)} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); save(value) }} rows={7}
-        placeholder={t('w1a.instructionsPh')}
-        style={{ ...inputStyle, fontSize: 14, lineHeight: 1.55, resize: 'vertical', maxWidth: 640 }} />
+      {mobile
+        ? <SettingsCard title={tf(t, 'aio.instr_presets', 'Styles rapides')}><div style={{ padding: '14px 14px 2px' }}>{presets}{field}</div></SettingsCard>
+        : <>{presets}{field}</>}
     </div>
   )
 }
@@ -688,21 +896,32 @@ function InstructionsSection({ value, setValue, save }: { value: string; setValu
 // ── Modèle par défaut ──────────────────────────────────────────
 function ModeleSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
-  const mobile = useContext(MobilePaneCtx)
-  const MODELS: [string, string, string][] = [['hermes', 'Hermès', t('w1a.speedRapide')], ['athena', 'Athéna', t('w1a.speedEquilibre')], ['zeus', 'Zeus', t('w1a.speedMax')]]
+  const MODELS: { id: EffigyModel; name: string; tag: string; desc: string }[] = [
+    { id: 'hermes', name: 'Hermès', tag: t('w1a.speedRapide'), desc: tf(t, 'aio.model_hermes_desc', 'Réponses quasi instantanées, idéales pour les questions rapides du quotidien.') },
+    { id: 'athena', name: 'Athéna', tag: t('w1a.speedEquilibre'), desc: tf(t, 'aio.model_athena_desc', 'Le meilleur équilibre entre vitesse et profondeur. Recommandé par défaut.') },
+    { id: 'zeus', name: 'Zeus', tag: t('w1a.speedMax'), desc: tf(t, 'aio.model_zeus_desc', 'Le raisonnement le plus poussé, pour l’analyse et la planification complexes.') },
+  ]
   return (
-    <div>
+    <div style={{ maxWidth: 520 }}>
       <SectionTitle>{t('w1a.navModele')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.modeleLead')}</p>
-      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)' }}>
-        {MODELS.map(([id, label, speed]) => {
-          const on = value === id
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {MODELS.map(m => {
+          const on = value === m.id
           return (
-            <button key={id} type="button" onClick={() => onChange(id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-dim)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
-              {mobile && <ModelEffigy model={id as EffigyModel} size={16} />}
-              <span style={{ fontSize: 14, fontWeight: on ? 600 : 500 }}>{label}</span>
-              <span style={{ fontSize: 10.5, color: on ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 500 }}>{speed}</span>
+            <button key={m.id} type="button" onClick={() => onChange(m.id)}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 14, width: '100%', textAlign: 'left', padding: '15px 16px', borderRadius: 'var(--r-md)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-card)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.16s' }}>
+              <span style={{ width: 46, height: 46, borderRadius: 'var(--r-md)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'color-mix(in srgb, var(--primary) 16%, transparent)' : 'var(--bg-card2)' }}>
+                <ModelEffigy model={m.id} size={26} />
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{m.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: on ? 'var(--primary)' : 'var(--text-mid)', background: on ? 'transparent' : 'var(--bg-card2)', padding: on ? 0 : '2px 8px', borderRadius: 'var(--r-pill)', fontFamily: FB }}>{m.tag}</span>
+                </span>
+                <span style={{ display: 'block', fontSize: 13, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.45 }}>{m.desc}</span>
+              </span>
+              <span style={{ flexShrink: 0, display: 'flex', paddingTop: 2 }}><RadioMark on={on} /></span>
             </button>
           )
         })}
@@ -788,15 +1007,37 @@ function StudioSection() {
 // ── Voix ───────────────────────────────────────────────────────
 function VoixSection({ voice, save }: { voice: { lang: string; style: string; speed: string }; save: (v: { lang: string; style: string; speed: string }) => void }) {
   const { t } = useI18n()
+  const LANGS: [string, string, string][] = [['fr-FR', t('w1a.langFr'), 'FR'], ['en-US', t('w1a.langEn'), 'EN'], ['es-ES', t('w1a.langEs'), 'ES']]
+  const STYLES: [string, string, string][] = [
+    ['douce', t('w1a.styleDouce'), tf(t, 'aio.voice_style_douce_desc', 'Posée et chaleureuse, pour un accompagnement en douceur.')],
+    ['neutre', t('w1a.styleNeutre'), tf(t, 'aio.voice_style_neutre_desc', 'Claire et équilibrée. Le ton par défaut.')],
+    ['energique', t('w1a.styleEnergique'), tf(t, 'aio.voice_style_energique_desc', 'Dynamique et motivant, pour se mettre en action.')],
+  ]
+  const SPEEDS: [string, string][] = [['lent', t('w1a.vitesseLent')], ['normal', t('w1a.vitesseNormal')], ['rapide', t('w1a.vitesseRapide')]]
   return (
-    <div>
+    <div style={{ maxWidth: 520 }}>
       <SectionTitle>{t('w1a.navVoix')}</SectionTitle>
       <p style={sectionLead}>{t('w1a.voixLead')}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 420 }}>
-        <div><label style={fieldLabel}>{t('w1a.langue')}</label><Dropdown value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', t('w1a.langFr')], ['en-US', t('w1a.langEn')], ['es-ES', t('w1a.langEs')]]} /></div>
-        <div><label style={fieldLabel}>{t('w1a.style')}</label><Dropdown value={voice.style} onChange={v => save({ ...voice, style: v })} options={[['douce', t('w1a.styleDouce')], ['neutre', t('w1a.styleNeutre')], ['energique', t('w1a.styleEnergique')]]} /></div>
-        <div><label style={fieldLabel}>{t('w1a.vitesse')}</label><Dropdown value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={[['lent', t('w1a.vitesseLent')], ['normal', t('w1a.vitesseNormal')], ['rapide', t('w1a.vitesseRapide')]]} /></div>
-      </div>
+
+      <SettingsCard title={t('w1a.langue')}>
+        {LANGS.map(([v, l, code], i) => (
+          <OptionRow key={v} first={i === 0} selected={voice.lang === v} onClick={() => save({ ...voice, lang: v })}
+            icon={<CodeTile code={code} on={voice.lang === v} />} label={l} />
+        ))}
+      </SettingsCard>
+
+      <SettingsCard title={t('w1a.style')}>
+        {STYLES.map(([v, l, desc], i) => (
+          <OptionRow key={v} first={i === 0} selected={voice.style === v} onClick={() => save({ ...voice, style: v })}
+            label={l} desc={desc} preview={<VoiceWave shape={v} on={voice.style === v} />} />
+        ))}
+      </SettingsCard>
+
+      <SettingsCard title={t('w1a.vitesse')}>
+        <div style={{ padding: 12 }}>
+          <SpeedSegment value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={SPEEDS} />
+        </div>
+      </SettingsCard>
     </div>
   )
 }
@@ -807,11 +1048,43 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
   setPushState: (s: PushState) => void; patchPref: (k: string, v: boolean) => void; setGlobal: (v: boolean) => void
 }) {
   const { t } = useI18n()
+  const mobile = useContext(MobilePaneCtx)
   const [busy, setBusy] = useState(false)
   const togglePush = async () => {
     if (busy) return; setBusy(true)
     try { setPushState(pushState === 'on' ? await disablePush() : await enablePush()) } finally { setBusy(false) }
   }
+  const deviceDesc = pushState === 'denied' ? t('w1a.notifDenied') : pushState === 'unconfigured' ? t('w1a.notifUnconfigured') : t('w1a.notifDefault')
+  // Ligne « interrupteur » dans une carte groupée (mobile) : padding interne,
+  // filet séparateur. Réutilise exactement les mêmes valeurs/handlers.
+  const CardToggleRow = ({ title, desc, value, onChange, first }: { title: string; desc?: string; value: boolean; onChange: (v: boolean) => void; first?: boolean }) => (
+    <div style={{ display: 'flex', alignItems: desc ? 'flex-start' : 'center', gap: 16, padding: '14px 15px', borderTop: first ? 'none' : '1px solid var(--border)' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', fontFamily: FB }}>{title}</div>
+        {desc && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5, fontFamily: FB }}>{desc}</div>}
+      </div>
+      <Toggle value={value} onChange={onChange} />
+    </div>
+  )
+
+  if (mobile) {
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <SectionTitle>{t('w1a.navNotifications')}</SectionTitle>
+        <p style={sectionLead}>{t('w1a.notificationsLead')}</p>
+        <SettingsCard>
+          {pushState !== 'unsupported' && (
+            <CardToggleRow first title={t('w1a.notifAppareil')} desc={deviceDesc} value={pushState === 'on'} onChange={() => { if (pushState === 'off' || pushState === 'on') void togglePush() }} />
+          )}
+          <CardToggleRow first={pushState === 'unsupported'} title={t('w1a.toutesNotifs')} value={globalNotif} onChange={setGlobal} />
+        </SettingsCard>
+        <SettingsCard title={tf(t, 'aio.notif_categories', 'Catégories')} style={{ opacity: globalNotif ? 1 : 0.5, pointerEvents: globalNotif ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
+          {CURATED_NOTIFS.map((n, i) => <CardToggleRow key={n.key} first={i === 0} title={t(`w1a.notif_${n.key}_title`)} desc={t(`w1a.notif_${n.key}_desc`)} value={prefs[n.key] ?? n.def} onChange={(v) => patchPref(n.key, v)} />)}
+        </SettingsCard>
+      </div>
+    )
+  }
+
   return (
     <div>
       <SectionTitle>{t('w1a.navNotifications')}</SectionTitle>
@@ -820,11 +1093,7 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('w1a.notifAppareil')}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>
-              {pushState === 'denied' ? t('w1a.notifDenied')
-                : pushState === 'unconfigured' ? t('w1a.notifUnconfigured')
-                : t('w1a.notifDefault')}
-            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>{deviceDesc}</div>
           </div>
           <Toggle value={pushState === 'on'} onChange={() => { if (pushState === 'off' || pushState === 'on') void togglePush() }} />
         </div>

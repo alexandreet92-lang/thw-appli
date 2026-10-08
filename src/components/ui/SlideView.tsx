@@ -11,7 +11,8 @@
 //    doigt ; relâchée au-delà du seuil elle revient en arrière, sinon elle
 //    reprend sa place (ressort).
 import { forwardRef, useRef, type ReactNode, type TouchEvent } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
+import { haptic } from '@/lib/haptics'
 
 interface Props {
   /** Clé unique de l'écran courant — un changement déclenche la transition. */
@@ -27,6 +28,7 @@ interface Props {
 }
 
 const EDGE = 44          // zone de départ du glissement (px depuis le bord gauche)
+const DIM = 0.12         // opacité max du voile sur la page parente (recule à gauche)
 const vw = () => (typeof window === 'undefined' ? 390 : window.innerWidth)
 
 interface PushProps {
@@ -40,31 +42,44 @@ interface PushProps {
 // Page « poussée » : porte son propre décalage (x) pour suivre le doigt.
 const PushPage = forwardRef<HTMLDivElement, PushProps>(function PushPage({ children, direction, reduce, onBack, background }, ref) {
   const x = useMotionValue(0)
-  const st = useRef({ x0: 0, y0: 0, active: false, decided: false })
+  const st = useRef({ x0: 0, y0: 0, active: false, decided: false, past: false, lp: 0, lt: 0, v: 0 })
+  // Voile iOS : la page parente s'assombrit en reculant vers la gauche (x négatif),
+  // s'éclaircit en revenant. Aucune teinte quand la page est au repos ou glisse à droite.
+  const dim = useTransform(x, [-vw() * 0.3, 0], reduce ? [0, 0] : [DIM, 0], { clamp: true })
 
   const start = (e: TouchEvent) => {
     const t = e.touches[0]
-    st.current = { x0: t.clientX, y0: t.clientY, active: !!onBack && t.clientX <= EDGE, decided: false }
+    const el = e.target instanceof Element ? e.target : null
+    const inField = !!el?.closest('input, textarea, select, [contenteditable="true"], [data-no-sheet-drag]')
+    st.current = { x0: t.clientX, y0: t.clientY, active: !!onBack && !inField && t.clientX <= EDGE, decided: false, past: false, lp: t.clientX, lt: e.timeStamp, v: 0 }
     // Le geste du bord gauche appartient à cette page : la sidebar (shell) ne doit pas s'armer.
     if (st.current.active) e.stopPropagation()
   }
   const move = (e: TouchEvent) => {
-    if (!st.current.active) return
+    const s = st.current
+    if (!s.active) return
     const t = e.touches[0]
-    const dx = t.clientX - st.current.x0
-    const dy = t.clientY - st.current.y0
-    if (!st.current.decided) {
+    const dx = t.clientX - s.x0
+    const dy = t.clientY - s.y0
+    if (!s.decided) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-      st.current.decided = true
-      if (Math.abs(dy) > Math.abs(dx)) { st.current.active = false; return }
+      s.decided = true
+      if (Math.abs(dy) > Math.abs(dx)) { s.active = false; return }
     }
     e.stopPropagation()
+    const dt = e.timeStamp - s.lt
+    if (dt > 0) s.v = 0.8 * ((t.clientX - s.lp) / dt) + 0.2 * s.v
+    s.lp = t.clientX; s.lt = e.timeStamp
     x.set(Math.max(0, dx))
+    const past = dx > vw() * 0.3
+    if (past !== s.past) { s.past = past; haptic('light') }
   }
   const end = () => {
-    if (!st.current.active) return
-    st.current.active = false
-    if (x.get() > vw() * 0.3) onBack?.()
+    const s = st.current
+    if (!s.active) return
+    s.active = false
+    // Retour si distance > 30 % OU flick rapide vers la droite.
+    if (x.get() > vw() * 0.3 || (s.v > 0.5 && x.get() > 12)) onBack?.()
     else void animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
   }
 
@@ -89,6 +104,8 @@ const PushPage = forwardRef<HTMLDivElement, PushProps>(function PushPage({ child
     >
       {/* Ombre du bord gauche (sans débordement vertical) */}
       <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: -24, width: 24, pointerEvents: 'none', background: 'var(--edge-shadow)' }} />
+      {/* Voile iOS sur la page parente pendant le push (transform/opacity seulement). */}
+      <motion.div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1, background: '#000', opacity: dim }} /> {/* design-allow-color — voile de profondeur iOS */}
       {children}
     </motion.div>
   )

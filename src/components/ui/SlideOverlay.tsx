@@ -23,7 +23,7 @@ export function SlideOverlay({ onClosed, children, zIndex = 18000 }: {
 }) {
   const x = useMotionValue(vw())
   const closing = useRef(false)
-  const g = useRef({ x0: 0, y0: 0, active: false, decided: false, past: false })
+  const g = useRef({ x0: 0, y0: 0, active: false, decided: false, past: false, lp: 0, lt: 0, v: 0 })
 
   useEffect(() => {
     const c = animate(x, 0, { duration: 0.42, ease: EASE })
@@ -33,12 +33,17 @@ export function SlideOverlay({ onClosed, children, zIndex = 18000 }: {
   const close = useCallback(() => {
     if (closing.current) return
     closing.current = true
-    animate(x, vw(), { duration: 0.36, ease: EASE, onComplete: onClosed })
+    // Durée calée sur la vitesse du geste (flick) ; sinon sortie standard.
+    const remaining = Math.max(1, vw() - x.get())
+    const ms = Math.max(160, Math.min(360, remaining / Math.max(Math.abs(g.current.v), 1.1)))
+    animate(x, vw(), { duration: ms / 1000, ease: EASE, onComplete: onClosed })
   }, [x, onClosed])
 
   const start = (e: TouchEvent) => {
     const t = e.touches[0]
-    g.current = { x0: t.clientX, y0: t.clientY, active: t.clientX <= EDGE, decided: false, past: false }
+    const el = e.target instanceof Element ? e.target : null
+    if (el?.closest('input, textarea, select, [contenteditable="true"], [data-no-sheet-drag]')) { g.current.active = false; return }
+    g.current = { x0: t.clientX, y0: t.clientY, active: t.clientX <= EDGE, decided: false, past: false, lp: t.clientX, lt: e.timeStamp, v: 0 }
   }
   const move = (e: TouchEvent) => {
     const s = g.current
@@ -50,6 +55,9 @@ export function SlideOverlay({ onClosed, children, zIndex = 18000 }: {
       s.decided = true
       if (Math.abs(dy) > Math.abs(dx)) { s.active = false; return }
     }
+    const dt = e.timeStamp - s.lt
+    if (dt > 0) s.v = 0.8 * ((t.clientX - s.lp) / dt) + 0.2 * s.v
+    s.lp = t.clientX; s.lt = e.timeStamp
     x.set(Math.max(0, dx))
     const past = dx > vw() * 0.3
     if (past !== s.past) { s.past = past; haptic('light') }
@@ -58,7 +66,8 @@ export function SlideOverlay({ onClosed, children, zIndex = 18000 }: {
     const s = g.current
     if (!s.active) return
     s.active = false
-    if (x.get() > vw() * 0.3) close()
+    // Fermeture si distance > 30 % OU flick rapide vers la droite.
+    if (x.get() > vw() * 0.3 || (s.v > 0.5 && x.get() > 12)) close()
     else animate(x, 0, { type: 'spring', stiffness: 380, damping: 36 })
   }
 

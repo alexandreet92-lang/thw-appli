@@ -126,36 +126,56 @@ function stopWebkitFallback(): void {
   try { navigator.geolocation.clearWatch(id) } catch { /* ignore */ }
 }
 
-/** Vérifie puis, si besoin, demande l'autorisation (prompt iOS « Lorsque
- *  l'app est active »). Ne bloque jamais indéfiniment côté appelant. Si la voie
- *  native n'aboutit pas, on tente la voie WebKit (qui marche sur iOS 15+). */
+// Demande l'autorisation via le plugin BACKGROUND (addWatcher + requestPermissions).
+// FIABLE là où @capacitor/geolocation.requestPermissions se BLOQUE à l'infini sur
+// iOS (constaté : le plugin foreground ne résout jamais sa promesse → la fenêtre
+// système ne s'affiche jamais). addWatcher, lui, déclenche bien la fenêtre iOS et
+// rappelle avec une position (accordé) ou NOT_AUTHORIZED (refusé). Watcher
+// transitoire : on le retire dès la 1re réponse.
+async function requestViaBgPlugin(): Promise<GeoPermission> {
+  const p = await bgPlugin()
+  if (!p) return 'unknown'
+  return new Promise<GeoPermission>(resolve => {
+    let settled = false
+    let id: string | null = null
+    const done = (r: GeoPermission) => {
+      if (settled) return
+      settled = true
+      if (id != null) { const w = id; try { void p.removeWatcher({ id: w }) } catch { /* ignore */ } }
+      resolve(r)
+    }
+    p.addWatcher(
+      { requestPermissions: true, stale: false, distanceFilter: 50 },
+      (position, err) => {
+        if (err) { done(err.code === 'NOT_AUTHORIZED' ? 'denied' : 'unknown'); return }
+        if (position) done('granted')
+      },
+    ).then(w => { id = w; if (settled) { try { void p.removeWatcher({ id: w }) } catch { /* ignore */ } } })
+      .catch(() => done('unknown'))
+    // La fenêtre attend peut-être la réponse de l'utilisateur : on ne bloque pas
+    // l'appelant au-delà de 30 s (il re-vérifiera l'état au retour au premier plan).
+    setTimeout(() => done('prompt'), 30000)
+  })
+}
+
+/** Vérifie puis, si besoin, demande l'autorisation (fenêtre iOS « Lorsque
+ *  l'app est active »). Ne bloque jamais indéfiniment côté appelant. La DEMANDE
+ *  passe par le plugin background (le plugin foreground se bloque sur iOS) ; la
+ *  voie WebKit reste un ultime repli. */
 export async function ensureNativeGeoPermission(): Promise<GeoPermission> {
-  const Geo = await plugin()
-  let st: string
+  // 1) État courant via checkPermissions (NE bloque pas, contrairement à
+  //    requestPermissions du plugin foreground).
   try {
-    st = (await Geo.checkPermissions()).location
-  } catch (e) {
-    // Plugin natif indisponible → la WKWebView peut quand même géolocaliser.
-    if (await webkitCanLocate()) return 'granted'
-    return classifyGeoError(e).kind === 'disabled' ? 'disabled' : 'unknown'
-  }
-  if (st === 'granted') return 'granted'
-  // Natif refusé : la WKWebView a sa propre autorisation → si elle marche, GPS OK.
-  if (st === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
-  // 'prompt' / 'prompt-with-rationale' → on demande au système natif.
-  try {
-    const r = await Geo.requestPermissions({ permissions: ['location'] })
-    if (r.location === 'granted') return 'granted'
-    if (r.location === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
-  } catch (e) {
-    const k = classifyGeoError(e).kind
-    if (k === 'disabled') return 'disabled'
-    if (k === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
-  }
-  // La fenêtre native ne s'est pas affichée / pas de réponse exploitable :
-  // dernier recours, la voie WebKit (déclenche son propre prompt si besoin).
+    const st = (await (await plugin()).checkPermissions()).location
+    if (st === 'granted') return 'granted'
+    if (st === 'denied') return (await webkitCanLocate()) ? 'granted' : 'denied'
+  } catch { /* on tente quand même la demande via le plugin background */ }
+  // 2) Demande via le plugin BACKGROUND (fiable) → déclenche la fenêtre iOS.
+  const r = await requestViaBgPlugin()
+  if (r === 'granted' || r === 'denied' || r === 'disabled') return r
+  // 3) Dernier recours : WebKit (iOS 15+).
   if (await webkitCanLocate()) return 'granted'
-  return 'prompt'
+  return r
 }
 
 /** Lit l'autorisation SANS la demander (pas de prompt iOS). Web : 'granted'
@@ -354,17 +374,22 @@ async function stopBackgroundWatch(): Promise<void> {
   try { await (await bgPlugin())?.removeWatcher({ id }) } catch { /* ignore */ }
 }
 
-async function startBackgroundWatch(): Promise<void> {
-  if (bgWatcherId != null || bgStarting || !subs.size || !backgroundMode) return
+// Watcher UNIFIÉ (foreground ET background) via @capacitor-community/background-
+// geolocation. On l'utilise aussi en foreground car le plugin @capacitor/geolocation
+// se bloque sur iOS (requestPermissions + watchPosition sans réponse). Celui-ci
+// répond. Foreground : pas de bannière (autorisation « Lorsque active »).
+// Background (séance) : bannière + autorisation « Toujours ».
+async function startBgWatch(): Promise<void> {
+  if (bgWatcherId != null || bgStarting || !subs.size) return
   bgStarting = true
   try {
     const p = await bgPlugin()
-    if (!p) { backgroundMode = false; void startNativeWatch(); return } // repli foreground
-    if (!subs.size || !backgroundMode) return
+    if (!p) { void startNativeWatch(); return } // plugin background absent → repli @capacitor/geolocation
+    if (!subs.size) return
     const id = await p.addWatcher(
-      // backgroundMessage défini → suivi garanti en arrière-plan (iOS active
-      // allowsBackgroundLocationUpdates et demande l'autorisation « Toujours »).
-      { backgroundTitle: BG_TITLE, backgroundMessage: BG_MESSAGE, requestPermissions: true, stale: false, distanceFilter: 5 },
+      backgroundMode
+        ? { backgroundTitle: BG_TITLE, backgroundMessage: BG_MESSAGE, requestPermissions: true, stale: false, distanceFilter: 5 }
+        : { requestPermissions: true, stale: false, distanceFilter: 5 },
       (position, err) => {
         if (err) {
           broadcastErr(err.code === 'NOT_AUTHORIZED'
@@ -380,21 +405,20 @@ async function startBackgroundWatch(): Promise<void> {
       },
     )
     bgWatcherId = id
-    // Désabonnement total ou bascule coupée pendant l'await → on retire aussitôt.
-    if (!subs.size || !backgroundMode) await stopBackgroundWatch()
+    // Désabonnement total pendant l'await → on retire aussitôt.
+    if (!subs.size) await stopBackgroundWatch()
   } catch (e) {
     broadcastErr(classifyGeoError(e))
-    backgroundMode = false
-    void startNativeWatch()
+    void startNativeWatch() // repli @capacitor/geolocation
   } finally {
     bgStarting = false
   }
 }
 
-/** Démarre la BONNE source selon le mode (une seule active à la fois). */
+/** Démarre le suivi (watcher background unifié ; repli @capacitor/geolocation si
+ *  le plugin background est absent). */
 function startActiveWatch(): void {
-  if (backgroundMode) void startBackgroundWatch()
-  else void startNativeWatch()
+  void startBgWatch()
 }
 
 function nativeSubscribe(sub: Sub): GeoHandle {
@@ -481,11 +505,14 @@ export async function setBackgroundTracking(on: boolean): Promise<GeoPermission>
     const perm = await ensureNativeGeoPermission()
     if (perm === 'denied' || perm === 'disabled') return perm
     backgroundMode = true
+    // On relance le watcher unifié en mode background (bannière + « Toujours »).
     await stopNativeWatch()
-    await startBackgroundWatch()
+    await stopBackgroundWatch()
+    await startBgWatch()
     return perm
   }
   backgroundMode = false
+  // Retour au watcher unifié en mode foreground (sans bannière).
   await stopBackgroundWatch()
   startActiveWatch() // reprend le foreground tant qu'il y a des abonnés
   return 'unknown'

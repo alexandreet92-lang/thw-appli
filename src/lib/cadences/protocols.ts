@@ -371,6 +371,402 @@ export const PROTOCOLS: Record<string, Protocol> = {
     saisie: 'Les 5 temps de tour (s), hors récupération : le score est leur somme. Indique la variante de burpee (box / to plate).',
     box: 'Box : 60 cm (hommes) / 40 cm (femmes), 12 burpees box jump par tour.',
   },
+
+  // ══════════════════════════════════════════════════════════════════
+  // BATTERIES DÉDIÉES (Kids / Teens / Start / Senior) + épreuve mixte.
+  // Contenus à relire (flag) : barèmes et détails calés avec Alex.
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── Épreuves partagées (jeunes / adultes) ──
+  shuttle_20m: {
+    objectif: 'Endurance aérobie (VO₂max) par un test de navette progressif (type Léger).',
+    materiel: ['2 plots à 20 m', 'Bande sonore des paliers (bips)', 'Espace plat ~25 m'],
+    etapes: [
+      'Faire des allers-retours entre deux lignes distantes de 20 m, au rythme des bips.',
+      'La vitesse imposée augmente à chaque palier : il faut atteindre la ligne avant le bip.',
+      'On s\'arrête quand on ne tient plus le rythme (deux retards consécutifs).',
+    ],
+    saisie: 'Le nombre de paliers atteints.',
+    securite: 'Effort auto-régulé : on s\'arrête de soi-même. Bonnes chaussures, sol non glissant.',
+    flag: true,
+  },
+  shuttle_10x5m: {
+    objectif: 'Vitesse et coordination dans les changements de direction (test EUROFIT).',
+    materiel: ['2 plots / lignes à 5 m', 'Chrono'],
+    etapes: [
+      'Deux lignes espacées de 5 m. Au signal, courir d\'une ligne à l\'autre.',
+      'Faire 5 allers-retours (10 passages de 5 m). On franchit la ligne à chaque bout avant de repartir.',
+      'Le chrono s\'arrête au 10e franchissement.',
+    ],
+    saisie: 'Le temps total (s).',
+    securite: 'Sol non glissant. Demi-tours contrôlés.',
+    flag: true,
+  },
+  flamingo_balance: {
+    objectif: 'Équilibre statique et coordination.',
+    materiel: ['Chrono', 'Surface plane'],
+    etapes: [
+      'Debout sur une jambe, l\'autre pied plaqué contre le genou d\'appui.',
+      'Mains sur les hanches, yeux fermés.',
+      'On tient le plus longtemps possible (plafonné à 45 s). Chez l\'adulte : 3 essais par pied, on retient le meilleur temps du pied droit + celui du pied gauche.',
+    ],
+    saisie: 'Le temps tenu (s) — adulte : somme du meilleur pied droit et du meilleur pied gauche.',
+    securite: 'À proximité d\'un mur ou d\'un appui pour se rattraper.',
+    flag: true,
+  },
+  row_2000m: {
+    objectif: 'Puissance aérobie et endurance sur rameur.',
+    materiel: ['Rameur (ergomètre)'],
+    etapes: [
+      'Régler l\'écran sur 2000 m. Départ à l\'arrêt.',
+      'Couvrir les 2000 m le plus vite possible en gérant l\'allure.',
+      'Variante débutant : 1000 m (barème dédié) si 2000 m est hors de portée.',
+    ],
+    saisie: 'Le temps (mm:ss) sur la distance réalisée.',
+    allure: 'Partir prudemment : un départ trop rapide effondre le temps final.',
+    flag: true,
+  },
+
+  // ── Kids 8-10 ──
+  shoulder_tap_plank: {
+    objectif: 'Gainage et coordination : stabilité du tronc sous mouvement.',
+    materiel: ['Chrono', 'Tapis'],
+    etapes: [
+      'En position de pompe bras tendus, corps gainé et aligné.',
+      'Toucher l\'épaule opposée avec la main (main droite → épaule gauche et inversement), sans faire bouger le bassin.',
+      '3 séries de 30 s, 1 min de récup. On additionne le nombre de touches des 3 séries.',
+    ],
+    saisie: 'Le total des touches sur les 3 séries.',
+    securite: 'Le bassin reste immobile : pas de balancier. Genoux au sol si besoin.',
+    flag: true,
+  },
+  burpees_nopushup: {
+    objectif: 'Explosivité et cardio (version enfant, sans pompe).',
+    materiel: ['Chrono', 'Tapis'],
+    etapes: [
+      'Depuis debout : mains au sol, sauter les pieds en arrière (planche), revenir, puis saut vertical.',
+      'Pas de pompe en bas (version allégée).',
+      'Faire le maximum de répétitions propres en 40 s.',
+    ],
+    saisie: 'Le nombre de répétitions en 40 s.',
+    securite: 'Réception souple. Rythme maîtrisé.',
+    flag: true,
+  },
+
+  // ── Kids 11-12 ──
+  knee_pushups_30s: {
+    objectif: 'Force du haut du corps (version genoux).',
+    materiel: ['Chrono', 'Tapis'],
+    etapes: [
+      'En appui sur les genoux, mains largeur d\'épaules.',
+      'Descendre la poitrine près du sol puis remonter bras tendus, corps gainé.',
+      'Maximum de répétitions propres en 30 s.',
+    ],
+    saisie: 'Le nombre de répétitions en 30 s.',
+    securite: 'Amplitude complète ; on ne compte que les répétitions propres.',
+    flag: true,
+  },
+  foot_tap: {
+    objectif: 'Coordination et vitesse de jambes.',
+    materiel: ['Chrono'],
+    etapes: [
+      'Debout, relever un genou pour amener le pied vers l\'avant et le toucher avec la main opposée (main droite → pied gauche et inversement).',
+      'Alterner le plus vite possible, en restant équilibré.',
+      '3 séries de 30 s ; on additionne le nombre de touches.',
+    ],
+    saisie: 'Le total des touches sur les 3 séries.',
+    flag: true,
+  },
+  circuit_kids: {
+    objectif: 'Endurance musculaire, force et coordination (circuit enfant).',
+    materiel: ['Chrono', 'Repère de 20 m'],
+    etapes: [
+      'Un tour = 5 burpees sans pompe + 20 m de marche de l\'ours (dos horizontal, fesses non relevées) + 20 montées de genoux (mains au niveau du bassin, le genou touche la main) + 10 squats.',
+      '3 tours, 1 min 30 de récup entre les tours.',
+      'Chaque tour est chronométré ; le score est la somme des temps des 3 tours.',
+    ],
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    securite: 'Marche de l\'ours dos parallèle au sol. Squats contrôlés.',
+    flag: true,
+  },
+
+  // ── Teens 13-14 ──
+  repeat_50m_x10: {
+    objectif: 'Vitesse endurance (capacité lactique).',
+    materiel: ['Piste / ligne droite de 50 m', 'Chrono'],
+    etapes: [
+      '10 sprints de 50 m, avec seulement 20 s de récupération entre chaque.',
+      'Chaque 50 m est chronométré.',
+      'Le score est la somme des 10 temps.',
+    ],
+    saisie: 'Les 10 temps (s) ; le score est leur somme.',
+    allure: 'Rester régulier : ne pas exploser sur les premiers.',
+    flag: true,
+  },
+  pushups_max: {
+    objectif: 'Force et endurance du haut du corps.',
+    materiel: ['Tapis'],
+    etapes: [
+      'Position de pompe bras tendus, corps gainé, mains largeur d\'épaules.',
+      'Descendre poitrine près du sol puis remonter, sans cadence imposée, jusqu\'à l\'échec.',
+      'Variante genoux possible (comptée comme telle).',
+    ],
+    saisie: 'Le nombre de pompes propres.',
+    flag: true,
+  },
+  circuit_teens: {
+    objectif: 'Endurance musculaire et cardio (circuit ado 13-14).',
+    materiel: ['Chrono', 'Tapis'],
+    etapes: [
+      'Un tour = 5 burpees complets + 10 fentes alternées + 15 squats + 20 mountain climbers.',
+      '3 tours, 1 min de récup entre les tours.',
+      'Le score est la somme des temps des 3 tours.',
+    ],
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    securite: 'Technique avant vitesse. Réceptions souples.',
+    flag: true,
+  },
+
+  // ── Teens 15-17 ──
+  sprint_50m: {
+    objectif: 'Vitesse pure sur 50 m.',
+    materiel: ['Piste de 50 m', 'Chrono (idéalement cellules)'],
+    etapes: [
+      'Départ arrêté, en ligne droite.',
+      'Sprint maximal sur 50 m.',
+      '2 essais, on retient le meilleur temps.',
+    ],
+    saisie: 'Le meilleur temps (s).',
+    flag: true,
+  },
+  repeat_100m_x10: {
+    objectif: 'Vitesse endurance (capacité lactique).',
+    materiel: ['Piste de 100 m', 'Chrono'],
+    etapes: [
+      '10 courses de 100 m, 20 s de récupération entre chaque.',
+      'Chaque 100 m est chronométré.',
+      'Le score est la somme des 10 temps.',
+    ],
+    saisie: 'Les 10 temps (s) ; le score est leur somme.',
+    allure: 'Gérer la régularité, ne pas partir trop vite.',
+    flag: true,
+  },
+  agility_90: {
+    objectif: 'Agilité et coordination dans les changements de direction à 90°.',
+    materiel: ['Plots', 'Chrono', 'Repères au sol (10 / 8 / 6 / 4 / 2 m)'],
+    etapes: [
+      'Parcours en changements de direction à 90°, sur des segments décroissants : 10 m, puis 8, 6, 4 et 2 m.',
+      'On parcourt un segment, on contourne le plot (de l\'extérieur vers l\'intérieur), puis virage à 90° vers le segment suivant, en alternant les côtés.',
+      '2 essais, on retient le meilleur temps.',
+    ],
+    saisie: 'Le meilleur temps total (s).',
+    securite: 'Sol non glissant. Appuis contrôlés dans les virages.',
+    flag: true,
+  },
+  bench_5rm: {
+    objectif: 'Force du haut du corps (poussée), rapportée au poids de corps.',
+    materiel: ['Barre + banc', 'Pareur obligatoire'],
+    etapes: [
+      'Échauffement progressif (barre à vide, puis montée en charge).',
+      'Développé couché : chercher la charge maximale réalisable pour 5 répétitions propres.',
+      'Pas de 1RM : on reste sur un 5RM, plus sûr pour l\'ado.',
+    ],
+    saisie: 'La charge (kg) du 5RM réussi (barre comprise). Le score tient compte du poids de corps.',
+    securite: 'Pareur présent, technique validée avant toute charge. Échauffement complet.',
+    flag: true,
+  },
+  pullups_max: {
+    objectif: 'Force de tirage du haut du corps.',
+    materiel: ['Barre de traction'],
+    etapes: [
+      'Tractions : menton au-dessus de la barre, bras tendus en bas, sans élan.',
+      'Maximum de répétitions propres.',
+      'Variante si aucune traction possible : tenue bras fléchis en haut de la barre le plus longtemps (le temps tenu sert alors de résultat).',
+    ],
+    saisie: 'Le nombre de tractions (ou le temps de tenue, s, si variante).',
+    flag: true,
+  },
+  swim_100m: {
+    objectif: 'Endurance aquatique.',
+    materiel: ['Bassin de 25 ou 50 m', 'Chrono'],
+    etapes: [
+      '100 m en nage libre, départ plongé ou poussée au mur.',
+      'Allure gérée pour tenir la distance.',
+    ],
+    saisie: 'Le temps (s). Indique la longueur du bassin.',
+    flag: true,
+  },
+  circuit_teens_salle: {
+    objectif: 'Endurance musculaire et cardio (circuit ado 15-17, type Hyrox allégé).',
+    materiel: ['Haltères (6 / 8 / 10 kg)', 'Corde à sauter', 'Chrono'],
+    etapes: [
+      'Un tour = 10 burpees complets + 10 goblet squats (haltère) + 10 thrusters + 30 sauts à la corde.',
+      '3 tours, 1 min de récup entre les tours.',
+      'Le score est la somme des temps des 3 tours.',
+    ],
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    securite: 'Charge adaptée au niveau. Technique des thrusters avant la vitesse.',
+    flag: true,
+  },
+
+  // ── Start (adultes débutants) ──
+  knee_pushups_max: {
+    objectif: 'Force du haut du corps (poussée), version accessible.',
+    materiel: ['Tapis'],
+    etapes: [
+      'Position de pompe, genoux au sol autorisés.',
+      'Descendre la poitrine près du sol puis remonter, corps gainé.',
+      'Maximum de répétitions propres.',
+    ],
+    saisie: 'Le nombre de pompes propres (précise si genoux au sol).',
+    flag: true,
+  },
+  hang_hold: {
+    objectif: 'Force de tirage (version accessible).',
+    materiel: ['Barre de traction OU élastique'],
+    etapes: [
+      'Avec barre : suspension bras fléchis, menton près de la barre, on tient le plus longtemps.',
+      'Sans barre : tirage élastique (rows) — dos droit, on tire le coude vers l\'arrière, contrôlé.',
+    ],
+    saisie: 'Le temps de tenue (s) ou le nombre de tirages élastiques.',
+    flag: true,
+  },
+  plank_hold: {
+    objectif: 'Gainage du tronc.',
+    materiel: ['Tapis', 'Chrono'],
+    etapes: [
+      'Sur les avant-bras et la pointe des pieds, corps parfaitement aligné (ni fesses hautes ni creusées).',
+      'Tenir le plus longtemps possible en gardant l\'alignement.',
+    ],
+    saisie: 'Le temps tenu (s).',
+    securite: 'On arrête dès que l\'alignement se casse.',
+    flag: true,
+  },
+  box_stepup_100: {
+    objectif: 'Force et endurance des jambes.',
+    materiel: ['Box (60 cm hommes / 40 cm femmes)', 'Chrono'],
+    etapes: [
+      'Monter et descendre de la box, les deux pieds montent sur la caisse, en alternant jambe droite et jambe gauche.',
+      '100 montées le plus rapidement possible.',
+      'Règle hauteur : 60 cm pour les hommes (40 cm si 60 impossible), 40 cm pour les femmes.',
+    ],
+    saisie: 'Le temps (s) pour 100 montées. Indique la hauteur de box.',
+    securite: 'Pose complète du pied sur la box. S\'arrêter si fatigue des appuis.',
+    flag: true,
+  },
+  circuit_plank_taps: {
+    objectif: 'Coordination, gainage et cardio (circuit en position pompe).',
+    materiel: ['Chrono', 'Tapis'],
+    etapes: [
+      'En position de pompe : 10 tape-pied + 10 tape-genou + 20 tape-épaule + 20 mountain climbers.',
+      '3 tours, 45 s de récup entre les tours.',
+      'Ceux qui ne peuvent pas : on divise le nombre de répétitions par 2. Le score est la somme des 3 temps.',
+    ],
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    securite: 'Bassin stable, dos gainé.',
+    flag: true,
+  },
+  circuit_start: {
+    objectif: 'Endurance musculaire et cardio (circuit accessible).',
+    materiel: ['Chrono', 'Repère de 30 m'],
+    etapes: [
+      'Un tour = 5 burpees (sans descendre complètement) + 10 squats + 20 montées de genoux + 30 m de marche de l\'ours.',
+      '3 tours, 1 min de récup entre les tours.',
+      'Le score est la somme des temps des 3 tours.',
+    ],
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    flag: true,
+  },
+
+  // ── Decaform v1.2 — épreuve mixte « motricité » ──
+  mixed_course: {
+    objectif: 'Motricité globale, coordination et dissociation sur un parcours de locomotion varié.',
+    materiel: ['Couloir de 100 m balisé (lignes à 50 et 100 m)', 'Plots', 'Tapis', 'Chrono'],
+    etapes: [
+      'Parcours figé : 20 m de course → 10 m de marche canard → 3 galipettes → courir jusqu\'à la ligne des 50 m.',
+      'Puis 20 m de marche de l\'ours → sauts de haies (50-60 cm : 2 sauts femmes / 4 sauts hommes) → courir jusqu\'à la ligne des 100 m.',
+      '3 essais, récupération importante (4 à 5 min). On retient le meilleur temps.',
+    ],
+    saisie: 'Le meilleur temps (s) sur les 3 essais.',
+    securite: 'Galipette sur tapis ; alternative (roulade épaule ou passage au sol) si non maîtrisée. Haies franchies en sécurité.',
+    flag: true,
+  },
+
+  // ── Senior (+65) — base Senior Fitness Test (Rikli & Jones) ──
+  chair_stand_30s: {
+    objectif: 'Force des jambes et autonomie (se lever d\'une chaise).',
+    materiel: ['Chaise stable (sans accoudoirs)', 'Chrono'],
+    etapes: [
+      'Assis, bras croisés sur la poitrine.',
+      'Se lever complètement puis se rasseoir, le plus de fois possible en 30 s.',
+    ],
+    saisie: 'Le nombre de levers complets en 30 s.',
+    securite: 'Chaise contre un mur. Arrêter en cas de vertige.',
+    flag: true,
+  },
+  arm_curl_30s: {
+    objectif: 'Force du haut du corps et autonomie (porter).',
+    materiel: ['Haltère léger (~2-3 kg femmes / 3-4 kg hommes) ou bouteille', 'Chrono'],
+    etapes: [
+      'Assis, l\'haltère en main.',
+      'Flexions-extensions complètes du coude, le plus de fois possible en 30 s.',
+    ],
+    saisie: 'Le nombre de flexions en 30 s. Indique la charge utilisée.',
+    flag: true,
+  },
+  grip_strength: {
+    objectif: 'Force de préhension — prédicteur de santé reconnu chez le senior.',
+    materiel: ['Dynamomètre à main (ou charge à tenir)'],
+    etapes: [
+      'Serrer le dynamomètre à fond, bras le long du corps.',
+      'Variante sans matériel : tenir une charge (sac / bouteille) bras le long du corps le plus longtemps (le temps sert alors de résultat).',
+    ],
+    saisie: 'La force (kg) ou le temps de tenue (s) si variante.',
+    flag: true,
+  },
+  walk_6min: {
+    objectif: 'Endurance aérobie fonctionnelle.',
+    materiel: ['Parcours balisé (ou step)', 'Chrono'],
+    etapes: [
+      'Marcher le plus de distance possible en 6 min sur un parcours balisé, à allure soutenue mais sûre.',
+      'Variante : step 2 min (montées de genou sur place), on compte les montées.',
+    ],
+    saisie: 'La distance (m) en 6 min, ou le nombre de montées (step 2 min).',
+    securite: 'Marche, pas de course. S\'arrêter en cas d\'essoufflement anormal.',
+    flag: true,
+  },
+  up_and_go: {
+    objectif: 'Agilité et équilibre dynamique (mobilité du quotidien).',
+    materiel: ['Chaise', 'Plot à 2,44 m', 'Chrono'],
+    etapes: [
+      'Assis sur une chaise. Au top : se lever, marcher 2,44 m, contourner un plot, revenir et se rasseoir.',
+      'Le plus vite possible mais en sécurité.',
+    ],
+    saisie: 'Le temps (s).',
+    securite: 'Chaussures adaptées, sol dégagé. En sécurité avant la vitesse.',
+    flag: true,
+  },
+  single_leg_balance: {
+    objectif: 'Équilibre statique (prévention des chutes).',
+    materiel: ['Chrono', 'Appui à proximité'],
+    etapes: [
+      'Debout sur une jambe, mains sur les hanches.',
+      'Tenir le plus longtemps possible (plafonné à 30 s).',
+    ],
+    saisie: 'Le temps tenu (s).',
+    securite: 'Près d\'un mur ou d\'une chaise pour se rattraper.',
+    flag: true,
+  },
+  functional_flex: {
+    objectif: 'Souplesse fonctionnelle et autonomie (s\'habiller, attraper en hauteur).',
+    materiel: ['Chaise', 'Règle / mètre'],
+    etapes: [
+      'Chair sit-and-reach : assis au bord de la chaise, une jambe tendue, avancer les mains vers le pied ; mesurer l\'écart (atteint le pied = 0, dépasse = positif, n\'atteint pas = négatif).',
+      'Back-scratch : une main par-dessus l\'épaule, l\'autre dans le dos, mesurer l\'écart entre les doigts.',
+    ],
+    saisie: 'L\'atteinte en cm (négatif = n\'atteint pas).',
+    flag: true,
+  },
 }
 
 /** Protocole d'une épreuve (ou undefined si contenu non défini). */

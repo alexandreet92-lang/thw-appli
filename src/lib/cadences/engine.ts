@@ -10,7 +10,11 @@ import type {
   TestConfig, TestInput, TestScore, CampaignScore, Weights,
 } from './types'
 
-const QUALITIES: QualityKey[] = ['vitesse', 'force', 'puissance', 'explosivite', 'endurance', 'vo2max', 'coordination']
+// Clés de qualités : PILOTÉES PAR LA CONFIG. Chaque produit (Decaform, Kids,
+// Teens, Start, Senior) déclare son propre jeu de qualités dans `config.qualities`.
+// Decaform conserve ses 7 clés historiques → aucun changement de comportement.
+const DEFAULT_QUALITIES: QualityKey[] = ['vitesse', 'force', 'puissance', 'explosivite', 'endurance', 'vo2max', 'coordination']
+function keysOf(config: CadencesConfig): QualityKey[] { return config.qualities.map((q) => q.key) }
 
 /** Niveau nommé posé sur un pourcentage continu (habillage, ne change pas le calcul). */
 export function levelFor(pct: number, config: CadencesConfig): string {
@@ -24,7 +28,7 @@ export function ageFactorForTest(test: TestConfig, ageBand: string, config: Cade
   const pf = config.age.pf[ageBand]
   if (!pf) return 1
   let f = 0
-  for (const q of QUALITIES) f += (test.weights[q] ?? 0) * (pf[q] ?? 1)
+  for (const q of keysOf(config)) f += (test.weights[q] ?? 0) * (pf[q] ?? 1)
   return f
 }
 
@@ -115,8 +119,10 @@ export function computeCampaign(
   let total = 0
 
   // numérateur/dénominateur par qualité, sur les seules épreuves passées
-  const qPoints = zeroQ()
-  const qPtsMax = zeroQ()
+  const keys = keysOf(config)
+  const qPoints: Record<string, number> = {}
+  const qPtsMax: Record<string, number> = {}
+  for (const q of keys) { qPoints[q] = 0; qPtsMax[q] = 0 }
 
   for (const test of config.tests) {
     const input = bySlug.get(test.slug)
@@ -125,7 +131,7 @@ export function computeCampaign(
     if (!s) continue
     byTest[test.slug] = s
     total += s.points
-    for (const q of QUALITIES) {
+    for (const q of keys) {
       const w = test.weights[q] ?? 0
       if (w === 0) continue
       qPoints[q] += s.points * w
@@ -134,7 +140,7 @@ export function computeCampaign(
   }
 
   const byQuality = {} as Record<QualityKey, QualityScore>
-  for (const q of QUALITIES) {
+  for (const q of keys) {
     const ptsMax = qPtsMax[q]
     const pct = ptsMax > 0 ? qPoints[q] / ptsMax : 0
     byQuality[q] = { points: qPoints[q], ptsMax, pct, level: levelFor(pct, config) }
@@ -142,10 +148,6 @@ export function computeCampaign(
 
   const totalPctVs1000 = total / config.total_points
   return { total, totalPctVs1000, globalLevel: levelFor(totalPctVs1000, config), byTest, byQuality }
-}
-
-function zeroQ(): Record<QualityKey, number> {
-  return { vitesse: 0, force: 0, puissance: 0, explosivite: 0, endurance: 0, vo2max: 0, coordination: 0 }
 }
 
 /** Agrège des valeurs multiples (6×200 m = somme, sauts = meilleur…) selon la config. */
@@ -157,5 +159,5 @@ export function aggregateParts(test: TestConfig, parts: number[]): number | null
   return test.direction === 'higher_is_better' ? Math.max(...vals) : Math.min(...vals)
 }
 
-export const QUALITY_KEYS = QUALITIES
+export const QUALITY_KEYS = DEFAULT_QUALITIES
 export type { Weights }

@@ -3,9 +3,11 @@
 // Source de vérité des chiffres : cadences.config.json (spéc §6).
 // ══════════════════════════════════════════════════════════════════
 
-export type QualityKey =
-  | 'vitesse' | 'force' | 'puissance' | 'explosivite'
-  | 'endurance' | 'vo2max' | 'coordination'
+// Clé de qualité — PILOTÉE PAR LA CONFIG. Chaque produit déclare son jeu de
+// qualités dans `config.qualities`. Decaform utilise les 7 historiques
+// (vitesse, force, puissance, explosivite, endurance, vo2max, coordination) ;
+// d'autres batteries peuvent en ajouter (ex. `souplesse` chez les seniors).
+export type QualityKey = string
 
 export type Sex = 'M' | 'F'
 export type Mode = 'general' | 'age'
@@ -56,8 +58,19 @@ export interface Criterion {
   pts_max: number
 }
 
+/** Un jour du plan (séance ou repos). */
+export interface DayPlan { day: number; label: string; rest: boolean }
+
 export interface CadencesConfig {
   version: string
+  /** Identifiant du produit/batterie. Decaform = 'decaform' (défaut). */
+  test_key?: string
+  /** Nom affiché de la batterie (ex. « Decaform Kids 8-10 »). */
+  title?: string
+  /** Public visé (libellé libre, ex. « enfants 8-10 ans »). */
+  population?: string
+  /** Plan des séances (remplace le DAYS codé en dur quand présent). */
+  days?: DayPlan[]
   total_points: number
   anchors: { ref_pct: number; max_pct: number }
   age: {

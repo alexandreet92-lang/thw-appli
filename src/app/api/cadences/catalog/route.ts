@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { CONFIG, DAYS } from '@/lib/cadences/catalog'
+import { getConfig, daysOf } from '@/lib/cadences/catalog'
 import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, warmupForTest } from '@/lib/cadences/protocols'
 import { LEVEL_COLORS } from '@/lib/cadences/palette'
 
@@ -16,7 +16,12 @@ export const runtime = 'nodejs'
 const TRACK = new Set(['sprint_30m', 'sprint_100m', 'run_400m', 'run_3200m'])
 const SWIM = new Set(['swim_50m', 'swim_200m'])
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
+  // Produit demandé (?test_key=) — repli Decaform.
+  const testKey = new URL(request.url).searchParams.get('test_key')
+  const CONFIG = getConfig(testKey)
+  const DAYS = daysOf(CONFIG)
+
   const tests = CONFIG.tests.map((t) => ({
     slug: t.slug,
     group: t.group,
@@ -45,6 +50,9 @@ export async function GET(): Promise<NextResponse> {
   }))
 
   const res = NextResponse.json({
+    testKey: CONFIG.test_key ?? 'decaform',
+    title: CONFIG.title ?? 'Decaform',
+    population: CONFIG.population ?? '',
     version: CONFIG.version,
     totalPoints: CONFIG.total_points,
     totalTests: CONFIG.tests.length,

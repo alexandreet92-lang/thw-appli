@@ -1,5 +1,20 @@
 {
-  "version": "v1.1", "total_points": 1000, "anchors": {"ref_pct": 0.6, "max_pct": 1.0},
+  "version": "v1.1", "test_key": "decaform", "title": "Decaform", "population": "adultes 18-80",
+  "days": [
+    {"day": 1, "label": "Haltérophilie", "rest": false},
+    {"day": 2, "label": "Sauts / Sprints / Agilité", "rest": false},
+    {"day": 3, "label": "Natation", "rest": false},
+    {"day": 4, "label": "Force", "rest": false},
+    {"day": 5, "label": "Repos", "rest": true},
+    {"day": 6, "label": "400 m + 6.200", "rest": false},
+    {"day": 7, "label": "Vélo (20 min)", "rest": false},
+    {"day": 8, "label": "AMRAP", "rest": false},
+    {"day": 9, "label": "Repos", "rest": true},
+    {"day": 10, "label": "3200 m", "rest": false},
+    {"day": 11, "label": "Repos", "rest": true},
+    {"day": 12, "label": "Hyrox", "rest": false}
+  ],
+  "total_points": 1000, "anchors": {"ref_pct": 0.6, "max_pct": 1.0},
   "age": {
     "min": 18, "max": 80,
     "bands": ["18-20", "21-25", "26-35", "36-40", "41-45", "46-50", "51-55", "56-60", "61-65", "66-70", "71-75", "76-80"],

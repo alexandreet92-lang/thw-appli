@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import decaform from './cadences.config.json'
+import decaform_v1_2 from './configs/decaform_v1_2.config.json'
 import kids_8_10 from './configs/kids_8_10.config.json'
 import kids_11_12 from './configs/kids_11_12.config.json'
 import teens_13_14 from './configs/teens_13_14.config.json'
@@ -16,13 +17,15 @@ import start from './configs/start.config.json'
 import senior from './configs/senior.config.json'
 import type { CadencesConfig, TestConfig, DayPlan } from './types'
 
-/** Config Decaform (défaut historique). */
+/** Config Decaform v1.1 (base de validation + repli ; reference-cases.json). */
 export const CONFIG = decaform as unknown as CadencesConfig
 
 // ── Registre des produits (batteries) ────────────────────────────────
 // Clé = test_key. Ordre = ordre d'apparition dans le sélecteur.
+// Decaform sert sa v1.2 (épreuve mixte « motricité ») pour la présentation et
+// les nouvelles campagnes ; les campagnes existantes restent épinglées à leur version.
 const REGISTRY: Record<string, CadencesConfig> = {
-  decaform: CONFIG,
+  decaform: decaform_v1_2 as unknown as CadencesConfig,
   kids_8_10: kids_8_10 as unknown as CadencesConfig,
   kids_11_12: kids_11_12 as unknown as CadencesConfig,
   teens_13_14: teens_13_14 as unknown as CadencesConfig,

@@ -13,6 +13,7 @@
     endurance: 'Tenir un effort soutenu dans la durée.',
     vo2max: 'Cylindrée aérobie : consommer de l’oxygène à haute intensité.',
     coordination: 'Enchaîner des mouvements précis et efficaces, surtout sous fatigue.',
+    souplesse: 'Amplitude articulaire : atteindre, se baisser, s’habiller sans gêne (marqueur d’autonomie).',
   };
 
   // Glossaire complet des qualités physiques (définitions d'Alex).
@@ -182,7 +183,7 @@
 
   // ── Les qualités physiques ───────────────────────────────────────────
   // Couleur fonctionnelle par qualité du score (repère visuel, constante).
-  var QCOL = { vitesse: '#00c8e0', force: '#f59e0b', puissance: '#fb923c', explosivite: '#e11d48', endurance: '#22c55e', vo2max: '#2563eb', coordination: '#14b8a6' };
+  var QCOL = { vitesse: '#00c8e0', force: '#f59e0b', puissance: '#fb923c', explosivite: '#e11d48', endurance: '#22c55e', vo2max: '#2563eb', coordination: '#14b8a6', souplesse: '#a855f7' };
   function qLabel(q) { return q.label === 'VO2max' ? 'VO₂max' : q.label; }
   function hexA(hex, a) {
     var h = hex.replace('#', ''); var n = parseInt(h, 16);

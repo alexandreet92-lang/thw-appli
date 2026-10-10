@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { levelFor } from '@/lib/cadences/engine'
 import { CONFIG } from '@/lib/cadences/catalog'
+import type { CadencesConfig } from '@/lib/cadences/types'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,15 +21,28 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (!user) return NextResponse.json({ erreur: 'Connecte-toi sur le site.' }, { status: 401 })
 
   const url = new URL(request.url)
-  const mode = (url.searchParams.get('mode') === 'age' ? 'age' : 'general') as Mode
+  // Filtre produit optionnel : l'historique d'une batterie ne mélange pas les
+  // tests d'autres produits (comparaisons intra-produit uniquement).
+  const testKey = url.searchParams.get('test_key')
 
   // Campagnes terminées de l'utilisateur (RLS), les plus anciennes d'abord.
-  const { data: camps } = await sb
+  let q = sb
     .from('cadences_campaigns')
-    .select('id, scale_sex, age_at_start, body_weight_kg, started_on, completed_on')
+    .select('id, test_key, scale_version_id, scale_sex, age_at_start, body_weight_kg, started_on, completed_on')
     .eq('status', 'completed')
     .order('completed_on', { ascending: true })
+  if (testKey) q = q.eq('test_key', testKey)
+  const { data: camps } = await q
   if (!camps || !camps.length) return NextResponse.json({ tests: [] })
+
+  // Config épinglée de chaque campagne (barème de son produit), repli Decaform.
+  const svIds = Array.from(new Set(camps.map((c) => c.scale_version_id).filter(Boolean)))
+  const cfgById = new Map<string, CadencesConfig>()
+  if (svIds.length) {
+    const { data: scales } = await sb.from('cadences_scale_versions').select('id, config').in('id', svIds)
+    for (const s of scales ?? []) if (s.config) cfgById.set(s.id, s.config as unknown as CadencesConfig)
+  }
+  const configFor = (svId: string | null): CadencesConfig => (svId && cfgById.get(svId)) || CONFIG
 
   // Instantanés des DEUX modes (général + ajusté à l'âge) pour ces campagnes.
   const ids = camps.map((c) => c.id)
@@ -66,13 +80,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     return { outdoor: true, tempC: avg, weatherLabel: uniq.slice(0, 3).join(', ') }
   }
 
-  const max = CONFIG.total_points
-  const ptsMax: Record<string, number> = {}
-  CONFIG.tests.forEach((t) => { ptsMax[t.slug] = t.pts_max })
-
-  // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} }.
-  const mapSnap = (s?: Snap) => {
+  // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} } selon la config du produit.
+  const mapSnap = (s: Snap | undefined, config: CadencesConfig) => {
     if (!s) return null
+    const max = config.total_points
+    const ptsMax: Record<string, number> = {}
+    config.tests.forEach((t) => { ptsMax[t.slug] = t.pts_max })
     const total = Number(s.total_points)
     const byTest = (s.test_scores ?? {}) as Record<string, { points?: number; level?: string; valueUsed?: number }>
     const testsMap: Record<string, { points: number; level: string; value: number | null; max: number }> = {}
@@ -85,17 +98,19 @@ export async function GET(request: Request): Promise<NextResponse> {
     for (const key of Object.keys(byQual)) {
       qualMap[key] = { pct: Number(byQual[key].pct ?? 0), level: String(byQual[key].level ?? '') }
     }
-    return { total: Math.round(total), level: levelFor(total / max, CONFIG), tests: testsMap, qualities: qualMap }
+    return { total: Math.round(total), level: levelFor(total / max, config), tests: testsMap, qualities: qualMap }
   }
 
   const tests = camps.flatMap((c) => {
+    const config = configFor(c.scale_version_id)
     const e = byCamp.get(c.id)
-    const g = mapSnap(e?.general)
-    const a = mapSnap(e?.age) ?? g
+    const g = mapSnap(e?.general, config)
+    const a = mapSnap(e?.age, config) ?? g
     if (!g) return []
     const cond = condOf(c.id)
     return [{
       id: c.id,
+      test_key: c.test_key ?? 'decaform',
       date: c.completed_on ?? c.started_on,
       sex: c.scale_sex,
       age: c.age_at_start,

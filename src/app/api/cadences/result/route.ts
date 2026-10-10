@@ -5,7 +5,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { testBySlug } from '@/lib/cadences/catalog'
+import { testBySlug, getConfig } from '@/lib/cadences/catalog'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -18,8 +18,12 @@ export async function PUT(request: Request): Promise<NextResponse> {
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null
   const campaignId = typeof b?.campaignId === 'string' ? b.campaignId : ''
   const slug = typeof b?.slug === 'string' ? b.slug : ''
-  const test = testBySlug(slug)
-  if (!campaignId || !test) return NextResponse.json({ erreur: 'Campagne ou épreuve invalide.' }, { status: 400 })
+  if (!campaignId) return NextResponse.json({ erreur: 'Campagne manquante.' }, { status: 400 })
+
+  // Résout l'épreuve dans la config DU PRODUIT de la campagne (test_key).
+  const { data: camp } = await sb.from('cadences_campaigns').select('test_key').eq('id', campaignId).maybeSingle()
+  const test = testBySlug(slug, getConfig(camp?.test_key as string | undefined))
+  if (!test) return NextResponse.json({ erreur: 'Épreuve invalide pour ce test.' }, { status: 400 })
 
   const statut = b?.status === 'skipped' ? 'skipped' : b?.status === 'draft' ? 'draft' : 'validated'
   const value = b?.value == null || b?.value === '' ? null : Number(b.value)

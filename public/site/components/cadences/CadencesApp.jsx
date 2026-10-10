@@ -600,8 +600,9 @@
 
     // Catalogue (public) — sonde same-origin, sinon cross-origin vers l'app.
     // Délai de garde + bouton Réessayer (plus de « Loading » infini).
-    function fetchCatalog(base) {
-      var p = fetch(base + '/api/cadences/catalog').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); });
+    function fetchCatalog(base, testKey) {
+      var u = base + '/api/cadences/catalog' + (testKey && testKey !== 'decaform' ? '?test_key=' + encodeURIComponent(testKey) : '');
+      var p = fetch(u).then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); });
       return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 10000); })]);
     }
     function loadCatalog() {
@@ -615,6 +616,17 @@
         });
     }
     React.useEffect(loadCatalog, []);
+    // Récupère le bundle d'un produit (sans remplacer le catalogue de la page).
+    function fetchProductCatalog(testKey) { return fetchCatalog(API_BASE, testKey); }
+    // Quand la campagne active appartient à un autre produit, on recharge le
+    // catalogue de CE produit (tableau de bord / saisie / résultats alignés).
+    React.useEffect(function () {
+      if (!catalog || !report || !report.campaign) return;
+      var tk = report.campaign.test_key || 'decaform';
+      if (tk !== (catalog.testKey || 'decaform')) {
+        fetchProductCatalog(tk).then(function (j) { setCatalog(j); }).catch(function () {});
+      }
+    }, [report, catalog]);
 
     // Campagnes de l'utilisateur — uniquement en same-origin (l'auth a besoin des
     // cookies). En cross-origin (site) : on reste sur la présentation, le test part
@@ -667,7 +679,7 @@
 
     var body;
     if (view === 'start') {
-      body = <CadStart catalog={catalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
+      body = <CadStart catalog={catalog} fetchProductCatalog={fetchProductCatalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
     } else if (view === 'test' && report) {
       body = <CadTest catalog={catalog} report={report} mode={mode} setMode={setMode} reload={reload}
                       onHome={function () { setView('intro'); }}
@@ -817,8 +829,21 @@
     { k: 'Vélo', items: ['Vélo ou home-trainer avec capteur de puissance'] },
   ];
 
+  // Sélection automatique du test selon l'âge (miroir client de autoTestKeyForAge).
+  function cadTestKeyForAge(a) {
+    if (!isFinite(a)) return 'decaform';
+    if (a <= 10) return 'kids_8_10';
+    if (a <= 12) return 'kids_11_12';
+    if (a <= 14) return 'teens_13_14';
+    if (a <= 17) return 'teens_15_17';
+    if (a >= 65) return 'senior';
+    return 'decaform';
+  }
+
   function CadStart(props) {
-    var cat = props.catalog;
+    var cat0 = props.catalog;
+    var pc = React.useState(props.catalog); var prodCat = pc[0], setProdCat = pc[1];
+    var cat = prodCat || cat0;
     var st = React.useState(1); var step = st[0], setStep = st[1];
     var sx = React.useState(null); var sex = sx[0], setSex = sx[1];
     var ag = React.useState(''); var age = ag[0], setAge = ag[1];
@@ -837,8 +862,15 @@
       if (step === 1) {
         if (!sex) return setErr('Choisis le barème (homme / femme).');
         var a = Number(age), p = Number(poids);
-        if (!isFinite(a) || a < 18 || a > 80) return setErr('Âge requis : réservé aux 18 à 80 ans.');
-        if (!isFinite(p) || p < 30 || p > 250) return setErr('Poids de corps requis (30 à 250 kg).');
+        if (!isFinite(a) || a < 8 || a > 100) return setErr('Âge requis (8 à 100 ans).');
+        if (!isFinite(p) || p < 12 || p > 250) return setErr('Poids de corps requis (12 à 250 kg).');
+        // Catalogue du produit correspondant à l'âge (titre, jours, épreuves).
+        var tk = cadTestKeyForAge(a);
+        if (tk !== (cat.testKey || 'decaform') && props.fetchProductCatalog) {
+          props.fetchProductCatalog(tk).then(function (j) { setProdCat(j); }).catch(function () {});
+        } else if (tk === 'decaform' && (cat.testKey && cat.testKey !== 'decaform')) {
+          setProdCat(cat0);
+        }
       }
       if (step === 2 && !start) return setErr('Choisis une date de début.');
       setStep(step + 1);
@@ -847,7 +879,7 @@
       setErr(null);
       if (!warned) return setErr('Coche la case « J’ai lu les avertissements » pour démarrer.');
       setBusy(true);
-      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
+      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: cadTestKeyForAge(Number(age)), sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { setErr((res.j && res.j.erreur) || 'Impossible de démarrer.'); setBusy(false); return; }
@@ -860,7 +892,7 @@
       <div className="cad-run">
         <button type="button" className="cad-link" onClick={props.onCancel}>← Retour</button>
         <div className="cad-act-eye" style={{ marginTop: 14 }}>Nouveau test</div>
-        <h1 className="cad-act-t" style={{ fontSize: 30 }}>Démarrer Decaform</h1>
+        <h1 className="cad-act-t" style={{ fontSize: 30 }}>Démarrer {cat.title || 'Decaform'}</h1>
         <div className="cad-wiz-steps">
           {STEPS.map(function (s, i) {
             var n = i + 1;
@@ -892,7 +924,7 @@
           {step === 2 ? (
             <div style={{ display: 'grid', gap: 18 }}>
               <div>
-                <h3 className="cad-h3">Préparer tes 12 jours</h3>
+                <h3 className="cad-h3">Préparer tes {cat.days.length} jours</h3>
                 <p className="cad-p" style={{ margin: 0 }}>Vérifie ton matériel, puis choisis la date du jour 1 : le calendrier se cale dessus.</p>
               </div>
               <div className="cad-wiz-gear">
@@ -1056,7 +1088,7 @@
     if (mode === 'age') {
       var pf = (cat.age && cat.age.pf && cat.age.pf[camp.age_band]) || null;
       if (pf) {
-        var f = 0; QK.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
+        var f = 0; var qk = (cat.qualities || []).map(function (q) { return q.key; }); qk.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
         if (t.direction === 'higher_is_better') { ref *= f; max *= f; }
         else { var dv = Math.pow(f, t.ageTimeExponent == null ? 1 : t.ageTimeExponent); ref /= dv; max /= dv; }
       }
@@ -1097,7 +1129,7 @@
     if (mode === 'age') {
       var pf = (cat.age && cat.age.pf && cat.age.pf[camp.age_band]) || null;
       if (pf) {
-        var f = 0; QK.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
+        var f = 0; var qk = (cat.qualities || []).map(function (q) { return q.key; }); qk.forEach(function (q) { f += ((t.weights && t.weights[q]) || 0) * (pf[q] == null ? 1 : pf[q]); });
         if (t.direction === 'higher_is_better') { ref *= f; max *= f; }
         else { var dv = Math.pow(f, t.ageTimeExponent == null ? 1 : t.ageTimeExponent); ref /= dv; max /= dv; }
       }

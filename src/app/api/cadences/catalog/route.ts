@@ -60,9 +60,20 @@ export async function GET(request: Request): Promise<NextResponse> {
     age: CONFIG.age,                                 // {min,max,bands,pf}
     days: DAYS,
     tests,
-    // Protocoles + échauffement résolu par épreuve (varie selon la séance / le sport).
+    // Protocoles par épreuve DU PRODUIT : protocole dédié s'il existe (slugs
+    // Decaform réutilisés), sinon protocole minimal synthétisé (nouvelles épreuves).
     protocols: Object.fromEntries(
-      Object.entries(PROTOCOLS).map(([k, p]) => [k, { ...p, warmup: warmupForTest(k) }]),
+      CONFIG.tests.map((t) => {
+        const p = PROTOCOLS[t.slug]
+        if (p) return [t.slug, { ...p, warmup: warmupForTest(t.slug) }]
+        return [t.slug, {
+          objectif: t.name,
+          materiel: [] as string[],
+          etapes: ['Réalise l’épreuve « ' + t.name + ' » selon les consignes de ton encadrant.'],
+          saisie: 'Saisis ton résultat (' + t.unit + ').',
+          warmup: null,
+        }]
+      }),
     ),
     echauffement: ECHAUFFEMENT_GENERAL,
     hyroxThrusterKg: HYROX_THRUSTER_KG,

@@ -24,10 +24,15 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const { data: camp } = await sb
     .from('cadences_campaigns')
-    .select('id, scale_version_id, scale_sex, age_at_start, age_band, body_weight_kg, started_on, completed_on, status')
+    .select('id, test_key, scale_version_id, scale_sex, age_at_start, age_band, body_weight_kg, started_on, completed_on, status')
     .eq('id', campaignId)
     .maybeSingle()
   if (!camp) return NextResponse.json({ erreur: 'Campagne introuvable.' }, { status: 404 })
+
+  // Config ÉPINGLÉE de la campagne (barème de SON produit), repli Decaform.
+  let config: CadencesConfig = CONFIG
+  const { data: scale } = await sb.from('cadences_scale_versions').select('config').eq('id', camp.scale_version_id).maybeSingle()
+  if (scale?.config) config = scale.config as unknown as CadencesConfig
 
   const { data: results } = await sb
     .from('cadences_results')
@@ -37,7 +42,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   let scores: Record<Mode, unknown>
 
   if (camp.status === 'completed') {
-    // Scores figés à la clôture.
+    // Scores figés à la clôture (niveau recalé sur le total_points du produit).
     const { data: snaps } = await sb
       .from('cadences_snapshots')
       .select('age_mode, total_points, quality_scores, test_scores')
@@ -47,18 +52,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       if (!s) return null
       return {
         total: Number(s.total_points),
-        globalLevel: levelFor(Number(s.total_points) / CONFIG.total_points, CONFIG),
+        globalLevel: levelFor(Number(s.total_points) / config.total_points, config),
         byQuality: s.quality_scores,
         byTest: s.test_scores,
       }
     }
     scores = { general: pick('general'), age: pick('age') }
   } else {
-    // Aperçu en direct, recalculé sur les épreuves validées.
-    let config: CadencesConfig = CONFIG
-    const { data: scale } = await sb.from('cadences_scale_versions').select('config').eq('id', camp.scale_version_id).maybeSingle()
-    if (scale?.config) config = scale.config as unknown as CadencesConfig
-
+    // Aperçu en direct, recalculé sur les épreuves validées (config épinglée).
     const inputs: TestInput[] = (results ?? [])
       .filter((r) => r.status === 'validated' && r.raw_value != null)
       .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, parts: partsOf(r.raw_parts) }))
@@ -72,6 +73,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   return NextResponse.json({
     campaign: {
       id: camp.id,
+      test_key: camp.test_key ?? config.test_key ?? 'decaform',
+      title: config.title ?? 'Decaform',
+      total_points: config.total_points,
       scale_sex: camp.scale_sex,
       age_at_start: camp.age_at_start,
       age_band: camp.age_band,

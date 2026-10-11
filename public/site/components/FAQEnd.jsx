@@ -32,7 +32,7 @@ function FAQ() {
               }} onClick={() => setOpen(isOpen ? -1 : i)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                   <h3 style={{
-                    fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 600,
+                    fontFamily: "var(--font-display), sans-serif", fontSize: 17, fontWeight: 600,
                     letterSpacing: '-0.01em', margin: 0,
                     color: isOpen ? 'var(--text)' : 'var(--text-mid)',
                     transition: 'color 0.18s',
@@ -58,7 +58,7 @@ function FAQ() {
                   opacity: isOpen ? 1 : 0,
                 }}>
                   <p style={{
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 14,
+                    fontFamily: "var(--font-body), sans-serif", fontSize: 14,
                     lineHeight: 1.6, color: 'var(--text-mid)',
                     margin: '14px 0 6px', textWrap: 'pretty', maxWidth: 600,
                   }}>{it.a}</p>
@@ -98,7 +98,7 @@ function FinalCTA() {
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 720, margin: '0 auto' }}>
           <span className="eyebrow" style={{ justifyContent: 'center' }}>Saison 2026</span>
           <h2 style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-display), sans-serif",
             fontSize: 'clamp(36px, 5vw, 56px)',
             fontWeight: 800, letterSpacing: '-0.04em',
             lineHeight: 1.05, margin: '0 0 20px',
@@ -111,7 +111,7 @@ function FinalCTA() {
             }}>aujourd'hui</span>.
           </h2>
           <p style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 16,
+            fontFamily: "var(--font-body), sans-serif", fontSize: 16,
             color: 'var(--text-mid)', lineHeight: 1.55,
             margin: '0 auto 36px', maxWidth: 540, textWrap: 'pretty',
           }}>
@@ -147,10 +147,10 @@ function Footer() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <ThwLogo size={36} radius={9}/>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>THW Coaching</span>
+              <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>THW Coaching</span>
             </div>
             <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 13,
               color: 'var(--text-mid)', lineHeight: 1.6, maxWidth: 320, margin: '0 0 24px',
               textWrap: 'pretty',
             }}>
@@ -178,8 +178,8 @@ function Footer() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </div>
               <div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Ouvrir l'app</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>app.thwcoaching.fr →</div>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Ouvrir l'app</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>app.thwcoaching.fr →</div>
               </div>
             </a>
           </div>
@@ -192,7 +192,7 @@ function Footer() {
           ].map((col, i) => (
             <div key={i}>
               <div style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 500,
                 letterSpacing: '0.12em', textTransform: 'uppercase',
                 color: 'var(--text-dim)', marginBottom: 18,
               }}>{col.title}</div>
@@ -200,7 +200,7 @@ function Footer() {
                 {col.links.map(l => (
                   <li key={l} style={{ marginBottom: 10 }}>
                     <a href="#" style={{
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                      fontFamily: "var(--font-body), sans-serif", fontSize: 13,
                       color: 'var(--text-mid)', transition: 'color 0.18s',
                     }}
                     onMouseEnter={e => e.currentTarget.style.color = 'var(--brand)'}
@@ -219,7 +219,7 @@ function Footer() {
           borderTop: '1px solid var(--border)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>
             © 2026 THW Coaching · Made in Paris · <span style={{ color: 'var(--text-mid)' }}>v3.2.1</span>
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -249,7 +249,7 @@ function Footer() {
         {/* Giant brand wordmark */}
         <div style={{
           marginTop: 40, textAlign: 'center',
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "var(--font-display), sans-serif",
           fontSize: 'clamp(80px, 18vw, 220px)',
           fontWeight: 800, letterSpacing: '-0.06em',
           lineHeight: 0.85,

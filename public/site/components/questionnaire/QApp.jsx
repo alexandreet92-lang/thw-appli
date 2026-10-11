@@ -307,7 +307,7 @@ function QApp() {
         if (data.sport === 'cycling')   return <QStep5Cycling   data={data} set={set}/>;
         if (data.sport === 'triathlon') return <QStep5Triathlon data={data} set={set}/>;
         return (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontFamily: "'DM Sans', sans-serif" }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontFamily: "var(--font-body), sans-serif" }}>
             Retourne à l'étape précédente pour sélectionner ton sport.
           </div>
         );
@@ -343,7 +343,7 @@ function QApp() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 44 }}>
           <a href="index.html" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7, textDecoration: 'none',
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-dim)',
+            fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-dim)',
             transition: 'color 0.15s',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -359,7 +359,7 @@ function QApp() {
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
               </svg>
             </div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>THW Coaching</span>
+            <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>THW Coaching</span>
           </div>
         </div>
 
@@ -384,14 +384,14 @@ function QApp() {
           {/* Step header */}
           {step < 7 && (
             <div style={{ marginBottom: 30 }}>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#00c8e0', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: '#00c8e0', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Étape {step}
               </div>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 6px', color: 'var(--text)' }}>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 6px', color: 'var(--text)' }}>
                 {step5Title !== 'Profil sportif' && step === 5 ? step5Title : Q_TITLES[step - 1]}
               </h2>
               {stepHints[step - 1] && (
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
+                <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
                   {stepHints[step - 1]}
                 </p>
               )}
@@ -406,7 +406,7 @@ function QApp() {
             <button onClick={() => step > 1 && navigate(-1)} style={{
               padding: '11px 22px', borderRadius: 10,
               background: 'transparent', border: '1px solid rgba(255,255,255,0.10)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 500,
               color: step === 1 ? 'var(--text-dim)' : 'var(--text-mid)',
               cursor: step === 1 ? 'default' : 'pointer',
               opacity: step === 1 ? 0.3 : 1, transition: 'all 0.18s',
@@ -415,7 +415,7 @@ function QApp() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* Required hint */}
               {!canProceed() && step < 7 && (
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>
                   Champs requis *
                 </span>
               )}
@@ -425,7 +425,7 @@ function QApp() {
                   padding: '11px 28px', borderRadius: 10,
                   background: canProceed() ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'rgba(255,255,255,0.06)',
                   border: 'none',
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600,
                   color: canProceed() ? '#fff' : 'var(--text-dim)',
                   cursor: canProceed() ? 'pointer' : 'not-allowed',
                   boxShadow: canProceed() ? '0 4px 20px rgba(0,200,224,0.32)' : 'none',
@@ -436,13 +436,13 @@ function QApp() {
               ) : !submitted ? (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8 }}>
                   {sendError && (
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:'#ef4444', maxWidth:280, textAlign:'right' }}>{sendError}</div>
+                    <div style={{ fontFamily:"var(--font-body),sans-serif", fontSize:11, color:'#ef4444', maxWidth:280, textAlign:'right' }}>{sendError}</div>
                   )}
                   <button onClick={handleSubmit} disabled={sending} style={{
                     padding: '13px 32px', borderRadius: 12,
                     background: sending ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#00c8e0,#5b6fff)',
                     border: 'none',
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
+                    fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 700,
                     color: sending ? 'var(--text-dim)' : '#fff',
                     cursor: sending ? 'not-allowed' : 'pointer',
                     boxShadow: sending ? 'none' : '0 4px 24px rgba(0,200,224,0.42)',
@@ -476,10 +476,10 @@ function QApp() {
                   <path d="M20 6L9 17l-5-5"/>
                 </svg>
               </div>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.04em', margin: '0 0 14px', color: 'var(--text)' }}>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.04em', margin: '0 0 14px', color: 'var(--text)' }}>
                 Candidature envoyée !
               </h2>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.7, marginBottom: 32 }}>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.7, marginBottom: 32 }}>
                 Merci <strong style={{ color: 'var(--text)' }}>{data.prenom || 'Athlète'}</strong>. Tu recevras un email de confirmation sous{' '}
                 <strong style={{ color: '#00c8e0' }}>24h</strong>. Ton appel découverte de{' '}
                 <strong style={{ color: '#00c8e0' }}>30 minutes</strong> sera planifié rapidement.
@@ -489,7 +489,7 @@ function QApp() {
                 padding: '13px 28px', borderRadius: 12,
                 background: 'linear-gradient(135deg,#00c8e0,#5b6fff)',
                 color: '#fff', textDecoration: 'none',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600,
                 boxShadow: '0 4px 20px rgba(0,200,224,0.38)',
               }}>
                 ← Retour à l'accueil
@@ -499,7 +499,7 @@ function QApp() {
         )}
 
         {/* Footer note */}
-        <p style={{ textAlign: 'center', marginTop: 24, fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+        <p style={{ textAlign: 'center', marginTop: 24, fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
           Tes données sont confidentielles et utilisées uniquement pour construire ton programme.
         </p>
       </div>

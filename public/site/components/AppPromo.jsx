@@ -44,7 +44,7 @@ function AppPromo() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 22v-4h6v4M12 6h.01"/></svg>
             </div>
             <span style={{
-              fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600,
+              fontFamily: "var(--font-mono), monospace", fontSize: 11, fontWeight: 600,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               background: 'linear-gradient(90deg,#00c8e0,#5b6fff)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -52,7 +52,7 @@ function AppPromo() {
           </div>
 
           <h2 style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-display), sans-serif",
             fontSize: 'clamp(30px, 3.5vw, 44px)',
             fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05,
             margin: '0 0 16px', textWrap: 'balance',
@@ -62,7 +62,7 @@ function AppPromo() {
           </h2>
 
           <p style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.55,
+            fontFamily: "var(--font-body), sans-serif", fontSize: 15, lineHeight: 1.55,
             color: 'var(--text-mid)', maxWidth: 480, margin: '0 0 28px', textWrap: 'pretty',
           }}>
             Synchronise Strava, Garmin, Wahoo. Suis ta charge CTL/ATL/TSB. Pose toutes tes questions à ton Coach IA — planning, séances, récup, nutrition — en temps réel.
@@ -76,7 +76,7 @@ function AppPromo() {
                 padding: '7px 12px', borderRadius: 999,
                 border: '1px solid var(--border-mid)',
                 background: 'rgba(255,255,255,0.035)',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: 'var(--text-mid)',
+                fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 500, color: 'var(--text-mid)',
               }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2">{f.icon}</svg>
                 {f.l}
@@ -89,7 +89,7 @@ function AppPromo() {
               Découvrir l'app
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
             </a>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', display: 'flex', gap: 12 }}>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', display: 'flex', gap: 12 }}>
               <span>iOS · Android · Web</span>
               <span>·</span>
               <span>Gratuit avec coaching</span>
@@ -118,12 +118,12 @@ function AppPromo() {
               {/* Notch */}
               <div style={{ position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)', width: 64, height: 16, background: '#000', borderRadius: '0 0 9px 9px', zIndex: 5 }}/>
               {/* Status */}
-              <div style={{ height: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 14px 2px', fontFamily: "'DM Mono', monospace", fontSize: 8, color: 'var(--text-dim)' }}>
+              <div style={{ height: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 14px 2px', fontFamily: "var(--font-mono), monospace", fontSize: 8, color: 'var(--text-dim)' }}>
                 <span>9:41</span><span>●●●</span>
               </div>
 
               <div style={{ padding: '8px 12px' }}>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Bonjour, Thomas 👋</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Bonjour, Thomas 👋</div>
 
                 {/* Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, marginBottom: 8 }}>
@@ -131,7 +131,7 @@ function AppPromo() {
                     <div key={m.l} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 6px', position: 'relative', overflow: 'hidden' }}>
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,${m.c},transparent)` }}/>
                       <div style={{ fontSize: 7, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{m.l}</div>
-                      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, lineHeight: 1.1 }}>{m.v}</div>
+                      <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, lineHeight: 1.1 }}>{m.v}</div>
                     </div>
                   ))}
                 </div>
@@ -140,8 +140,8 @@ function AppPromo() {
                 <div style={{ background: 'linear-gradient(135deg,rgba(0,200,224,0.1),rgba(91,111,255,0.06))', border: '1px solid rgba(0,200,224,0.22)', borderRadius: 8, padding: '7px 9px', marginBottom: 7, position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--brand-gradient-h)' }}/>
                   <div style={{ fontSize: 7, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--brand)', fontWeight: 600 }}>Prochaine séance</div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, marginTop: 2 }}>Sweet Spot — 2×20min</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>Aujourd'hui · 18h00 · 247W</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 10, fontWeight: 700, marginTop: 2 }}>Sweet Spot — 2×20min</div>
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>Aujourd'hui · 18h00 · 247W</div>
                 </div>
 
                 {/* Chart bars */}
@@ -156,7 +156,7 @@ function AppPromo() {
                   <div style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--brand-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                   </div>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'var(--text)', lineHeight: 1.3 }}>Charge +8% — protège ta longue.</div>
+                  <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, color: 'var(--text)', lineHeight: 1.3 }}>Charge +8% — protège ta longue.</div>
                 </div>
               </div>
             </div>
@@ -171,8 +171,8 @@ function AppPromo() {
             boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
             animation: 'float 5s ease-in-out 0.5s infinite',
           }}>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', marginBottom: 2 }}>Strava sync</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', marginBottom: 2 }}>Strava sync</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }}/>
               Connecté · 47 act.
             </div>

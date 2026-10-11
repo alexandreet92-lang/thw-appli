@@ -8,7 +8,7 @@ function PhoneFrame({ children, style, label }) {
         <div style={{
           height: 36, padding: '8px 22px 0',
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600,
+          fontFamily: "var(--font-mono), monospace", fontSize: 11, fontWeight: 600,
           color: 'var(--text)', position: 'relative', zIndex: 5,
         }}>
           <span>9:41</span>

@@ -168,7 +168,7 @@
       b.title = lg.toUpperCase();
       b.style.cssText = [
         'border:none', 'cursor:pointer', 'border-radius:999px',
-        "font-family:'DM Sans',sans-serif", 'font-size:12px', 'font-weight:600',
+        "font-family:var(--font-body),sans-serif", 'font-size:12px', 'font-weight:600',
         'line-height:1', 'padding:6px 9px', 'transition:color .18s,background .18s,box-shadow .18s',
       ].join(';');
       b.addEventListener('click', function () { setLang(lg); });

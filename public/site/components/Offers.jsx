@@ -105,7 +105,7 @@ function Offers() {
               border: 'none',
               background: billing === opt.id ? 'var(--brand-gradient)' : 'transparent',
               color: billing === opt.id ? '#fff' : 'var(--text-mid)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.18s',
               boxShadow: billing === opt.id ? '0 2px 12px rgba(0,200,224,0.28)' : 'none',
@@ -157,7 +157,7 @@ function Offers() {
                 background: 'var(--brand-gradient)',
                 borderRadius: 999,
                 fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "var(--font-body), sans-serif",
                 color: '#fff',
                 boxShadow: '0 0 16px rgba(0,200,224,0.4)',
               }}>★ Recommandé</div>
@@ -166,17 +166,17 @@ function Offers() {
             {/* Header */}
             <div style={{ marginBottom: 24 }}>
               <div style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 500,
                 letterSpacing: '0.1em', textTransform: 'uppercase',
                 color: o.featured ? 'var(--brand)' : 'var(--text-dim)',
                 marginBottom: 12,
               }}>{o.tag}</div>
               <h3 style={{
-                fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 700,
+                fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 700,
                 letterSpacing: '-0.03em', margin: '0 0 14px', color: 'var(--text)',
               }}>{o.name}</h3>
               <p style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13,
                 lineHeight: 1.55, color: 'var(--text-mid)', margin: 0,
                 minHeight: 64,
                 textWrap: 'pretty',
@@ -186,15 +186,15 @@ function Offers() {
             {/* Price */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
               <span style={{
-                fontFamily: "'Syne', sans-serif", fontSize: 56, fontWeight: 800,
+                fontFamily: "var(--font-display), sans-serif", fontSize: 56, fontWeight: 800,
                 letterSpacing: '-0.05em', lineHeight: 1,
                 color: o.featured ? 'var(--brand)' : 'var(--text)',
               }}>{billing === 'monthly' ? o.monthly : o.yearly}</span>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18, color: 'var(--text-dim)', fontWeight: 500 }}>€</span>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text-dim)', marginLeft: 4 }}>/ mois</span>
+              <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 18, color: 'var(--text-dim)', fontWeight: 500 }}>€</span>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 12, color: 'var(--text-dim)', marginLeft: 4 }}>/ mois</span>
             </div>
             <div style={{
-              fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)',
+              fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)',
               marginBottom: 24,
               minHeight: 16,
             }}>
@@ -215,7 +215,7 @@ function Offers() {
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
               {o.features.map((f, fi) => f.header ? (
                 <div key={fi} style={{
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 600,
                   letterSpacing: '0.08em', textTransform: 'uppercase',
                   color: 'var(--text-mid)', marginBottom: 12, marginTop: fi === 0 ? 0 : 12,
                 }}>{f.t}</div>
@@ -241,7 +241,7 @@ function Offers() {
                     )}
                   </div>
                   <span style={{
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                    fontFamily: "var(--font-body), sans-serif", fontSize: 13,
                     color: f.i ? 'var(--text)' : 'var(--text-dim)',
                     lineHeight: 1.45,
                     textDecoration: f.i ? 'none' : 'line-through',
@@ -258,7 +258,7 @@ function Offers() {
       <div style={{
         marginTop: 48,
         display: 'flex', justifyContent: 'center', gap: 32, flexWrap: 'wrap',
-        fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-dim)',
+        fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-dim)',
       }}>
         {[
           { i: '✓', t: '14 jours d\'essai gratuit' },

@@ -37,7 +37,7 @@ function ChartsSection() {
             padding: '8px 16px', borderRadius: 8, border: 'none',
             background: tab === t.id ? 'var(--brand-gradient)' : 'transparent',
             color: tab === t.id ? '#fff' : 'var(--text-mid)',
-            fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500,
+            fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 500,
             cursor: 'pointer', transition: 'all 0.18s',
             boxShadow: tab === t.id ? '0 2px 12px rgba(0,200,224,0.28)' : 'none',
           }}>{t.l}</button>
@@ -73,8 +73,8 @@ function LoadChart() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Charge d'entraînement · 8 dernières semaines</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Calculé chaque nuit à partir de tes TSS</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Charge d'entraînement · 8 dernières semaines</div>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Calculé chaque nuit à partir de tes TSS</div>
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {[
@@ -86,7 +86,7 @@ function LoadChart() {
               <span style={{ width: 12, height: 3, background: s.c, borderRadius: 2, boxShadow: `0 0 6px ${s.c}` }}/>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{s.l}</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: '-0.03em', color: s.c }}>{s.v}</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: '-0.03em', color: s.c }}>{s.v}</div>
               </div>
             </div>
           ))}
@@ -114,7 +114,7 @@ function LoadChart() {
         {/* Y axis labels */}
         {[110, 90, 70, 50, 30].map((v, i) => (
           <text key={v} x="50" y={55 + i * (H-100)/4} textAnchor="end"
-            fontFamily="DM Mono" fontSize="10" fill="rgba(238,242,247,0.38)">{v}</text>
+            fontFamily="var(--font-mono)" fontSize="10" fill="rgba(238,242,247,0.38)">{v}</text>
         ))}
 
         {/* Zero line for TSB */}
@@ -151,7 +151,7 @@ function LoadChart() {
         {/* X axis labels */}
         {['S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12'].map((l, i) => (
           <text key={l} x={xScale(i * 8)} y={H-25} textAnchor="middle"
-            fontFamily="DM Mono" fontSize="10"
+            fontFamily="var(--font-mono)" fontSize="10"
             fill={i === 7 ? '#00c8e0' : 'rgba(238,242,247,0.38)'}
             fontWeight={i === 7 ? 700 : 400}>{l}</text>
         ))}
@@ -173,10 +173,10 @@ function HRZones() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Répartition zones FC · S12</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>FC max 187 bpm · 12h45 d'entraînement</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Répartition zones FC · S12</div>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>FC max 187 bpm · 12h45 d'entraînement</div>
         </div>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--brand)' }}>
+        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--brand)' }}>
           Polarisé · Z2 dominant ✓
         </div>
       </div>
@@ -188,13 +188,13 @@ function HRZones() {
             width: `${z.pct}%`,
             background: `linear-gradient(180deg, ${z.c}, ${z.c}aa)`,
             display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-            color: '#fff', fontFamily: "'Syne', sans-serif", fontWeight: 700,
+            color: '#fff', fontFamily: "var(--font-display), sans-serif", fontWeight: 700,
             transformOrigin: 'left',
             animation: `barFill 1.2s ${i * 0.15}s cubic-bezier(0.25,1,0.5,1) both`,
             boxShadow: `inset 0 0 16px ${z.c}66`,
           }}>
             <div style={{ fontSize: 14, letterSpacing: '-0.02em' }}>{z.z}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 500, marginTop: 2, opacity: 0.85 }}>{z.pct}%</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 500, marginTop: 2, opacity: 0.85 }}>{z.pct}%</div>
           </div>
         ))}
       </div>
@@ -208,10 +208,10 @@ function HRZones() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: z.c, boxShadow: `0 0 6px ${z.c}` }}/>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, color: z.c }}>{z.z}</span>
+              <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, color: z.c }}>{z.z}</span>
             </div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{z.l}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)' }}>{z.range}</div>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{z.l}</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)' }}>{z.range}</div>
           </div>
         ))}
       </div>
@@ -242,17 +242,17 @@ function PowerCurve() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Courbe de puissance · Vélo · 90 jours</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Records par durée — extraits de tes activités</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Courbe de puissance · Vélo · 90 jours</div>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Records par durée — extraits de tes activités</div>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>FTP</div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)' }}>286<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 4 }}>W</span></div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)' }}>286<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 4 }}>W</span></div>
           </div>
           <div>
             <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>5s peak</div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: '#5b6fff' }}>980<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 4 }}>W</span></div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: '#5b6fff' }}>980<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 4 }}>W</span></div>
           </div>
         </div>
       </div>
@@ -278,13 +278,13 @@ function PowerCurve() {
         {/* FTP threshold line */}
         <line x1="60" x2={W-40} y1={ftpY} y2={ftpY} stroke="#00c8e0" strokeWidth="1" strokeDasharray="4 4" opacity="0.4"
           style={{ animation: 'fadeUpSlow 0.6s 1.8s both' }}/>
-        <text x={W-44} y={ftpY-6} textAnchor="end" fontFamily="DM Mono" fontSize="10" fill="#00c8e0"
+        <text x={W-44} y={ftpY-6} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="#00c8e0"
           style={{ animation: 'fadeUpSlow 0.6s 1.8s both' }}>FTP 286W</text>
 
         {/* Y labels */}
         {[1000, 750, 500, 250].map((v, i) => (
           <text key={v} x="50" y={55 + i * (H-100)/3} textAnchor="end"
-            fontFamily="DM Mono" fontSize="10" fill="rgba(238,242,247,0.38)">{v}W</text>
+            fontFamily="var(--font-mono)" fontSize="10" fill="rgba(238,242,247,0.38)">{v}W</text>
         ))}
 
         {/* X labels */}
@@ -293,7 +293,7 @@ function PowerCurve() {
           { s: 1200, l: '20min' }, { s: 3600, l: '1h' },
         ].map(t => (
           <text key={t.l} x={xScale(t.s)} y={H-25} textAnchor="middle"
-            fontFamily="DM Mono" fontSize="10" fill="rgba(238,242,247,0.38)">{t.l}</text>
+            fontFamily="var(--font-mono)" fontSize="10" fill="rgba(238,242,247,0.38)">{t.l}</text>
         ))}
 
         <path d={area} fill="url(#powGrad)"

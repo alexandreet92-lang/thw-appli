@@ -44,7 +44,7 @@ html, body { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   overflow-x: hidden;
 }
 
@@ -154,7 +154,7 @@ body {
 }
 
 .brand-title {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-display), sans-serif;
   font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -209,7 +209,7 @@ body {
   background: none;
   border: none;
   padding: 11px 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-dim);
@@ -258,7 +258,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 15px;
   outline: none;
   transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
@@ -318,7 +318,7 @@ body {
   border-radius: 14px;
   background: var(--brand-gradient);
   color: #fff;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -417,7 +417,7 @@ body {
   width: 100%;
   padding: 14px;
   border-radius: 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -472,7 +472,7 @@ body {
   border: 1px solid var(--border-mid);
   border-radius: 999px;
   color: var(--text-mid);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -481,6 +481,8 @@ body {
 }
 .replay:hover { color: var(--brand); border-color: var(--brand); }
 </style>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
 </head>
 <body>
 
@@ -700,6 +702,7 @@ wireSubmit(document.getElementById('panel-signup'), document.getElementById('sig
   <script src="components/site/i18n-dict-6.js"></script>
   <script src="components/site/i18n-dict-7.js"></script>
   <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

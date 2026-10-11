@@ -4,9 +4,9 @@
    Pulled from src/styles/design-system.ts and src/app/globals.css.
    ════════════════════════════════════════════════════════════════ */
 
-/* Webfonts — Syne (display) + DM Sans (body) + DM Mono (numbers).
-   These are the canonical brand fonts. Same Google Fonts URL the app uses. */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+/* Webfonts — Literata (titres, serif éditorial) + IBM Plex Sans (texte)
+   + IBM Plex Mono (chiffres, étiquettes, références) : la famille « instrument ». */
+@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* ─── Brand colors ──────────────────────────────────────────── */
@@ -40,25 +40,37 @@
   --info:           #5b6fff;
 
   /* ─── Surfaces — DARK (default theme; brand standard) ───────── */
-  --bg:             #070b0f;   /* near-black, blue-tinted */
-  --bg-alt:         #0c1118;
-  --bg-card:        rgba(255, 255, 255, 0.04);
-  --bg-card-2:      rgba(255, 255, 255, 0.025);
-  --bg-hover:       rgba(255, 255, 255, 0.06);
-  --nav-bg:         rgba(8, 12, 18, 0.97);
+  --bg:             #08121f;   /* nuit de stade — marine profond */
+  --bg-alt:         #0c1829;
+  --bg-card:        rgba(238, 243, 248, 0.045);
+  --bg-card-2:      rgba(238, 243, 248, 0.028);
+  --bg-hover:       rgba(238, 243, 248, 0.07);
+  --nav-bg:         rgba(8, 18, 31, 0.86);
 
   /* Borders — translucent white over dark */
-  --border:         rgba(255, 255, 255, 0.08);
-  --border-mid:     rgba(255, 255, 255, 0.14);
-  --nav-border:     rgba(255, 255, 255, 0.07);
+  --border:         rgba(158, 177, 200, 0.16);
+  --border-mid:     rgba(158, 177, 200, 0.26);
+  --nav-border:     rgba(158, 177, 200, 0.14);
 
   /* Text — three-tier hierarchy on dark */
-  --text:           #eef2f7;
-  --text-mid:       rgba(238, 242, 247, 0.65);
-  --text-dim:       rgba(238, 242, 247, 0.38);
+  --text:           #eef3f8;
+  --text-mid:       #a9bacd;
+  --text-dim:       #6f849c;
 
   /* Inputs */
   --input-bg:       rgba(255, 255, 255, 0.05);
+
+  /* ─── Bandeau « nuit de stade » + or (médaille / record validé) ── */
+  --night:          #0b1626;
+  --night-2:        #13233a;
+  --night-line:     #27405f;
+  --night-ink:      #eef3f8;
+  --night-muted:    #9db1c8;
+  --gold:           #c9973f;
+  --gold-bright:    #e0b766;
+  --gold-soft:      rgba(201, 151, 63, 0.14);
+  --gold-ink:       #e0b766;
+  --paper-line:     rgba(158, 177, 200, 0.16);
 
   /* ─── Shadows ───────────────────────────────────────────────── */
   --shadow:         0 2px 20px rgba(0, 0, 0, 0.5);
@@ -98,26 +110,31 @@
   --topbar-h-mobile: 56px;
 
   /* ─── Type families ─────────────────────────────────────────── */
-  --font-display: 'Syne', system-ui, sans-serif;       /* h1, metrics, brand */
-  --font-body:    'DM Sans', system-ui, sans-serif;    /* paragraphs, UI */
-  --font-mono:    'DM Mono', ui-monospace, monospace;  /* data, numbers */
+  --font-display: 'Literata', Georgia, 'Times New Roman', serif;          /* titres, grands chiffres */
+  --font-body:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;  /* texte, UI */
+  --font-mono:    'IBM Plex Mono', ui-monospace, Menlo, monospace;        /* données, étiquettes */
 }
 
 /* Light theme override — exists in product but secondary to dark. */
 .light {
-  --bg:          #eef2f7;
-  --bg-alt:      #e4eaf2;
+  /* « Papier » froid sous un bandeau de nuit — inspiration éditoriale. */
+  --bg:          #f2f4f1;
+  --bg-alt:      #e8ece6;
   --bg-card:     #ffffff;
-  --bg-card-2:   #f8fafc;
-  --bg-hover:    #eef5fa;
-  --nav-bg:      #ffffff;
-  --border:      rgba(0, 0, 0, 0.07);
-  --border-mid:  rgba(0, 0, 0, 0.12);
-  --nav-border:  rgba(0, 0, 0, 0.07);
-  --text:        #0d1117;
-  --text-mid:    rgba(13, 17, 23, 0.60);
-  --text-dim:    rgba(13, 17, 23, 0.38);
-  --input-bg:    #f0f6f9;
+  --bg-card-2:   #f7f8f5;
+  --bg-hover:    #ebefe9;
+  --nav-bg:      rgba(242, 244, 241, 0.88);
+  --border:      #d8ddd5;
+  --border-mid:  #c6ccc2;
+  --nav-border:  #d8ddd5;
+  --text:        #111b28;
+  --text-mid:    #566273;
+  --text-dim:    #838d99;
+  --input-bg:    #f7f8f5;
+  --brand:       #0594ad;   /* cyan assombri : lisible sur papier */
+  --brand-deep:  #04768b;
+  --gold-ink:    #7a5617;
+  --paper-line:  #d8ddd5;
   --shadow:      0 4px 24px rgba(0, 100, 150, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
   --shadow-card: 0 2px 12px rgba(0, 80, 160, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
 }

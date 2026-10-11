@@ -192,7 +192,7 @@ function Configurator() {
             padding: pad, borderRadius: 7, border: 'none', cursor: 'pointer',
             background: payMode === m.v ? 'rgba(0,200,224,0.16)' : 'transparent',
             outline: payMode === m.v ? '1px solid rgba(0,200,224,0.35)' : 'none',
-            fontFamily: "'DM Sans', sans-serif", fontSize: fs, fontWeight: 500,
+            fontFamily: "var(--font-body), sans-serif", fontSize: fs, fontWeight: 500,
             color: payMode === m.v ? 'var(--brand)' : 'var(--text-dim)',
             transition: 'all 0.18s',
           }}>{m.l}</button>
@@ -236,7 +236,7 @@ function Configurator() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: done ? 'var(--brand-gradient)' : active ? 'rgba(0,200,224,0.12)' : 'rgba(255,255,255,0.04)',
                       border: active ? '1px solid var(--brand)' : done ? 'none' : '1px solid var(--border)',
-                      fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700,
+                      fontFamily: "var(--font-mono), monospace", fontSize: 11, fontWeight: 700,
                       color: done ? '#fff' : active ? 'var(--brand)' : 'var(--text-dim)',
                       boxShadow: active ? '0 0 14px rgba(0,200,224,0.3)' : 'none',
                       transition: 'all 0.2s',
@@ -246,7 +246,7 @@ function Configurator() {
                         : n}
                     </div>
                     <span style={{
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500,
+                      fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500,
                       letterSpacing: '0.06em', textTransform: 'uppercase',
                       color: active ? 'var(--brand)' : done ? 'var(--text-mid)' : 'var(--text-dim)',
                     }}>{l}</span>
@@ -269,8 +269,8 @@ function Configurator() {
             {/* ── STEP 1: Sport ────────────────────────────────────────────── */}
             {step === 1 && (
               <div style={{ animation: 'fadeUpSlow 0.3s ease both' }}>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Quel est ton sport principal ?</h3>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 28px' }}>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Quel est ton sport principal ?</h3>
+                <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 28px' }}>
                   Ton programme sera conçu spécifiquement pour cette discipline.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
@@ -284,7 +284,7 @@ function Configurator() {
                       <span style={{ color: sport === s.id ? 'var(--brand)' : 'var(--text-mid)', transition: 'color 0.18s' }}>
                         {SPORT_ICONS[s.icon]}
                       </span>
-                      <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', color: sport === s.id ? 'var(--brand)' : 'var(--text)' }}>
+                      <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', color: sport === s.id ? 'var(--brand)' : 'var(--text)' }}>
                         {s.label}
                       </span>
                     </button>
@@ -296,8 +296,8 @@ function Configurator() {
             {/* ── STEP 2: Objectif ──────────────────────────────────────────── */}
             {step === 2 && sport && (
               <div style={{ animation: 'fadeUpSlow 0.3s ease both' }}>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Quel est ton objectif ?</h3>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 28px' }}>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Quel est ton objectif ?</h3>
+                <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 28px' }}>
                   Le programme, la périodisation et les séances seront calibrés sur cet objectif.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -311,12 +311,12 @@ function Configurator() {
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       }}>
                         {active && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--brand-gradient)' }}/>}
-                        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: active ? 'var(--brand)' : 'var(--text)' }}>
+                        <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700, color: active ? 'var(--brand)' : 'var(--text)' }}>
                           {g.label}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {bp && (
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>
+                            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>
                               à partir de {bp} €/bloc
                             </span>
                           )}
@@ -334,8 +334,8 @@ function Configurator() {
               <div style={{ animation: 'fadeUpSlow 0.3s ease both' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Choisis ta formule</h3>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>
+                    <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Choisis ta formule</h3>
+                    <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>
                       Plus tu t'engages, plus le tarif est avantageux.
                     </p>
                   </div>
@@ -361,8 +361,8 @@ function Configurator() {
                           </div>
                         )}
 
-                        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, color: active ? 'var(--brand)' : 'var(--text)', marginBottom: 2 }}>{f.label}</div>
-                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>{f.sub}</div>
+                        <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 800, color: active ? 'var(--brand)' : 'var(--text)', marginBottom: 2 }}>{f.label}</div>
+                        <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>{f.sub}</div>
 
                         {/* Price display */}
                         {fTotal ? (
@@ -370,10 +370,10 @@ function Configurator() {
                             {f.months ? (
                               <>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                                  <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: active ? 'var(--brand)' : 'var(--text)' }}>
+                                  <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: active ? 'var(--brand)' : 'var(--text)' }}>
                                     {payMode === 'monthly' ? fMonthly : fTotal}€
                                   </span>
-                                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)' }}>
+                                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)' }}>
                                     {payMode === 'monthly' ? '/mois' : 'total'}
                                   </span>
                                   {disc > 0 && (
@@ -382,21 +382,21 @@ function Configurator() {
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>
+                                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>
                                   {payMode === 'monthly' ? `soit ${fTotal}€ total` : `soit ${fMonthly}€/mois`}
                                 </div>
                               </>
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                                <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: active ? 'var(--brand)' : 'var(--text)' }}>
+                                <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: active ? 'var(--brand)' : 'var(--text)' }}>
                                   {fTotal}€
                                 </span>
-                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)' }}>/bloc</span>
+                                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)' }}>/bloc</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>
+                          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>
                             Prix selon objectif
                           </div>
                         )}
@@ -408,7 +408,7 @@ function Configurator() {
                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="3" style={{ flexShrink: 0, opacity: 0.7 }}>
                                 <path d="M20 6L9 17l-5-5"/>
                               </svg>
-                              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: 'var(--text-dim)' }}>{inc}</span>
+                              <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, color: 'var(--text-dim)' }}>{inc}</span>
                             </div>
                           ))}
                         </div>
@@ -422,8 +422,8 @@ function Configurator() {
             {/* ── STEP 4: Options ───────────────────────────────────────────── */}
             {step === 4 && (
               <div style={{ animation: 'fadeUpSlow 0.3s ease both' }}>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Options additionnelles</h3>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px' }}>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Options additionnelles</h3>
+                <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px' }}>
                   Certaines options sont déjà incluses dans ta formule — elles ne s'ajoutent pas au prix.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -447,7 +447,7 @@ function Configurator() {
                             background: 'rgba(0,200,224,0.12)',
                             border: '1px solid rgba(0,200,224,0.28)',
                           }}>
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, fontWeight: 700, color: 'var(--brand)', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, fontWeight: 700, color: 'var(--brand)', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
                               Inclus ✓
                             </span>
                           </div>
@@ -470,19 +470,19 @@ function Configurator() {
 
                         {/* Label + desc */}
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: checked ? 'var(--brand)' : 'var(--text)', marginBottom: 3 }}>
+                          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600, color: checked ? 'var(--brand)' : 'var(--text)', marginBottom: 3 }}>
                             {o.label}
                           </div>
-                          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.45 }}>
+                          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.45 }}>
                             {o.desc}
                           </div>
                         </div>
 
                         {/* Price or Inclus */}
                         {included ? null : (
-                          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, color: opts[o.id] ? 'var(--brand)' : 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, color: opts[o.id] ? 'var(--brand)' : 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             +{o.price}€
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 3 }}>/bloc</span>
+                            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 3 }}>/bloc</span>
                           </div>
                         )}
                       </button>
@@ -497,7 +497,7 @@ function Configurator() {
               <button onClick={() => step > 1 && setStep(s => s - 1)} style={{
                 padding: '10px 20px', borderRadius: 10,
                 background: 'transparent', border: '1px solid var(--border)',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 500,
                 color: 'var(--text-mid)', cursor: step === 1 ? 'not-allowed' : 'pointer',
                 opacity: step === 1 ? 0.3 : 1, transition: 'all 0.18s',
               }}>← Retour</button>
@@ -507,7 +507,7 @@ function Configurator() {
                   padding: '10px 24px', borderRadius: 10,
                   background: canNext ? 'var(--brand-gradient)' : 'rgba(255,255,255,0.06)',
                   border: 'none',
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600,
                   color: canNext ? '#fff' : 'var(--text-dim)',
                   cursor: canNext ? 'pointer' : 'not-allowed',
                   boxShadow: canNext ? '0 2px 14px rgba(0,200,224,0.3)' : 'none',
@@ -528,7 +528,7 @@ function Configurator() {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--brand-gradient-h)' }}/>
 
             <div style={{ padding: '24px 22px 0' }}>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 18 }}>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 18 }}>
                 Récapitulatif
               </div>
 
@@ -540,8 +540,8 @@ function Configurator() {
                   { l: 'Formule',  v: selFormula ? selFormula.label : null },
                 ].map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-dim)' }}>{r.l}</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: r.v ? 'var(--text)' : 'var(--text-dim)', fontStyle: r.v ? 'normal' : 'italic' }}>
+                    <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-dim)' }}>{r.l}</span>
+                    <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 500, color: r.v ? 'var(--text)' : 'var(--text-dim)', fontStyle: r.v ? 'normal' : 'italic' }}>
                       {r.v || '—'}
                     </span>
                   </div>
@@ -554,10 +554,10 @@ function Configurator() {
                   if (!included && !selected) return null;
                   return (
                     <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', maxWidth: 160 }}>{o.label}</span>
+                      <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', maxWidth: 160 }}>{o.label}</span>
                       {included
-                        ? <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--brand)', fontWeight: 600 }}>Inclus</span>
-                        : <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--brand)' }}>+{o.price}€/bloc</span>
+                        ? <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--brand)', fontWeight: 600 }}>Inclus</span>
+                        : <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--brand)' }}>+{o.price}€/bloc</span>
                       }
                     </div>
                   );
@@ -579,20 +579,20 @@ function Configurator() {
                   {selFormula.months ? (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)' }}>
+                        <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)' }}>
                           {payMode === 'monthly' ? 'Prix mensuel' : 'Paiement total'}
                         </span>
                         <PayToggle size="sm"/>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--brand)' }}>
+                        <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 36, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--brand)' }}>
                           {payMode === 'monthly' ? monthlyPrice : totalPrice}
                         </span>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--text-mid)' }}>
+                        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 13, color: 'var(--text-mid)' }}>
                           €{payMode === 'monthly' ? ' / mois' : ' total'}
                         </span>
                       </div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 5 }}>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 5 }}>
                         {payMode === 'monthly'
                           ? `soit ${totalPrice}€ total · engagement ${selFormula.months} mois`
                           : `soit ${monthlyPrice}€/mois · engagement ${selFormula.months} mois`}
@@ -600,21 +600,21 @@ function Configurator() {
                     </>
                   ) : (
                     <>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', marginBottom: 5 }}>Prix / bloc (4 sem.)</div>
+                      <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', marginBottom: 5 }}>Prix / bloc (4 sem.)</div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--brand)' }}>{totalPrice}</span>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--text-mid)' }}>€ / bloc</span>
+                        <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 36, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--brand)' }}>{totalPrice}</span>
+                        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 13, color: 'var(--text-mid)' }}>€ / bloc</span>
                       </div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 5 }}>Sans engagement · résiliable à tout moment</div>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 5 }}>Sans engagement · résiliable à tout moment</div>
                     </>
                   )}
-                  <div style={{ marginTop: 12, padding: '8px 10px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ marginTop: 12, padding: '8px 10px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                     1ère semaine offerte · Appel découverte 30min inclus
                   </div>
                 </>
               ) : (
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '8px 0' }}>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '8px 0' }}>
                   Configure ton programme<br/>pour voir le prix
                 </div>
               )}
@@ -629,10 +629,10 @@ function Configurator() {
                 boxShadow: '0 4px 20px rgba(0,200,224,0.3)',
                 transition: 'all 0.2s',
               }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>
                   Commencer mon coaching →
                 </span>
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.04em' }}>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.04em' }}>
                   Appel découverte gratuit 30min
                 </span>
               </a>
@@ -640,7 +640,7 @@ function Configurator() {
 
             {/* Always-included features */}
             <div style={{ padding: '0 22px 22px' }}>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10 }}>
                 Inclus dans tous les plans
               </div>
               {[
@@ -654,7 +654,7 @@ function Configurator() {
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5">
                     <path d="M20 6L9 17l-5-5"/>
                   </svg>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-mid)' }}>{f}</span>
+                  <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-mid)' }}>{f}</span>
                 </div>
               ))}
             </div>

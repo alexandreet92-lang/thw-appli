@@ -244,7 +244,7 @@ function AthleteMorph(){
 
       ctx.save();
       ctx.globalAlpha=labelAlpha;
-      ctx.font="600 10px 'DM Mono',monospace";
+      ctx.font="600 10px 'IBM Plex Mono',monospace";
       ctx.fillStyle=SPORTS[activeSport].c;
       ctx.textAlign='center';
       ctx.shadowColor=SPORTS[activeSport].c;

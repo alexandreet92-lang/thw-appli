@@ -69,26 +69,26 @@ function Philosophy() {
                 boxShadow: '0 0 16px rgba(0,200,224,0.12)',
               }}>{p.icon}</div>
               <span style={{
-                fontFamily: "'Syne', sans-serif",
+                fontFamily: "var(--font-display), sans-serif",
                 fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em',
                 color: 'rgba(255,255,255,0.06)', lineHeight: 1,
               }}>{p.n}</span>
             </div>
 
             <div style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500,
               letterSpacing: '0.12em', textTransform: 'uppercase',
               color: 'var(--text-dim)', marginBottom: 12,
             }}>{p.tag}</div>
 
             <h3 style={{
-              fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700,
+              fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700,
               letterSpacing: '-0.02em', lineHeight: 1.15,
               margin: '0 0 14px', color: 'var(--text)',
             }}>{p.title}</h3>
 
             <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 14,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 14,
               lineHeight: 1.6, color: 'var(--text-mid)', margin: 0,
               textWrap: 'pretty',
             }}>{p.body}</p>
@@ -106,7 +106,7 @@ function Philosophy() {
         display: 'flex', alignItems: 'center', gap: 24,
         justifyContent: 'space-between', flexWrap: 'wrap',
       }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+        <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
           Disciplines couvertes
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -123,7 +123,7 @@ function Philosophy() {
               border: `1px solid ${s.c}33`,
               background: `${s.c}10`,
               color: s.c,
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 600,
               letterSpacing: '0.02em',
             }}>{s.l}</span>
           ))}

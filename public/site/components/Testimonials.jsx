@@ -80,7 +80,7 @@ function Testimonials() {
 
         {/* Nav arrows */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text-dim)', marginRight: 12 }}>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 12, color: 'var(--text-dim)', marginRight: 12 }}>
             <span style={{ color: 'var(--brand)' }}>{String(idx + 1).padStart(2, '0')}</span>
             <span style={{ margin: '0 6px' }}>/</span>
             {String(items.length).padStart(2, '0')}
@@ -113,12 +113,12 @@ function Testimonials() {
 
           {/* Big quote glyph */}
           <div style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 96, fontWeight: 800,
+            fontFamily: "var(--font-display), sans-serif", fontSize: 96, fontWeight: 800,
             color: 'rgba(0,200,224,0.10)', lineHeight: 0.5, marginBottom: 8,
           }}>"</div>
 
           <p style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-display), sans-serif",
             fontSize: 'clamp(20px, 2.4vw, 28px)',
             fontWeight: 500,
             letterSpacing: '-0.02em',
@@ -136,13 +136,13 @@ function Testimonials() {
                 background: `linear-gradient(135deg, ${active.sportColor}55, ${active.sportColor}22)`,
                 border: `1px solid ${active.sportColor}44`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700,
+                fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700,
                 color: active.sportColor,
                 letterSpacing: '-0.02em',
               }}>{active.name.split(' ').map(s => s[0]).join('')}</div>
               <div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>{active.name}</div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>{active.name}</div>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>
                   {active.role} · <span style={{ color: active.sportColor }}>{active.sport}</span>
                 </div>
               </div>
@@ -155,7 +155,7 @@ function Testimonials() {
                   border: '1px solid rgba(0,200,224,0.2)',
                   background: 'rgba(0,200,224,0.08)',
                   color: 'var(--brand)',
-                  fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 500,
+                  fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 500,
                   letterSpacing: '0.04em',
                 }}>{t}</span>
               ))}
@@ -175,12 +175,12 @@ function Testimonials() {
 
           <div>
             <div style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500,
               letterSpacing: '0.12em', textTransform: 'uppercase',
               color: 'var(--text-dim)', marginBottom: 16,
             }}>Record personnel · 2025</div>
             <div style={{
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "var(--font-display), sans-serif",
               fontSize: 'clamp(56px, 8vw, 88px)',
               fontWeight: 800,
               letterSpacing: '-0.05em',
@@ -189,7 +189,7 @@ function Testimonials() {
               animation: 'fadeUpSlow 0.5s cubic-bezier(0.4,0,0.2,1) both',
             }} key={`v-${idx}`}>{active.pr}</div>
             <div style={{
-              fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text-mid)',
+              fontFamily: "var(--font-mono), monospace", fontSize: 12, color: 'var(--text-mid)',
               marginTop: 16,
             }}>{active.prLabel}</div>
           </div>
@@ -197,8 +197,8 @@ function Testimonials() {
           {/* Mini progression viz */}
           <div style={{ marginTop: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Progression sur 6 mois</span>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: active.sportColor, fontWeight: 600 }}>+18%</span>
+              <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Progression sur 6 mois</span>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: active.sportColor, fontWeight: 600 }}>+18%</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 36 }}>
               {[35, 42, 48, 52, 65, 78, 92].map((h, i) => (

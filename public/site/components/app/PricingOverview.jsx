@@ -74,7 +74,7 @@ function PricingOverview() {
                 padding: '8px 18px', borderRadius: 999, border: 'none',
                 background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
                 color: active ? 'var(--text)' : 'var(--text-dim)',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "var(--font-body), sans-serif",
                 fontSize: 13, fontWeight: active ? 600 : 400,
                 cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
               }}>
@@ -129,7 +129,7 @@ function PricingOverview() {
                   position: 'absolute', top: 12, right: 12,
                   padding: '3px 10px', borderRadius: 999,
                   background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 9,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 9,
                   fontWeight: 700, letterSpacing: '0.06em',
                   textTransform: 'uppercase', color: '#fff',
                 }}>Le plus populaire</div>
@@ -143,34 +143,34 @@ function PricingOverview() {
                 marginBottom: 14,
               }}>
                 <span style={{
-                  fontFamily: "'DM Mono', monospace", fontSize: 9,
+                  fontFamily: "var(--font-mono), monospace", fontSize: 9,
                   color: plan.accent, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
                 }}>{plan.ai}</span>
                 <span style={{
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 9,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 9,
                   color: 'var(--text-dim)',
                 }}>{plan.aiModel}</span>
               </div>
 
               {/* Name */}
               <div style={{
-                fontFamily: "'Syne', sans-serif", fontSize: 22,
+                fontFamily: "var(--font-display), sans-serif", fontSize: 22,
                 fontWeight: 800, letterSpacing: '-0.04em',
                 color: 'var(--text)', marginBottom: 10,
               }}>{plan.name}</div>
 
               {/* Price */}
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, marginBottom: 4 }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'var(--text-mid)', fontWeight: 500, paddingBottom: 6 }}>€</span>
+                <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, color: 'var(--text-mid)', fontWeight: 500, paddingBottom: 6 }}>€</span>
                 <span style={{
-                  fontFamily: "'Syne', sans-serif", fontSize: 44,
+                  fontFamily: "var(--font-display), sans-serif", fontSize: 44,
                   fontWeight: 800, letterSpacing: '-0.06em', lineHeight: 1,
                   color: plan.accent, transition: 'opacity 0.15s',
                 }}>{displayPrice}</span>
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', paddingBottom: 8, paddingLeft: 2 }}>/mois</span>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', paddingBottom: 8, paddingLeft: 2 }}>/mois</span>
               </div>
               <div style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 11,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 11,
                 color: 'var(--text-dim)',
               }}>
                 {billing === 'annual'
@@ -195,7 +195,7 @@ function PricingOverview() {
           borderBottom: '1px solid rgba(255,255,255,0.07)',
         }}>
           <div style={{ padding: '18px 22px' }}>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Fonctionnalité</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Fonctionnalité</div>
           </div>
           {PRICING_PLANS.map(plan => (
             <div key={plan.id} style={{
@@ -203,8 +203,8 @@ function PricingOverview() {
               borderLeft: '1px solid rgba(255,255,255,0.07)',
               background: plan.featured ? 'rgba(0,200,224,0.04)' : 'transparent',
             }}>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: plan.accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{plan.ai}</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)' }}>{plan.name}</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: plan.accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{plan.ai}</div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)' }}>{plan.name}</div>
             </div>
           ))}
         </div>
@@ -217,7 +217,7 @@ function PricingOverview() {
           }}>
             <div style={{
               padding: '12px 22px',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 12,
               color: 'var(--text-dim)', display: 'flex', alignItems: 'center',
             }}>{row.label}</div>
             {PRICING_PLANS.map(plan => (
@@ -228,7 +228,7 @@ function PricingOverview() {
                 display: 'flex', alignItems: 'center',
               }}>
                 <span style={{
-                  fontFamily: "'DM Mono', monospace", fontSize: 12,
+                  fontFamily: "var(--font-mono), monospace", fontSize: 12,
                   fontWeight: 500, color: plan.accent,
                 }}>{plan.vals[ri]}</span>
               </div>
@@ -240,7 +240,7 @@ function PricingOverview() {
       {/* Trial note */}
       <div style={{
         textAlign: 'center', marginTop: 22,
-        fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-dim)',
+        fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-dim)',
       }}>
         14 jours d'essai gratuit · Sans carte bancaire · Résiliable à tout moment
       </div>

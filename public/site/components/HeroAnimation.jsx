@@ -91,7 +91,7 @@ function HAGPSScene({ progress }) {
             <rect x={pts[7][0]-22} y={pts[7][1]-26} width={44} height={17} rx={4}
               fill="rgba(6,10,18,0.88)" stroke={`${HA_INDIGO}55`} strokeWidth="1"/>
             <text x={pts[7][0]} y={pts[7][1]-13} textAnchor="middle"
-              fontFamily="'DM Mono', monospace" fontSize={8} fill={HA_INDIGO}>1 240 m</text>
+              fontFamily="var(--font-mono), monospace" fontSize={8} fill={HA_INDIGO}>1 240 m</text>
           </g>
         )}
       </svg>
@@ -99,7 +99,7 @@ function HAGPSScene({ progress }) {
       {/* Header */}
       <div style={{ position:'absolute', top:14, left:14, display:'flex', alignItems:'center', gap:7 }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:HA_CYAN, boxShadow:`0 0 10px ${HA_CYAN}` }}/>
-        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
+        <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
           GPS Live · Marathon Trail Alpes
         </span>
       </div>
@@ -116,8 +116,8 @@ function HAGPSScene({ progress }) {
             background:'rgba(0,5,10,0.80)', border:'1px solid rgba(0,200,224,0.18)',
             backdropFilter:'blur(10px)',
           }}>
-            <div style={{ fontFamily:"'DM Mono', monospace", fontSize:9, color:HA_CYAN, letterSpacing:'0.1em', marginBottom:3, textTransform:'uppercase' }}>{s.l}</div>
-            <div style={{ fontFamily:"'Syne', sans-serif", fontSize:15, fontWeight:700, color:'var(--text)', letterSpacing:'-0.02em' }}>{s.v}</div>
+            <div style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, color:HA_CYAN, letterSpacing:'0.1em', marginBottom:3, textTransform:'uppercase' }}>{s.l}</div>
+            <div style={{ fontFamily:"var(--font-display), sans-serif", fontSize:15, fontWeight:700, color:'var(--text)', letterSpacing:'-0.02em' }}>{s.v}</div>
           </div>
         ))}
       </div>
@@ -184,7 +184,7 @@ function HACTLScene({ progress }) {
             <g key={v}>
               <line x1={padL} y1={y} x2={W-padR} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>
               <text x={padL-6} y={y+4} textAnchor="end"
-                fontFamily="'DM Mono', monospace" fontSize={8} fill="rgba(255,255,255,0.22)">{v}</text>
+                fontFamily="var(--font-mono), monospace" fontSize={8} fill="rgba(255,255,255,0.22)">{v}</text>
             </g>
           );
         })}
@@ -194,7 +194,7 @@ function HACTLScene({ progress }) {
         {[1,4,8,12,16].map(w => {
           const x = padL + ((w-1)/(WEEKS-1))*cW;
           return <text key={w} x={x} y={H-padB+14} textAnchor="middle"
-            fontFamily="'DM Mono', monospace" fontSize={8} fill="rgba(255,255,255,0.2)">S{w}</text>;
+            fontFamily="var(--font-mono), monospace" fontSize={8} fill="rgba(255,255,255,0.2)">S{w}</text>;
         })}
 
         {/* CTL area fill */}
@@ -233,7 +233,7 @@ function HACTLScene({ progress }) {
 
       {/* Title */}
       <div style={{ position:'absolute', top:12, left:14 }}>
-        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
+        <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
           Charge d'entraînement · 16 semaines
         </span>
       </div>
@@ -246,10 +246,10 @@ function HACTLScene({ progress }) {
           { l:'TSB', v:(Math.round(lastCTL*0.84) - Math.round(lastATL*0.91)), c:HA_INDIGO, signed:true },
         ].map(m => (
           <div key={m.l} style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontFamily:"'Syne', sans-serif", fontSize:17, fontWeight:800, letterSpacing:'-0.04em', color:m.c }}>
+            <span style={{ fontFamily:"var(--font-display), sans-serif", fontSize:17, fontWeight:800, letterSpacing:'-0.04em', color:m.c }}>
               {m.signed && m.v >= 0 ? '+' : ''}{m.v}
             </span>
-            <span style={{ fontFamily:"'DM Mono', monospace", fontSize:9, color:m.c, opacity:0.65, letterSpacing:'0.1em' }}>{m.l}</span>
+            <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, color:m.c, opacity:0.65, letterSpacing:'0.1em' }}>{m.l}</span>
           </div>
         ))}
       </div>
@@ -274,7 +274,7 @@ function HAHRScene({ progress }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:2 }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:HA_CYAN, boxShadow:`0 0 10px ${HA_CYAN}` }}/>
-        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
+        <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
           Répartition Zones FC · Dernière séance
         </span>
       </div>
@@ -295,15 +295,15 @@ function HAHRScene({ progress }) {
               boxShadow: lit ? `0 0 12px ${z.color}44` : 'none',
               transition:'all 0.35s',
             }}>
-              <span style={{ fontFamily:"'DM Mono', monospace", fontSize:9, fontWeight:700, color: lit ? z.color : 'rgba(255,255,255,0.18)' }}>{z.id}</span>
+              <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, fontWeight:700, color: lit ? z.color : 'rgba(255,255,255,0.18)' }}>{z.id}</span>
             </div>
 
             <div style={{ flex:1, display:'flex', flexDirection:'column', gap:3 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontFamily:"'DM Sans', sans-serif", fontSize:11, fontWeight:500, color: lit ? 'var(--text)' : 'rgba(255,255,255,0.18)', transition:'color 0.35s' }}>{z.name}</span>
+                <span style={{ fontFamily:"var(--font-body), sans-serif", fontSize:11, fontWeight:500, color: lit ? 'var(--text)' : 'rgba(255,255,255,0.18)', transition:'color 0.35s' }}>{z.name}</span>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontFamily:"'DM Mono', monospace", fontSize:9, color: lit ? `${z.color}cc` : 'rgba(255,255,255,0.12)', transition:'color 0.35s' }}>{z.bpm}</span>
-                  <span style={{ fontFamily:"'Syne', sans-serif", fontSize:13, fontWeight:700, color: lit ? z.color : 'rgba(255,255,255,0.12)', minWidth:28, textAlign:'right', transition:'color 0.35s' }}>
+                  <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, color: lit ? `${z.color}cc` : 'rgba(255,255,255,0.12)', transition:'color 0.35s' }}>{z.bpm}</span>
+                  <span style={{ fontFamily:"var(--font-display), sans-serif", fontSize:13, fontWeight:700, color: lit ? z.color : 'rgba(255,255,255,0.12)', minWidth:28, textAlign:'right', transition:'color 0.35s' }}>
                     {lit ? `${Math.round(bar)}%` : ''}
                   </span>
                 </div>
@@ -329,8 +329,8 @@ function HAHRScene({ progress }) {
         opacity: Math.min(Math.max((p - 0.82)/0.12, 0), 1),
         transition:'opacity 0.4s',
       }}>
-        <span style={{ fontFamily:"'DM Sans', sans-serif", fontSize:11, color:'var(--text-mid)' }}>Excellent ratio aérobie</span>
-        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:11, color:HA_CYAN, fontWeight:600 }}>56% Z1–Z2</span>
+        <span style={{ fontFamily:"var(--font-body), sans-serif", fontSize:11, color:'var(--text-mid)' }}>Excellent ratio aérobie</span>
+        <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:11, color:HA_CYAN, fontWeight:600 }}>56% Z1–Z2</span>
       </div>
     </div>
   );
@@ -352,7 +352,7 @@ function HAPerfScene({ progress }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:7 }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', boxShadow:'0 0 10px #22c55e' }}/>
-        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
+        <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:10, color:HA_CYAN, letterSpacing:'0.12em', textTransform:'uppercase' }}>
           Métriques Performance · Saison 2026
         </span>
       </div>
@@ -377,14 +377,14 @@ function HAPerfScene({ progress }) {
               boxShadow:`0 0 ${Math.round(glo*22)}px ${m.color}22`,
             }}>
               <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg, ${m.color}, transparent)`, opacity:glo }}/>
-              <div style={{ fontFamily:"'DM Mono', monospace", fontSize:9, color:m.color, letterSpacing:'0.1em', marginBottom:5, opacity:0.8 }}>{m.l}</div>
+              <div style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, color:m.color, letterSpacing:'0.1em', marginBottom:5, opacity:0.8 }}>{m.l}</div>
               <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
                 <span style={{
-                  fontFamily:"'Syne', sans-serif", fontSize:28, fontWeight:800,
+                  fontFamily:"var(--font-display), sans-serif", fontSize:28, fontWeight:800,
                   letterSpacing:'-0.05em', color:m.color,
                   textShadow:`0 0 ${Math.round(glo*18)}px ${m.color}`,
                 }}>{val}</span>
-                <span style={{ fontFamily:"'DM Mono', monospace", fontSize:9, color:`${m.color}aa` }}>{m.unit}</span>
+                <span style={{ fontFamily:"var(--font-mono), monospace", fontSize:9, color:`${m.color}aa` }}>{m.unit}</span>
               </div>
               {m.num && m.target && ep > 0.35 && (
                 <div style={{ marginTop:7 }}>
@@ -396,7 +396,7 @@ function HAPerfScene({ progress }) {
                       boxShadow:`0 0 6px ${m.color}66`,
                     }}/>
                   </div>
-                  <div style={{ fontFamily:"'DM Mono', monospace", fontSize:8, color:`${m.color}66`, marginTop:4 }}>obj. {m.target}{m.unit}</div>
+                  <div style={{ fontFamily:"var(--font-mono), monospace", fontSize:8, color:`${m.color}66`, marginTop:4 }}>obj. {m.target}{m.unit}</div>
                 </div>
               )}
             </div>
@@ -416,7 +416,7 @@ function HAPerfScene({ progress }) {
           <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
           <polyline points="16 7 22 7 22 13"/>
         </svg>
-        <span style={{ fontFamily:"'DM Sans', sans-serif", fontSize:11, color:'#22c55e' }}>+12% depuis le début de saison · Sur la bonne trajectoire</span>
+        <span style={{ fontFamily:"var(--font-body), sans-serif", fontSize:11, color:'#22c55e' }}>+12% depuis le début de saison · Sur la bonne trajectoire</span>
       </div>
     </div>
   );
@@ -540,8 +540,8 @@ function HeroAnimation() {
           </svg>
         </div>
         <div>
-          <div style={{ fontFamily:"'Syne', sans-serif", fontSize:10, fontWeight:700, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>COACH IA</div>
-          <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:11, color:'var(--text)', marginTop:2, lineHeight:1.3 }}>Ton corps est prêt. Pousse l'intensité.</div>
+          <div style={{ fontFamily:"var(--font-display), sans-serif", fontSize:10, fontWeight:700, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>COACH IA</div>
+          <div style={{ fontFamily:"var(--font-body), sans-serif", fontSize:11, color:'var(--text)', marginTop:2, lineHeight:1.3 }}>Ton corps est prêt. Pousse l'intensité.</div>
         </div>
       </div>
 
@@ -568,8 +568,8 @@ function HeroAnimation() {
           </defs>
         </svg>
         <div>
-          <div style={{ fontFamily:"'DM Sans', sans-serif", fontSize:9, fontWeight:500, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-dim)' }}>Readiness</div>
-          <div style={{ fontFamily:"'Syne', sans-serif", fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:HA_CYAN, lineHeight:1, marginTop:4 }}>
+          <div style={{ fontFamily:"var(--font-body), sans-serif", fontSize:9, fontWeight:500, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-dim)' }}>Readiness</div>
+          <div style={{ fontFamily:"var(--font-display), sans-serif", fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:HA_CYAN, lineHeight:1, marginTop:4 }}>
             75<span style={{ fontSize:11, color:'var(--text-dim)', fontWeight:500, marginLeft:2 }}>/100</span>
           </div>
         </div>

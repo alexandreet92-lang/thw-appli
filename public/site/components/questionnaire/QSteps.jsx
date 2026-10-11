@@ -70,7 +70,7 @@ function QStep1({ data, set }) {
     <div style={{ animation: 'qFadeUp 0.35s ease both' }}>
       {/* Intro banner */}
       <div style={{ marginBottom: 28, padding: '16px 20px', borderRadius: 12, background: 'rgba(0,200,224,0.06)', border: '1px solid rgba(0,200,224,0.18)' }}>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, margin: 0 }}>
+        <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, margin: 0 }}>
           Ce questionnaire nous permet de construire ton programme sur mesure.{' '}
           <span style={{ color: 'var(--text)', fontWeight: 600 }}>10 minutes pour transformer ta saison.</span>
         </p>
@@ -108,7 +108,7 @@ function QStep1({ data, set }) {
       <QSection title="Course principale — GTY">
         <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(0,200,224,0.07)', border: '1px solid rgba(0,200,224,0.2)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00c8e0', boxShadow: '0 0 8px #00c8e0' }}/>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#00c8e0', letterSpacing: '0.1em', fontWeight: 600 }}>GTY — GOAL OF THE YEAR · Ton objectif ultime de la saison</span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: '#00c8e0', letterSpacing: '0.1em', fontWeight: 600 }}>GTY — GOAL OF THE YEAR · Ton objectif ultime de la saison</span>
         </div>
 
         <QField label="Nom de la course / événement" required>
@@ -136,7 +136,7 @@ function QStep1({ data, set }) {
           width: '100%', padding: '12px', borderRadius: 10,
           background: 'rgba(0,200,224,0.05)', border: '1px dashed rgba(0,200,224,0.3)',
           cursor: 'pointer', transition: 'all 0.18s', color: '#00c8e0',
-          fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+          fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 500,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Ajouter une course
@@ -587,17 +587,17 @@ function QStep6({ data, set }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : locked ? 'var(--text-dim)' : 'var(--text)' }}>
+            <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : locked ? 'var(--text-dim)' : 'var(--text)' }}>
               {label}
             </span>
             {locked && (
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', background: 'rgba(0,200,224,0.12)', border: '1px solid rgba(0,200,224,0.28)', borderRadius: 4, padding: '2px 6px' }}>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', background: 'rgba(0,200,224,0.12)', border: '1px solid rgba(0,200,224,0.28)', borderRadius: 4, padding: '2px 6px' }}>
                 Inclus
               </span>
             )}
           </div>
           {desc && (
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.45 }}>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.45 }}>
               {desc}
             </div>
           )}
@@ -635,17 +635,17 @@ function QStep6({ data, set }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : 'var(--text)' }}>
+            <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : 'var(--text)' }}>
               {label}
             </span>
             {value === 'avance' && (
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', background: 'rgba(0,200,224,0.12)', border: '1px solid rgba(0,200,224,0.28)', borderRadius: 4, padding: '2px 6px' }}>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', background: 'rgba(0,200,224,0.12)', border: '1px solid rgba(0,200,224,0.28)', borderRadius: 4, padding: '2px 6px' }}>
                 Inclus
               </span>
             )}
           </div>
           {desc && (
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.45 }}>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.45 }}>
               {desc}
             </div>
           )}
@@ -777,11 +777,11 @@ function QStep7({ data, onSubmit }) {
         <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 40px rgba(0,200,224,0.4)' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 14px' }}>Candidature envoyée !</h2>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, maxWidth: 440, margin: '0 auto 28px' }}>
+        <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 14px' }}>Candidature envoyée !</h2>
+        <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, maxWidth: 440, margin: '0 auto 28px' }}>
           Tu recevras un email de confirmation sous <strong style={{ color: 'var(--text)' }}>24h</strong>. Ton appel découverte de <strong style={{ color: 'var(--text)' }}>30 minutes</strong> sera planifié rapidement. On a hâte de travailler avec toi.
         </p>
-        <a href="index.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', textDecoration: 'none', fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,200,224,0.35)' }}>
+        <a href="index.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', color: '#fff', textDecoration: 'none', fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,200,224,0.35)' }}>
           ← Retour à l'accueil
         </a>
       </div>
@@ -795,10 +795,10 @@ function QStep7({ data, onSubmit }) {
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(0,200,224,0.38)' }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 10px' }}>
+        <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 10px' }}>
           Merci {prenom}.
         </h2>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, maxWidth: 480, margin: '0 auto' }}>
+        <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.65, maxWidth: 480, margin: '0 auto' }}>
           Ton dossier est entre de bonnes mains. Vérifie les informations ci-dessous avant d'envoyer ta candidature.
         </p>
       </div>
@@ -811,12 +811,12 @@ function QStep7({ data, onSubmit }) {
           return (
             <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 20px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#00c8e0,transparent)' }}/>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', marginBottom: 12 }}>{s.title}</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#00c8e0', marginBottom: 12 }}>{s.title}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {rows.map((r, j) => (
                   <div key={j} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-dim)', minWidth: 130, flexShrink: 0, paddingTop: 1 }}>{r.l}</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text)', lineHeight: 1.5, wordBreak: 'break-word' }}>{r.v}</span>
+                    <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-dim)', minWidth: 130, flexShrink: 0, paddingTop: 1 }}>{r.l}</span>
+                    <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text)', lineHeight: 1.5, wordBreak: 'break-word' }}>{r.v}</span>
                   </div>
                 ))}
               </div>
@@ -827,7 +827,7 @@ function QStep7({ data, onSubmit }) {
 
       {/* Reassurance */}
       <div style={{ padding: '14px 18px', borderRadius: 10, background: 'rgba(0,200,224,0.06)', border: '1px solid rgba(0,200,224,0.18)', marginBottom: 8 }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.65 }}>
+        <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.65 }}>
           Tu recevras un email de confirmation sous <strong style={{ color: 'var(--text)' }}>24h</strong>. Ton appel découverte gratuit de <strong style={{ color: 'var(--text)' }}>30 minutes</strong> sera planifié rapidement.
         </div>
       </div>

@@ -98,7 +98,7 @@ function ThemeToggle(props) {
               border: 'none',
               cursor: 'pointer',
               borderRadius: 999,
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "var(--font-body), sans-serif",
               fontSize: 12,
               fontWeight: 600,
               lineHeight: 1,

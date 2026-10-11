@@ -107,7 +107,7 @@ function CoachDemo() {
                 background: `${a.c}08`,
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.c, boxShadow: `0 0 6px ${a.c}` }}/>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Coach {a.l}</span>
+                <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Coach {a.l}</span>
               </div>
             ))}
           </div>
@@ -132,8 +132,8 @@ function CoachDemo() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{conv.agent.name}</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{conv.agent.name}</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }}/>
                 En ligne · Streaming
               </div>
@@ -155,12 +155,12 @@ function CoachDemo() {
                 padding: '12px 16px', borderRadius: '14px 14px 4px 14px',
                 background: 'rgba(91,111,255,0.12)',
                 border: '1px solid rgba(91,111,255,0.25)',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13, lineHeight: 1.5,
                 color: 'var(--text)',
               }}>
                 {typedQ}{phase === 'typingQ' && <span className="cursor-blink"/>}
               </div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', textAlign: 'right', marginTop: 4 }}>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', textAlign: 'right', marginTop: 4 }}>
                 Toi · maintenant
               </div>
             </div>
@@ -176,7 +176,7 @@ function CoachDemo() {
                   {conv.thinking.map((t, i) => (
                     <div key={i} style={{
                       display: 'flex', alignItems: 'center', gap: 8,
-                      fontFamily: "'DM Mono', monospace", fontSize: 11,
+                      fontFamily: "var(--font-mono), monospace", fontSize: 11,
                       color: i < thinkStep ? 'var(--text-mid)' : 'var(--text-dim)',
                       opacity: i < thinkStep ? 1 : 0.4,
                       marginBottom: i < conv.thinking.length - 1 ? 6 : 0,
@@ -201,7 +201,7 @@ function CoachDemo() {
                   padding: '14px 18px', borderRadius: '14px 14px 14px 4px',
                   background: 'linear-gradient(135deg, rgba(0,200,224,0.08), rgba(91,111,255,0.06))',
                   border: '1px solid rgba(0,200,224,0.22)',
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.6,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 13, lineHeight: 1.6,
                   color: 'var(--text)', whiteSpace: 'pre-wrap',
                 }}>
                   {typedA}{!showTags && <span className="cursor-blink"/>}
@@ -212,7 +212,7 @@ function CoachDemo() {
                       <span key={t.l} style={{
                         padding: '3px 10px', borderRadius: 999,
                         border: `1px solid ${t.c}40`, background: `${t.c}12`, color: t.c,
-                        fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                        fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
                       }}>{t.l}</span>
                     ))}
                   </div>
@@ -226,7 +226,7 @@ function CoachDemo() {
             <div style={{
               flex: 1, padding: '10px 14px', borderRadius: 10,
               background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-dim)',
+              fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-dim)',
             }}>Pose une question à ton coach…</div>
             <button style={{
               width: 38, height: 38, borderRadius: 10, border: 'none',

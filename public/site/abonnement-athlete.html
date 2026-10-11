@@ -98,6 +98,8 @@
       .settings-bar { top: 10px !important; right: 10px !important; transform: scale(0.9); transform-origin: top right; }
     }
   </style>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
 </head>
 <body>
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1a1a"/><text x="50" y="58" font-family="sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">THW</text></svg></template>
@@ -355,7 +357,7 @@
                 padding: '9px 20px', borderRadius: 999, border: 'none',
                 background: active ? 'var(--bg-hover)' : 'transparent',
                 color: active ? 'var(--text)' : 'var(--text-dim)',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "var(--font-body), sans-serif",
                 fontSize: 13, fontWeight: active ? 600 : 400,
                 cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
               }}>
@@ -412,7 +414,7 @@
               position: 'absolute', top: 14, right: 14,
               padding: '4px 11px', borderRadius: 999,
               background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 10,
               fontWeight: 700, letterSpacing: '0.05em',
               textTransform: 'uppercase', color: '#fff',
               boxShadow: '0 2px 14px rgba(0,200,224,0.38)',
@@ -430,16 +432,16 @@
               width: 26, height: 26, borderRadius: 7, flexShrink: 0,
               background: `${accent}1a`, border: `1px solid ${accent}38`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 500, color: aText,
+              fontFamily: "var(--font-mono), monospace", fontSize: 13, fontWeight: 500, color: aText,
             }}>{plan.ai.glyph}</div>
             <div>
               <div style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                fontFamily: "var(--font-mono), monospace", fontSize: 10,
                 fontWeight: 600, color: aText,
                 letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
               }}>{plan.ai.name}</div>
               <div style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 10,
                 color: 'var(--text-dim)', marginTop: 3, lineHeight: 1,
               }}>{plan.ai.model}{plan.ai.sub ? ` · ${plan.ai.sub}` : ''}</div>
             </div>
@@ -447,7 +449,7 @@
 
           {/* Plan name */}
           <div style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 24,
+            fontFamily: "var(--font-display), sans-serif", fontSize: 24,
             fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 18,
           }}>{plan.name}</div>
 
@@ -461,21 +463,21 @@
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
               <span style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 18,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 18,
                 fontWeight: 600, color: 'var(--text-mid)', marginBottom: 9,
               }}>€</span>
               <span style={{
-                fontFamily: "'Syne', sans-serif", fontSize: 52,
+                fontFamily: "var(--font-display), sans-serif", fontSize: 52,
                 fontWeight: 800, letterSpacing: '-0.06em', lineHeight: 1,
                 color: 'var(--text)',
               }}>{monthly}</span>
               <span style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 11,
+                fontFamily: "var(--font-mono), monospace", fontSize: 11,
                 color: 'var(--text-dim)', marginBottom: 10, paddingLeft: 2,
               }}>{T.perMonth}</span>
             </div>
             <div style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 11,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 11,
               color: 'var(--text-dim)', marginTop: 4,
             }}>
               {isAnnual ? T.billedAnnual(plan.price.annual) : T.billedMonthly}
@@ -498,16 +500,16 @@
                 borderBottom: i < plan.features.length - 1 ? '1px solid var(--border)' : 'none',
               }}>
                 <span style={{
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 12,
                   color: 'var(--text-dim)', flexShrink: 0, lineHeight: 1.4,
                 }}>{f.l}</span>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{
-                    fontFamily: "'DM Mono', monospace", fontSize: 12,
+                    fontFamily: "var(--font-mono), monospace", fontSize: 12,
                     fontWeight: 500, color: aText, lineHeight: 1.3,
                   }}>{f.v}</div>
                   {f.s && <div style={{
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+                    fontFamily: "var(--font-body), sans-serif", fontSize: 10,
                     color: 'var(--text-dim)', marginTop: 2,
                   }}>{f.s}</div>}
                 </div>
@@ -525,7 +527,7 @@
                 : `${accent}14`,
               border: featured ? 'none' : `1px solid ${accent}28`,
               color: featured ? '#fff' : aText,
-              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600,
               letterSpacing: '-0.01em', cursor: 'pointer',
               boxShadow: featured ? `0 4px 22px ${accent}40` : 'none',
               transition: 'all 0.18s',
@@ -546,7 +548,7 @@
           </a>
           <div style={{
             textAlign: 'center', marginTop: 10,
-            fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)',
+            fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)',
           }}>{T.ctaNote}</div>
         </div>
       );
@@ -586,7 +588,7 @@
             background: 'none', border: 'none', cursor: 'pointer', gap: 16, textAlign: 'left',
           }}>
             <span style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 500,
               color: open ? 'var(--text)' : 'var(--text-mid)', lineHeight: 1.5,
               transition: 'color 0.15s',
             }}>{item.q}</span>
@@ -608,7 +610,7 @@
             transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
           }}>
             <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 13,
               color: 'var(--text-mid)', lineHeight: 1.72,
               paddingBottom: 22, margin: 0,
             }}>{item.a}</p>
@@ -688,14 +690,14 @@
                 animation: 'pulse-dot 2s infinite',
               }}/>
               <span style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                fontFamily: "var(--font-mono), monospace", fontSize: 10,
                 color: '#00c8e0', letterSpacing: '0.14em', textTransform: 'uppercase',
               }}>{T.pill}</span>
             </div>
 
             {/* Title */}
             <h1 style={{
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "var(--font-display), sans-serif",
               fontSize: 'clamp(38px, 6vw, 68px)',
               fontWeight: 800, letterSpacing: '-0.055em', lineHeight: 1.0,
               margin: '0 0 16px', textWrap: 'balance',
@@ -741,7 +743,7 @@
                 return (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                    fontFamily: "var(--font-body), sans-serif", fontSize: 12,
                     color: 'var(--text-dim)',
                   }}>
                     <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><Icon/></span>{label}
@@ -755,12 +757,12 @@
           <div className="page-pad" style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 90px' }}>
             <div style={{ textAlign: 'center', marginBottom: 36 }}>
               <div style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                fontFamily: "var(--font-mono), monospace", fontSize: 10,
                 color: '#00c8e0', letterSpacing: '0.14em',
                 textTransform: 'uppercase', marginBottom: 12,
               }}>{T.faqLabel}</div>
               <h2 style={{
-                fontFamily: "'Syne', sans-serif",
+                fontFamily: "var(--font-display), sans-serif",
                 fontSize: 'clamp(26px, 4vw, 38px)',
                 fontWeight: 800, letterSpacing: '-0.04em', margin: 0,
               }}>{T.faqTitle}</h2>
@@ -785,7 +787,7 @@
             }}>
               {T.footerLinks.map((l, i) => (
                 <a key={i} href="#" style={{
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                  fontFamily: "var(--font-body), sans-serif", fontSize: 12,
                   color: 'var(--text-dim)', textDecoration: 'none', transition: 'color 0.15s',
                 }}
                 onMouseEnter={e => e.currentTarget.style.color = '#00c8e0'}
@@ -794,7 +796,7 @@
               ))}
             </div>
             <div style={{
-              fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)',
+              fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)',
             }}>© 2026 THW Coaching</div>
           </div>
         </div>
@@ -819,6 +821,7 @@
   <script src="components/site/i18n-dict-6.js"></script>
   <script src="components/site/i18n-dict-7.js"></script>
   <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

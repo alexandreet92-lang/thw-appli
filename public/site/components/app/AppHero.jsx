@@ -19,13 +19,13 @@ function AppHero() {
               animation: 'pulse-glow 2s infinite',
             }}/>
             <span style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 500,
               letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)',
             }}>L'app · Disponible iOS & Android</span>
           </div>
 
           <h1 style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-display), sans-serif",
             fontSize: 'clamp(44px, 6.5vw, 76px)',
             fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 0.96,
             margin: '0 0 24px', textWrap: 'balance',
@@ -39,7 +39,7 @@ function AppHero() {
           </h1>
 
           <p style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 17, lineHeight: 1.55,
+            fontFamily: "var(--font-body), sans-serif", fontSize: 17, lineHeight: 1.55,
             color: 'var(--text-mid)', maxWidth: 540, margin: '0 0 36px',
             textWrap: 'pretty',
           }}>
@@ -55,8 +55,8 @@ function AppHero() {
             }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               <div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Télécharger sur</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 1 }}>App Store</div>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Télécharger sur</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 1 }}>App Store</div>
               </div>
             </a>
             <a href="#" style={{
@@ -70,13 +70,13 @@ function AppHero() {
                 <defs><linearGradient id="play1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#00c8e0"/><stop offset="1" stopColor="#5b6fff"/></linearGradient></defs>
               </svg>
               <div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Télécharger sur</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 1 }}>Google Play</div>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Télécharger sur</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 1 }}>Google Play</div>
               </div>
             </a>
           </div>
 
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap', fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap', fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <span style={{ color: '#f59e0b' }}>★★★★★</span> 4.8 · 2k avis
             </span>
@@ -107,8 +107,8 @@ function HeroPhone() {
         <div style={{ padding: '14px 20px 20px', height: 'calc(100% - 36px)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span>👋</span></div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · S.12</div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span>👋</span></div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · S.12</div>
             </div>
             <ThwLogo size={32} radius={8} alt=""/>
           </div>
@@ -127,7 +127,7 @@ function HeroPhone() {
               }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${m.c}, transparent)` }}/>
                 <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{m.l}</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, marginTop: 2, lineHeight: 1 }}>{m.v}</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, marginTop: 2, lineHeight: 1 }}>{m.v}</div>
               </div>
             ))}
           </div>
@@ -141,13 +141,13 @@ function HeroPhone() {
           }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--brand-gradient-h)' }}/>
             <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brand)' }}>Prochaine séance</div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, marginTop: 4, letterSpacing: '-0.01em' }}>Sweet Spot — 2×20min</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>Aujourd'hui · 18h00 · 247W</div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, marginTop: 4, letterSpacing: '-0.01em' }}>Sweet Spot — 2×20min</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>Aujourd'hui · 18h00 · 247W</div>
             <button style={{
               marginTop: 10, width: '100%',
               padding: '8px 12px', borderRadius: 8,
               background: 'var(--brand-gradient)', border: 'none', color: '#fff',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 600,
               boxShadow: '0 2px 12px rgba(0,200,224,0.3)',
             }}>Démarrer la séance →</button>
           </div>
@@ -159,7 +159,7 @@ function HeroPhone() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Charge S12</span>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--brand)' }}>487 TSS</span>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--brand)' }}>487 TSS</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 38 }}>
               {[55, 70, 42, 78, 85, 44, 90, 75].map((v, i) => (
@@ -191,7 +191,7 @@ function HeroPhone() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 9, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>COACH IA</div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 9, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>COACH IA</div>
               <div style={{ fontSize: 11, color: 'var(--text)', marginTop: 1, lineHeight: 1.3 }}>Charge +8% — protège ta longue.</div>
             </div>
           </div>
@@ -207,8 +207,8 @@ function HeroPhone() {
         boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
         animation: 'float 5s ease-in-out 0.5s infinite',
       }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Strava sync</div>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#22c55e', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Strava sync</div>
+        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: '#22c55e', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }}/>
           Connecté · 47 act.
         </div>
@@ -236,7 +236,7 @@ function HeroPhone() {
         </svg>
         <div>
           <div style={{ fontSize: 8, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Readiness</div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)', marginTop: 2 }}>75</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)', marginTop: 2 }}>75</div>
         </div>
       </div>
     </div>

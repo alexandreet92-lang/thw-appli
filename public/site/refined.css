@@ -21,7 +21,7 @@ body { font-family: 'Inter', system-ui, sans-serif; }
 
 /* ── Titres : Fraunces, graisse 600, corps contenus ─────────────────
    Uniquement sur les balises de titre : les pages JSX posent aussi
-   'Syne' en inline sur des CHIFFRES (prix, volumes de tokens), qui
+   var(--font-display) en inline sur des CHIFFRES (prix, volumes de tokens), qui
    doivent rester en Inter tabulaire. ─────────────────────────────── */
 h1, h2, h3, h4 {
   font-family: 'Fraunces', Georgia, serif !important;
@@ -49,10 +49,10 @@ h1, h2, h3, h4 {
 }
 
 /* Corps de texte et chiffres : Inter partout */
-[style*="DM Sans"], [style*="DM Mono"] {
+[style*="var(--font-body)"], [style*="var(--font-mono)"] {
   font-family: 'Inter', system-ui, sans-serif !important;
 }
-[style*="DM Mono"] { font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0; }
+[style*="var(--font-mono)"] { font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0; }
 
 /* ── Échelle de titres ───────────────────────────────────────
    Pas de règle globale sur h1/h2/h3 : chaque bloc garde sa hiérarchie.

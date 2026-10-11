@@ -23,7 +23,7 @@ function QTooltip({ text }) {
           background: 'rgba(0,200,224,0.12)',
           border: '1px solid rgba(0,200,224,0.38)',
           color: '#00c8e0',
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "var(--font-mono), monospace",
           fontSize: 9, fontWeight: 700, lineHeight: 1,
           cursor: 'pointer', padding: 0,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -38,7 +38,7 @@ function QTooltip({ text }) {
           border: '1px solid rgba(0,200,224,0.22)',
           borderRadius: 10, padding: '10px 14px',
           width: 250, textAlign: 'left',
-          fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'rgba(238,242,247,0.75)',
+          fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'rgba(238,242,247,0.75)',
           lineHeight: 1.6,
           boxShadow: '0 16px 40px rgba(0,0,0,0.65)',
           animation: 'qFadeIn 0.15s ease',
@@ -59,7 +59,7 @@ function QField({ label, tooltip, required, hint, children, compact }) {
     <div style={{ marginBottom: compact ? 0 : 20 }}>
       {label && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-          <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+          <label style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
             {label}
             {required && <span style={{ color: '#00c8e0', marginLeft: 3 }}>*</span>}
           </label>
@@ -67,7 +67,7 @@ function QField({ label, tooltip, required, hint, children, compact }) {
         </div>
       )}
       {hint && (
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.55 }}>{hint}</p>
+        <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.55 }}>{hint}</p>
       )}
       {children}
     </div>
@@ -87,7 +87,7 @@ function QInput({ value, onChange, placeholder, type = 'text', disabled }) {
         width: '100%', padding: '11px 14px', borderRadius: 10,
         background: focused ? 'rgba(0,200,224,0.05)' : 'rgba(255,255,255,0.05)',
         border: `1px solid ${focused ? 'rgba(0,200,224,0.48)' : 'rgba(255,255,255,0.10)'}`,
-        color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+        color: 'var(--text)', fontFamily: "var(--font-body), sans-serif", fontSize: 13,
         outline: 'none', transition: 'all 0.18s', boxSizing: 'border-box',
         boxShadow: focused ? '0 0 0 3px rgba(0,200,224,0.08)' : 'none',
         opacity: disabled ? 0.45 : 1,
@@ -109,7 +109,7 @@ function QTextarea({ value, onChange, placeholder, rows = 3 }) {
         width: '100%', padding: '11px 14px', borderRadius: 10,
         background: focused ? 'rgba(0,200,224,0.05)' : 'rgba(255,255,255,0.05)',
         border: `1px solid ${focused ? 'rgba(0,200,224,0.48)' : 'rgba(255,255,255,0.10)'}`,
-        color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+        color: 'var(--text)', fontFamily: "var(--font-body), sans-serif", fontSize: 13,
         outline: 'none', transition: 'all 0.18s', resize: 'vertical', lineHeight: 1.55,
         boxSizing: 'border-box',
         boxShadow: focused ? '0 0 0 3px rgba(0,200,224,0.08)' : 'none',
@@ -146,11 +146,11 @@ function QRadioGroup({ options, value, onChange, columns = 2 }) {
               {active && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }}/>}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : 'var(--text)' }}>
+              <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#00c8e0' : 'var(--text)' }}>
                 {opt.label}
               </div>
               {opt.desc && (
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.4 }}>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.4 }}>
                   {opt.desc}
                 </div>
               )}
@@ -178,20 +178,20 @@ function QHoursSlider({ value, onChange }) {
   return (
     <div style={{ padding: '8px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 52, fontWeight: 800, letterSpacing: '-0.06em', color: '#00c8e0', lineHeight: 1 }}>
+        <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 52, fontWeight: 800, letterSpacing: '-0.06em', color: '#00c8e0', lineHeight: 1 }}>
           {val % 1 === 0 ? val : val.toFixed(1)}
         </span>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, color: 'var(--text-dim)', marginLeft: 10 }}>h / semaine</span>
+        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 18, color: 'var(--text-dim)', marginLeft: 10 }}>h / semaine</span>
       </div>
       <input type="range" min={3} max={20} step={0.5} value={val}
         onChange={e => onChange(parseFloat(e.target.value))}/>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
         {[3, 5, 8, 10, 12, 15, 18, 20].map(h => (
-          <span key={h} style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: Math.abs(val - h) < 0.3 ? '#00c8e0' : 'var(--text-dim)', transition: 'color 0.2s' }}>{h}h</span>
+          <span key={h} style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: Math.abs(val - h) < 0.3 ? '#00c8e0' : 'var(--text-dim)', transition: 'color 0.2s' }}>{h}h</span>
         ))}
       </div>
       <div style={{ marginTop: 16, padding: '8px 14px', borderRadius: 8, background: 'rgba(0,200,224,0.07)', border: '1px solid rgba(0,200,224,0.18)', textAlign: 'center' }}>
-        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'var(--text-mid)' }}>
+        <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, color: 'var(--text-mid)' }}>
           {val <= 6 ? 'Programme allégé · Qualité primée sur quantité'
            : val <= 10 ? 'Programme standard · Bon équilibre vie/sport'
            : val <= 14 ? 'Programme ambitieux · Périodisation rigoureuse'
@@ -208,7 +208,7 @@ function QSection({ title, children }) {
     <div style={{ marginBottom: 28 }}>
       {title && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#00c8e0', whiteSpace: 'nowrap' }}>{title}</span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#00c8e0', whiteSpace: 'nowrap' }}>{title}</span>
           <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(0,200,224,0.2), transparent)' }}/>
         </div>
       )}
@@ -223,10 +223,10 @@ function QProgressBar({ step, total, titles }) {
   return (
     <div style={{ marginBottom: 44 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#00c8e0', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: '#00c8e0', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           Étape {step} / {total}
         </span>
-        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+        <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
           {titles[step - 1]}
         </span>
       </div>
@@ -276,7 +276,7 @@ function QDateInput({ value, onChange }) {
         width: '100%', padding: '11px 14px', borderRadius: 10,
         background: focused ? 'rgba(0,200,224,0.05)' : 'rgba(255,255,255,0.05)',
         border: `1px solid ${focused ? 'rgba(0,200,224,0.48)' : 'rgba(255,255,255,0.10)'}`,
-        color: 'var(--text)', fontFamily: "'DM Mono', monospace", fontSize: 13,
+        color: 'var(--text)', fontFamily: "var(--font-mono), monospace", fontSize: 13,
         outline: 'none', transition: 'all 0.18s', boxSizing: 'border-box',
         colorScheme: 'dark',
         boxShadow: focused ? '0 0 0 3px rgba(0,200,224,0.08)' : 'none',
@@ -322,11 +322,11 @@ function QCheckboxGroup({ options, value = [], onChange, columns = 2 }) {
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: checked ? 600 : 400, color: checked ? '#00c8e0' : 'var(--text)' }}>
+              <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: checked ? 600 : 400, color: checked ? '#00c8e0' : 'var(--text)' }}>
                 {opt.label}
               </div>
               {opt.desc && (
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.4 }}>
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.4 }}>
                   {opt.desc}
                 </div>
               )}

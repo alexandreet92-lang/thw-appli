@@ -85,9 +85,9 @@ function Features() {
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">{f.icon}</svg>
             </div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: f.c, marginBottom: 8 }}>{f.tag}</div>
-            <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: '0 0 8px', color: 'var(--text)' }}>{f.title}</h3>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, lineHeight: 1.55, color: 'var(--text-mid)', margin: 0, textWrap: 'pretty' }}>{f.body}</p>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: f.c, marginBottom: 8 }}>{f.tag}</div>
+            <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: '0 0 8px', color: 'var(--text)' }}>{f.title}</h3>
+            <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12, lineHeight: 1.55, color: 'var(--text-mid)', margin: 0, textWrap: 'pretty' }}>{f.body}</p>
           </div>
         ))}
       </div>
@@ -146,7 +146,7 @@ function HowItWorks() {
                   border: '1px solid rgba(0,200,224,0.4)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 0 32px rgba(0,200,224,0.25), inset 0 0 16px rgba(0,200,224,0.1)',
-                  fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em',
+                  fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em',
                   background: '#070b0f',
                   color: 'var(--brand)',
                   position: 'relative',
@@ -160,15 +160,15 @@ function HowItWorks() {
                 </div>
               </div>
 
-              <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 12px', color: 'var(--text)' }}>{s.title}</h3>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)', margin: '0 auto 16px', maxWidth: 320, textWrap: 'pretty' }}>{s.body}</p>
+              <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 12px', color: 'var(--text)' }}>{s.title}</h3>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)', margin: '0 auto 16px', maxWidth: 320, textWrap: 'pretty' }}>{s.body}</p>
 
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
                 {s.brands.map(b => (
                   <span key={b} style={{
                     padding: '4px 10px', borderRadius: 999,
                     border: '1px solid var(--border-mid)', background: 'rgba(255,255,255,0.03)',
-                    fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 500, color: 'var(--text-mid)',
+                    fontFamily: "var(--font-mono), monospace", fontSize: 10, fontWeight: 500, color: 'var(--text-mid)',
                   }}>{b}</span>
                 ))}
               </div>
@@ -214,7 +214,7 @@ function Platforms() {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
                 <div>
                   <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Télécharger</div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>App Store</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>App Store</div>
                 </div>
               </a>
               <a href="#" style={{
@@ -228,7 +228,7 @@ function Platforms() {
                 </svg>
                 <div>
                   <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Disponible</div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>Google Play</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>Google Play</div>
                 </div>
               </a>
               <a href="https://app.thwcoaching.fr" style={{
@@ -239,12 +239,12 @@ function Platforms() {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
                 <div>
                   <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ouvrir</div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>Web app</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>Web app</div>
                 </div>
               </a>
             </div>
 
-            <div style={{ marginTop: 28, display: 'flex', gap: 24, flexWrap: 'wrap', fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>
+            <div style={{ marginTop: 28, display: 'flex', gap: 24, flexWrap: 'wrap', fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>
               <span>★ 4.8 App Store</span>
               <span>·</span>
               <span>★ 4.7 Play Store</span>
@@ -257,14 +257,14 @@ function Platforms() {
             <div style={{ transform: 'translateY(20px) rotate(-4deg) scale(0.85)' }}>
               <PhoneFrame>
                 <div style={{ padding: 14, height: 'calc(100% - 36px)' }}>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Performance</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Performance</div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 70, marginBottom: 12 }}>
                     {[40, 55, 48, 70, 65, 82, 75, 90].map((v, i) => (
                       <div key={i} style={{ flex: 1, height: `${v}%`, background: i === 7 ? '#00c8e0' : 'rgba(91,111,255,0.4)', borderRadius: '3px 3px 0 0' }}/>
                     ))}
                   </div>
                   {['CTL 84', 'TSB −7', 'FTP 286W'].map(l => (
-                    <div key={l} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: 6, marginBottom: 5, fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text)' }}>{l}</div>
+                    <div key={l} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: 6, marginBottom: 5, fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text)' }}>{l}</div>
                   ))}
                 </div>
               </PhoneFrame>
@@ -272,7 +272,7 @@ function Platforms() {
             <div style={{ transform: 'rotate(4deg) scale(0.85)' }}>
               <PhoneFrame>
                 <div style={{ padding: 14, height: 'calc(100% - 36px)' }}>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Coach IA</div>
+                  <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Coach IA</div>
                   <div style={{ padding: 10, background: 'rgba(91,111,255,0.12)', borderRadius: 10, fontSize: 11, color: 'var(--text)', marginBottom: 8 }}>Comment ajuster ?</div>
                   <div style={{ padding: 10, background: 'linear-gradient(135deg, rgba(0,200,224,0.1), rgba(91,111,255,0.06))', border: '1px solid rgba(0,200,224,0.22)', borderRadius: 10, fontSize: 11, color: 'var(--text)', lineHeight: 1.5 }}>
                     Ta CTL est à 84. On déplace le Sweet Spot vers samedi<span className="cursor-blink"/>
@@ -302,7 +302,7 @@ function FinalAppCTA() {
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 720, margin: '0 auto' }}>
           <span className="eyebrow" style={{ justifyContent: 'center' }}>Aller plus loin</span>
           <h2 style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 'clamp(36px, 5vw, 56px)',
+            fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(36px, 5vw, 56px)',
             fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, margin: '0 0 20px',
             textWrap: 'balance',
           }}>
@@ -310,7 +310,7 @@ function FinalAppCTA() {
             <span style={{ background: 'linear-gradient(135deg,#00c8e0,#5b6fff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Le coaching humain, c'est le saut</span>.
           </h2>
           <p style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 16, color: 'var(--text-mid)',
+            fontFamily: "var(--font-body), sans-serif", fontSize: 16, color: 'var(--text-mid)',
             lineHeight: 1.55, margin: '0 auto 36px', maxWidth: 540, textWrap: 'pretty',
           }}>
             Ajoute un coach humain dédié 7j/7 — qui voit ce que la donnée ne dit pas, qui te connaît, qui décide.

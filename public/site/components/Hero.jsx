@@ -22,13 +22,13 @@ function Hero() {
               animation: 'pulse-glow 2s infinite',
             }}/>
             <span style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 11, fontWeight: 500,
               letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-mid)',
             }}>Saison 2026 · 12 places restantes</span>
           </div>
 
           <h1 style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-display), sans-serif",
             fontSize: 'clamp(48px, 7vw, 84px)',
             fontWeight: 800,
             letterSpacing: '-0.05em',
@@ -54,7 +54,7 @@ function Hero() {
           </h1>
 
           <p style={{
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "var(--font-body), sans-serif",
             fontSize: 17,
             lineHeight: 1.55,
             color: 'var(--text-mid)',
@@ -96,14 +96,14 @@ function Hero() {
                 borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
               }}>
                 <div style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "var(--font-display), sans-serif",
                   fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em',
                   color: 'var(--text)', lineHeight: 1,
                 }}>
                   {st.v}<span style={{ color: 'var(--brand)', fontSize: 16, marginLeft: 3, fontWeight: 600 }}>{st.u === '/5' ? '/5' : ''}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, letterSpacing: '0.04em' }}>
-                  {st.u !== '/5' && <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--brand)' }}>{st.u}</span>}
+                  {st.u !== '/5' && <span style={{ fontFamily: "var(--font-mono), monospace", color: 'var(--brand)' }}>{st.u}</span>}
                   {st.u !== '/5' && ' · '}{st.s}
                 </div>
               </div>
@@ -148,8 +148,8 @@ function HeroVisual() {
         {/* Header inside card */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span style={{filter:'grayscale(0)'}}>👋</span></div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · Semaine 12</div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span style={{filter:'grayscale(0)'}}>👋</span></div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · Semaine 12</div>
           </div>
           <div style={{
             display: 'inline-flex', gap: 5, padding: '4px 10px',
@@ -158,7 +158,7 @@ function HeroVisual() {
             color: '#22c55e',
             borderRadius: 999,
             fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "var(--font-body), sans-serif",
             alignItems: 'center',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e' }}/>
@@ -180,9 +180,9 @@ function HeroVisual() {
               borderRadius: 12, padding: '10px 12px',
             }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${m.c}, transparent)` }}/>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{m.l}</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, marginTop: 4, lineHeight: 1 }}>{m.v}</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 5 }}>{m.s}</div>
+              <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{m.l}</div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: m.c, marginTop: 4, lineHeight: 1 }}>{m.v}</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, color: 'var(--text-dim)', marginTop: 5 }}>{m.s}</div>
             </div>
           ))}
         </div>
@@ -198,16 +198,16 @@ function HeroVisual() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--brand-gradient-h)' }}/>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brand)' }}>Prochaine séance</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, marginTop: 5, letterSpacing: '-0.01em' }}>Sweet Spot — 2×20min</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Aujourd'hui · 18h00 · 1h45 · 247W cible</div>
+              <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brand)' }}>Prochaine séance</div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, marginTop: 5, letterSpacing: '-0.01em' }}>Sweet Spot — 2×20min</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Aujourd'hui · 18h00 · 1h45 · 247W cible</div>
             </div>
             <div style={{
               padding: '3px 8px', borderRadius: 999,
               background: 'rgba(0,200,224,0.12)', border: '1px solid rgba(0,200,224,0.25)',
               fontSize: 9, fontWeight: 600, color: 'var(--brand)',
               letterSpacing: '0.06em', textTransform: 'uppercase',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "var(--font-body), sans-serif",
             }}>✓ Adaptée</div>
           </div>
         </div>
@@ -218,8 +218,8 @@ function HeroVisual() {
           borderRadius: 12, padding: 14,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Charge · 8 sem.</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'var(--brand)' }}>487 TSS</div>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Charge · 8 sem.</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--brand)' }}>487 TSS</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 56 }}>
             {[55, 70, 42, 78, 85, 44, 90, 75].map((v, i) => (
@@ -262,8 +262,8 @@ function HeroVisual() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
         <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>COACH IA</div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text)', marginTop: 2, lineHeight: 1.3 }}>Ton corps est prêt. Pousse l'intensité.</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 10, fontWeight: 700, background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>COACH IA</div>
+          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 11, color: 'var(--text)', marginTop: 2, lineHeight: 1.3 }}>Ton corps est prêt. Pousse l'intensité.</div>
         </div>
       </div>
 
@@ -293,8 +293,8 @@ function HeroVisual() {
           </defs>
         </svg>
         <div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Readiness</div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)', lineHeight: 1, marginTop: 4 }}>75<span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500, marginLeft: 2 }}>/100</span></div>
+          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Readiness</div>
+          <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--brand)', lineHeight: 1, marginTop: 4 }}>75<span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500, marginLeft: 2 }}>/100</span></div>
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ function HeaderMenu() {
               {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
               <a role="menuitem" href={m.href} tabIndex={open ? 0 : -1} className="dd-item" style={{
                 display: 'block', padding: '10px 12px', borderRadius: 9,
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13.5, fontWeight: 500,
                 color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
               }}
               onMouseEnter={function (e) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
@@ -94,7 +94,7 @@ function LangSelect(props) {
         style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
           padding: '8px 12px', borderRadius: 999, background: 'var(--bg-card)',
           border: '1px solid var(--border-mid)', boxShadow: 'var(--shadow-card)',
-          fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em',
+          fontFamily: "var(--font-body), sans-serif", fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em',
           color: open ? 'var(--text)' : 'var(--text-mid)', transition: 'color .16s' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18"/>
@@ -118,12 +118,12 @@ function LangSelect(props) {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%',
                 padding: '9px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left',
                 background: on ? 'var(--bg-hover)' : 'transparent',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: on ? 600 : 500,
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: on ? 600 : 500,
                 color: on ? 'var(--brand)' : 'var(--text-mid)', transition: 'background .14s, color .14s' }}
               onMouseEnter={function (e) { if (!on) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text)'; } }}
               onMouseLeave={function (e) { if (!on) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; } }}>
               {l[1]}
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, opacity: .7 }}>{l[2]}</span>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, opacity: .7 }}>{l[2]}</span>
             </button>
           );
         })}
@@ -193,8 +193,8 @@ function SiteHeader(props) {
           <nav className="header-nav">
             {navLinks.map(function (l) {
               return (
-                <a key={l.key} className="header-link" href={l.href}
-                   style={l.key === active ? { color: 'var(--text)', background: 'var(--bg-hover)' } : null}>
+                <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
+                   style={l.key === active ? { color: 'var(--text)' } : null}>
                   {l.label}
                 </a>
               );
@@ -208,7 +208,7 @@ function SiteHeader(props) {
             : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>}
           <ThemeToggle/>
           {!IN_APP && (
-            <a className="btn btn-cyan" href="compte.html" title={account ? (account.email || '') : ''}>
+            <a className="btn btn-cyan mag" href="compte.html" title={account ? (account.email || '') : ''}>
               <UIIcon name="user" size={15}/>
               <span className="header-cta-label">
                 {account
@@ -306,7 +306,7 @@ function SiteFooter() {
     );
   };
   return (
-    <footer className="site-footer">
+    <footer className="site-footer st-night" data-spot="1">
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-brand">
@@ -329,6 +329,7 @@ function SiteFooter() {
             <a href="#" aria-label="Strava"><FooterSocial name="strava"/></a>
           </div>
         </div>
+        <div className="st-footmark" aria-hidden="true" data-no-i18n="1">THW<i>.</i></div>
       </div>
     </footer>
   );

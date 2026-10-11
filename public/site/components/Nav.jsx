@@ -8,7 +8,7 @@ function Nav() {
   }, []);
 
   const linkStyle = {
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 13,
     fontWeight: 500,
     color: 'var(--text-mid)',
@@ -37,7 +37,7 @@ function Nav() {
         <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <ThwLogo size={32} radius={8}/>
           <span style={{
-            fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700,
+            fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700,
             letterSpacing: '-0.01em', color: 'var(--text)',
           }}>THW Coaching</span>
         </a>

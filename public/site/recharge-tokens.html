@@ -114,6 +114,8 @@
       .hdr-back-txt { display: none; }
     }
   </style>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
 </head>
 <body>
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1a1a"/><text x="50" y="58" font-family="sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">THW</text></svg></template>
@@ -196,7 +198,7 @@
             padding: '9px 14px', borderRadius: 'var(--radius-btn)',
             background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
             color: open ? 'var(--brand)' : 'var(--text-mid)',
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, transition: 'all 0.18s',
+            fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 500, transition: 'all 0.18s',
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
             <span className="hdr-back-txt">Menu</span>
@@ -215,7 +217,7 @@
                     {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
                     <a role="menuitem" href={m.href} style={{
                       display: 'block', padding: '10px 12px', borderRadius: 9,
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                      fontFamily: "var(--font-body), sans-serif", fontSize: 13.5, fontWeight: 500,
                       color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
@@ -385,9 +387,9 @@
             </defs>
           </svg>
           <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 46, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 0.95, color: 'var(--text)' }}>{fmt(shown)}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>{sub}</div>
+            <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 46, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 0.95, color: 'var(--text)' }}>{fmt(shown)}</div>
+            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>{sub}</div>
           </div>
         </div>
       );
@@ -414,7 +416,7 @@
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
               {['Stripe', 'Visa', 'Mastercard', 'Apple Pay', 'G Pay'].map(m => (
                 <span key={m} style={{
-                  fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)',
+                  fontFamily: "var(--font-mono), monospace", fontSize: 10.5, color: 'var(--text-dim)',
                   padding: '4px 9px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)',
                 }}>{m}</span>
               ))}
@@ -455,18 +457,18 @@
               position: 'absolute', top: 14, right: 14,
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '4px 11px', borderRadius: 999, background: GRAD, color: '#fff',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 700,
               letterSpacing: '0.05em', textTransform: 'uppercase',
               boxShadow: '0 2px 14px rgba(0,200,224,0.4)',
             }}>★ Recommandé</div>
           )}
 
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{pack.name}</div>
+          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{pack.name}</div>
 
           {/* tokens */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 27, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
+            <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 27, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
+            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
           </div>
 
           {/* volume bar */}
@@ -477,23 +479,23 @@
                 boxShadow: `0 0 10px ${pack.accent}66` }}/>
             </div>
             {pack.per && !APP_NOPRICE && (
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>
+              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>
             )}
           </div>
 
           {/* price — masqué quand ouvert depuis l'app */}
           {!APP_NOPRICE && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6 }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1,
+            <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1,
               background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price} €</span>
             {pack.save && (
               <span style={{ padding: '3px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)',
-                color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>
+                color: '#22c55e', fontFamily: "var(--font-mono), monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>
             )}
           </div>
           )}
 
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px', textWrap: 'pretty' }}>{pack.desc}</p>
+          <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px', textWrap: 'pretty' }}>{pack.desc}</p>
 
           <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={`Choisir le pack ${pack.name}`}
             style={{
@@ -501,7 +503,7 @@
               padding: '13px 18px', borderRadius: 'var(--radius-btn)', border: feat ? 'none' : '1px solid var(--brand)',
               background: feat ? GRAD : 'rgba(0,200,224,0.08)',
               color: feat ? '#fff' : 'var(--brand)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600,
               cursor: loading ? 'default' : 'pointer',
               opacity: loading && loading !== pack.id ? 0.5 : 1,
               boxShadow: feat ? '0 4px 22px rgba(0,200,224,0.36)' : 'none',
@@ -545,13 +547,13 @@
           {feat && (
             <div style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '4px 11px', borderRadius: 999, background: STUDIO_GRAD, color: '#fff',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+              fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
               boxShadow: '0 2px 14px rgba(139,92,246,0.45)' }}>★ Recommandé</div>
           )}
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{pack.name}</div>
+          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{pack.name}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 25, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
+            <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 25, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
+            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
           </div>
           <div style={{ marginTop: 14, marginBottom: 18 }}>
             <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.05)', overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -561,17 +563,17 @@
           </div>
           {!APP_NOPRICE && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6, whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1,
+            <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1,
               background: STUDIO_GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price}</span>
           </div>
           )}
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px', textWrap: 'pretty' }}>{pack.desc}</p>
+          <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px', textWrap: 'pretty' }}>{pack.desc}</p>
           <a href={stripeUrl(STUDIO_LINKS[pack.id])} aria-label={`Acheter le ${pack.name}`}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
               padding: '13px 18px', borderRadius: 'var(--radius-btn)', textDecoration: 'none',
               border: feat ? 'none' : `1px solid ${STUDIO}`,
               background: feat ? STUDIO_GRAD : 'rgba(139,92,246,0.08)', color: feat ? '#fff' : '#a78bfa',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", fontSize: 14, fontWeight: 600,
               boxShadow: feat ? '0 4px 22px rgba(139,92,246,0.4)' : 'none', transition: 'all 0.16s' }}
             onMouseEnter={e => { if (!feat) e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; else e.currentTarget.style.filter = 'brightness(1.08)'; }}
             onMouseLeave={e => { if (!feat) e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; else e.currentTarget.style.filter = ''; }}>
@@ -590,12 +592,12 @@
           <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, textAlign: 'left',
               padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+              fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)' }}>
             {q}
             <span style={{ color: STUDIO, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .22s' }}><IcChevron size={18}/></span>
           </button>
           <div style={{ maxHeight: open ? 200 : 0, transition: 'max-height .28s ease', overflow: 'hidden' }}>
-            <p style={{ padding: '0 20px 18px', margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>{a}</p>
+            <p style={{ padding: '0 20px 18px', margin: 0, fontFamily: "var(--font-body), sans-serif", fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>{a}</p>
           </div>
         </div>
       );
@@ -621,7 +623,7 @@
             maxWidth: 620, padding: '13px 19px', borderRadius: 'var(--radius-md)',
             background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
             <IcLayers size={16} style={{ color: '#a78bfa', flexShrink: 0 }}/>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+            <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
               Ton abonnement actuel ne donne pas accès au Studio — passe en Pro ou Expert pour ouvrir ton solde.
             </span>
           </div>
@@ -637,14 +639,14 @@
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999,
               background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.28)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
+              fontFamily: "var(--font-body), sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
               Quota mensuel restant
               <strong className="num" style={{ color: 'var(--text)', fontWeight: 700 }}>{monthlyLeft.toLocaleString('fr-FR')}</strong>
               <span style={{ color: 'var(--text-dim)' }}>/ {monthlyLimit.toLocaleString('fr-FR')}</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999,
               background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.28)',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
+              fontFamily: "var(--font-body), sans-serif", fontSize: 12.5, color: 'var(--text-mid)' }}>
               Tokens de packs
               <strong className="num" style={{ color: 'var(--text)', fontWeight: 700 }}>{packTokens.toLocaleString('fr-FR')}</strong>
               <span style={{ color: 'var(--text-dim)' }}>· n'expirent jamais</span>
@@ -661,11 +663,11 @@
           maxWidth: 620, padding: '13px 19px', borderRadius: 'var(--radius-md)',
           background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
           <IcLock size={15} style={{ color: '#a78bfa', flexShrink: 0 }}/>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+          <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 13.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
             Connecte-toi pour voir ton solde de tokens Studio.
           </span>
           <a href="compte.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, textDecoration: 'none',
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
+            fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
             Se connecter <IcArrow size={13}/>
           </a>
         </div>
@@ -689,10 +691,10 @@
               <span className="eyebrow" style={{ justifyContent: 'center', color: '#a78bfa', borderColor: 'rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)' }}>
                 <IcLayers size={13}/> Studio
               </span>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(30px, 4.4vw, 44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.02, color: 'var(--text)', margin: '14px 0 16px' }}>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(30px, 4.4vw, 44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.02, color: 'var(--text)', margin: '14px 0 16px' }}>
                 Tokens <span style={{ background: STUDIO_GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Studio</span>
               </h2>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>
                 Le Studio est notre builder de systèmes multi-agents : tu assembles des coachs IA spécialisés qui travaillent ensemble. Ces packs rechargent ton solde <strong style={{ color: 'var(--text)', fontWeight: 600 }}>au-delà de ton quota mensuel</strong> (Pro : 300k / mois · Expert : 1M / mois). Ils n'expirent jamais et sont utilisables uniquement par le Studio.
               </p>
             </div>
@@ -709,12 +711,12 @@
             <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 11, justifyContent: 'center', flexWrap: 'wrap',
               maxWidth: 620, margin: '0 auto 34px', padding: '12px 18px', borderRadius: 'var(--radius-md)',
               background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.28)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "var(--font-body), sans-serif", fontSize: 13, color: 'var(--text-mid)', textWrap: 'pretty' }}>
                 <IcLock size={15} style={{ color: '#a78bfa', flexShrink: 0 }}/>
                 Réservé aux comptes Hybrid avec abonnement <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Pro ou Expert</strong>.
               </span>
               <a href="abonnement-athlete.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, textDecoration: 'none',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
+                fontFamily: "var(--font-body), sans-serif", fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
                 Voir les abonnements <IcArrow size={13}/>
               </a>
             </div>
@@ -728,7 +730,7 @@
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%',
                 padding: '9px 15px', borderRadius: 999, border: '1px dashed rgba(139,92,246,0.4)', background: 'rgba(139,92,246,0.05)' }}>
                 <IcMail size={14} style={{ color: '#a78bfa', flexShrink: 0 }}/>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+                <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 12.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>
                   Utilise <strong style={{ color: 'var(--text)', fontWeight: 600 }}>l'email de ton compte Hybrid</strong> lors du paiement — le crédit te retrouve automatiquement.
                 </span>
               </div>
@@ -736,7 +738,7 @@
 
             {/* FAQ */}
             <div className="reveal" style={{ maxWidth: 720, margin: '58px auto 0' }}>
-              <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(20px, 3vw, 26px)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', textAlign: 'center', marginBottom: 26 }}>
+              <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(20px, 3vw, 26px)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', textAlign: 'center', marginBottom: 26 }}>
                 Questions fréquentes
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -783,7 +785,7 @@
 
               <div className="reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999,
                 border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--brand)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "var(--font-mono), monospace", fontSize: 12, color: 'var(--brand)' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan {planLabel}
                 </span>
                 <span style={{ width: 1, height: 12, background: 'var(--border-mid)' }}/>
@@ -796,10 +798,10 @@
           <section style={{ paddingTop: 72, paddingBottom: 8 }}>
             <div className="wrap">
               <div className="reveal" style={{ textAlign: 'center', maxWidth: 500, margin: '0 auto 44px' }}>
-                <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(30px, 4.4vw, 44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.02, color: 'var(--text)', marginBottom: 16 }}>
+                <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(30px, 4.4vw, 44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.02, color: 'var(--text)', marginBottom: 16 }}>
                   Recharge ton <span style={{ background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>carburant</span>
                 </h1>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+                <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>
                   Des tokens supplémentaires, sans engagement. Ils s'ajoutent à ton quota mensuel et n'expirent jamais.
                 </p>
               </div>
@@ -815,7 +817,7 @@
             <div className="wrap">
               <div className="reveal" style={{ textAlign: 'center', marginBottom: 36 }}>
                 <span className="eyebrow" style={{ justifyContent: 'center' }}>Repères</span>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
+                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
                   À quoi correspondent ces tokens ?
                 </h2>
               </div>
@@ -825,9 +827,9 @@
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${c}, transparent 70%)` }}/>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${c}12`, border: `1px solid ${c}30`, color: c, boxShadow: `0 0 12px ${c}22` }}><Ic size={20}/></div>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 500, color: c }}>{amt}<span style={{ color: 'var(--text-dim)', fontSize: 10, marginLeft: 3 }}>tok</span></span>
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 14, fontWeight: 500, color: c }}>{amt}<span style={{ color: 'var(--text-dim)', fontSize: 10, marginLeft: 3 }}>tok</span></span>
                     </div>
-                    <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 5 }}>{title}</div>
+                    <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 5 }}>{title}</div>
                     <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>{desc}</div>
                   </div>
                 ))}
@@ -843,7 +845,7 @@
             <div className="wrap">
               <div className="reveal" style={{ textAlign: 'center', marginBottom: 44 }}>
                 <span className="eyebrow" style={{ justifyContent: 'center' }}>3 étapes</span>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
+                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
                   Comment ça marche
                 </h2>
               </div>
@@ -854,7 +856,7 @@
                     <div style={{ width: 60, height: 60, borderRadius: '50%', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: 'var(--bg-card)', border: '1px solid rgba(0,200,224,0.4)', color: 'var(--brand)',
                       boxShadow: '0 0 28px rgba(0,200,224,0.22), 0 0 0 6px var(--bg)' }}><Ic size={24}/></div>
-                    <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 7 }}>{title}</div>
+                    <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 7 }}>{title}</div>
                     <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--text-mid)', maxWidth: 220, margin: '0 auto', textWrap: 'pretty' }}>{desc}</div>
                   </div>
                 ))}
@@ -877,7 +879,7 @@
       const row = (label, value, strong) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{label}</span>
-          <span style={{ fontSize: 14, fontWeight: strong ? 700 : 500, color: strong ? 'var(--brand)' : 'var(--text)', fontFamily: strong ? "'Syne', sans-serif" : "'DM Sans', sans-serif" }}>{value}</span>
+          <span style={{ fontSize: 14, fontWeight: strong ? 700 : 500, color: strong ? 'var(--brand)' : 'var(--text)', fontFamily: strong ? "var(--font-display), sans-serif" : "var(--font-body), sans-serif" }}>{value}</span>
         </div>
       );
 
@@ -896,15 +898,15 @@
                   strokeDasharray="58" strokeDashoffset="58" style={{ animation: 'drawCheck 0.4s 0.66s cubic-bezier(0.4,0,0.2,1) forwards' }}/>
               </svg>
 
-              <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Paiement confirmé !</h1>
+              <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Paiement confirmé !</h1>
               <p style={{ fontSize: 16, color: 'var(--text-mid)', marginBottom: 8, lineHeight: 1.5 }}>
                 <strong style={{ color: 'var(--text)' }}>{p.tokensLabel}</strong> tokens ajoutés à ton compte.
               </p>
 
               {/* New balance */}
               <div style={{ marginBottom: 28 }}>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>Nouveau solde</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1,
+                <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>Nouveau solde</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1,
                   background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{fmt(shownBalance)}</div>
               </div>
 
@@ -940,7 +942,7 @@
             <div style={{ maxWidth: 430, width: '100%', textAlign: 'center', animation: 'fadeUpSlow 0.5s cubic-bezier(0.4,0,0.2,1) both' }}>
               <div style={{ width: 74, height: 74, borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'rgba(249,115,22,0.1)', color: 'var(--warning)', border: '1px solid rgba(249,115,22,0.3)', boxShadow: '0 0 28px rgba(249,115,22,0.18)' }}><IcAlert size={36}/></div>
-              <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Lien expiré</h1>
+              <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Lien expiré</h1>
               <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, marginBottom: 28, textWrap: 'pretty' }}>
                 Ce lien d'achat a expiré. Retourne dans l'app et demande un nouveau lien pour recharger en tokens.
               </p>
@@ -986,6 +988,7 @@
   <script src="components/site/i18n-dict-6.js"></script>
   <script src="components/site/i18n-dict-7.js"></script>
   <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

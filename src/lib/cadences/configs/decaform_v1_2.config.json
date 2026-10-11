@@ -267,7 +267,7 @@
       "unit": "m",
       "direction": "higher_is_better",
       "kind": "abs",
-      "pts_max": 25,
+      "pts_max": 20,
       "male": {
         "ref": 2.55,
         "max": 3.2
@@ -292,11 +292,11 @@
       "criteria": [
         {
           "aggregate": "best",
-          "pts_max": 15
+          "pts_max": 12
         },
         {
           "aggregate": "sum",
-          "pts_max": 10
+          "pts_max": 8
         }
       ]
     },
@@ -308,7 +308,7 @@
       "unit": "m",
       "direction": "higher_is_better",
       "kind": "abs",
-      "pts_max": 25,
+      "pts_max": 20,
       "male": {
         "ref": 7.5,
         "max": 9.5
@@ -333,11 +333,11 @@
       "criteria": [
         {
           "aggregate": "best",
-          "pts_max": 15
+          "pts_max": 12
         },
         {
           "aggregate": "sum",
-          "pts_max": 10
+          "pts_max": 8
         }
       ]
     },
@@ -509,7 +509,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 34,
+      "pts_max": 30,
       "male": {
         "ref": 44.5,
         "max": 37
@@ -535,11 +535,11 @@
       "criteria": [
         {
           "aggregate": "best",
-          "pts_max": 20
+          "pts_max": 18
         },
         {
           "aggregate": "sum",
-          "pts_max": 14
+          "pts_max": 12
         }
       ]
     },
@@ -551,7 +551,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 59,
+      "pts_max": 60,
       "male": {
         "ref": 240,
         "max": 185
@@ -582,7 +582,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 23,
+      "pts_max": 20,
       "male": {
         "ref": 45,
         "max": 28
@@ -611,7 +611,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 41,
+      "pts_max": 40,
       "male": {
         "ref": 210,
         "max": 140
@@ -641,7 +641,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 73,
+      "pts_max": 70,
       "male": {
         "ref": 65,
         "max": 50
@@ -676,7 +676,7 @@
       "unit": "tours",
       "direction": "higher_is_better",
       "kind": "abs",
-      "pts_max": 59,
+      "pts_max": 60,
       "male": {
         "ref": 15,
         "max": 28
@@ -705,7 +705,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 110,
+      "pts_max": 100,
       "male": {
         "ref": 770,
         "max": 550
@@ -921,7 +921,7 @@
       "unit": "W",
       "direction": "higher_is_better",
       "kind": "ratio",
-      "pts_max": 82,
+      "pts_max": 90,
       "male": {
         "ref": 3.37,
         "max": 5.26
@@ -949,7 +949,7 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 72,
+      "pts_max": 80,
       "male": {
         "ref": 900,
         "max": 630
@@ -1064,14 +1064,14 @@
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
-      "pts_max": 45,
+      "pts_max": 58,
       "male": {
-        "ref": 45,
-        "max": 30
+        "ref": 50,
+        "max": 36
       },
       "female": {
-        "ref": 50,
-        "max": 34
+        "ref": 56,
+        "max": 40
       },
       "weights": {
         "vitesse": 0.15,

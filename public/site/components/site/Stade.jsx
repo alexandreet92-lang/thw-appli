@@ -1,7 +1,10 @@
 /* ════════════════════════════════════════════════════════════════
    THW — pièces maîtresses du site vitrine (couche « stade »).
-     <RaceGlobe/>   globe orientable : la carte des grands rendez-vous,
-                    arcs lumineux depuis Paris (THW) vers chaque course
+     <RaceTrack/>   piste d'athlé : 8 couloirs = 8 sports, survol = ce que fait l'app
+     <Scoreboard/>  panneau de stade : chiffres en palettes qui basculent
+     <PlanWriter/>  la semaine s'écrit séance par séance + zones cardiaques
+     <SeasonCurve/> la saison se trace au défilement, médaille au Jour J
+     <FinishButton/> bouton avec ruban d'arrivée qui casse au survol
      <Ticker/>      bandeau défilant (disciplines, outils)
      <Coverline/>   chiffres qui montent + jauge qui se remplit
      <Seal/>        sceau doré qui « frappe » (validé, record, palier)
@@ -9,7 +12,7 @@
      <Shelf/>       bibliothèque des piliers : on tire un livre, il s'ouvre
    Dessin 100 % maison (canvas / SVG), aucune librairie.
    Textes : FR source ; tr() lit le dictionnaire i18n pour ce qui est
-   construit hors du DOM (texte qui s'écrit, infobulle du globe).
+   construit hors du DOM (texte qui s'écrit, attributs SVG).
    ════════════════════════════════════════════════════════════════ */
 
 function stLang() { try { return (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr'; } catch (e) { return 'fr'; } }
@@ -40,11 +43,11 @@ function Seal(props) {
       <defs><path id={id} d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0"/></defs>
       <circle cx="50" cy="50" r="47" fill="none" stroke="currentColor" strokeWidth="2"/>
       <circle cx="50" cy="50" r="28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 3"/>
-      <text fontFamily="var(--font-mono)" fontSize="8.2" letterSpacing="2.2" fill="currentColor">
+      <text fontFamily="IBM Plex Mono, monospace" fontSize="8.2" letterSpacing="2.2" fill="currentColor">
         <textPath href={'#' + id}>{ring + ring}</textPath>
       </text>
       {props.center
-        ? <text x="50" y="56" textAnchor="middle" fontFamily="var(--font-display)" fontWeight="600" fontSize={props.centerSize || 17} fill="currentColor">{props.center}</text>
+        ? <text x="50" y="56" textAnchor="middle" fontFamily="Literata, Georgia, serif" fontWeight="600" fontSize={props.centerSize || 17} fill="currentColor">{props.center}</text>
         : <path d="M38 51 l8 8 l16 -18" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>}
     </svg>
   );
@@ -78,269 +81,401 @@ function Coverline(props) {
   );
 }
 
-/* ═════════════════ GLOBE — la carte des courses ═════════════════ */
-var GLOBE_LAND = [
-  // Amérique du Nord
-  [[70,-160],[71,-150],[70,-140],[69,-130],[70,-120],[73,-100],[72,-90],[69,-80],[63,-78],[60,-65],[55,-60],[50,-56],[47,-53],[45,-62],[44,-66],[41,-70],[39,-74],[35,-76],[32,-81],[30,-81],[27,-80],[25,-80.5],[29,-83],[30,-88],[29,-95],[26,-97],[22,-97.5],[19,-96],[18,-94],[21,-87],[18,-88],[15,-88],[15,-84],[11,-84],[9,-79],[8,-77],[7,-80],[9,-85],[13,-88],[16,-95],[19,-105],[23,-110],[28,-112],[31,-115],[34,-119],[38,-123],[42,-124],[48,-125],[54,-131],[58,-137],[60,-146],[59,-152],[57,-158],[55,-163],[60,-165],[65,-168],[68,-166]],
-  [[63,-65],[67,-62],[70,-68],[73,-78],[72,-85],[68,-75],[64,-73]],
-  [[70,-110],[73,-120],[77,-115],[80,-90],[76,-80],[72,-75],[70,-85]],
-  // Groenland, Islande
-  [[60,-44],[64,-40],[70,-22],[76,-18],[82,-30],[83,-40],[81,-60],[78,-70],[76,-68],[73,-56],[69,-51],[64,-51.5],[61,-48]],
-  [[63.4,-19],[64,-22.7],[65.5,-24],[66.5,-16],[65,-13.5],[64.2,-15]],
-  // Amérique du Sud
-  [[12,-72],[11,-64],[8,-60],[5,-52],[1,-50],[-2,-44],[-5,-36],[-8,-35],[-13,-38.5],[-23,-42],[-25,-48],[-30,-50],[-34,-53],[-38,-57],[-41,-63],[-46,-67],[-52,-69],[-55,-68],[-54,-72],[-50,-75],[-45,-74],[-37,-73.5],[-30,-71.5],[-18,-70.3],[-14,-76],[-6,-81],[-2,-80.5],[1,-79],[4,-77.5],[8,-77],[11,-75]],
-  // Europe
-  [[36,-9.5],[37,-6],[36.5,-2],[38,0],[41,2],[43,3],[43.3,5.5],[44,8.5],[44,10],[42,12],[40.5,15],[38,16],[40,18.5],[41.5,16],[44,12.5],[45.5,12.3],[45.7,13.7],[43,16.5],[41.7,19.5],[40,20],[38.5,21],[37,22.5],[38.5,24],[40.8,23],[40.9,26],[41.2,28.9],[42.5,28],[43.5,28.6],[45,29.7],[46.5,30.7],[45.5,33.5],[47,36],[47,39],[45,37],[43,40],[41.5,41.6],[45,48],[50,50],[55,55],[60,60],[68,60],[69,55],[68,44],[66,40],[65,36],[66,34],[64,30],[70,28],[71,25],[70,20],[67,14],[63,9],[59,5.5],[58,7],[59,10],[56.5,11],[55.5,10],[57.5,8],[55,8.3],[53.5,7],[53,5],[51,2.5],[50,1.5],[49.5,-1],[48.5,-4.7],[47.5,-2.5],[46,-1.2],[43.5,-1.5],[43.5,-8],[42,-9],[39,-9.5]],
-  [[50,-5.7],[50.8,1.2],[52.9,1.7],[55.8,-1.6],[57.6,-1.8],[58.6,-3],[58.4,-5],[56.5,-6.2],[55,-5],[54.3,-3.4],[53.3,-4.5],[51.6,-5.1]],
-  [[51.5,-9.8],[52.2,-6.4],[54,-6],[55.3,-7.2],[54.2,-10],[53,-10.2]],
-  // Afrique, Madagascar, Arabie
-  [[35.8,-5.9],[37,10],[33,11],[32.5,15],[31,20],[32.8,22],[31.5,25],[31.3,32],[29.5,32.5],[22,36.8],[18,38.5],[15,40],[12,43.5],[11.8,51.2],[5,48],[2,45.5],[-4,39.6],[-10,40],[-15,40.6],[-20,35],[-25,35],[-30,31],[-34,26],[-34.5,20],[-34,18.4],[-29,16.5],[-22,14.5],[-17,11.7],[-12,13.8],[-6,12.3],[-1,9],[4,9.5],[4.5,7],[6.4,3.4],[5,-4],[4.4,-7.5],[7,-12],[10,-14.5],[14.7,-17.4],[21,-17],[27,-13.2],[31,-9.8]],
-  [[-12,49.3],[-16,50.4],[-25.5,47],[-24,43.6],[-16,44.4]],
-  [[31.3,32],[33,35],[36.5,36],[37,42],[33,46],[30,48],[29,50],[26,56],[25,56.4],[22.5,59.8],[17,54],[12.7,44],[15,42.8],[20,40],[27,35],[29.5,34.5]],
-  // Asie
-  [[41.5,41.6],[37,44],[38,48.8],[37,54],[33,61],[25,62],[25,66.5],[23,68.5],[20.5,73],[15,74],[8,77],[13,80.2],[16,82],[20,86.5],[22,89],[21.5,92],[16,94.5],[16,97.5],[10,98.5],[7,100],[1.3,103.8],[5,103.4],[10,105],[10.5,107],[16,108.3],[21,107],[22,110],[23,116.5],[27,120],[31,121.9],[35,119.3],[37.5,122.5],[39,118],[40.8,121.5],[39.5,124],[38,125],[35,126.5],[35.3,129.3],[38,128.7],[42.5,130.7],[43,132],[47,138.5],[54,141],[59,143],[59,150],[62,164],[66,180],[70,180],[72,140],[73,113],[77,105],[76,90],[73,80],[72,70],[68,60],[60,60],[55,55],[50,50],[45,48]],
-  [[31,130.5],[33.5,130],[35.5,133],[35.6,135.5],[37,137],[38.5,139.5],[40.5,140],[41.5,140.5],[43.5,141.3],[45.5,141.9],[43,145.5],[42,143],[40.5,141.5],[38,141],[35,140],[34,137],[33.5,135.2],[32.7,132]],
-  [[5.5,95.3],[-5.8,105.8],[-3,104],[2,99]],
-  [[7,117],[1,119],[-4,116],[-3,110.5],[1.5,109]],
-  [[-1,131],[-8,141],[-10.5,150.5],[-5.5,147],[-3,141]],
-  // Océanie
-  [[-11,142.5],[-17,141.5],[-12.5,136.5],[-12,131],[-15,129],[-14,125.5],[-20,119],[-22,114],[-26,113.5],[-31.5,115.7],[-35,117],[-34,123.5],[-31.5,131],[-35,135],[-35,138.5],[-38,140.5],[-39,146.5],[-37.5,150],[-33,151.5],[-28,153.5],[-24,152],[-19,146.5],[-15,145.3]],
-  [[-34.5,172.7],[-37.5,176],[-41.3,175.2],[-39.5,174],[-36.5,174.3]],
-  [[-41,173],[-43.6,172.6],[-46.6,169],[-44,168],[-40.5,172.5]]
+/* ═════════════════ PISTE D'ATHLÉ — 8 couloirs, 8 sports ═════════════════ */
+var TRACK_SPORTS = [
+  { k: 'run', n: 'Course à pied', c: '#f97316', d: 'Allures, zones cardiaques et plans du 5 km au marathon.' },
+  { k: 'trail', n: 'Trail', c: '#a3e635', d: 'Dénivelé, sorties longues et préparation des ultras.' },
+  { k: 'bike', n: 'Vélo', c: '#00c8e0', d: 'Puissance, FTP et zones de watts, synchronisés avec tes capteurs.' },
+  { k: 'tri', n: 'Triathlon', c: '#7b8cff', d: "Trois sports dans un seul plan, du Sprint à l'Ironman 70.3." },
+  { k: 'hyrox', n: 'Hyrox', c: '#f472b6', d: 'Course et stations enchaînées dans un plan hybride.' },
+  { k: 'swim', n: 'Natation', c: '#60a5fa', d: 'Allure au 100 m et séances techniques.' },
+  { k: 'gym', n: 'Musculation', c: '#22c55e', d: "Force, puissance et explosivité, intégrées à l'endurance." },
+  { k: 'row', n: 'Aviron', c: '#2dd4bf', d: 'Séances sur ergomètre et suivi de la charge.' }
 ];
-// Grands rendez-vous (faits publics : lieu, discipline, mois habituel).
-var GLOBE_RACES = [
-  { n: 'Marathon de Paris', city: 'Paris', lat: 48.86, lon: 2.35, k: 'run', m: 3 },
-  { n: 'UTMB Mont-Blanc', city: 'Chamonix', lat: 45.92, lon: 6.87, k: 'trail', m: 7 },
-  { n: 'IRONMAN France', city: 'Nice', lat: 43.70, lon: 7.27, k: 'tri', m: 5 },
-  { n: 'Challenge Roth', city: 'Roth', lat: 49.25, lon: 11.09, k: 'tri', m: 6 },
-  { n: 'Paris-Roubaix Challenge', city: 'Roubaix', lat: 50.69, lon: 3.17, k: 'bike', m: 3 },
-  { n: 'Berlin-Marathon', city: 'Berlin', lat: 52.52, lon: 13.40, k: 'run', m: 8 },
-  { n: 'London Marathon', city: 'Londres', lat: 51.50, lon: -0.12, k: 'run', m: 3 },
-  { n: 'Boston Marathon', city: 'Boston', lat: 42.36, lon: -71.06, k: 'run', m: 3 },
-  { n: 'New York City Marathon', city: 'New York', lat: 40.71, lon: -74.0, k: 'run', m: 10 },
-  { n: 'Chicago Marathon', city: 'Chicago', lat: 41.88, lon: -87.63, k: 'run', m: 9 },
-  { n: 'IRONMAN World Championship', city: 'Kona', lat: 19.64, lon: -155.99, k: 'tri', m: 9 },
-  { n: 'Maratón de Valencia', city: 'Valence', lat: 39.47, lon: -0.38, k: 'run', m: 11 },
-  { n: 'Tokyo Marathon', city: 'Tokyo', lat: 35.68, lon: 139.69, k: 'run', m: 2 }
-];
-var GLOBE_HUB = { lat: 48.86, lon: 2.35 };
-var GLOBE_COL = { run: '#f97316', trail: '#84cc16', tri: '#7b8cff', bike: '#00c8e0' };
-var GLOBE_TXT = {
-  fr: { run: 'Course', trail: 'Trail', tri: 'Triathlon', bike: 'Cyclisme', months: ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'], city: {}, hub: 'THW — Paris', hint: 'Fais tourner le globe · survole une course' },
-  en: { run: 'Running', trail: 'Trail', tri: 'Triathlon', bike: 'Cycling', months: ['January','February','March','April','May','June','July','August','September','October','November','December'], city: { 'Londres': 'London', 'Valence': 'Valencia' }, hub: 'THW — Paris', hint: 'Spin the globe · hover a race' },
-  es: { run: 'Carrera', trail: 'Trail', tri: 'Triatlón', bike: 'Ciclismo', months: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'], city: { 'Londres': 'Londres', 'New York': 'Nueva York', 'Valence': 'Valencia', 'Tokyo': 'Tokio' }, hub: 'THW — París', hint: 'Gira el globo · pasa sobre una carrera' }
-};
-
-var GLOBE_DOTS = null;
-function globeDots() {
-  if (GLOBE_DOTS) return GLOBE_DOTS;
-  var polys = GLOBE_LAND.map(function (p) { return p.map(function (q) { return [q[1], q[0]]; }); });
-  var inPoly = function (x, y, poly) {
-    var c = false;
-    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      var xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c;
-    }
-    return c;
-  };
-  var out = [];
-  for (var lat = -56; lat <= 82; lat += 2.1) {
-    var step = 2.1 / Math.max(0.25, Math.cos(lat * Math.PI / 180));
-    for (var lon = -180; lon < 180; lon += step) {
-      for (var k = 0; k < polys.length; k++) { if (inPoly(lon, lat, polys[k])) { out.push([lat, lon]); break; } }
-    }
-  }
-  GLOBE_DOTS = out;
-  return out;
+var TK = { cx: 480, cy: 320, L: 320, r0: 118, w: 22 };
+function laneD(r) {
+  var x1 = TK.cx - TK.L / 2, x2 = TK.cx + TK.L / 2, yb = TK.cy + r, yt = TK.cy - r;
+  return 'M' + x1 + ',' + yb + ' L' + x2 + ',' + yb + ' A' + r + ',' + r + ' 0 0 0 ' + x2 + ',' + yt +
+    ' L' + x1 + ',' + yt + ' A' + r + ',' + r + ' 0 0 0 ' + x1 + ',' + yb + ' Z';
 }
+function laneR(i) { return TK.r0 + TK.w * (i + 0.5); }
+function lanePer(i) { var r = laneR(i); return 2 * TK.L + 2 * Math.PI * r; }
 
-function RaceGlobe() {
-  var boxRef = React.useRef(null), cvRef = React.useRef(null), tipRef = React.useRef(null);
-  var lang = useLang();
-  var langRef = React.useRef(lang);
-  langRef.current = lang;
+function RaceTrack() {
+  useLang();
+  var hs = React.useState(0), hot = hs[0], setHot = hs[1];
+  var pausedRef = React.useRef(false);
+  var boxRef = React.useRef(null);
+  var runRefs = React.useRef([]), trailRefs = React.useRef([]), pathRefs = React.useRef([]);
+  var lapRef = React.useRef(null);
 
+  // Les coureurs tournent (rAF), en pause hors écran / onglet caché.
   React.useEffect(function () {
-    var box = boxRef.current, cv = cvRef.current, tip = tipRef.current;
-    if (!box || !cv) return undefined;
-    var ctx = cv.getContext('2d');
-    var D2R = Math.PI / 180;
-    var dots = globeDots();
-    var view = { lat: 30, lon: -22 };
-    var drag = null, hover = null, visible = true, raf = 0, W = 0, R = 0, dpr = 1;
-    var t0 = performance.now();
-
-    function size() {
-      var w = box.clientWidth;
-      dpr = Math.min(2, window.devicePixelRatio || 1);
-      W = w; R = w * 0.42;
-      cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr);
-      cv.style.width = w + 'px'; cv.style.height = w + 'px';
-    }
-    function vec(lat, lon) { var a = lat * D2R, b = lon * D2R; return [Math.cos(a) * Math.cos(b), Math.cos(a) * Math.sin(b), Math.sin(a)]; }
-    // Projection orthographique d'un vecteur 3D (rayon libre) dans la vue.
-    function proj(v) {
-      var l0 = view.lon * D2R, p0 = view.lat * D2R;
-      var x1 = v[0] * Math.cos(-l0) - v[1] * Math.sin(-l0), y1 = v[0] * Math.sin(-l0) + v[1] * Math.cos(-l0), z1 = v[2];
-      // rotation autour de l'axe y pour amener la latitude au centre
-      var x2 = x1 * Math.cos(p0) + z1 * Math.sin(p0), z2 = -x1 * Math.sin(p0) + z1 * Math.cos(p0);
-      // écran : x2 = profondeur, y1 = horizontal, z2 = vertical
-      return { x: W / 2 + y1 * R, y: W / 2 - z2 * R, z: x2, r2: y1 * y1 + z2 * z2 };
-    }
-    function slerp(a, b, t) {
-      var d = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
-      if (d < 1e-6) return a.slice();
-      var s = Math.sin(d), k1 = Math.sin((1 - t) * d) / s, k2 = Math.sin(t * d) / s;
-      return [a[0] * k1 + b[0] * k2, a[1] * k1 + b[1] * k2, a[2] * k1 + b[2] * k2];
-    }
-    var hubV = vec(GLOBE_HUB.lat, GLOBE_HUB.lon);
-    var arcs = GLOBE_RACES.filter(function (r) { return Math.abs(r.lat - GLOBE_HUB.lat) + Math.abs(r.lon - GLOBE_HUB.lon) > 0.5; }).map(function (r, i) {
-      var to = vec(r.lat, r.lon);
-      var d = Math.acos(Math.max(-1, Math.min(1, hubV[0] * to[0] + hubV[1] * to[1] + hubV[2] * to[2])));
-      var lift = 0.04 + 0.22 * (d / Math.PI);
-      var pts = [];
-      for (var s = 0; s <= 48; s++) {
-        var t = s / 48, v = slerp(hubV, to, t), h = 1 + lift * Math.sin(Math.PI * t);
-        pts.push([v[0] * h, v[1] * h, v[2] * h]);
-      }
-      return { race: r, pts: pts, ph: i / 12, col: GLOBE_COL[r.k] };
-    });
-    function seen(p) { return p.z > 0 || p.r2 > 1.0; }
-
+    var visible = true, raf = 0, t0 = performance.now(), laps = 0;
+    var speed = [128, 119, 141, 124, 133, 114, 122, 137];
+    var off = [0, 180, 60, 420, 300, 520, 240, 120];
     function frame(now) {
       raf = 0;
       if (!visible) return;
-      var T = (now - t0) / 1000;
-      if (!drag && !hover && !ST_RM) view.lon += 0.045;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, W, W);
-      var c = W / 2;
-      // halo + sphère
-      var g = ctx.createRadialGradient(c, c, R * 0.6, c, c, R * 1.25);
-      g.addColorStop(0, 'rgba(0,200,224,0.10)'); g.addColorStop(1, 'rgba(0,200,224,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, R * 1.25, 0, Math.PI * 2); ctx.fill();
-      var s = ctx.createRadialGradient(c - R * 0.35, c - R * 0.4, R * 0.1, c, c, R);
-      s.addColorStop(0, '#1a2f4d'); s.addColorStop(1, '#0a1626');
-      ctx.fillStyle = s; ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,200,224,0.35)'; ctx.lineWidth = 1; ctx.stroke();
-      // méridiens / parallèles discrets
-      ctx.strokeStyle = 'rgba(158,177,200,0.07)'; ctx.lineWidth = 0.8;
-      for (var la = -60; la <= 60; la += 30) { ctx.beginPath(); var st = false; for (var lo = -180; lo <= 180; lo += 4) { var p = proj(vec(la, lo)); if (p.z > 0) { st ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); st = true; } else st = false; } ctx.stroke(); }
-      for (var lo2 = -180; lo2 < 180; lo2 += 30) { ctx.beginPath(); var st2 = false; for (var la2 = -88; la2 <= 88; la2 += 4) { var p2 = proj(vec(la2, lo2)); if (p2.z > 0) { st2 ? ctx.lineTo(p2.x, p2.y) : ctx.moveTo(p2.x, p2.y); st2 = true; } else st2 = false; } ctx.stroke(); }
-      // terres en points
-      for (var i = 0; i < dots.length; i++) {
-        var q = proj(vec(dots[i][0], dots[i][1]));
-        if (q.z <= 0) continue;
-        ctx.fillStyle = 'rgba(158,190,220,' + (0.18 + q.z * 0.5).toFixed(3) + ')';
-        ctx.fillRect(q.x - 0.9, q.y - 0.9, 1.8, 1.8);
+      var t = ST_RM ? 3 : (now - t0) / 1000;
+      for (var i = 0; i < 8; i++) {
+        var path = pathRefs.current[i], run = runRefs.current[i], tr2 = trailRefs.current[i];
+        if (!path || !run) continue;
+        var per = lanePer(i), pos = (off[i] + t * speed[i]) % per;
+        var pt = path.getPointAtLength(pos);
+        run.setAttribute('cx', pt.x.toFixed(1)); run.setAttribute('cy', pt.y.toFixed(1));
+        if (tr2) { var tl = 150; tr2.setAttribute('stroke-dasharray', tl + ' ' + (per - tl)); tr2.setAttribute('stroke-dashoffset', ((tl - pos) % per).toFixed(1)); }
       }
-      // arcs + éclats qui voyagent
-      arcs.forEach(function (a) {
-        var P = a.pts.map(proj);
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = 'rgba(0,200,224,0.28)';
-        ctx.beginPath(); var on = false;
-        P.forEach(function (p) { if (seen(p)) { on ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); on = true; } else on = false; });
-        ctx.stroke();
-        if (ST_RM) return;
-        var u = ((T * 0.22 + a.ph) % 1), idx = Math.floor(u * (P.length - 1)), p3 = P[idx];
-        if (p3 && seen(p3)) {
-          var gl = ctx.createRadialGradient(p3.x, p3.y, 0, p3.x, p3.y, 8);
-          gl.addColorStop(0, 'rgba(224,183,102,0.95)'); gl.addColorStop(1, 'rgba(224,183,102,0)');
-          ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p3.x, p3.y, 8, 0, Math.PI * 2); ctx.fill();
-        }
-      });
-      // repères des courses
-      var pulse = ST_RM ? 0.5 : (Math.sin(T * 2.4) + 1) / 2;
-      GLOBE_RACES.forEach(function (r) {
-        var p = proj(vec(r.lat, r.lon)); r._p = p;
-        if (p.z <= 0.02) return;
-        ctx.globalAlpha = Math.min(1, p.z * 2.2);
-        ctx.strokeStyle = GLOBE_COL[r.k]; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 5 + pulse * 5, 0, Math.PI * 2); ctx.globalAlpha *= (1 - pulse) * 0.8; ctx.stroke();
-        ctx.globalAlpha = Math.min(1, p.z * 2.2);
-        ctx.fillStyle = GLOBE_COL[r.k]; ctx.beginPath(); ctx.arc(p.x, p.y, hover === r ? 5 : 3.4, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-      });
-      // pôle THW (Paris)
-      var h = proj(hubV);
-      if (h.z > 0) {
-        ctx.fillStyle = '#e0b766'; ctx.beginPath(); ctx.arc(h.x, h.y, 4.6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(224,183,102,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(h.x, h.y, 9, 0, Math.PI * 2); ctx.stroke();
-      }
-      raf = requestAnimationFrame(frame);
+      var l = Math.floor((off[0] + t * speed[0]) / lanePer(0)) + 1;
+      if (l !== laps && lapRef.current) { laps = l; lapRef.current.textContent = String(l).padStart(2, '0'); }
+      if (!ST_RM) raf = requestAnimationFrame(frame);
     }
     function kick() { if (!raf && visible) raf = requestAnimationFrame(frame); }
-
-    function showTip(r) {
-      if (!tip) return;
-      if (!r) { tip.style.opacity = '0'; return; }
-      var L = GLOBE_TXT[langRef.current] || GLOBE_TXT.fr;
-      var city = L.city[r.city] || r.city;
-      tip.innerHTML = '<b></b><span></span>';
-      tip.firstChild.textContent = r.n;
-      tip.lastChild.textContent = city + ' · ' + L[r.k] + ' · ' + L.months[r.m];
-      tip.style.left = r._p.x + 'px'; tip.style.top = r._p.y + 'px'; tip.style.opacity = '1';
-    }
-    function pick(x, y) {
-      var best = null, bd = 16 * 16;
-      GLOBE_RACES.forEach(function (r) { var p = r._p; if (!p || p.z <= 0.05) return; var d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y); if (d < bd) { bd = d; best = r; } });
-      return best;
-    }
-    function rel(e) { var b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
-    function down(e) { drag = { x: e.clientX, y: e.clientY, lon: view.lon, lat: view.lat, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (er) {} }
-    function move(e) {
-      if (drag) {
-        var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-        view.lon = drag.lon - dx * 0.35;
-        view.lat = Math.max(-35, Math.min(65, drag.lat + dy * 0.3));
-        kick();
-        return;
-      }
-      var p = rel(e), r = pick(p.x, p.y);
-      if (r !== hover) { hover = r; showTip(r); cv.style.cursor = r ? 'pointer' : 'grab'; }
-    }
-    function up(e) {
-      var wasTap = drag && !drag.moved;
-      drag = null;
-      if (wasTap) { var p = rel(e), r = pick(p.x, p.y); hover = r; showTip(r); }
-    }
-    function leave() { if (!drag) { hover = null; showTip(null); } }
-
-    size();
-    cv.addEventListener('pointerdown', down);
-    cv.addEventListener('pointermove', move);
-    cv.addEventListener('pointerup', up);
-    cv.addEventListener('pointercancel', up);
-    cv.addEventListener('pointerleave', leave);
-    var ro = 'ResizeObserver' in window ? new ResizeObserver(function () { size(); kick(); }) : null;
-    if (ro) ro.observe(box);
-    var vis = 'IntersectionObserver' in window ? new IntersectionObserver(function (en) { visible = en[0].isIntersecting && !document.hidden; kick(); }) : null;
-    if (vis) vis.observe(box);
+    var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (en) { visible = en[0].isIntersecting && !document.hidden; kick(); }) : null;
+    if (io && boxRef.current) io.observe(boxRef.current);
     var onVis = function () { visible = !document.hidden; kick(); };
     document.addEventListener('visibilitychange', onVis);
     kick();
-    return function () {
-      cancelAnimationFrame(raf);
-      if (ro) ro.disconnect();
-      if (vis) vis.disconnect();
-      document.removeEventListener('visibilitychange', onVis);
-    };
+    return function () { cancelAnimationFrame(raf); if (io) io.disconnect(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
-  var L = GLOBE_TXT[lang] || GLOBE_TXT.fr;
+  // Visite guidée : un couloir après l'autre, sauf si on survole.
+  React.useEffect(function () {
+    if (ST_RM) return undefined;
+    var t = setInterval(function () { if (!pausedRef.current && !document.hidden) setHot(function (h) { return (h + 1) % 8; }); }, 3400);
+    return function () { clearInterval(t); };
+  }, []);
+
+  var outer = TK.r0 + TK.w * 8;
+  var sp = TRACK_SPORTS[hot];
+  var finishX = TK.cx + TK.L / 2 - 46;
   return (
-    <div className="st-globe" ref={boxRef}>
-      <canvas ref={cvRef} aria-label="Globe des grands rendez-vous d'endurance" role="img"/>
-      <div className="st-gtip" ref={tipRef} data-no-i18n="1"/>
-      <div className="st-glegend" data-no-i18n="1">
-        <span><i style={{ background: '#e0b766' }}/>{L.hub}</span>
-        {['run', 'trail', 'tri', 'bike'].map(function (k) { return <span key={k}><i style={{ background: GLOBE_COL[k] }}/>{L[k]}</span>; })}
+    <div className="st-trackbox" ref={boxRef}
+         onMouseLeave={function () { pausedRef.current = false; }}>
+      <div className="st-track-3d">
+        <svg viewBox="0 0 960 640" role="img" aria-label="Piste d'athlétisme : un couloir par sport">
+          <defs>
+            <linearGradient id="stTartan" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#1f3a64"/><stop offset="1" stopColor="#16294a"/>
+            </linearGradient>
+            <radialGradient id="stInfield" cx="50%" cy="50%" r="65%">
+              <stop offset="0" stopColor="#123236"/><stop offset="1" stopColor="#0b1d24"/>
+            </radialGradient>
+            <pattern id="stMow" width="44" height="10" patternUnits="userSpaceOnUse">
+              <rect width="22" height="10" fill="rgba(255,255,255,0.025)"/>
+            </pattern>
+            <filter id="stGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+          </defs>
+          <path d={laneD(outer + 16)} fill="#0d1b2e"/>
+          <path d={laneD(outer) + ' ' + laneD(TK.r0)} fill="url(#stTartan)" fillRule="evenodd"/>
+          <path d={laneD(TK.r0)} fill="url(#stInfield)"/>
+          <path d={laneD(TK.r0)} fill="url(#stMow)"/>
+          <path d={laneD(TK.r0 - 46)} fill="none" stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
+          <circle cx={TK.cx} cy={TK.cy} r="34" fill="none" stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
+          <line x1={TK.cx} y1={TK.cy - TK.r0 + 46} x2={TK.cx} y2={TK.cy + TK.r0 - 46} stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (k) {
+            return <path key={'b' + k} d={laneD(TK.r0 + TK.w * k)} fill="none" stroke="rgba(238,243,248,0.32)" strokeWidth={k === 0 || k === 8 ? 2 : 1.1}/>;
+          })}
+          {/* couloir en surbrillance */}
+          <path d={laneD(laneR(hot))} fill="none" stroke={sp.c} strokeOpacity="0.16" strokeWidth={TK.w - 2} style={{ transition: 'stroke .4s' }}/>
+          {/* ligne d'arrivée + numéros */}
+          <rect x={finishX - 3} y={TK.cy + TK.r0} width="6" height={TK.w * 8} fill="#e0b766"/>
+          {TRACK_SPORTS.map(function (s, i) {
+            return <text key={'n' + i} x={finishX - 22} y={TK.cy + laneR(i) + 5} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="13" fontWeight="600" fill="rgba(238,243,248,0.55)">{i + 1}</text>;
+          })}
+          {/* trajectoires (cachées) + traînées + coureurs */}
+          {TRACK_SPORTS.map(function (s, i) {
+            return <path key={'p' + i} ref={function (el) { pathRefs.current[i] = el; }} d={laneD(laneR(i))} fill="none" stroke="none"/>;
+          })}
+          {TRACK_SPORTS.map(function (s, i) {
+            return <path key={'t' + i} ref={function (el) { trailRefs.current[i] = el; }} d={laneD(laneR(i))} fill="none" stroke={s.c}
+                         strokeOpacity={i === hot ? 0.9 : 0.42} strokeWidth={i === hot ? 5 : 3} strokeLinecap="round"/>;
+          })}
+          {TRACK_SPORTS.map(function (s, i) {
+            return <circle key={'g' + i} ref={function (el) { runRefs.current[i] = el; }} r={i === hot ? 9 : 6} fill={s.c} filter={i === hot ? 'url(#stGlow)' : undefined}/>;
+          })}
+          {/* zones de survol, une par couloir */}
+          {TRACK_SPORTS.map(function (s, i) {
+            return <path key={'h' + i} d={laneD(laneR(i))} fill="none" stroke="transparent" strokeWidth={TK.w} style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                         onMouseEnter={function () { pausedRef.current = true; setHot(i); }} onClick={function () { pausedRef.current = true; setHot(i); }}/>;
+          })}
+        </svg>
       </div>
-      <div className="st-ghint" data-no-i18n="1">{L.hint}</div>
+      <div className="st-lane-card" style={{ '--c': sp.c }} aria-live="polite">
+        <span className="mono"><span>Couloir</span> {hot + 1} · <span data-no-i18n="1">T</span><span ref={lapRef} data-no-i18n="1">01</span></span>
+        <b key={sp.k}>{sp.n}</b>
+        <span className="st-lane-d" key={'d' + sp.k}>{sp.d}</span>
+      </div>
+      <div className="st-lane-picks" role="tablist" aria-label="Choisir un sport">
+        {TRACK_SPORTS.map(function (s, i) {
+          return <button key={s.k} type="button" role="tab" aria-selected={i === hot} title={s.n} style={{ '--c': s.c }}
+                         className={i === hot ? 'on' : ''} onClick={function () { pausedRef.current = true; setHot(i); }}
+                         onMouseEnter={function () { pausedRef.current = true; setHot(i); }}><span data-no-i18n="1">{i + 1}</span></button>;
+        })}
+      </div>
     </div>
+  );
+}
+
+/* ═════════════════ PANNEAU DE STADE — palettes qui basculent ═════════════════ */
+function Scoreboard(props) {
+  var items = props.items;
+  var ref = React.useRef(null);
+  var init = items.map(function (it) { return String(it.v).split('').map(function (c) { return { ch: ST_RM ? c : '0', n: 0 }; }); });
+  var st = React.useState(init), cells = st[0], setCells = st[1];
+  React.useEffect(function () {
+    if (ST_RM) return undefined;
+    var timer = null, started = false;
+    function start() {
+      if (started) return; started = true;
+      var t0 = performance.now();
+      var stops = items.map(function (it, a) { return String(it.v).split('').map(function (c, b) { return 700 + a * 260 + b * 160; }); });
+      timer = setInterval(function () {
+        var el = performance.now() - t0, done = true;
+        setCells(function (prev) {
+          return prev.map(function (row, a) {
+            return row.map(function (cell, b) {
+              var fin = String(items[a].v)[b];
+              if (el >= stops[a][b]) { if (cell.ch !== fin) return { ch: fin, n: cell.n + 1 }; return cell; }
+              done = false;
+              return { ch: String(Math.floor(Math.random() * 10)), n: cell.n + 1 };
+            });
+          });
+        });
+        if (el > stops[stops.length - 1][stops[stops.length - 1].length - 1] + 120) clearInterval(timer);
+      }, 70);
+    }
+    var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (en) { if (en[0].isIntersecting) { start(); io.disconnect(); } }, { threshold: 0.4 }) : null;
+    if (io && ref.current) io.observe(ref.current); else start();
+    return function () { clearInterval(timer); if (io) io.disconnect(); };
+  }, []);
+  return (
+    <div className="st-board" ref={ref}>
+      {items.map(function (it, a) {
+        return (
+          <div className="st-board-cell" key={a}>
+            <div className="st-flaps" data-no-i18n="1" aria-label={String(it.v)}>
+              {cells[a].map(function (cell, b) {
+                return <span className="st-flap" key={b}><span className="st-flap-ch" key={cell.n}>{cell.ch}</span></span>;
+              })}
+            </div>
+            <span className="lbl">{it.label}</span>
+            <span className="sub">{it.sub}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ═════════════════ LE PLAN QUI S'ÉCRIT + zones cardiaques ═════════════════ */
+var PLAN_WEEK = [
+  { d: 'Lun', k: 'gym', t: 'Force — haut du corps', m: '50 min', z: 'Force' },
+  { d: 'Mar', k: 'run', t: '6 × 800 m au seuil', m: '55 min', z: 'Z4' },
+  { d: 'Mer', k: 'bike', t: 'Endurance', m: '1 h 15', z: 'Z2' },
+  { d: 'Jeu', k: 'rest', t: 'Mobilité', m: '20 min', z: 'Récup' },
+  { d: 'Ven', k: 'swim', t: 'Technique', m: '40 min', z: 'Z1' },
+  { d: 'Sam', k: 'hyrox', t: 'Stations + course', m: '1 h', z: 'Z3' },
+  { d: 'Dim', k: 'run', t: 'Sortie longue', m: '1 h 40', z: 'Z2' }
+];
+var PLAN_COL = { gym: '#22c55e', run: '#f97316', bike: '#00c8e0', rest: '#94a3b8', swim: '#60a5fa', hyrox: '#f472b6' };
+var ZONES = [
+  { z: 'Z1', n: 'Récupération', v: 18, c: '#94a3b8' },
+  { z: 'Z2', n: 'Endurance', v: 58, c: '#22c55e' },
+  { z: 'Z3', n: 'Tempo', v: 8, c: '#eab308' },
+  { z: 'Z4', n: 'Seuil', v: 11, c: '#f97316' },
+  { z: 'Z5', n: 'VO₂max', v: 5, c: '#ef4444' }
+];
+function PlanWriter() {
+  useLang();
+  var ref = React.useRef(null);
+  var ns = React.useState(ST_RM ? 7 : 0), shown = ns[0], setShown = ns[1];
+  var zs = React.useState(ST_RM ? ZONES.map(function (z) { return z.v; }) : [20, 20, 20, 20, 20]), zv = zs[0], setZv = zs[1];
+  var gs = React.useState(0), run = gs[0], setRun = gs[1];
+  var done = shown >= 7;
+  // Lancement à l'entrée dans l'écran (et au clic sur « Rejouer »).
+  React.useEffect(function () {
+    if (ST_RM) return undefined;
+    var started = false, timers = [];
+    function play() {
+      if (started) return; started = true;
+      setShown(0);
+      for (var i = 1; i <= 7; i++) (function (i) { timers.push(setTimeout(function () { setShown(i); }, 380 + i * 420)); })(i);
+      var eq = setInterval(function () { setZv(ZONES.map(function () { return 12 + Math.random() * 70; })); }, 140);
+      timers.push(setTimeout(function () { clearInterval(eq); setZv(ZONES.map(function (z) { return z.v; })); }, 380 + 8 * 420));
+      timers.push({ clear: function () { clearInterval(eq); } });
+    }
+    var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (en) { if (en[0].isIntersecting) { play(); io.disconnect(); } }, { threshold: 0.35 }) : null;
+    if (run > 0) play(); else if (io && ref.current) io.observe(ref.current); else play();
+    return function () { timers.forEach(function (t) { if (t && t.clear) t.clear(); else clearTimeout(t); }); if (io) io.disconnect(); };
+  }, [run]);
+  var maxZ = Math.max.apply(null, zv);
+  return (
+    <div className="st-plan" ref={ref}>
+      <div className="st-plan-side">
+        <div className="eyebrow">Plan d'entraînement</div>
+        <h2 className="st-h2">Ton plan s'écrit en moins de 60 secondes.</h2>
+        <p className="st-lede">Tu donnes ton objectif, tes disponibilités et ton matériel. L'IA construit ta semaine séance par séance — et la réajuste quand ta forme change.</p>
+        <div className="st-zones" aria-label="Répartition du temps par zone cardiaque">
+          {ZONES.map(function (z, i) {
+            return (
+              <div className="st-zone" key={z.z}>
+                <div className="st-zone-bar"><i style={{ height: (zv[i] / Math.max(60, maxZ)) * 100 + '%', background: z.c }}/></div>
+                <span className="mono" data-no-i18n="1">{z.z}</span>
+                <span className="st-zone-n">{z.n}</span>
+                {done && <span className="st-zone-v" data-no-i18n="1">{z.v + ' %'}</span>}
+              </div>
+            );
+          })}
+        </div>
+        <p className="st-zone-cap" style={{ opacity: done ? 1 : 0 }}>76 % du temps en zones basses : l'intensité reste concentrée là où elle compte.</p>
+      </div>
+      <div className="st-plan-card tilt" data-tilt="3">
+        <div className="st-dc-top">
+          <span className="st-chip">Semaine type · hybride</span>
+          <button type="button" className="st-replay" onClick={function () { setRun(function (r) { return r + 1; }); }} aria-label="Rejouer">↻</button>
+        </div>
+        <div className="st-week">
+          {PLAN_WEEK.map(function (s, i) {
+            return (
+              <div className="st-day" key={i}>
+                <span className="mono st-day-d">{s.d}</span>
+                <div className={'st-sess' + (i < shown ? ' in' : '')} style={{ '--c': PLAN_COL[s.k] }}>
+                  <b>{s.t}</b>
+                  <span>{s.m}</span>
+                  <span className="st-chip">{s.z}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="st-plan-foot">
+          <span className="mono">{done ? <span>Semaine prête · 7 séances · 6 h 40</span> : <span><span>L'IA écrit ta semaine</span><span className="st-caret"/></span>}</span>
+          {done && <Seal key={'p' + run} size={58} ring={tr('PLAN VALIDÉ · ')}/>}
+        </div>
+        <span className="st-plan-note">Exemple illustratif</span>
+      </div>
+    </div>
+  );
+}
+
+/* ═════════════════ LA SAISON — jusqu'au Jour J ═════════════════ */
+function seasonData() {
+  var ctl = [], atl = [], c = 38;
+  for (var w = 1; w <= 24; w++) {
+    var taper = w >= 22, rec = !taper && w % 4 === 0;
+    c += taper ? -1.6 : (rec ? 0.4 : 2.1);
+    var a = taper ? c - 10 - (w - 22) * 6 : (rec ? c - 5 : c + 9 + (w % 3) * 2.5);
+    ctl.push(c); atl.push(a);
+  }
+  return { ctl: ctl, atl: atl, tsb: ctl.map(function (v, i) { return v - atl[i]; }) };
+}
+function smoothPath(pts) {
+  var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+  for (var i = 0; i < pts.length - 1; i++) {
+    var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ' C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+  }
+  return d;
+}
+var SEASON_BLOCKS = [
+  { n: 'Base', from: 1, to: 8, c: 'rgba(34,197,94,0.07)' },
+  { n: 'Développement', from: 9, to: 15, c: 'rgba(0,200,224,0.07)' },
+  { n: 'Spécifique', from: 16, to: 21, c: 'rgba(123,140,255,0.08)' },
+  { n: 'Affûtage', from: 22, to: 24, c: 'rgba(224,183,102,0.12)' }
+];
+function SeasonCurve() {
+  useLang();
+  var ref = React.useRef(null);
+  var paths = React.useRef([]);
+  var ms = React.useState(ST_RM), medal = ms[0], setMedal = ms[1];
+  var W = 1000, H = 380, X0 = 40, X1 = 930, Y0 = 30, Y1 = 250, T0 = 290, T1 = 350;
+  var dat = React.useMemo(seasonData, []);
+  var x = function (w) { return X0 + (w - 0.5) / 24 * (X1 - X0); };
+  var y = function (v) { return Y1 - (v - 20) / 80 * (Y1 - Y0); };
+  var ty = function (v) { return (T0 + T1) / 2 - v / 30 * ((T1 - T0) / 2); };
+  var ctlD = smoothPath(dat.ctl.map(function (v, i) { return [x(i + 1), y(v)]; }));
+  var atlD = smoothPath(dat.atl.map(function (v, i) { return [x(i + 1), y(v)]; }));
+  var tsbD = smoothPath(dat.tsb.map(function (v, i) { return [x(i + 1), ty(v)]; }));
+  // Tracé piloté par le défilement.
+  React.useEffect(function () {
+    var lens = paths.current.map(function (p) { return p ? p.getTotalLength() : 0; });
+    paths.current.forEach(function (p, i) { if (p) { p.style.strokeDasharray = lens[i]; p.style.strokeDashoffset = ST_RM ? 0 : lens[i]; } });
+    if (ST_RM) return undefined;
+    var raf = 0;
+    function upd() {
+      raf = 0;
+      var el = ref.current; if (!el) return;
+      var r = el.getBoundingClientRect(), vh = window.innerHeight;
+      // 0 quand le haut du bloc entre en bas de l'écran, 1 quand le graphique est bien visible.
+      var p = Math.max(0, Math.min(1, (vh * 0.85 - r.top) / Math.max(1, r.height * 0.72)));
+      paths.current.forEach(function (pt, i) { if (pt) pt.style.strokeDashoffset = (lens[i] * (1 - p)).toFixed(1); });
+      setMedal(p > 0.93);
+    }
+    function onScroll() { if (!raf) raf = requestAnimationFrame(upd); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    upd();
+    return function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); cancelAnimationFrame(raf); };
+  }, []);
+  var jx = x(24) + 20;
+  return (
+    <div className="st-season" ref={ref}>
+      <div className="st-season-head">
+        <div className="eyebrow">La méthode</div>
+        <h2 className="st-h2">Une saison construite jusqu'au Jour J.</h2>
+        <p className="st-lede">Base, développement, spécifique, puis affûtage : ta forme monte, la fatigue est absorbée, et tout converge vers ta course.</p>
+      </div>
+      <div className="st-season-chart">
+        <svg viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label="Courbe de forme d'une saison jusqu'au jour de la course">
+          {SEASON_BLOCKS.map(function (b) {
+            var bx = X0 + (b.from - 1) / 24 * (X1 - X0), bw = (b.to - b.from + 1) / 24 * (X1 - X0);
+            return (
+              <g key={b.n}>
+                <rect x={bx} y={Y0 - 14} width={bw} height={T1 - Y0 + 22} fill={b.c} rx="6"/>
+                <text x={bx + 10} y={Y0 + 4} fontFamily="IBM Plex Mono, monospace" fontSize="11.5" letterSpacing="1.2" style={{ fill: 'var(--text-dim)' }}>{b.n}</text>
+              </g>
+            );
+          })}
+          <line x1={X0} y1={(T0 + T1) / 2} x2={X1} y2={(T0 + T1) / 2} strokeDasharray="3 4" style={{ stroke: 'var(--border-mid)' }}/>
+          <path ref={function (el) { paths.current[0] = el; }} d={atlD} fill="none" stroke="#f97316" strokeWidth="2.2" strokeOpacity="0.85"/>
+          <path ref={function (el) { paths.current[1] = el; }} d={ctlD} fill="none" strokeWidth="3.4" style={{ stroke: 'var(--brand)' }}/>
+          <path ref={function (el) { paths.current[2] = el; }} d={tsbD} fill="none" stroke="#7b8cff" strokeWidth="2"/>
+          {[1, 4, 8, 12, 16, 20, 24].map(function (w) {
+            return <text key={w} x={x(w)} y={H - 6} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="11" style={{ fill: 'var(--text-dim)' }}>{'S' + w}</text>;
+          })}
+          <line x1={jx} y1={Y0 - 14} x2={jx} y2={T1 + 8} stroke="#e0b766" strokeWidth="2" strokeDasharray="4 4" style={{ opacity: medal ? 1 : 0, transition: 'opacity .5s' }}/>
+          <g transform={'translate(' + jx + ',' + (Y0 + 64) + ')'}><g className={'st-medal' + (medal ? ' drop' : '')}>
+            <path d="M-14,-58 L-4,-18 L4,-18 L14,-58 L6,-58 L0,-34 L-6,-58 Z" style={{ fill: 'var(--brand)' }}/>
+            <circle r="24" fill="#c9973f"/>
+            <circle r="18" fill="none" stroke="#f3dca3" strokeWidth="1.5"/>
+            <path d="M0,-9 L2.6,-2.8 L9.3,-2.8 L3.9,1.2 L5.9,7.6 L0,3.8 L-5.9,7.6 L-3.9,1.2 L-9.3,-2.8 L-2.6,-2.8 Z" fill="#f3dca3"/>
+          </g></g>
+        </svg>
+        <div className="st-season-legend">
+          <span><i style={{ background: 'var(--brand)' }}/>Forme (CTL)</span>
+          <span><i style={{ background: '#f97316' }}/>Fatigue (ATL)</span>
+          <span><i style={{ background: '#7b8cff' }}/>Fraîcheur (TSB)</span>
+          <span className="st-jj" style={{ opacity: medal ? 1 : 0.35 }}><i style={{ background: '#e0b766' }}/>Jour J</span>
+          <span className="st-plan-note">Exemple illustratif</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═════════════════ RUBAN D'ARRIVÉE — bouton final ═════════════════ */
+function FinishButton(props) {
+  return (
+    <span className="st-finish">
+      <span className="st-post l" aria-hidden="true"/>
+      <a className={'btn btn-cyan btn-lg mag ' + (props.className || '')} href={props.href}>{props.children}</a>
+      <span className="st-tape l" aria-hidden="true" data-no-i18n="1"><i>{tr('ARRIVÉE')}</i></span>
+      <span className="st-tape r" aria-hidden="true" data-no-i18n="1"><i>{tr('ARRIVÉE')}</i></span>
+      <span className="st-post r" aria-hidden="true"/>
+    </span>
   );
 }
 
@@ -532,4 +667,4 @@ function Shelf(props) {
   );
 }
 
-Object.assign(window, { RaceGlobe: RaceGlobe, Ticker: Ticker, Coverline: Coverline, Seal: Seal, CoachLive: CoachLive, Shelf: Shelf, Book: Book, stTr: tr });
+Object.assign(window, { RaceTrack: RaceTrack, Scoreboard: Scoreboard, PlanWriter: PlanWriter, SeasonCurve: SeasonCurve, FinishButton: FinishButton, Ticker: Ticker, Coverline: Coverline, Seal: Seal, CoachLive: CoachLive, Shelf: Shelf, Book: Book, stTr: tr });

@@ -97,10 +97,17 @@
   // 2 — Barre de progression.
   function prog() {
     var p = document.getElementById('thw-prog');
-    if (!p) { p = document.createElement('div'); p.id = 'thw-prog'; p.setAttribute('aria-hidden', 'true'); document.body.appendChild(p); }
+    if (!p) {
+      p = document.createElement('div'); p.id = 'thw-prog'; p.setAttribute('aria-hidden', 'true');
+      p.innerHTML = '<i class="fill"></i><b class="run"></b>';
+      document.body.appendChild(p);
+    }
     var h = document.documentElement;
-    var v = h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight);
-    p.style.transform = 'scaleX(' + Math.min(1, Math.max(0, v)) + ')';
+    var v = Math.min(1, Math.max(0, h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight)));
+    p.firstChild.style.transform = 'scaleX(' + v + ')';
+    // Le petit coureur avance en tête de la barre.
+    p.lastChild.style.left = (v * 100) + '%';
+    p.classList.toggle('on', v > 0.002 && v < 0.998);
   }
 
   // 3 — Aimants, cartes inclinables, halo (délégués).

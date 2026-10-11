@@ -105,7 +105,7 @@ function Discover() {
               </div>
             </div>
             <div className="st-reveal" style={{ transitionDelay: '160ms' }}>
-              <RaceGlobe />
+              <RaceTrack />
             </div>
           </div>
           <Ticker items={DISC_TICKER} />
@@ -114,7 +114,7 @@ function Discover() {
         <div className="wrap">
           {/* ─── Chiffres ─── */}
           <section className="section" style={{ paddingTop: 46, paddingBottom: 10 }}>
-            <Coverline items={DISC_COVER} />
+            <Scoreboard items={DISC_COVER} />
           </section>
 
           {/* ─── Decaform ─── */}
@@ -143,6 +143,16 @@ function Discover() {
             <CoachLive />
           </section>
 
+          {/* ─── Le plan qui s'écrit + zones cardiaques ─── */}
+          <section className="section" style={{ paddingTop: 70, paddingBottom: 10 }}>
+            <PlanWriter />
+          </section>
+
+          {/* ─── La saison jusqu'au Jour J ─── */}
+          <section className="section" style={{ paddingTop: 70, paddingBottom: 10 }}>
+            <SeasonCurve />
+          </section>
+
           {/* ─── Les piliers : la bibliothèque ─── */}
           <section id="grille" className="section" style={{ paddingTop: 70 }}>
             <div style={{ textAlign: 'center', marginBottom: 6 }}>
@@ -169,7 +179,7 @@ function Discover() {
             <h2 className="st-h2 st-rise" style={{ fontSize: 'clamp(32px,4.6vw,56px)', color: 'var(--night-ink)' }}><span>Prêt à t'entraîner plus intelligemment ?</span></h2>
             <p className="st-lede" style={{ margin: '0 auto 30px', color: 'var(--night-muted)' }}>Un coach IA, tes données, ta méthode. Commence aujourd'hui, sans carte bancaire.</p>
             <div className="cta-band-btns">
-              <a className="btn btn-cyan btn-lg mag" href={APP_URL}><UIIcon name="spark" size={16} /> Essai gratuit 14 jours</a>
+              <FinishButton href={APP_URL}><UIIcon name="spark" size={16} /> Essai gratuit 14 jours</FinishButton>
               <a className="btn btn-ghost btn-lg mag" href="theme.html#abonnements">Voir les plans</a>
             </div>
           </div>

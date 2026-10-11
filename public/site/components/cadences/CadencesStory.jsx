@@ -697,7 +697,7 @@
     'Phénomène': 'Au-delà du maximum du barème sur l’ensemble des qualités. Rarissime : des profils hybrides d’exception.',
     'Extraterrestre': 'Niveau presque anormal : des capacités physiques plus qu’exceptionnelles.',
   };
-  var FAMILIES = ['Haltérophilie', 'Sauts, sprints & agilité', 'Natation', 'Force maximale', 'Course : 400 m, 6 × 200 m, 3200 m', 'Vélo 20 min', 'AMRAP', 'Circuit Hyrox'];
+  var FAMILIES = ['Haltérophilie', 'Sauts, sprints & agilité', 'Parcours mixte « motricité »', 'Natation', 'Force maximale', 'Course : 400 m, 6 × 200 m, 3200 m', 'Vélo 20 min', 'AMRAP', 'Circuit Hyrox'];
   var GEAR = [
     { k: 'Salle', items: ['Barre olympique + disques', 'Rack', 'Banc', 'Barre de traction + ceinture ou gilet de lest', 'Box (60 cm H / 40 cm F)', 'Rameur'] },
     { k: 'Extérieur', items: ['Piste de 400 m', 'Gazon', 'Plots', 'Mètre ruban', 'Chrono (idéalement cellules)'] },
@@ -785,11 +785,11 @@
       <section className="cad-ti">
         <div className="cad-act-eye">Le test, concrètement</div>
         <h2 className="cad-act-t">Ce que tu vas faire, et comment.</h2>
-        <p className="cad-act-lead"><strong>{cat.totalTests || 24} épreuves</strong> réparties sur <strong>{days.length || 12} jours</strong> pour mesurer, toujours avec le même protocole, <strong>{quals.length || 7} grandes qualités physiques</strong>. Résultat : un score sur {cat.totalPoints || 1000} — et surtout un repère que tu retrouves d’une année sur l’autre.</p>
+        <p className="cad-act-lead"><strong>{cat.totalTests || 25} épreuves</strong> réparties sur <strong>{days.length || 12} jours</strong> pour mesurer, toujours avec le même protocole, <strong>{quals.length || 7} grandes qualités physiques</strong>. Résultat : un score sur {cat.totalPoints || 1000} — et surtout un repère que tu retrouves d’une année sur l’autre.</p>
 
         <div className="cad-ti-grid">
           <Card n="1" t="En quoi ça consiste">
-            <p>{cat.totalTests || 24} épreuves qui couvrent tout le spectre de l’hybride :</p>
+            <p>{cat.totalTests || 25} épreuves qui couvrent tout le spectre de l’hybride :</p>
             <div className="cad-ti-tags">{FAMILIES.map(function (f) { return <span key={f}>{f}</span>; })}</div>
             <p>Chaque épreuve rapporte des points selon un barème ; le total donne ton score sur {cat.totalPoints || 1000}.</p>
           </Card>

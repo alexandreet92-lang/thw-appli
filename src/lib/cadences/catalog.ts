@@ -17,8 +17,11 @@ import start from './configs/start.config.json'
 import senior from './configs/senior.config.json'
 import type { CadencesConfig, TestConfig, DayPlan } from './types'
 
-/** Config Decaform v1.1 (base de validation + repli ; reference-cases.json). */
-export const CONFIG = decaform as unknown as CadencesConfig
+/** Config Decaform v1.1 (base de validation ; reference-cases.json). */
+export const CONFIG_V1_1 = decaform as unknown as CadencesConfig
+/** Config Decaform par défaut = la version en ligne (v1.2, épreuve mixte « motricité »).
+ *  Sert de repli quand une campagne n'a pas de config épinglée lisible. */
+export const CONFIG = decaform_v1_2 as unknown as CadencesConfig
 
 // ── Registre des produits (batteries) ────────────────────────────────
 // Clé = test_key. Ordre = ordre d'apparition dans le sélecteur.

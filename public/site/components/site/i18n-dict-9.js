@@ -18,7 +18,7 @@
     "Musculation": "Strength training",
     "Aviron": "Rowing",
     "Coach IA · 7 agents": "AI Coach · 7 agents",
-    "Decaform · 24 épreuves": "Decaform · 24 tests",
+    "Decaform · 25 épreuves": "Decaform · 25 tests",
     "Charge · CTL / ATL / TSB": "Load · CTL / ATL / TSB",
     "Variabilité cardiaque & sommeil": "Heart rate variability & sleep",
     "Sync Strava · Garmin · Wahoo": "Strava · Garmin · Wahoo sync",
@@ -204,7 +204,12 @@
     "Dernière activité": "Last activity",
     "Hier": "Yesterday",
     "Sortie longue": "Long run",
-    "Exemple illustratif — voilà ce que tu vois en ouvrant l’app.": "Illustrative example — this is what you see when you open the app."
+    "Exemple illustratif — voilà ce que tu vois en ouvrant l’app.": "Illustrative example — this is what you see when you open the app.",
+    // Decaform v1.2 : épreuve mixte
+    "Parcours mixte « motricité » (100 m)": "Mixed “motor skills” course (100 m)",
+    "Parcours mixte « motricité »": "Mixed “motor skills” course",
+    "Motricité globale, coordination et dissociation sur un parcours de locomotion varié.": "Overall motor skills, coordination and dissociation on a varied locomotion course.",
+    "Motricité": "Motor skills"
   });
 
   Object.assign(D.es, {
@@ -217,7 +222,7 @@
     "Musculation": "Musculación",
     "Aviron": "Remo",
     "Coach IA · 7 agents": "Coach IA · 7 agentes",
-    "Decaform · 24 épreuves": "Decaform · 24 pruebas",
+    "Decaform · 25 épreuves": "Decaform · 25 pruebas",
     "Charge · CTL / ATL / TSB": "Carga · CTL / ATL / TSB",
     "Variabilité cardiaque & sommeil": "Variabilidad cardíaca y sueño",
     "Sync Strava · Garmin · Wahoo": "Sincronización Strava · Garmin · Wahoo",
@@ -400,6 +405,11 @@
     "Dernière activité": "Última actividad",
     "Hier": "Ayer",
     "Sortie longue": "Tirada larga",
-    "Exemple illustratif — voilà ce que tu vois en ouvrant l’app.": "Ejemplo ilustrativo — esto es lo que ves al abrir la app."
+    "Exemple illustratif — voilà ce que tu vois en ouvrant l’app.": "Ejemplo ilustrativo — esto es lo que ves al abrir la app.",
+    // Decaform v1.2 : épreuve mixte
+    "Parcours mixte « motricité » (100 m)": "Recorrido mixto «motricidad» (100 m)",
+    "Parcours mixte « motricité »": "Recorrido mixto «motricidad»",
+    "Motricité globale, coordination et dissociation sur un parcours de locomotion varié.": "Motricidad global, coordinación y disociación en un recorrido de locomoción variado.",
+    "Motricité": "Motricidad"
   });
 })();

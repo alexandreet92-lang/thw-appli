@@ -617,7 +617,7 @@
       { n: '1', t: 'Ton résultat', d: 'Temps, distance, charge (ramenée à ton poids de corps) ou watts.' },
       { n: '2', t: 'Un pourcentage', d: 'Référence = 60 %, Maximum = 100 %. Linéaire entre les deux, sans plafond au-dessus, jusqu’à 0 en dessous.' },
       { n: '3', t: 'Des points', d: '% × points de l’épreuve. Exemple : 400 m à 100 % → ' + ((catalog.tests.filter(function (t) { return t.slug === 'run_400m'; })[0] || { pts_max: 80 }).pts_max) + ' pts.' },
-      { n: '4', t: 'Un total sur ' + catalog.totalPoints, d: 'La somme des 24 épreuves. On peut dépasser ' + catalog.totalPoints + '.' },
+      { n: '4', t: 'Un total sur ' + catalog.totalPoints, d: 'La somme des ' + (catalog.totalTests || 25) + ' épreuves. On peut dépasser ' + catalog.totalPoints + '.' },
       { n: '5', t: 'Un niveau', d: 'Sédentaire → Extraterrestre, posé sur le total et sur chaque qualité.' },
     ];
     return (

@@ -94,7 +94,32 @@ var LV = {
 };
 // Séance du jour : 1 h 10 = 70 min (échauffement, 3 × 10 min au seuil, retour au calme).
 var LV_SEGS = [[12, 'Z1'], [8, 'Z2'], [10, 'Z4'], [3, 'Z1'], [10, 'Z4'], [3, 'Z1'], [10, 'Z4'], [4, 'Z2'], [10, 'Z1']];
-var LV_ZH = { Z1: 0.34, Z2: 0.5, Z3: 0.64, Z4: 0.82, Z5: 1 };
+var LV_ZH = { Z1: 0.24, Z2: 0.43, Z3: 0.6, Z4: 0.8, Z5: 0.97 };
+// Profil d'intensité : une courbe continue (paliers raccordés en douceur), repère 420 × 84.
+var LP = { W: 420, H: 84, X0: 24, top: 6, base: 78, tw: 12 };
+function lpLevel(z) { return LP.base - LV_ZH[z] * (LP.base - LP.top); }
+function lpY(x) {
+  var span = LP.W - LP.X0 - 2, m = (x - LP.X0) / span * 70, acc = 0, ends = [];
+  LV_SEGS.forEach(function (sg) { acc += sg[0]; ends.push(acc); });
+  var k = 0; while (k < ends.length - 1 && m >= ends[k]) k++;
+  var y = lpLevel(LV_SEGS[k][1]), half = LP.tw / 2 / span * 70;
+  // Raccord arrondi entre deux paliers (smoothstep sur tw px autour de la frontière).
+  for (var j = 0; j < ends.length - 1; j++) {
+    if (Math.abs(m - ends[j]) < half) {
+      var u = (m - (ends[j] - half)) / (2 * half); u = u * u * (3 - 2 * u);
+      y = lpLevel(LV_SEGS[j][1]) + (lpLevel(LV_SEGS[j + 1][1]) - lpLevel(LV_SEGS[j][1])) * u;
+    }
+  }
+  // Départ et arrivée posés sur la ligne de base.
+  var e0 = Math.min(1, (x - LP.X0) / 10), e1 = Math.min(1, (LP.W - 2 - x) / 10);
+  var e = Math.max(0, Math.min(e0, e1)); e = e * e * (3 - 2 * e);
+  return LP.base + (y - LP.base) * e;
+}
+function lpPath() {
+  var d = '';
+  for (var x = LP.X0; x <= LP.W - 2 + 0.01; x += 2) d += (d ? ' L' : 'M') + x.toFixed(1) + ' ' + lpY(x).toFixed(2);
+  return d;
+}
 var LV_ZREAD = { Z1: ['Récupération', 128, "5'50"], Z2: ['Endurance', 143, "5'12"], Z4: ['Seuil', 171, "4'05"] };
 var LV_SLEEP = [430, 452, 418, 447, 441, 440, 462];      // dernière nuit 7 h 42, moyenne précédente 7 h 18 → ▲ 24 min
 var LV_WEEK = [55, 0, 70, 45, 90, 60, 0];                // 320 min = 5 h 20
@@ -214,19 +239,20 @@ function AppLive() {
   React.useEffect(function () {
     if (!on) return undefined;
     var r = R.current, raf = 0, t0 = performance.now(), last = -1, lastBpm = 0, PASS = 11000, elapsed = 0, prev = t0;
-    var total = 70, W = 300;
+    var total = 70;
     function at(p) { var m = p * total, acc = 0; for (var k = 0; k < LV_SEGS.length; k++) { acc += LV_SEGS[k][0]; if (m < acc) return k; } return LV_SEGS.length - 1; }
     function paint(p, now) {
-      var x = 2 + p * (W - 4);
+      var x = LP.X0 + p * (LP.W - LP.X0 - 2), y = lpY(x);
       if (r.clip) r.clip.setAttribute('width', x.toFixed(1));
       if (r.head) r.head.setAttribute('transform', 'translate(' + x.toFixed(1) + ',0)');
+      if (r.headDot) { r.headDot.setAttribute('cy', y.toFixed(1)); r.headHalo.setAttribute('cy', y.toFixed(1)); r.headLine.setAttribute('y1', (y + 5).toFixed(1)); }
       var k = at(p), z = LV_SEGS[k][1], info = LV_ZREAD[z] || LV_ZREAD.Z1;
       if (k !== last && r.zone) {
         last = k;
         r.zone.textContent = z + ' · ' + tr(info[0]);
         r.zdot.style.background = LV.zone[z];
         r.pace.textContent = info[2];
-        if (r.headDot) r.headDot.style.fill = LV.zone[z];
+        if (r.headDot) { r.headDot.style.fill = LV.zone[z]; r.headHalo.style.fill = LV.zone[z]; }
       }
       if (r.bpm && now - lastBpm > 520) { lastBpm = now; r.bpm.textContent = String(info[1] + Math.round(Math.sin(now / 700) * 2 + (Math.random() - 0.5) * 2)); }
       if (r.clock) { var s = Math.floor(p * total * 60); r.clock.textContent = Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
@@ -287,11 +313,8 @@ function AppLive() {
   }, []);
 
   var ref = function (k) { return function (el) { R.current[k] = el; }; };
-  var W = 300, PH = 64, x0 = 0;
-  var blocks = LV_SEGS.map(function (s, j) {
-    var w = s[0] / 70 * W, h = LV_ZH[s[1]] * (PH - 6), b = { x: x0 + 1, w: Math.max(2, w - 2), h: h, z: s[1], j: j };
-    x0 += w; return b;
-  });
+  var lpD = React.useMemo(lpPath, []);
+  var lpArea = lpD + ' L' + (LP.W - 2) + ' ' + LP.base + ' L' + LP.X0 + ' ' + LP.base + ' Z';
   var vmin = 44, vmax = 66;
   var coach = LV_COACH[ci];
   return (
@@ -303,15 +326,38 @@ function AppLive() {
             <div className="st-lc-sport"><i style={{ background: LV.run }}></i><span>Running</span></div>
             <div className="st-lc-title">Seuil — 3 × 10 min</div>
             <div className="st-lc-sub"><span data-no-i18n="1">1 h 10</span> · <span>Intense</span></div>
-            <svg className="st-lc-prof" viewBox={'0 0 ' + W + ' ' + PH} preserveAspectRatio="none" aria-hidden="true">
-              <defs><clipPath id="lvClip"><rect ref={ref('clip')} x="0" y="0" width="0" height={PH}/></clipPath></defs>
-              {blocks.map(function (b) { return <rect key={'g' + b.j} className="st-lc-blk" x={b.x} y={PH - b.h} width={b.w} height={b.h} rx="2" style={{ fill: LV.zone[b.z], opacity: 0.28, '--j': b.j }}/>; })}
+            <svg className="st-lc-prof" viewBox={'0 0 ' + LP.W + ' ' + LP.H} aria-hidden="true">
+              <defs>
+                <linearGradient id="lpStroke" gradientUnits="userSpaceOnUse" x1="0" y1={LP.top} x2="0" y2={LP.base}>
+                  <stop offset="0" stopColor="#ef4444"/><stop offset="0.2" stopColor="#f97316"/><stop offset="0.45" stopColor="#eab308"/>
+                  <stop offset="0.66" stopColor="#22c55e"/><stop offset="0.86" stopColor="#94a3b8"/><stop offset="1" stopColor="#94a3b8"/>
+                </linearGradient>
+                <linearGradient id="lpFill" gradientUnits="userSpaceOnUse" x1="0" y1={LP.top} x2="0" y2={LP.base}>
+                  <stop offset="0" stopColor="#f97316" stopOpacity="0.5"/><stop offset="0.45" stopColor="#eab308" stopOpacity="0.26"/>
+                  <stop offset="0.75" stopColor="#22c55e" stopOpacity="0.12"/><stop offset="1" stopColor="#94a3b8" stopOpacity="0.02"/>
+                </linearGradient>
+                <clipPath id="lvClip"><rect ref={ref('clip')} x="0" y="0" width="0" height={LP.H}/></clipPath>
+              </defs>
+              {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map(function (z) {
+                var y = lpLevel(z);
+                return (
+                  <g key={z}>
+                    <line x1={LP.X0} y1={y} x2={LP.W} y2={y} stroke="rgba(158,177,200,0.16)" strokeWidth="1" strokeDasharray="2 4"/>
+                    <text x="0" y={y + 3} fontFamily="IBM Plex Mono, monospace" fontSize="8.5" fill={LV.zone[z]} fillOpacity="0.85">{z}</text>
+                  </g>
+                );
+              })}
+              <line x1={LP.X0} y1={LP.base} x2={LP.W} y2={LP.base} stroke="rgba(158,177,200,0.3)" strokeWidth="1"/>
+              <path className="st-lc-fade" d={lpArea} fill="rgba(158,177,200,0.07)"/>
+              <path className="st-lc-draw" pathLength="1" d={lpD} fill="none" stroke="rgba(238,243,248,0.26)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round"/>
               <g clipPath="url(#lvClip)">
-                {blocks.map(function (b) { return <rect key={'f' + b.j} x={b.x} y={PH - b.h} width={b.w} height={b.h} rx="2" style={{ fill: LV.zone[b.z] }}/>; })}
+                <path d={lpArea} fill="url(#lpFill)"/>
+                <path d={lpD} fill="none" stroke="url(#lpStroke)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(249,115,22,.45))' }}/>
               </g>
               <g ref={ref('head')}>
-                <line x1="0" y1="2" x2="0" y2={PH} stroke="#eef3f8" strokeWidth="1.4"/>
-                <circle ref={ref('headDot')} cx="0" cy="4" r="4" style={{ fill: LV.zone.Z1, stroke: '#eef3f8', strokeWidth: 1.5 }}/>
+                <line ref={ref('headLine')} x1="0" y1={LP.base} x2="0" y2={LP.base} stroke="rgba(238,243,248,0.55)" strokeWidth="1" strokeDasharray="2 2"/>
+                <circle ref={ref('headHalo')} cx="0" cy={LP.base} r="9" style={{ fill: LV.zone.Z1, opacity: 0.25 }}/>
+                <circle ref={ref('headDot')} cx="0" cy={LP.base} r="4.2" style={{ fill: LV.zone.Z1, stroke: '#eef3f8', strokeWidth: 1.6 }}/>
               </g>
             </svg>
             <div className="st-lc-read" data-no-i18n="1">

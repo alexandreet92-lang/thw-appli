@@ -105,7 +105,7 @@ function Discover() {
               </div>
             </div>
             <div className="st-reveal" style={{ transitionDelay: '160ms' }}>
-              <RaceTrack />
+              <HybridAthlete />
             </div>
           </div>
           <Ticker items={DISC_TICKER} />

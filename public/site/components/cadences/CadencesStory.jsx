@@ -833,6 +833,8 @@
           </Card>
         </div>
 
+        {window.CadFieldMap ? <window.CadFieldMap catalog={cat} /> : null}
+
         <div className="cad-ti-score">
           <div className="cad-ti-n">9</div>
           <h3 className="cad-ti-h">Comment lire ton score</h3>

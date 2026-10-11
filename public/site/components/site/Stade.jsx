@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    THW — pièces maîtresses du site vitrine (couche « stade »).
-     <RaceTrack/>   piste d'athlé : 8 couloirs = 8 sports, survol = ce que fait l'app
+     <HybridAthlete/> une silhouette qui passe d'un sport à l'autre (chronophotographie)
      <Scoreboard/>  panneau de stade : chiffres en palettes qui basculent
      <PlanWriter/>  la semaine s'écrit séance par séance + zones cardiaques
      <SeasonCurve/> la saison se trace au défilement, médaille au Jour J
@@ -81,136 +81,279 @@ function Coverline(props) {
   );
 }
 
-/* ═════════════════ PISTE D'ATHLÉ — 8 couloirs, 8 sports ═════════════════ */
-var TRACK_SPORTS = [
+/* ═════════════════ L'ATHLÈTE HYBRIDE — une silhouette, sept sports ═════════════════
+   Une seule silhouette passe d'un sport à l'autre. Pendant la transformation,
+   ses positions intermédiaires restent imprimées un instant (chronophotographie
+   à la Marey) ; un cadran de chrono doré mesure le temps passé dans chaque sport.
+   Chaque sport a son décor (vélo, ligne d'eau, barre, rameur, traîneau, pente). */
+var ATH_SPORTS = [
   { k: 'run', n: 'Course à pied', c: '#f97316', d: 'Allures, zones cardiaques et plans du 5 km au marathon.' },
   { k: 'trail', n: 'Trail', c: '#a3e635', d: 'Dénivelé, sorties longues et préparation des ultras.' },
   { k: 'bike', n: 'Vélo', c: '#00c8e0', d: 'Puissance, FTP et zones de watts, synchronisés avec tes capteurs.' },
-  { k: 'tri', n: 'Triathlon', c: '#7b8cff', d: "Trois sports dans un seul plan, du Sprint à l'Ironman 70.3." },
-  { k: 'hyrox', n: 'Hyrox', c: '#f472b6', d: 'Course et stations enchaînées dans un plan hybride.' },
   { k: 'swim', n: 'Natation', c: '#60a5fa', d: 'Allure au 100 m et séances techniques.' },
-  { k: 'gym', n: 'Musculation', c: '#22c55e', d: "Force, puissance et explosivité, intégrées à l'endurance." },
-  { k: 'row', n: 'Aviron', c: '#2dd4bf', d: 'Séances sur ergomètre et suivi de la charge.' }
+  { k: 'row', n: 'Aviron', c: '#2dd4bf', d: 'Séances sur ergomètre et suivi de la charge.' },
+  { k: 'hyrox', n: 'Hyrox', c: '#f472b6', d: 'Course et stations enchaînées dans un plan hybride.' },
+  { k: 'gym', n: 'Musculation', c: '#22c55e', d: "Force, puissance et explosivité, intégrées à l'endurance." }
 ];
-var TK = { cx: 480, cy: 320, L: 320, r0: 118, w: 22 };
-function laneD(r) {
-  var x1 = TK.cx - TK.L / 2, x2 = TK.cx + TK.L / 2, yb = TK.cy + r, yt = TK.cy - r;
-  return 'M' + x1 + ',' + yb + ' L' + x2 + ',' + yb + ' A' + r + ',' + r + ' 0 0 0 ' + x2 + ',' + yt +
-    ' L' + x1 + ',' + yt + ' A' + r + ',' + r + ' 0 0 0 ' + x1 + ',' + yb + ' Z';
+// Articulations : tête [x,y,r] + 13 points. Repère 560 × 500, l'athlète regarde à droite.
+var ATH_J = ['neck', 'lS', 'rS', 'lE', 'rE', 'lW', 'rW', 'lH', 'rH', 'lK', 'rK', 'lA', 'rA'];
+var ATH_POSES = {
+  run: { head: [300, 86, 23], neck: [292, 113], lS: [282, 128], rS: [292, 131], lE: [314, 176], rE: [250, 170], lW: [350, 150], rW: [262, 218],
+         lH: [268, 238], rH: [275, 241], lK: [236, 322], rK: [318, 330], lA: [194, 384], rA: [330, 428] },
+  trail: { head: [326, 112, 23], neck: [313, 136], lS: [300, 150], rS: [310, 152], lE: [278, 202], rE: [326, 202], lW: [258, 244], rW: [330, 262],
+           lH: [262, 250], rH: [268, 253], lK: [240, 340], rK: [324, 300], lA: [204, 424], rA: [330, 388] },
+  bike: { head: [356, 176, 22], neck: [338, 190], lS: [318, 200], rS: [326, 204], lE: [330, 252], rE: [338, 254], lW: [372, 248], rW: [380, 250],
+          lH: [228, 248], rH: [234, 250], lK: [282, 296], rK: [286, 318], lA: [224, 356], rA: [276, 404] },
+  swim: { head: [402, 262, 22], neck: [378, 268], lS: [356, 270], rS: [362, 274], lE: [338, 224], rE: [410, 284], lW: [384, 240], rW: [458, 286],
+          lH: [250, 282], rH: [254, 284], lK: [170, 288], rK: [176, 296], lA: [96, 282], rA: [104, 306] },
+  row: { head: [302, 244, 22], neck: [284, 266], lS: [270, 284], rS: [276, 286], lE: [324, 304], rE: [330, 306], lW: [376, 322], rW: [382, 324],
+         lH: [214, 388], rH: [220, 390], lK: [296, 312], rK: [302, 316], lA: [392, 396], rA: [398, 400] },
+  hyrox: { head: [330, 168, 22], neck: [312, 184], lS: [292, 196], rS: [298, 198], lE: [334, 214], rE: [340, 218], lW: [372, 226], rW: [378, 230],
+           lH: [208, 268], rH: [214, 270], lK: [158, 346], rK: [282, 336], lA: [110, 428], rA: [272, 432] },
+  gym: { head: [280, 96, 24], neck: [280, 126], lS: [244, 142], rS: [316, 142], lE: [220, 98], rE: [340, 98], lW: [214, 50], rW: [346, 50],
+         lH: [258, 250], rH: [302, 250], lK: [248, 340], rK: [312, 340], lA: [244, 432], rA: [316, 432] }
+};
+var ATH_LIMBS = [['neck', 'lS', 7], ['neck', 'rS', 7], ['lS', 'lE', 7], ['lE', 'lW', 6], ['lH', 'lK', 9], ['lK', 'lA', 8],
+                 ['lS', 'lH', 11], ['rS', 'rH', 11], ['lH', 'rH', 9], ['rS', 'rE', 7], ['rE', 'rW', 6], ['rH', 'rK', 9], ['rK', 'rA', 8]];
+var ATH_FAR = { lS: 1, lE: 1, lW: 1, lH: 1, lK: 1, lA: 1 };
+var ATH_GOLD = '#e0b766';
+
+function athLerp(a, b, t) { return a + (b - a) * t; }
+function athEase(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+function athMix(p1, p2, t) {
+  var o = { head: [athLerp(p1.head[0], p2.head[0], t), athLerp(p1.head[1], p2.head[1], t), athLerp(p1.head[2], p2.head[2], t)] };
+  ATH_J.forEach(function (k) { o[k] = [athLerp(p1[k][0], p2[k][0], t), athLerp(p1[k][1], p2[k][1], t)]; });
+  return o;
 }
-function laneR(i) { return TK.r0 + TK.w * (i + 0.5); }
-function lanePer(i) { var r = laneR(i); return 2 * TK.L + 2 * Math.PI * r; }
+function athRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+function athCol(c1, c2, t, a) {
+  var x = athRgb(c1), y = athRgb(c2);
+  return 'rgba(' + Math.round(athLerp(x[0], y[0], t)) + ',' + Math.round(athLerp(x[1], y[1], t)) + ',' + Math.round(athLerp(x[2], y[2], t)) + ',' + a + ')';
+}
 
-function RaceTrack() {
-  useLang();
-  var hs = React.useState(0), hot = hs[0], setHot = hs[1];
-  var pausedRef = React.useRef(false);
-  var boxRef = React.useRef(null);
-  var runRefs = React.useRef([]), trailRefs = React.useRef([]), pathRefs = React.useRef([]);
-  var lapRef = React.useRef(null);
+// Décor propre à chaque sport (traits fins, encre de nuit + or). t = secondes, pour ce qui tourne.
+function athProps(ctx, k, a, t) {
+  if (a <= 0.01) return;
+  var ink = 'rgba(238,243,248,' + (0.42 * a) + ')', soft = 'rgba(238,243,248,' + (0.16 * a) + ')', gold = 'rgba(224,183,102,' + (0.9 * a) + ')';
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  function line(pts, col, w) { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (var i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke(); }
+  function circ(x, y, r, col, w, fill) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (col) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke(); } }
+  if (k === 'run') {
+    line([70, 434, 490, 434], ink, 1.6); line([70, 462, 490, 462], soft, 1);
+    for (var i = 0; i < 9; i++) line([90 + i * 48 - ((t * 120) % 48), 448, 104 + i * 48 - ((t * 120) % 48), 448], soft, 1.4);
+  } else if (k === 'trail') {
+    line([70, 458, 490, 353], ink, 1.6); line([70, 476, 490, 371], soft, 1);
+    line([420, 371, 420, 330, 446, 338, 420, 346], gold, 1.6);
+    for (var j = 0; j < 6; j++) { var x = 110 + j * 64; line([x, 458 - 0.25 * (x - 70) + 10, x + 14, 458 - 0.25 * (x + 14 - 70) + 10], soft, 1.2); }
+  } else if (k === 'bike') {
+    line([60, 456, 500, 456], soft, 1.2);
+    [[140, 392], [372, 392]].forEach(function (w) {
+      circ(w[0], w[1], 62, ink, 2.2); circ(w[0], w[1], 54, soft, 1);
+      for (var s = 0; s < 3; s++) { var an = t * 3 + s * Math.PI / 3; line([w[0] - Math.cos(an) * 54, w[1] - Math.sin(an) * 54, w[0] + Math.cos(an) * 54, w[1] + Math.sin(an) * 54], soft, 1); }
+      circ(w[0], w[1], 4, null, 0, gold);
+    });
+    line([140, 392, 250, 380, 222, 262, 140, 392], ink, 2.4);
+    line([222, 262, 342, 270, 250, 380], ink, 2.4);
+    line([342, 270, 372, 392], ink, 2.4);
+    line([208, 256, 242, 254], gold, 3); line([342, 270, 388, 262], ink, 2);
+    circ(250, 380, 14, ink, 1.6);
+  } else if (k === 'swim') {
+    ctx.beginPath();
+    for (var x2 = 50; x2 <= 510; x2 += 6) { var y2 = 262 + Math.sin(x2 / 26 + t * 2.2) * 3.2; if (x2 === 50) ctx.moveTo(x2, y2); else ctx.lineTo(x2, y2); }
+    ctx.strokeStyle = 'rgba(96,165,250,' + (0.55 * a) + ')'; ctx.lineWidth = 1.8; ctx.stroke();
+    var wg = ctx.createLinearGradient(0, 264, 0, 420); wg.addColorStop(0, 'rgba(96,165,250,' + (0.09 * a) + ')'); wg.addColorStop(1, 'rgba(96,165,250,0)');
+    ctx.fillStyle = wg; ctx.beginPath(); ctx.ellipse(280, 300, 230, 120, 0, 0, Math.PI); ctx.fill();
+    for (var b = 0; b < 15; b++) circ(66 + b * 31, 404, 4.5, null, 0, b % 2 ? 'rgba(238,243,248,' + (0.3 * a) + ')' : gold);
+    for (var q = 0; q < 5; q++) { var by = 300 - ((t * 30 + q * 23) % 46); circ(84 + q * 9, by, 2 + (q % 2), 'rgba(238,243,248,' + (0.25 * a) + ')', 1); }
+  } else if (k === 'row') {
+    line([110, 414, 470, 414], ink, 2.2); line([128, 414, 128, 440], soft, 1.4); line([450, 414, 450, 440], soft, 1.4);
+    ctx.fillStyle = gold; ctx.fillRect(196, 398, 42, 8);
+    line([392, 412, 410, 376], ink, 2.2);
+    circ(484, 330, 34, ink, 2.2); circ(484, 330, 26, soft, 1);
+    for (var f = 0; f < 4; f++) { var fa = t * 4 + f * Math.PI / 2; line([484, 330, 484 + Math.cos(fa) * 24, 330 + Math.sin(fa) * 24], soft, 1); }
+    line([380, 323, 452, 328], 'rgba(238,243,248,' + (0.3 * a) + ')', 1.2);
+    line([470, 298, 452, 250], ink, 1.6); ctx.strokeStyle = gold; ctx.lineWidth = 1.4; ctx.strokeRect(434, 230, 34, 22);
+  } else if (k === 'hyrox') {
+    line([60, 440, 510, 440], ink, 1.6);
+    for (var h = 0; h < 8; h++) line([70 + h * 58 - ((t * 40) % 58), 452, 90 + h * 58 - ((t * 40) % 58), 452], soft, 1.4);
+    line([378, 228, 394, 388], ink, 2.4); line([386, 232, 402, 388], ink, 2.4);
+    ctx.beginPath(); ctx.moveTo(372, 390); ctx.lineTo(486, 390); ctx.lineTo(500, 430); ctx.lineTo(366, 430); ctx.closePath();
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.2; ctx.stroke();
+    ctx.fillStyle = 'rgba(224,183,102,' + (0.16 * a) + ')'; ctx.fill();
+    ctx.strokeStyle = gold; ctx.lineWidth = 1.6; ctx.strokeRect(404, 352, 60, 38); line([404, 371, 464, 371], gold, 1.2);
+    line([360, 436, 504, 436, 514, 426], ink, 2);
+  } else if (k === 'gym') {
+    ctx.fillStyle = 'rgba(224,183,102,' + (0.12 * a) + ')'; ctx.fillRect(150, 434, 260, 10);
+    line([150, 434, 410, 434], ink, 1.6); line([60, 444, 500, 444], soft, 1);
+    line([118, 50, 442, 50], ink, 3);
+    [[134, 80], [154, 58], [408, 80], [388, 58]].forEach(function (p, i) {
+      ctx.fillStyle = i % 2 ? 'rgba(238,243,248,' + (0.22 * a) + ')' : gold;
+      ctx.fillRect(p[0] - 8, 50 - p[1] / 2, 16, p[1]);
+    });
+    line([168, 40, 168, 60], ink, 3); line([374, 40, 374, 60], ink, 3);
+  }
+  ctx.restore();
+}
 
-  // Les coureurs tournent (rAF), en pause hors écran / onglet caché.
-  React.useEffect(function () {
-    var visible = true, raf = 0, t0 = performance.now(), laps = 0;
-    var speed = [128, 119, 141, 124, 133, 114, 122, 137];
-    var off = [0, 180, 60, 420, 300, 520, 240, 120];
-    function frame(now) {
-      raf = 0;
-      if (!visible) return;
-      var t = ST_RM ? 3 : (now - t0) / 1000;
-      for (var i = 0; i < 8; i++) {
-        var path = pathRefs.current[i], run = runRefs.current[i], tr2 = trailRefs.current[i];
-        if (!path || !run) continue;
-        var per = lanePer(i), pos = (off[i] + t * speed[i]) % per;
-        var pt = path.getPointAtLength(pos);
-        run.setAttribute('cx', pt.x.toFixed(1)); run.setAttribute('cy', pt.y.toFixed(1));
-        if (tr2) { var tl = 150; tr2.setAttribute('stroke-dasharray', tl + ' ' + (per - tl)); tr2.setAttribute('stroke-dashoffset', ((tl - pos) % per).toFixed(1)); }
-      }
-      var l = Math.floor((off[0] + t * speed[0]) / lanePer(0)) + 1;
-      if (l !== laps && lapRef.current) { laps = l; lapRef.current.textContent = String(l).padStart(2, '0'); }
-      if (!ST_RM) raf = requestAnimationFrame(frame);
+function athFigure(ctx, P, col, alpha, glow) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  // Membres du côté éloigné, un ton plus sombre : la silhouette gagne du relief.
+  ATH_LIMBS.forEach(function (L) {
+    var p1 = P[L[0]], p2 = P[L[1]];
+    var far = ATH_FAR[L[0]] && ATH_FAR[L[1]];
+    if (glow) {
+      ctx.globalAlpha = alpha * 0.18; ctx.strokeStyle = col; ctx.lineWidth = L[2] + 9;
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
     }
-    function kick() { if (!raf && visible) raf = requestAnimationFrame(frame); }
+    ctx.globalAlpha = alpha * (far ? 0.55 : 1); ctx.strokeStyle = col; ctx.lineWidth = glow ? L[2] : 2;
+    ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+  });
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.arc(P.head[0], P.head[1], glow ? P.head[2] : P.head[2] * 0.8, 0, Math.PI * 2);
+  if (glow) {
+    var g = ctx.createRadialGradient(P.head[0] - 7, P.head[1] - 7, 2, P.head[0], P.head[1], P.head[2]);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, col); g.addColorStop(1, col);
+    ctx.fillStyle = g; ctx.fill();
+  } else { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke(); }
+  if (glow) {
+    // Articulations dorées.
+    ATH_J.forEach(function (k) {
+      if (k === 'neck') return;
+      ctx.globalAlpha = alpha * (ATH_FAR[k] ? 0.6 : 1);
+      ctx.beginPath(); ctx.arc(P[k][0], P[k][1], 3.6, 0, Math.PI * 2); ctx.fillStyle = ATH_GOLD; ctx.fill();
+      ctx.beginPath(); ctx.arc(P[k][0], P[k][1], 6.5, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(224,183,102,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    });
+  }
+  ctx.restore();
+}
+
+function HybridAthlete() {
+  useLang();
+  var N = ATH_SPORTS.length;
+  var cs = React.useState(0), cur = cs[0], setCur = cs[1];
+  var canRef = React.useRef(null), boxRef = React.useRef(null);
+  var ctl = React.useRef({ go: null });
+
+  React.useEffect(function () {
+    var cv = canRef.current;
+    if (!cv) return undefined;
+    var ctx = cv.getContext('2d');
+    var W = 560, H = 500, CX = 280, CY = 258, R = 226;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr;
+    var HOLD = 2800, MORPH = 1150;
+    var si = 0, ni = 1, phase = 'hold', pt = 0, hold = HOLD, last = 0, raf = 0, visible = true, shown = 0, sec = 0;
+    var ghosts = [], sparks = [], ghostT = 0, picked = false;
+
+    function pose(i) { return ATH_POSES[ATH_SPORTS[i].k]; }
+    function burst(P, c) {
+      var cx = (P.lS[0] + P.rH[0]) / 2, cy = (P.lS[1] + P.rH[1]) / 2;
+      for (var i = 0; i < 26; i++) {
+        var an = Math.random() * Math.PI * 2, sp = 0.6 + Math.random() * 3.4;
+        sparks.push({ x: cx + (Math.random() - 0.5) * 60, y: cy + (Math.random() - 0.5) * 120, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, r: 0.8 + Math.random() * 2.2, c: Math.random() > 0.45 ? ATH_GOLD : c });
+      }
+    }
+    function dial(prog, a) {
+      ctx.save();
+      for (var i = 0; i < 60; i++) {
+        var an = -Math.PI / 2 + i * Math.PI / 30, big = i % 5 === 0;
+        var r1 = R - (big ? 13 : 7);
+        ctx.beginPath(); ctx.moveTo(CX + Math.cos(an) * r1, CY + Math.sin(an) * r1); ctx.lineTo(CX + Math.cos(an) * R, CY + Math.sin(an) * R);
+        ctx.strokeStyle = 'rgba(238,243,248,' + (big ? 0.3 : 0.12) + ')'; ctx.lineWidth = big ? 1.6 : 1; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(CX, CY, R + 9, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(238,243,248,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+      if (prog > 0 && a > 0) {
+        var end = -Math.PI / 2 + prog * Math.PI * 2;
+        ctx.globalAlpha = a;
+        ctx.beginPath(); ctx.arc(CX, CY, R + 9, -Math.PI / 2, end); ctx.strokeStyle = ATH_GOLD; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(CX + Math.cos(end) * (R + 9), CY + Math.sin(end) * (R + 9), 4.2, 0, Math.PI * 2); ctx.fillStyle = ATH_GOLD; ctx.fill();
+        ctx.shadowColor = ATH_GOLD; ctx.shadowBlur = 14; ctx.fill();
+      }
+      ctx.restore();
+    }
+    function draw() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      var m = phase === 'morph' ? athEase(Math.min(1, pt / MORPH)) : 0;
+      var c1 = ATH_SPORTS[si].c, c2 = ATH_SPORTS[ni].c;
+      var col = phase === 'morph' ? athCol(c1, c2, m, 1) : c1;
+      // Halo de couleur du sport.
+      var g = ctx.createRadialGradient(CX, CY, 10, CX, CY, R);
+      g.addColorStop(0, phase === 'morph' ? athCol(c1, c2, m, 0.16) : athCol(c1, c1, 0, 0.16)); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      dial(phase === 'hold' ? Math.min(1, pt / hold) : 1, phase === 'hold' ? 1 : 1 - m);
+      athProps(ctx, ATH_SPORTS[si].k, phase === 'morph' ? 1 - Math.min(1, m * 1.6) : 1, sec);
+      if (phase === 'morph') athProps(ctx, ATH_SPORTS[ni].k, Math.max(0, m * 1.6 - 0.6), sec);
+      ghosts.forEach(function (gh) { athFigure(ctx, gh.P, gh.c, gh.life * 0.34, false); });
+      var P = phase === 'morph' ? athMix(pose(si), pose(ni), m) : pose(si);
+      if (phase === 'hold' && !ST_RM) {
+        // Respiration : l'athlète n'est jamais figé.
+        var bob = Math.sin(sec * 2.6) * 2.2;
+        P = athMix(P, P, 0); P.head[1] += bob;
+        ATH_J.forEach(function (k) { P[k] = [P[k][0], P[k][1] + (k.charAt(1) === 'A' ? 0 : bob * (k === 'lK' || k === 'rK' ? 0.4 : 0.8))]; });
+      }
+      athFigure(ctx, P, col, 1, true);
+      sparks.forEach(function (p) {
+        ctx.save(); ctx.globalAlpha = Math.max(0, p.life) * 0.9; ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.3, p.r * p.life), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      });
+      return P;
+    }
+    function frame(ts) {
+      raf = 0;
+      if (!visible) { last = 0; return; }
+      var dt = last ? Math.min(50, ts - last) : 16; last = ts; pt += dt; sec += dt / 1000;
+      if (phase === 'hold' && pt >= hold) { phase = 'morph'; pt = 0; burst(pose(si), ATH_SPORTS[si].c); }
+      else if (phase === 'morph' && pt >= MORPH) { phase = 'hold'; pt = 0; si = ni; ni = (ni + 1) % N; hold = picked ? HOLD * 2.2 : HOLD; picked = false; }
+      var want = phase === 'morph' && pt / MORPH > 0.5 ? ni : si;
+      if (want !== shown) { shown = want; setCur(want); }
+      ghosts.forEach(function (gh) { gh.life -= dt / 1100; }); ghosts = ghosts.filter(function (gh) { return gh.life > 0; });
+      sparks.forEach(function (p) { p.x += p.vx; p.y += p.vy; p.vx *= 0.95; p.vy *= 0.95; p.life -= 0.022; });
+      sparks = sparks.filter(function (p) { return p.life > 0; });
+      var P = draw();
+      ghostT += dt;
+      if (phase === 'morph' && ghostT > 85) { ghostT = 0; ghosts.push({ P: athMix(P, P, 0), c: athCol(ATH_SPORTS[si].c, ATH_SPORTS[ni].c, athEase(Math.min(1, pt / MORPH)), 1), life: 1 }); }
+      raf = requestAnimationFrame(frame);
+    }
+    function kick() { if (!raf && visible && !ST_RM) raf = requestAnimationFrame(frame); }
+    // Choix d'un sport (pastilles) : la silhouette s'y transforme, puis reste plus longtemps.
+    ctl.current.go = function (i) {
+      if (ST_RM) { si = i; ni = (i + 1) % N; phase = 'hold'; pt = 0; shown = i; setCur(i); draw(); return; }
+      if (phase === 'hold' && i === si) { pt = 0; hold = HOLD * 2.2; return; }
+      if (phase === 'morph') { si = shown; }
+      if (i === si) { phase = 'hold'; pt = 0; hold = HOLD * 2.2; return; }
+      ni = i; phase = 'morph'; pt = 0; picked = true; burst(pose(si), ATH_SPORTS[si].c);
+      kick();
+    };
     var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (en) { visible = en[0].isIntersecting && !document.hidden; kick(); }) : null;
     if (io && boxRef.current) io.observe(boxRef.current);
     var onVis = function () { visible = !document.hidden; kick(); };
     document.addEventListener('visibilitychange', onVis);
-    kick();
+    draw(); kick();
     return function () { cancelAnimationFrame(raf); if (io) io.disconnect(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
-  // Visite guidée : un couloir après l'autre, sauf si on survole.
-  React.useEffect(function () {
-    if (ST_RM) return undefined;
-    var t = setInterval(function () { if (!pausedRef.current && !document.hidden) setHot(function (h) { return (h + 1) % 8; }); }, 3400);
-    return function () { clearInterval(t); };
-  }, []);
-
-  var outer = TK.r0 + TK.w * 8;
-  var sp = TRACK_SPORTS[hot];
-  var finishX = TK.cx + TK.L / 2 - 46;
+  var sp = ATH_SPORTS[cur];
   return (
-    <div className="st-trackbox" ref={boxRef}
-         onMouseLeave={function () { pausedRef.current = false; }}>
-      <div className="st-track-3d">
-        <svg viewBox="0 0 960 640" role="img" aria-label="Piste d'athlétisme : un couloir par sport">
-          <defs>
-            <linearGradient id="stTartan" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#1f3a64"/><stop offset="1" stopColor="#16294a"/>
-            </linearGradient>
-            <radialGradient id="stInfield" cx="50%" cy="50%" r="65%">
-              <stop offset="0" stopColor="#123236"/><stop offset="1" stopColor="#0b1d24"/>
-            </radialGradient>
-            <pattern id="stMow" width="44" height="10" patternUnits="userSpaceOnUse">
-              <rect width="22" height="10" fill="rgba(255,255,255,0.025)"/>
-            </pattern>
-            <filter id="stGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
-          </defs>
-          <path d={laneD(outer + 16)} fill="#0d1b2e"/>
-          <path d={laneD(outer) + ' ' + laneD(TK.r0)} fill="url(#stTartan)" fillRule="evenodd"/>
-          <path d={laneD(TK.r0)} fill="url(#stInfield)"/>
-          <path d={laneD(TK.r0)} fill="url(#stMow)"/>
-          <path d={laneD(TK.r0 - 46)} fill="none" stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
-          <circle cx={TK.cx} cy={TK.cy} r="34" fill="none" stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
-          <line x1={TK.cx} y1={TK.cy - TK.r0 + 46} x2={TK.cx} y2={TK.cy + TK.r0 - 46} stroke="rgba(238,243,248,0.08)" strokeWidth="1.2"/>
-          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (k) {
-            return <path key={'b' + k} d={laneD(TK.r0 + TK.w * k)} fill="none" stroke="rgba(238,243,248,0.32)" strokeWidth={k === 0 || k === 8 ? 2 : 1.1}/>;
-          })}
-          {/* couloir en surbrillance */}
-          <path d={laneD(laneR(hot))} fill="none" stroke={sp.c} strokeOpacity="0.16" strokeWidth={TK.w - 2} style={{ transition: 'stroke .4s' }}/>
-          {/* ligne d'arrivée + numéros */}
-          <rect x={finishX - 3} y={TK.cy + TK.r0} width="6" height={TK.w * 8} fill="#e0b766"/>
-          {TRACK_SPORTS.map(function (s, i) {
-            return <text key={'n' + i} x={finishX - 22} y={TK.cy + laneR(i) + 5} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="13" fontWeight="600" fill="rgba(238,243,248,0.55)">{i + 1}</text>;
-          })}
-          {/* trajectoires (cachées) + traînées + coureurs */}
-          {TRACK_SPORTS.map(function (s, i) {
-            return <path key={'p' + i} ref={function (el) { pathRefs.current[i] = el; }} d={laneD(laneR(i))} fill="none" stroke="none"/>;
-          })}
-          {TRACK_SPORTS.map(function (s, i) {
-            return <path key={'t' + i} ref={function (el) { trailRefs.current[i] = el; }} d={laneD(laneR(i))} fill="none" stroke={s.c}
-                         strokeOpacity={i === hot ? 0.9 : 0.42} strokeWidth={i === hot ? 5 : 3} strokeLinecap="round"/>;
-          })}
-          {TRACK_SPORTS.map(function (s, i) {
-            return <circle key={'g' + i} ref={function (el) { runRefs.current[i] = el; }} r={i === hot ? 9 : 6} fill={s.c} filter={i === hot ? 'url(#stGlow)' : undefined}/>;
-          })}
-          {/* zones de survol, une par couloir */}
-          {TRACK_SPORTS.map(function (s, i) {
-            return <path key={'h' + i} d={laneD(laneR(i))} fill="none" stroke="transparent" strokeWidth={TK.w} style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                         onMouseEnter={function () { pausedRef.current = true; setHot(i); }} onClick={function () { pausedRef.current = true; setHot(i); }}/>;
-          })}
-        </svg>
+    <div className="st-ath" ref={boxRef} style={{ '--c': sp.c }}>
+      <div className="st-ath-stage">
+        <canvas ref={canRef} className="st-ath-canvas" role="img" aria-label="Silhouette d'athlète qui passe d'un sport à l'autre"/>
+        <div className="st-ath-cap" aria-live="polite">
+          <span className="mono" data-no-i18n="1">{String(cur + 1).padStart(2, '0')} / {String(N).padStart(2, '0')}</span>
+          <b key={sp.k}>{sp.n}</b>
+          <span className="st-ath-d" key={'d' + sp.k}>{sp.d}</span>
+        </div>
       </div>
-      <div className="st-lane-card" style={{ '--c': sp.c }} aria-live="polite">
-        <span className="mono"><span>Couloir</span> {hot + 1} · <span data-no-i18n="1">T</span><span ref={lapRef} data-no-i18n="1">01</span></span>
-        <b key={sp.k}>{sp.n}</b>
-        <span className="st-lane-d" key={'d' + sp.k}>{sp.d}</span>
-      </div>
-      <div className="st-lane-picks" role="tablist" aria-label="Choisir un sport">
-        {TRACK_SPORTS.map(function (s, i) {
-          return <button key={s.k} type="button" role="tab" aria-selected={i === hot} title={s.n} style={{ '--c': s.c }}
-                         className={i === hot ? 'on' : ''} onClick={function () { pausedRef.current = true; setHot(i); }}
-                         onMouseEnter={function () { pausedRef.current = true; setHot(i); }}><span data-no-i18n="1">{i + 1}</span></button>;
+      <div className="st-ath-picks" role="tablist" aria-label="Choisir un sport">
+        {ATH_SPORTS.map(function (s, i) {
+          return (
+            <button key={s.k} type="button" role="tab" aria-selected={i === cur} className={i === cur ? 'on' : ''} style={{ '--c': s.c }}
+                    onClick={function () { if (ctl.current.go) ctl.current.go(i); }}>
+              <i aria-hidden="true"></i>{s.n}
+            </button>
+          );
         })}
       </div>
     </div>
@@ -667,4 +810,4 @@ function Shelf(props) {
   );
 }
 
-Object.assign(window, { RaceTrack: RaceTrack, Scoreboard: Scoreboard, PlanWriter: PlanWriter, SeasonCurve: SeasonCurve, FinishButton: FinishButton, Ticker: Ticker, Coverline: Coverline, Seal: Seal, CoachLive: CoachLive, Shelf: Shelf, Book: Book, stTr: tr });
+Object.assign(window, { HybridAthlete: HybridAthlete, Scoreboard: Scoreboard, PlanWriter: PlanWriter, SeasonCurve: SeasonCurve, FinishButton: FinishButton, Ticker: Ticker, Coverline: Coverline, Seal: Seal, CoachLive: CoachLive, Shelf: Shelf, Book: Book, stTr: tr });

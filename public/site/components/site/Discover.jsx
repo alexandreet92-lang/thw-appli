@@ -83,7 +83,7 @@ function Discover() {
     <React.Fragment>
       <SiteHeader active="discover" />
       <main>
-        {/* ─── Héros : bandeau de nuit + carte des courses ─── */}
+        {/* ─── Héros : bandeau de nuit + l'app en direct ─── */}
         <section className="st-night st-hero" data-spot="1">
           <div className="st-hero-grid">
             <div>
@@ -105,7 +105,7 @@ function Discover() {
               </div>
             </div>
             <div className="st-reveal" style={{ transitionDelay: '160ms' }}>
-              <HybridAthlete />
+              <AppLive />
             </div>
           </div>
           <Ticker items={DISC_TICKER} />

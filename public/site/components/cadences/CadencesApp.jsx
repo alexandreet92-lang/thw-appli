@@ -62,7 +62,11 @@
         .cad-hero { max-width: 820px; }
         .cad-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
         .cad-noscroll::-webkit-scrollbar { display: none; height: 0; width: 0; }
-        .cad-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-top: 22px; position: sticky; top: 56px; z-index: 5; background: var(--bg); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+        .cad-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4px 14px; margin-top: 22px; position: sticky; top: 56px; z-index: 5; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; pointer-events: none; }
+        /* Pas de fond plein : il faisait une bande claire visible derrière les bulles. Les bulles flottent, centrées ; les marges automatiques gardent le défilement possible quand elles débordent (téléphone). */
+        .cad-tabs > :first-child { margin-left: auto; }
+        .cad-tabs > :last-child { margin-right: auto; }
+        .cad-tabs .cad-tab { pointer-events: auto; }
         .cad-tabs::-webkit-scrollbar, .cad-dayrow::-webkit-scrollbar, .cad-chiprow::-webkit-scrollbar, .cad-tl-row::-webkit-scrollbar { display: none; height: 0; width: 0; }
         .cad-dayrow, .cad-chiprow, .cad-tl-row { scrollbar-width: none; -ms-overflow-style: none; }
         .cad-tab { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: 0 0 auto; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: var(--radius-pill); cursor: pointer; color: var(--text-mid); background: var(--bg-card); border: 1px solid var(--border-mid); transition: all .15s; }

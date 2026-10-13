@@ -563,14 +563,30 @@
     var simple = cat.tests.filter(function (t) { return t.kind === 'abs'; });
     var ts = React.useState('run_400m'); var slug = ts[0], setSlug = ts[1];
     var ss = React.useState('M'); var sex = ss[0], setSex = ss[1];
+    var bs = React.useState('general'); var band = bs[0], setBand = bs[1];
+    var bands = (cat.age && cat.age.bands) || [];
     var t = cat.tests.filter(function (x) { return x.slug === slug; })[0] || simple[0];
-    var b = sex === 'M' ? t.male : t.female;
+    var base = sex === 'M' ? t.male : t.female;
+    // Barème ajusté à la catégorie d'âge : mêmes formules que le vrai test (coefficient par
+    // qualité pondéré par les poids de l'épreuve ; exposant propre aux épreuves chronométrées).
+    function ageAdjusted(bb) {
+      var pf = band !== 'general' && cat.age && cat.age.pf ? cat.age.pf[band] : null;
+      if (!pf) return bb;
+      var f = 0; (cat.qualities || []).forEach(function (q) { f += ((t.weights && t.weights[q.key]) || 0) * (pf[q.key] == null ? 1 : pf[q.key]); });
+      if (!(f > 0)) return bb;
+      if (t.direction === 'higher_is_better') return { ref: bb.ref * f, max: bb.max * f };
+      var dv = Math.pow(f, t.ageTimeExponent == null ? 1 : t.ageTimeExponent);
+      return { ref: bb.ref / dv, max: bb.max / dv };
+    }
+    var b = ageAdjusted(base);
     var lo = b.ref + (b.max - b.ref) * (0 - 60) / 40, hi = b.ref + (b.max - b.ref) * (130 - 60) / 40;
     var vs = React.useState(null); var val = vs[0], setVal = vs[1];
     var v = val == null ? (b.ref + b.max) / 2 : val;
     var pct = pctFor(cat, v, b.ref, b.max);
     var pts = pct * t.pts_max;
     var lvl = levelFor(pct, cat.levels), col = levelColor(cat.palette, lvl);
+    // Le même résultat au barème général, pour voir l'écart que fait la catégorie.
+    var pctG = pctFor(cat, v, base.ref, base.max), lvlG = levelFor(pctG, cat.levels);
     var pos = function (x) { return Math.max(0, Math.min(100, (x - lo) / (hi - lo) * 100)); };
     var step = Math.abs(hi - lo) / 200;
     return (
@@ -580,6 +596,12 @@
           <select className="cad-select" value={t.slug} onChange={function (e) { setSlug(e.target.value); setVal(null); }} aria-label="Épreuve">
             {simple.map(function (x) { return <option key={x.slug} value={x.slug}>{x.name.replace(/\s*\(.*\)$/, '')}</option>; })}
           </select>
+          {bands.length ? (
+            <select className="cad-select" value={band} onChange={function (e) { setBand(e.target.value); setVal(null); }} aria-label="Catégorie d’âge">
+              <option value="general">Général (21–35 ans)</option>
+              {bands.map(function (x) { return <option key={x} value={x}>{x.replace('-', '–') + ' ans'}</option>; })}
+            </select>
+          ) : null}
           <div className="cad-seg">
             <button type="button" aria-pressed={sex === 'M'} onClick={function () { setSex('M'); setVal(null); }}>H</button>
             <button type="button" aria-pressed={sex === 'F'} onClick={function () { setSex('F'); setVal(null); }}>F</button>
@@ -598,8 +620,13 @@
           <div><em>Ton résultat</em><b>{fmtThreshold(t, v)}</b></div>
           <div><em>Pourcentage</em><b>{Math.round(pct * 100)} %</b></div>
           <div><em>Points</em><b>{fr1(pts)} <small>/ {t.pts_max}</small></b></div>
-          <div><em>Niveau</em><b className="is-lvl" style={{ color: col }}>{lvl}</b></div>
+          <div><em>{band === 'general' ? 'Niveau' : 'Niveau · ' + band.replace('-', '–') + ' ans'}</em><b className="is-lvl" style={{ color: col }}>{lvl}</b></div>
         </div>
+        {band !== 'general' ? (
+          <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>
+            Avec le barème <strong>ajusté à ta catégorie</strong>, ce résultat vaut <strong>{Math.round(pct * 100)} %</strong>. Au barème général, il vaudrait {Math.round(pctG * 100)} % ({lvlG}).
+          </p>
+        ) : null}
         <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>{t.direction === 'lower_is_better' ? 'Épreuve chronométrée : plus le temps est court, plus le % monte.' : 'Plus le résultat est grand, plus le % monte.'} Au-delà du Max, il n’y a pas de plafond.</p>
       </div>
     );

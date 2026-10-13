@@ -12,8 +12,9 @@
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function frNum(v, dec) { var n = Number(v); if (!isFinite(n)) return '—'; return (dec ? n.toFixed(dec) : String(Math.round(n))).replace('.', ','); }
   function dOf(iso) { return new Date(String(iso).slice(0, 10) + 'T12:00:00'); }
-  function frDate(iso) { var d = dOf(iso); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
-  function shortDate(iso) { var d = dOf(iso); return MONTHS[d.getMonth()].replace('.', '') + ' ' + String(d.getFullYear()).slice(2); }
+  function loc() { return window.CadLocale ? window.CadLocale() : 'fr-FR'; }
+  function frDate(iso) { var d = dOf(iso); if (loc() !== 'fr-FR') return d.toLocaleDateString(loc(), { day: 'numeric', month: 'short', year: 'numeric' }); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+  function shortDate(iso) { var d = dOf(iso); if (loc() !== 'fr-FR') return d.toLocaleDateString(loc(), { month: 'short', year: '2-digit' }).replace('.', ''); return MONTHS[d.getMonth()].replace('.', '') + ' ' + String(d.getFullYear()).slice(2); }
   function levelColor(cat, lv) { return (cat.palette && cat.palette[lv]) || '#9ca3af'; }
   // Conditions non renseignées (ex. test antérieur à la fonctionnalité) → « — ».
   function hasCond(e) { return e && e.tempC != null; }
@@ -242,7 +243,7 @@
               return (
                 <div key={q.key} className="cad-hq-card">
                   <div className="cad-hq-top"><b>{q.label}</b><span className={'cad-hq-d ' + deltaCls(dG)}>{deltaStr(Math.round(dG))}<em style={{ fontStyle: 'normal', color: colA, fontSize: 11, marginLeft: 6 }}>{deltaStr(Math.round(dA))}</em></span></div>
-                  {window.CadSparkline ? <window.CadSparkline values={sG} color={colG} aria={q.label + ' général'} /> : null}
+                  {window.CadSparkline ? <window.CadSparkline values={sG} color={colG} aria={window.CadTr(q.label) + ' ' + window.CadTr('général')} /> : null}
                   <div className="cad-hq-foot"><span style={{ color: colG, fontWeight: 700 }}>gén. {frNum(sG[sG.length - 1])} %</span><span style={{ color: colA, fontWeight: 700 }}>âge {frNum(sA[sA.length - 1])} %</span></div>
                 </div>
               );

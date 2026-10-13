@@ -258,7 +258,7 @@
                   return (
                     <div key={q.key} className={'cad-qm-cell' + (on ? ' is-on' : '')} onMouseEnter={function () { setHov(t.slug); }} onMouseLeave={function () { setHov(null); }}
                          style={{ background: w ? hexA(QCOL[q.key], 0.12 + w * 0.78) : 'transparent', color: w >= 0.45 ? '#fff' : 'var(--text-mid)' }}
-                         title={t.name + ' · ' + qLabel(q) + ' : ' + Math.round(w * 100) + ' %'}>
+                         title={window.CadTr(t.name) + ' · ' + window.CadTr(qLabel(q)) + ' : ' + Math.round(w * 100) + ' %'}>
                       {w ? Math.round(w * 100) : ''}
                     </div>
                   );

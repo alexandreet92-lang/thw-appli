@@ -399,7 +399,7 @@
             {' · '}{mode === 'min' ? 'pour rester en bonne santé et garder ses qualités' : 'pour être en très bonne forme, à tout âge'}
           </span>
         </div>
-        <div className="cad-stack" role="img" aria-label={core.length + ' séances, ' + fmtH(coreMin) + ' par semaine'}>
+        <div className="cad-stack" role="img" aria-label={core.length + ' ' + window.CadTr('séances') + ', ' + fmtH(coreMin) + ' ' + window.CadTr('par semaine')}>
           {segs.map(function (g) {
             return <i key={g.k} style={{ width: (iv[1] ? g.m / SCALE * 100 : 0) + '%', background: STYPE[g.k].color }}></i>;
           })}
@@ -740,7 +740,7 @@
               <button key={s.label} type="button" className={'cad-lvl-seg' + (hov === s.label ? ' is-on' : '')}
                       onMouseEnter={function () { setHov(s.label); }} onFocus={function () { setHov(s.label); }} onClick={function () { setHov(s.label); }}
                       style={{ width: ((s.to - s.from) / TOP * 100) + '%', background: s.color, transform: iv[1] ? 'scaleY(1)' : 'scaleY(0)', transitionDelay: (i * 90) + 'ms' }}
-                      aria-label={s.label + ' : ' + s.range}>
+                      aria-label={window.CadTr(s.label) + ' : ' + s.range}>
                 <span>{s.label}</span>
               </button>
             );

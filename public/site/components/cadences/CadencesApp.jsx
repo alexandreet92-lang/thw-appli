@@ -21,7 +21,7 @@
   }
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
   function frDate(iso) {
-    try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    try { return new Date(iso).toLocaleDateString(window.CadLocale(), { day: 'numeric', month: 'long', year: 'numeric' }); }
     catch (e) { return iso; }
   }
   var QK = ['vitesse', 'force', 'puissance', 'explosivite', 'endurance', 'vo2max', 'coordination'];
@@ -833,7 +833,7 @@
   function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   function dateAt(iso, plusDays) { var d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); d.setDate(d.getDate() + plusDays); return d; }
   function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
-  function fmtDay(d) { try { return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { return isoOf(d); } }
+  function fmtDay(d) { try { return d.toLocaleDateString(window.CadLocale(), { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { return isoOf(d); } }
   function startKey(id) { return 'cad-start-' + id; }
   function getStart(camp) { try { var v = window.localStorage.getItem(startKey(camp.id)); if (v) return v; } catch (e) {} return String(camp.started_on || todayISO()).slice(0, 10); }
   function setStart(id, iso) { try { window.localStorage.setItem(startKey(id), iso); } catch (e) {} }
@@ -1496,7 +1496,7 @@
                 <label key={i} className="cad-try">
                   <span>{n > 1 ? (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? 'Charge (kg)' : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
                   <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
-                         value={d.parts[i] || ''} aria-label={t.name + ' valeur ' + (i + 1)}
+                         value={d.parts[i] || ''} aria-label={window.CadTr(t.name) + ' ' + window.CadTr('valeur') + ' ' + (i + 1)}
                          onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
                 </label>
               );

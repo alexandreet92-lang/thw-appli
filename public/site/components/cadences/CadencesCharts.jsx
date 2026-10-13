@@ -6,6 +6,21 @@
    CadTestBar.
    ════════════════════════════════════════════════════════════════ */
 (function () {
+  // Traduit une chaîne construite en JS (les attributs dynamiques échappent au parcours du DOM).
+  function trc(fr) {
+    var l = 'fr';
+    try { l = (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr'; } catch (e) {}
+    if (l === 'fr') return fr;
+    var d = window.THW_I18N_DICT && window.THW_I18N_DICT[l];
+    return (d && d[fr]) || fr;
+  }
+  window.CadTr = trc;
+  // Langue des dates et des nombres selon la langue du site.
+  window.CadLocale = function () {
+    var l = 'fr';
+    try { l = (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr'; } catch (e) {}
+    return l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR';
+  };
   var TRACK = 'rgba(128,140,160,0.25)';   // piste neutre, visible clair + sombre
   var GRID = 'rgba(128,140,160,0.30)';
   var BRAND = '#00c8e0';
@@ -54,7 +69,7 @@
       <div ref={enRef} style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
         <div style={{ position: 'relative', width: size, height: size }}>
           <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img"
-               aria-label={'Score ' + Math.round(total) + ' sur ' + max + ', niveau ' + props.level}>
+               aria-label={trc('Score') + ' ' + Math.round(total) + ' ' + trc('sur') + ' ' + max + ', ' + trc('niveau') + ' ' + trc(props.level)}>
             <circle cx={cx} cy={cx} r={r} fill="none" stroke={TRACK} strokeWidth={13}/>
             <circle cx={cx} cy={cx} r={r} fill="none" stroke={color} strokeWidth={13} strokeLinecap="round"
                     strokeDasharray={(c * shown) + ' ' + c} transform={'rotate(-90 ' + cx + ' ' + cx + ')'}
@@ -92,7 +107,7 @@
       <div ref={enRef} style={{ display: 'grid', placeItems: 'center', gap: 4, textAlign: 'center' }}>
         <div style={{ position: 'relative', width: size, height: size }}>
           <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img"
-               aria-label={q.label + ' : ' + Math.round((q.pct || 0) * 100) + ' %, ' + q.level}>
+               aria-label={trc(q.label) + ' : ' + Math.round((q.pct || 0) * 100) + ' %, ' + trc(q.level)}>
             <circle cx={cx} cy={cx} r={r} fill="none" stroke={TRACK} strokeWidth={6}/>
             <circle cx={cx} cy={cx} r={r} fill="none" stroke={q.color} strokeWidth={6} strokeLinecap="round"
                     strokeDasharray={(c * shown) + ' ' + c} transform={'rotate(-90 ' + cx + ' ' + cx + ')'}
@@ -202,7 +217,7 @@
           return (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 46px', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
-              <svg width="100%" height={14} viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label={d.label + ' : ' + d.pts + ' points'}>
+              <svg width="100%" height={14} viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label={trc(d.label) + ' : ' + d.pts + ' ' + trc('points')}>
                 <rect x={0} y={3} width={100} height={8} rx={4} fill={TRACK} />
                 <rect x={0} y={3} width={w} height={8} rx={4} fill={d.color || BRAND} style={{ transition: 'width .8s cubic-bezier(.22,1,.36,1) ' + (i * 50) + 'ms' }} />
               </svg>
@@ -390,7 +405,7 @@
   /* ── Démonstration : petites primitives animées à l'entrée (SVG / HTML brut). ── */
   var NEUTRAL = '#94a3b8';
   function frNum(v, dec) {
-    try { return v.toLocaleString('fr-FR', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
+    try { return v.toLocaleString(window.CadLocale(), { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
     catch (e) { return String(Math.round(v)); }
   }
 
@@ -469,7 +484,7 @@
     }
     return (
       <div ref={ref} className="cad-waffle-wrap">
-        <div className="cad-waffle" role="img" aria-label={cur.label + ' : ' + cur.value + ' sur 100'}>{cells}</div>
+        <div className="cad-waffle" role="img" aria-label={trc(cur.label) + ' : ' + cur.value + ' ' + trc('sur') + ' 100'}>{cells}</div>
         <div className="cad-waffle-side">
           <div className="cad-waffle-n"><CadCountUp key={k} value={cur.value} suffix=" %" dur={1100} /></div>
           <div className="cad-waffle-l">{props.caption}</div>
@@ -587,7 +602,7 @@
     var ticks = []; for (var t = 0; t <= max; t++) ticks.push(t);
     return (
       <div ref={ref} className="cad-gauge">
-        <svg width="100%" viewBox="0 0 300 172" role="img" aria-label={(props.aria || 'Jauge') + ' : ' + val} style={{ display: 'block', maxWidth: 360, margin: '0 auto' }}>
+        <svg width="100%" viewBox="0 0 300 172" role="img" aria-label={trc(props.aria || 'Jauge') + ' : ' + val} style={{ display: 'block', maxWidth: 360, margin: '0 auto' }}>
           {zones.map(function (z, i) {
             var a = i === 0 ? z.from : (zones[i - 1].to + z.from) / 2;
             var b = i === zones.length - 1 ? z.to : (z.to + zones[i + 1].from) / 2;

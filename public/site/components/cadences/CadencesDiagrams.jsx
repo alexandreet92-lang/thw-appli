@@ -296,9 +296,9 @@
 
   // ── LA CHIMÈRE : le parcours mixte de 100 m ──
   // Sept étapes, un mode de déplacement différent à chaque fois. Distances du schéma :
-  // 20 m course · 10 m canard · 3 galipettes (≈ 3 m) · course jusqu'à la ligne des 50 m
-  // (≈ 17 m) · 20 m ours · haies (≈ 10 m : 4 pour les hommes, 2 pour les femmes) ·
-  // course jusqu'à la ligne des 100 m (≈ 20 m).
+  // 20 m course · 10 m canard · haies (4 pour les hommes, 2 pour les femmes, espacées
+  // d'environ 1 m : ≈ 5 m au total) · course jusqu'à la ligne des 50 m (≈ 15 m) ·
+  // 20 m ours · 3 galipettes (≈ 3 m) · course jusqu'à la ligne des 100 m (≈ 27 m).
   var DUCK = '#f59e0b', ROLL = '#a855f7', BEAR = '#ef4444';
   function chimereData() {
     var x0 = 28, perM = 5.2, y = 92;
@@ -311,31 +311,30 @@
     go(20, 0, 'Course — 20 m, départ arrêté', SPRINT, 0, 20, 'COURSE');
     // 2. canard 10 m : on avance en restant bas, petit balancement
     for (var d = 1; d <= 6; d++) go(20 + 10 * d / 6, d === 6 ? 0 : (d % 2 ? 3.5 : -3.5), 'Marche du canard — 10 m', DUCK, 1, 5, 'CANARD');
-    // 3. trois galipettes : une boucle par galipette
-    for (var g = 0; g < 3; g++) {
-      go(30 + g + 0.5, -13, 'Galipette ' + (g + 1) + '/3', ROLL, 2, 3, 'GALIPETTE');
-      go(30 + g + 1, 0, 'Galipette ' + (g + 1) + '/3', ROLL, 2, 3, 'GALIPETTE');
-    }
+    // 3. haies : 4 hommes / 2 femmes, une haie tous les mètres, un saut par haie
+    var HURDLES = [32, 33, 34, 35];
+    go(31.5, 0, 'Haies', JUMP, 2, 1.5, 'HAIES');
+    HURDLES.forEach(function (h, i) {
+      var arc = sampleQuad([X(h - 0.5), y], [X(h), y - 26], [X(h + 0.5), y], 6);
+      for (var a = 1; a < arc.length; a++) { path.push(arc[a]); labels.push('Haie ' + (i + 1) + '/4 (hommes) · les femmes : 2'); colors.push(JUMP); phase.push(2); weights.push(1.1); kinds.push('HAIE'); }
+    });
     // 4. course jusqu'à la ligne des 50 m
-    go(50, 0, 'Course jusqu’à la ligne des 50 m', SPRINT, 3, 17, 'COURSE');
+    go(50, 0, 'Course jusqu’à la ligne des 50 m', SPRINT, 3, 15, 'COURSE');
     // 5. marche de l'ours 20 m : à quatre pattes
     for (var b = 1; b <= 10; b++) go(50 + 20 * b / 10, b === 10 ? 0 : (b % 2 ? 4 : -1), 'Marche de l’ours — 20 m', BEAR, 4, 5.5, 'OURS');
-    // 6. haies : 4 hommes / 2 femmes, un saut par haie
-    var HURDLES = [72, 74.5, 77, 79.5];
-    HURDLES.forEach(function (h, i) {
-      if (i === 0) go(h - 1, 0, 'Haies', JUMP, 5, 2, 'HAIES');
-      var arc = sampleQuad([X(h - 1), y], [X(h), y - 46], [X(h + 1), y], 6);
-      for (var a = 1; a < arc.length; a++) { path.push(arc[a]); labels.push('Haie ' + (i + 1) + '/4 (hommes) · les femmes : 2'); colors.push(JUMP); phase.push(5); weights.push(1.6); kinds.push('HAIE'); }
-      if (i < HURDLES.length - 1) go(HURDLES[i + 1] - 1, 0, 'Haies', JUMP, 5, 1.5, 'HAIES');
-    });
+    // 6. trois galipettes : une boucle par galipette
+    for (var g = 0; g < 3; g++) {
+      go(70 + g + 0.5, -13, 'Galipette ' + (g + 1) + '/3', ROLL, 5, 3, 'GALIPETTE');
+      go(70 + g + 1, 0, 'Galipette ' + (g + 1) + '/3', ROLL, 5, 3, 'GALIPETTE');
+    }
     // 7. course jusqu'à la ligne des 100 m
-    go(100, 0, 'Course jusqu’à la ligne des 100 m', SPRINT, 6, 20, 'COURSE');
+    go(100, 0, 'Course jusqu’à la ligne des 100 m', SPRINT, 6, 27, 'COURSE');
 
     var zones = [
       { a: 0, b: 20, c: SPRINT, t: 'Course', lv: 0 }, { a: 20, b: 30, c: DUCK, t: 'Canard', lv: 0 },
-      { a: 30, b: 33, c: ROLL, t: '3 galipettes', lv: 1 }, { a: 33, b: 50, c: SPRINT, t: 'Course', lv: 0 },
-      { a: 50, b: 70, c: BEAR, t: 'Ours', lv: 0 }, { a: 70, b: 81, c: JUMP, t: 'Haies', lv: 0 },
-      { a: 81, b: 100, c: SPRINT, t: 'Course', lv: 0 },
+      { a: 30, b: 36.5, c: JUMP, t: 'Haies', lv: 1 }, { a: 36.5, b: 50, c: SPRINT, t: 'Course', lv: 0 },
+      { a: 50, b: 70, c: BEAR, t: 'Ours', lv: 0 }, { a: 70, b: 73, c: ROLL, t: '3 galipettes', lv: 1 },
+      { a: 73, b: 100, c: SPRINT, t: 'Course', lv: 0 },
     ];
     var ticks = [0, 20, 30, 50, 70, 100];
     var extras = (
@@ -353,11 +352,27 @@
           var lite = i >= 2;
           return (
             <g key={'h' + i} opacity={lite ? 0.4 : 1}>
-              <path d={'M' + (X(h) - 6) + ',' + y + ' L' + (X(h) - 6) + ',' + (y - 15) + ' L' + (X(h) + 6) + ',' + (y - 15) + ' L' + (X(h) + 6) + ',' + y} fill="none" stroke={JUMP} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={'M' + (X(h) - 2) + ',' + y + ' L' + (X(h) - 2) + ',' + (y - 14) + ' L' + (X(h) + 2) + ',' + (y - 14) + ' L' + (X(h) + 2) + ',' + y} fill="none" stroke={JUMP} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
             </g>
           );
         })}
-        <text x={(X(77) + X(79.5)) / 2} y={y - 54} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-dim)' }}>hommes seulement</text>
+        {/* zoom : les haies sont espacées d'environ 1 m (trop serrées pour se lire à l'échelle du parcours) */}
+        <g>
+          <text x={X(60)} y={y - 82} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-dim)' }}>Zoom sur les haies (étape 3)</text>
+          {[0, 1, 2, 3].map(function (i) {
+            var hx = X(62) + i * 40;
+            return (
+              <g key={'zh' + i} opacity={i >= 2 ? 0.4 : 1}>
+                <path d={'M' + (hx - 7) + ',' + (y - 40) + ' L' + (hx - 7) + ',' + (y - 58) + ' L' + (hx + 7) + ',' + (y - 58) + ' L' + (hx + 7) + ',' + (y - 40)} fill="none" stroke={JUMP} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            );
+          })}
+          <line x1={X(62)} y1={y - 66} x2={X(62) + 40} y2={y - 66} stroke="var(--text-dim)" strokeWidth={1} />
+          <line x1={X(62)} y1={y - 69} x2={X(62)} y2={y - 63} stroke="var(--text-dim)" strokeWidth={1} />
+          <line x1={X(62) + 40} y1={y - 69} x2={X(62) + 40} y2={y - 63} stroke="var(--text-dim)" strokeWidth={1} />
+          <text x={X(62) + 20} y={y - 71} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 700, fill: 'var(--text-mid)' }}>≈ 1 m</text>
+          <text x={X(62) + 100} y={y - 34} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 600, fill: 'var(--text-dim)' }}>hommes seulement</text>
+        </g>
         {zones.map(function (z, i) {
           var cx = (X(z.a) + X(z.b)) / 2;
           return (
@@ -375,7 +390,7 @@
     return { w: 568, h: 168, maxWidth: 640, dur: 15000, path: path, labels: labels, colors: colors, extras: extras, legend: null,
       weights: weights, phase: phase, phaseCount: 7, bubble: function (k) { return kinds[k]; },
       aria: 'Simulation de La Chimère, parcours mixte de 100 m',
-      caption: "100 m, sept étapes, un mode de déplacement différent à chaque fois : course, marche du canard, 3 galipettes, course jusqu'à la ligne des 50 m, marche de l'ours, sauts de haies (4 pour les hommes, 2 pour les femmes), course jusqu'à la ligne des 100 m. 3 essais, 4 à 5 min de récup : meilleur temps." };
+      caption: "100 m, sept étapes, un mode de déplacement différent à chaque fois : course, marche du canard, sauts de haies espacées d'environ 1 m (4 pour les hommes, 2 pour les femmes), course jusqu'à la ligne des 50 m, marche de l'ours, 3 galipettes, course jusqu'à la ligne des 100 m. 3 essais, 4 à 5 min de récup : meilleur temps." };
   }
 
   function CadDiagram(props) {

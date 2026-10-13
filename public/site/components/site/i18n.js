@@ -72,17 +72,26 @@
     return false;
   }
 
+  // Texte que NOUS avons écrit dans un nœud : si, à la passe suivante, le nœud porte autre chose,
+  // c'est que React l'a réécrit (étiquette d'animation, compteur…) — son contenu est alors le
+  // nouvel original, pas celui qu'on avait mémorisé.
+  var written = new WeakMap();
+
   function translateTextNode(node, lang) {
+    if (origText.has(node) && written.has(node) && node.nodeValue !== written.get(node)) {
+      origText.delete(node); written.delete(node);
+    }
     var orig = origText.has(node) ? origText.get(node) : node.nodeValue;
     var key = norm(orig);
     if (!key || !/[A-Za-zÀ-ÿ]/.test(key)) return; // ignore pure ws / numbers / symbols
-    if (lang === 'fr') { if (origText.has(node)) node.nodeValue = orig; return; }
+    if (lang === 'fr') { if (origText.has(node)) { node.nodeValue = orig; written.delete(node); origText.delete(node); } return; }
     var t = MAP[lang] && MAP[lang][key];
     if (t === undefined) return;
     if (!origText.has(node)) origText.set(node, orig);
     var lead = (orig.match(/^\s*/) || [''])[0];
     var trail = (orig.match(/\s*$/) || [''])[0];
     node.nodeValue = lead + t + trail;
+    written.set(node, node.nodeValue);
   }
 
   // ── Attributes ──────────────────────────────────────────────────

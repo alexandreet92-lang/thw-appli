@@ -682,16 +682,16 @@ export const PROTOCOLS: Record<string, Protocol> = {
   // PARCOURS FIGÉ de 100 m, en sept étapes. Les distances « ≈ » sont celles du
   // schéma : à confirmer sur le terrain avec le tracé réel.
   mixed_course: {
-    objectif: 'La Chimère : motricité globale, coordination et dissociation sur 100 m, en changeant de mode de déplacement à chaque étape — course, marche du canard, galipettes, marche de l\'ours, haies.',
-    materiel: ['Couloir de 100 m balisé (lignes à 0, 50 et 100 m)', 'Haies de 50-60 cm : 4 pour les hommes, 2 pour les femmes', 'Tapis de réception pour les galipettes', 'Chrono'],
+    objectif: 'La Chimère : motricité globale, coordination et dissociation sur 100 m, en changeant de mode de déplacement à chaque étape — course, marche du canard, haies, marche de l\'ours, galipettes.',
+    materiel: ['Couloir de 100 m balisé (lignes à 0, 50 et 100 m)', 'Haies de 50-60 cm espacées d\'environ 1 m : 4 pour les hommes, 2 pour les femmes', 'Tapis de réception pour les galipettes', 'Chrono'],
     etapes: [
       '1. Départ arrêté derrière la ligne : 20 m de course.',
       '2. 10 m de marche du canard (accroupi, on avance en restant bas).',
-      '3. 3 galipettes enchaînées sur le tapis.',
-      '4. Course jusqu\'à la ligne des 50 m (≈ 17 m).',
+      '3. Sauts de haies espacées d\'environ 1 m : 4 sauts pour les hommes, 2 pour les femmes (haies de 50-60 cm).',
+      '4. Course jusqu\'à la ligne des 50 m (≈ 16 m).',
       '5. 20 m de marche de l\'ours (à quatre pattes, mains et pieds au sol, genoux décollés).',
-      '6. Sauts de haies régulièrement espacées : 4 sauts pour les hommes, 2 pour les femmes (haies de 50-60 cm).',
-      '7. Course jusqu\'à la ligne des 100 m (≈ 20 m) : le chrono s\'arrête au franchissement de la ligne.',
+      '6. 3 galipettes enchaînées sur le tapis.',
+      '7. Course jusqu\'à la ligne des 100 m (≈ 27 m) : le chrono s\'arrête au franchissement de la ligne.',
       '3 essais, avec une récupération importante (4 à 5 min). On retient le meilleur temps.',
     ],
     saisie: 'Le meilleur temps (s) sur les 3 essais.',

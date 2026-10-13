@@ -39,7 +39,7 @@
     agility_square: { zone: 'gazon', short: 'Square', d: 'M342,300 L342,338 L378,338 L378,300 L342,300 L420,300 L420,262 L456,262 L456,300 L420,300', move: 'pingpong', run: 3200, lbl: [338, 364] },
     agility_move: { zone: 'gazon', short: 'Move', d: 'M520,262 L600,262', move: 'pingpong', run: 1200, lbl: [520, 250] },
     agility_slalom: { zone: 'gazon', short: 'Slalom', d: 'M500,328 L518,372 L536,328 L554,372 L572,328 L590,372 L608,328 L626,372 L644,328 L662,372 L680,328', move: 'pingpong', run: 3000, lbl: [500, 394] },
-    mixed_course: { zone: 'gazon', short: 'Parcours mixte', d: 'M690,270 L730,270 Q760,270 760,300 Q760,330 730,330 L690,330', move: 'pingpong', run: 2600, lbl: [688, 254] }
+    mixed_course: { zone: 'gazon', short: 'La Chimère', d: 'M690,270 L730,270 Q760,270 760,300 Q760,330 730,330 L690,330', move: 'pingpong', run: 2600, lbl: [688, 254] }
   };
   var ORDER = ['sprint_30m', 'sprint_100m', 'run_400m', 'run_3200m', 'repeat_200m_x6', 'standing_long_jump', 'standing_triple_jump', 'agility_square', 'agility_move', 'agility_slalom', 'mixed_course'];
 

@@ -16,7 +16,7 @@ export interface Protocol {
   echauffementSpecifique?: string  // en plus de l'échauffement général
   allure?: string                  // allures cibles indicatives
   box?: string                     // hauteur de box (Hyrox)
-  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump'   // schéma du mouvement / parcours
+  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
 }
 
@@ -678,17 +678,25 @@ export const PROTOCOLS: Record<string, Protocol> = {
     flag: true,
   },
 
-  // ── Decaform v1.2 — épreuve mixte « motricité » ──
+  // ── Decaform v1.2 — La Chimère (épreuve mixte « motricité ») ──
+  // PARCOURS FIGÉ de 100 m, en sept étapes. Les distances « ≈ » sont celles du
+  // schéma : à confirmer sur le terrain avec le tracé réel.
   mixed_course: {
-    objectif: 'Motricité globale, coordination et dissociation sur un parcours de locomotion varié.',
-    materiel: ['Couloir de 100 m balisé (lignes à 50 et 100 m)', 'Plots', 'Tapis', 'Chrono'],
+    objectif: 'La Chimère : motricité globale, coordination et dissociation sur 100 m, en changeant de mode de déplacement à chaque étape — course, marche du canard, galipettes, marche de l\'ours, haies.',
+    materiel: ['Couloir de 100 m balisé (lignes à 0, 50 et 100 m)', 'Haies de 50-60 cm : 4 pour les hommes, 2 pour les femmes', 'Tapis de réception pour les galipettes', 'Chrono'],
     etapes: [
-      'Parcours figé : 20 m de course → 10 m de marche canard → 3 galipettes → courir jusqu\'à la ligne des 50 m.',
-      'Puis 20 m de marche de l\'ours → sauts de haies (50-60 cm : 2 sauts femmes / 4 sauts hommes) → courir jusqu\'à la ligne des 100 m.',
-      '3 essais, récupération importante (4 à 5 min). On retient le meilleur temps.',
+      '1. Départ arrêté derrière la ligne : 20 m de course.',
+      '2. 10 m de marche du canard (accroupi, on avance en restant bas).',
+      '3. 3 galipettes enchaînées sur le tapis.',
+      '4. Course jusqu\'à la ligne des 50 m (≈ 17 m).',
+      '5. 20 m de marche de l\'ours (à quatre pattes, mains et pieds au sol, genoux décollés).',
+      '6. Sauts de haies régulièrement espacées : 4 sauts pour les hommes, 2 pour les femmes (haies de 50-60 cm).',
+      '7. Course jusqu\'à la ligne des 100 m (≈ 20 m) : le chrono s\'arrête au franchissement de la ligne.',
+      '3 essais, avec une récupération importante (4 à 5 min). On retient le meilleur temps.',
     ],
     saisie: 'Le meilleur temps (s) sur les 3 essais.',
-    securite: 'Galipette sur tapis ; alternative (roulade épaule ou passage au sol) si non maîtrisée. Haies franchies en sécurité.',
+    securite: 'Galipettes sur tapis ; alternative (roulade épaule ou passage au sol) si elles ne sont pas maîtrisées. Haies franchies en sécurité, jamais sur sol glissant.',
+    diagram: 'chimere',
     flag: true,
   },
 

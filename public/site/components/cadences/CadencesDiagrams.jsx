@@ -3,7 +3,7 @@
    Chaque parcours/saut est un tracé continu ordonné : un point (l'athlète)
    le parcourt au clic sur « ▶ Lancer la simulation », avec l'indication de
    la phase en cours (Avant, Pas chassés, Sprint 30 m…). Lisible clair/sombre.
-   Publie window.CadDiagram : <CadDiagram name="square|move|slalom|longjump|triplejump"/>.
+   Publie window.CadDiagram : <CadDiagram name="square|move|slalom|longjump|triplejump|chimere"/>.
    ════════════════════════════════════════════════════════════════ */
 (function () {
   var AVANT = '#00c8e0';     // course avant
@@ -24,6 +24,11 @@
     var W = props.w, H = props.h, path = props.path, labels = props.labels, colors = props.colors;
     var segLens = [], total = 0;
     for (var i = 0; i < path.length - 1; i++) { var d = dist(path[i], path[i + 1]); segLens.push(d); total += d; }
+    // Durée relative de chaque segment : par défaut sa longueur ; un parcours qui change
+    // de mode de déplacement (course, canard, ours…) donne ses propres poids, car 10 m de
+    // marche du canard ne se parcourent pas à la vitesse de 10 m de course.
+    var segW = props.weights || segLens, totalW = 0;
+    for (var w = 0; w < segW.length; w++) totalW += segW[w];
 
     var ps = React.useState(reduced() ? 1 : 0); var prog = ps[0], setProg = ps[1];
     var rs = React.useState('idle'); var run = rs[0], setRun = rs[1];  // idle | playing | done
@@ -31,7 +36,7 @@
 
     function play() {
       cancelAnimationFrame(raf.current);
-      var dur = Math.max(2600, Math.min(props.durMax || 9000, total / 150 * 1000));
+      var dur = props.dur || Math.max(2600, Math.min(props.durMax || 9000, total / 150 * 1000));
       var start = null;
       if (reduced()) { setProg(1); setRun('done'); return; }
       setRun('playing'); setProg(0);
@@ -47,13 +52,13 @@
 
     // position + segment courant à la progression `prog`
     function at(p) {
-      var target = p * total, acc = 0;
-      for (var k = 0; k < segLens.length; k++) {
-        if (acc + segLens[k] >= target || k === segLens.length - 1) {
-          var lt = segLens[k] ? (target - acc) / segLens[k] : 1; lt = Math.max(0, Math.min(1, lt));
+      var target = p * totalW, acc = 0;
+      for (var k = 0; k < segW.length; k++) {
+        if (acc + segW[k] >= target || k === segW.length - 1) {
+          var lt = segW[k] ? (target - acc) / segW[k] : 1; lt = Math.max(0, Math.min(1, lt));
           return { k: k, x: path[k][0] + (path[k + 1][0] - path[k][0]) * lt, y: path[k][1] + (path[k + 1][1] - path[k][1]) * lt };
         }
-        acc += segLens[k];
+        acc += segW[k];
       }
       return { k: segLens.length - 1, x: path[path.length - 1][0], y: path[path.length - 1][1] };
     }
@@ -68,7 +73,7 @@
             {curSeg >= 0 ? (
               <React.Fragment>
                 <span style={{ width: 10, height: 10, borderRadius: 999, background: colors[curSeg], flex: '0 0 auto' }}></span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>Étape {curSeg + 1}/{labels.length}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>Étape {props.phase ? props.phase[curSeg] + 1 : curSeg + 1}/{props.phaseCount || labels.length}</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{labels[curSeg]}</span>
               </React.Fragment>
             ) : (
@@ -98,6 +103,15 @@
             <g>
               <circle cx={cur.x} cy={cur.y} r={9} fill={colors[cur.k]} opacity={0.25} />
               <circle cx={cur.x} cy={cur.y} r={5.5} fill={colors[cur.k]} stroke="#fff" strokeWidth={2} />
+              {props.bubble ? (function () {
+                var tx = props.bubble(cur.k), bw = tx.length * 6.4 + 14, bx = Math.max(bw / 2 + 2, Math.min(W - bw / 2 - 2, cur.x)), by = Math.max(12, cur.y - 30);
+                return (
+                  <g>
+                    <rect x={bx - bw / 2} y={by - 11} width={bw} height={17} rx={8.5} fill={colors[cur.k]} />
+                    <text x={bx} y={by + 1.5} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, fill: '#fff', letterSpacing: '.06em' }}>{tx}</text>
+                  </g>
+                );
+              })() : null}
             </g>
           ) : null}
         </svg>
@@ -279,6 +293,91 @@
       aria: 'Simulation du triple saut', caption: "Départ pieds joints. 3 bonds enchaînés sans arrêt : 1er et 3e appel sur un pied, réception finale sur les deux pieds. 3 essais : meilleur saut + total des 3." };
   }
 
+
+  // ── LA CHIMÈRE : le parcours mixte de 100 m ──
+  // Sept étapes, un mode de déplacement différent à chaque fois. Distances du schéma :
+  // 20 m course · 10 m canard · 3 galipettes (≈ 3 m) · course jusqu'à la ligne des 50 m
+  // (≈ 17 m) · 20 m ours · haies (≈ 10 m : 4 pour les hommes, 2 pour les femmes) ·
+  // course jusqu'à la ligne des 100 m (≈ 20 m).
+  var DUCK = '#f59e0b', ROLL = '#a855f7', BEAR = '#ef4444';
+  function chimereData() {
+    var x0 = 28, perM = 5.2, y = 92;
+    function X(m) { return x0 + m * perM; }
+    var path = [[X(0), y]], labels = [], colors = [], phase = [], weights = [], kinds = [];
+    function go(m, dy, label, color, ph, wt, kind) {
+      path.push([X(m), y + dy]); labels.push(label); colors.push(color); phase.push(ph); weights.push(wt); kinds.push(kind);
+    }
+    // 1. course 20 m
+    go(20, 0, 'Course — 20 m, départ arrêté', SPRINT, 0, 20, 'COURSE');
+    // 2. canard 10 m : on avance en restant bas, petit balancement
+    for (var d = 1; d <= 6; d++) go(20 + 10 * d / 6, d === 6 ? 0 : (d % 2 ? 3.5 : -3.5), 'Marche du canard — 10 m', DUCK, 1, 5, 'CANARD');
+    // 3. trois galipettes : une boucle par galipette
+    for (var g = 0; g < 3; g++) {
+      go(30 + g + 0.5, -13, 'Galipette ' + (g + 1) + '/3', ROLL, 2, 3, 'GALIPETTE');
+      go(30 + g + 1, 0, 'Galipette ' + (g + 1) + '/3', ROLL, 2, 3, 'GALIPETTE');
+    }
+    // 4. course jusqu'à la ligne des 50 m
+    go(50, 0, 'Course jusqu’à la ligne des 50 m', SPRINT, 3, 17, 'COURSE');
+    // 5. marche de l'ours 20 m : à quatre pattes
+    for (var b = 1; b <= 10; b++) go(50 + 20 * b / 10, b === 10 ? 0 : (b % 2 ? 4 : -1), 'Marche de l’ours — 20 m', BEAR, 4, 5.5, 'OURS');
+    // 6. haies : 4 hommes / 2 femmes, un saut par haie
+    var HURDLES = [72, 74.5, 77, 79.5];
+    HURDLES.forEach(function (h, i) {
+      if (i === 0) go(h - 1, 0, 'Haies', JUMP, 5, 2, 'HAIES');
+      var arc = sampleQuad([X(h - 1), y], [X(h), y - 46], [X(h + 1), y], 6);
+      for (var a = 1; a < arc.length; a++) { path.push(arc[a]); labels.push('Haie ' + (i + 1) + '/4 (hommes) · les femmes : 2'); colors.push(JUMP); phase.push(5); weights.push(1.6); kinds.push('HAIE'); }
+      if (i < HURDLES.length - 1) go(HURDLES[i + 1] - 1, 0, 'Haies', JUMP, 5, 1.5, 'HAIES');
+    });
+    // 7. course jusqu'à la ligne des 100 m
+    go(100, 0, 'Course jusqu’à la ligne des 100 m', SPRINT, 6, 20, 'COURSE');
+
+    var zones = [
+      { a: 0, b: 20, c: SPRINT, t: 'Course', lv: 0 }, { a: 20, b: 30, c: DUCK, t: 'Canard', lv: 0 },
+      { a: 30, b: 33, c: ROLL, t: '3 galipettes', lv: 1 }, { a: 33, b: 50, c: SPRINT, t: 'Course', lv: 0 },
+      { a: 50, b: 70, c: BEAR, t: 'Ours', lv: 0 }, { a: 70, b: 81, c: JUMP, t: 'Haies', lv: 0 },
+      { a: 81, b: 100, c: SPRINT, t: 'Course', lv: 0 },
+    ];
+    var ticks = [0, 20, 30, 50, 70, 100];
+    var extras = (
+      <g>
+        <line x1={X(0)} y1={y} x2={X(100)} y2={y} stroke="var(--border-mid)" strokeWidth={1.5} />
+        {ticks.map(function (m) {
+          return (
+            <g key={'t' + m}>
+              <line x1={X(m)} y1={y - 6} x2={X(m)} y2={y + 6} stroke="var(--text-dim)" strokeWidth={1.2} />
+              <text x={X(m)} y={y + 20} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--text-dim)' }}>{m} m</text>
+            </g>
+          );
+        })}
+        {HURDLES.map(function (h, i) {
+          var lite = i >= 2;
+          return (
+            <g key={'h' + i} opacity={lite ? 0.4 : 1}>
+              <path d={'M' + (X(h) - 6) + ',' + y + ' L' + (X(h) - 6) + ',' + (y - 15) + ' L' + (X(h) + 6) + ',' + (y - 15) + ' L' + (X(h) + 6) + ',' + y} fill="none" stroke={JUMP} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+            </g>
+          );
+        })}
+        <text x={(X(77) + X(79.5)) / 2} y={y - 54} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, fontWeight: 600, fill: 'var(--text-dim)' }}>hommes seulement</text>
+        {zones.map(function (z, i) {
+          var cx = (X(z.a) + X(z.b)) / 2;
+          return (
+            <g key={'z' + i}>
+              <rect x={X(z.a) + 1} y={y + 32} width={Math.max(4, (z.b - z.a) * perM - 2)} height={6} rx={3} fill={z.c} />
+              {z.lv ? <line x1={cx} y1={y + 38} x2={cx} y2={y + 52} stroke="var(--text-dim)" strokeWidth={1} /> : null}
+              <text x={cx} y={y + (z.lv ? 64 : 54)} textAnchor="middle" style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 600, fill: 'var(--text-mid)' }}>{z.t}</text>
+            </g>
+          );
+        })}
+        <line x1={X(50)} y1={y - 62} x2={X(50)} y2={y + 6} stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="3 3" />
+        {flag(X(0), y - 28, 'Départ')}{flag(X(50), y - 66, 'Ligne des 50 m')}{flag(X(100), y - 28, 'Arrivée')}
+      </g>
+    );
+    return { w: 568, h: 168, maxWidth: 640, dur: 15000, path: path, labels: labels, colors: colors, extras: extras, legend: null,
+      weights: weights, phase: phase, phaseCount: 7, bubble: function (k) { return kinds[k]; },
+      aria: 'Simulation de La Chimère, parcours mixte de 100 m',
+      caption: "100 m, sept étapes, un mode de déplacement différent à chaque fois : course, marche du canard, 3 galipettes, course jusqu'à la ligne des 50 m, marche de l'ours, sauts de haies (4 pour les hommes, 2 pour les femmes), course jusqu'à la ligne des 100 m. 3 essais, 4 à 5 min de récup : meilleur temps." };
+  }
+
   function CadDiagram(props) {
     var data = null;
     if (props.name === 'square') data = squareData();
@@ -286,6 +385,7 @@
     else if (props.name === 'slalom') data = slalomData();
     else if (props.name === 'longjump') data = longJumpData();
     else if (props.name === 'triplejump') data = tripleJumpData();
+    else if (props.name === 'chimere') data = chimereData();
     if (!data) return null;
     return <CadCourseSim {...data} />;
   }

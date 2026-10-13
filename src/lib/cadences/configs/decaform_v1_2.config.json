@@ -31,7 +31,7 @@
     },
     {
       "day": 6,
-      "label": "400 m + 6.200",
+      "label": "400 m + La Chimère + 6.200",
       "rest": false
     },
     {
@@ -570,7 +570,7 @@
         "coordination": 0
       },
       "day": 6,
-      "order_in_day": 2,
+      "order_in_day": 3,
       "age_time_exponent": 0.7,
       "attempts": 6,
       "aggregate": "sum"
@@ -1060,7 +1060,7 @@
     {
       "slug": "mixed_course",
       "group": "Motricité",
-      "name": "Parcours mixte « motricité » (100 m)",
+      "name": "La Chimère — parcours mixte (100 m)",
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
@@ -1074,16 +1074,16 @@
         "max": 40
       },
       "weights": {
-        "vitesse": 0.15,
+        "vitesse": 0.3,
         "force": 0,
-        "puissance": 0,
-        "explosivite": 0.15,
+        "puissance": 0.15,
+        "explosivite": 0.3,
         "endurance": 0,
         "vo2max": 0,
-        "coordination": 0.7
+        "coordination": 0.25
       },
-      "day": 2,
-      "order_in_day": 8,
+      "day": 6,
+      "order_in_day": 2,
       "age_time_exponent": 0.5,
       "attempts": 3,
       "aggregate": "best"

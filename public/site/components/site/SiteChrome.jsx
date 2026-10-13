@@ -10,6 +10,7 @@ var MENU_ITEMS = [
   { label: 'Accueil',                     href: 'index.html' },
   { label: 'Découvrir les piliers',        href: 'decouvrir.html' },
   { label: 'Le test Decaform',             href: 'cadences.html' },
+  { label: 'Tous les tests',              href: 'tests.html' },
   { label: 'Abonnement athlète',          href: 'abonnement-athlete.html', group: 'shop' },
   { label: 'Abonnement coach',            href: 'abonnement-coach.html', group: 'shop' },
   { label: 'Recharge de tokens',          href: 'recharge-tokens.html', group: 'shop' },

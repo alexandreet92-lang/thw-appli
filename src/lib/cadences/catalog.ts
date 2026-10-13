@@ -7,6 +7,7 @@
 // (rétro-compatibilité : tout le code existant appelle les helpers sans config).
 // ══════════════════════════════════════════════════════════════════
 
+import { presentationOf } from '@/lib/cadences/presentations'
 import decaform from './cadences.config.json'
 import decaform_v1_2 from './configs/decaform_v1_2.config.json'
 import kids_8_10 from './configs/kids_8_10.config.json'
@@ -55,6 +56,48 @@ export function productMeta(): { testKey: string; title: string; population: str
     ageMax: c.age.max,
     totalTests: c.tests.length,
   }))
+}
+
+/** L'ordre d'affichage : par public, du plus jeune au plus âgé. */
+const ORDRE_PRODUITS = ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17', 'decaform', 'start', 'senior']
+
+/** Part de chaque qualité dans le score (somme des points × poids), en fraction de 1. */
+export function qualityShare(c: CadencesConfig): { key: string; label: string; share: number }[] {
+  const total = c.tests.reduce((n, t) => n + t.pts_max, 0) || 1
+  return c.qualities.map((q) => ({
+    key: q.key,
+    label: q.label,
+    share: c.tests.reduce((n, t) => n + t.pts_max * (((t.weights as Record<string, number>)[q.key]) ?? 0), 0) / total,
+  }))
+}
+
+/** Les cartes de la page « Les tests » : tout vient de la config, plus la présentation. */
+export function productCards() {
+  const cards = Object.values(REGISTRY).map((c) => {
+    const key = c.test_key ?? 'decaform'
+    const days = daysOf(c)
+    const groups: string[] = []
+    for (const t of c.tests) if (!groups.includes(t.group)) groups.push(t.group)
+    const p = presentationOf(key)
+    return {
+      testKey: key,
+      title: c.title ?? 'Decaform',
+      population: c.population ?? '',
+      ageMin: c.age.min,
+      ageMax: c.age.max,
+      totalTests: c.tests.length,
+      totalPoints: c.total_points,
+      days: days.length,
+      testDays: days.filter((d) => !d.rest).length,
+      groups,
+      qualityShare: qualityShare(c),
+      audience: p.audience,
+      audienceLabel: p.audienceLabel,
+      tagline: p.tagline,
+      perDay: p.perDay,
+    }
+  })
+  return cards.sort((a, b) => ORDRE_PRODUITS.indexOf(a.testKey) - ORDRE_PRODUITS.indexOf(b.testKey))
 }
 
 /** Test auto-sélectionné selon l'âge (dégrade vers Decaform tant qu'un produit

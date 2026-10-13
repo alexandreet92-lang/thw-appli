@@ -747,7 +747,7 @@
           })}
           {props.you != null ? (
             <div className="cad-lvl-world is-you" style={{ left: (Math.min(props.you / total, TOP) / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Toi · {Math.round(props.you)}</span></div>
-          ) : (
+          ) : props.noWorld ? null : (
             <div className="cad-lvl-world" style={{ left: (0.06 / TOP * 100) + '%', opacity: iv[1] ? 1 : 0 }}><span>Moyenne mondiale actuelle</span></div>
           )}
         </div>
@@ -781,6 +781,15 @@
     var days = cat.days || [];
     var quals = cat.qualities || [];
     var restDays = days.filter(function (d) { return d.rest; }).length;
+    var pres = cat.presentation || null;
+    var deca = !cat.testKey || cat.testKey === 'decaform';
+    // Familles d'épreuves : liste soignée pour Decaform, sinon les groupes de la config du test.
+    var families = FAMILIES;
+    if (!deca) {
+      families = [];
+      (cat.tests || []).forEach(function (t) { if (families.indexOf(t.group) === -1) families.push(t.group); });
+    }
+    var gear = pres && pres.gear && !deca ? pres.gear : GEAR;
     return (
       <section className="cad-ti">
         <div className="cad-act-eye">Le test, concrètement</div>
@@ -789,8 +798,8 @@
 
         <div className="cad-ti-grid">
           <Card n="1" t="En quoi ça consiste">
-            <p>{cat.totalTests || 25} épreuves qui couvrent tout le spectre de l’hybride :</p>
-            <div className="cad-ti-tags">{FAMILIES.map(function (f) { return <span key={f}>{f}</span>; })}</div>
+            <p>{cat.totalTests || 25} épreuves{deca ? ' qui couvrent tout le spectre de l’hybride' : ''} :</p>
+            <div className="cad-ti-tags">{families.map(function (f) { return <span key={f}>{f}</span>; })}</div>
             <p>Chaque épreuve rapporte des points selon un barème ; le total donne ton score sur {cat.totalPoints || 1000}.</p>
           </Card>
           <Card n="2" t="Comment ça s’organise" wide>
@@ -802,23 +811,32 @@
             </div>
           </Card>
           <Card n="3" t="Combien de temps">
-            <div className="cad-ti-big">1 h – 1 h 30</div>
-            <p>par jour d’épreuves, échauffement compris — soit <strong>10 à 13 h au total</strong> sur les {days.length || 12} jours.</p>
+            <div className="cad-ti-big">{pres ? pres.perDay : '1 h – 1 h 30'}</div>
+            <p>par jour d’épreuves, échauffement compris — soit <strong>{pres ? pres.total.replace(/ sur \d+ jours$/, '') : '10 à 13 h au total'}</strong> sur les {days.length || 12} jours.</p>
           </Card>
           <Card n="4" t="Pour qui">
-            <p>Des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — ce n’est pas un test pour débuter.</p>
-            <p><strong>18 à 80 ans</strong>, hommes et femmes, avec un barème <strong>général</strong> ou <strong>ajusté à l’âge</strong>, au choix.</p>
+            {deca || !pres ? (
+              <div>
+                <p>Des <strong>pratiquants réguliers ayant déjà un certain niveau</strong> — ce n’est pas un test pour débuter.</p>
+                <p><strong>18 à 80 ans</strong>, hommes et femmes, avec un barème <strong>général</strong> ou <strong>ajusté à l’âge</strong>, au choix.</p>
+              </div>
+            ) : (
+              <div>
+                <p>{pres.forWho}</p>
+                <p><strong>{pres.audienceLabel}</strong>.</p>
+              </div>
+            )}
           </Card>
           <Card n="5" t="Le matériel">
-            <p>Pas besoin de tout avoir chez soi : <strong>une salle, une piste, une piscine</strong>.</p>
+            {deca ? <p>Pas besoin de tout avoir chez soi : <strong>une salle, une piste, une piscine</strong>.</p> : <p>Peu de matériel : voici ce qu’il faut prévoir.</p>}
             <div className="cad-ti-gear">
-              {GEAR.map(function (g) {
+              {gear.map(function (g) {
                 return <div key={g.k}><small>{g.k}</small><ul>{g.items.map(function (it) { return <li key={it}>{it}</li>; })}</ul></div>;
               })}
             </div>
           </Card>
           <Card n="6" t="Quand et tous les combien">
-            <p><strong>Une fois par an</strong> — ou <strong>deux fois par an, espacées de 6 mois</strong>, pour un suivi plus serré.</p>
+            <p>{pres && !deca ? <strong>{pres.frequency}</strong> : <span><strong>Une fois par an</strong> — ou <strong>deux fois par an, espacées de 6 mois</strong>, pour un suivi plus serré.</span>}</p>
             <p>Et <strong>toujours à la même période</strong> : c’est la seule façon de comparer ce qui est comparable d’une année sur l’autre.</p>
           </Card>
           <Card n="7" t="La meilleure période" wide>
@@ -829,20 +847,31 @@
           </Card>
           <Card n="8" t="Les qualités mesurées">
             <div className="cad-ti-tags is-q">{quals.map(function (q) { return <span key={q.key}>{q.label === 'VO2max' ? 'VO₂max' : q.label}</span>; })}</div>
-            <p>Le détail (agilité, endurance de force…) est dans l’onglet Qualités.</p>
+            <p>{deca ? 'Le détail (agilité, endurance de force…) est dans l’onglet Qualités.' : 'Le détail est dans l’onglet Qualités.'}</p>
           </Card>
         </div>
 
-        {window.CadFieldMap ? <window.CadFieldMap catalog={cat} /> : null}
+        {deca && window.CadFieldMap ? <window.CadFieldMap catalog={cat} /> : null}
 
         <div className="cad-ti-score">
           <div className="cad-ti-n">9</div>
           <h3 className="cad-ti-h">Comment lire ton score</h3>
+          {deca ? (
+            <div>
           <div className="cad-ti-score-t">Ce test note sévèrement. C’est voulu.</div>
           <p>Un score de <strong>400 / 1000</strong> peut sembler, à première vue, en dessous de la moyenne. Ce n’est pas le cas : avec 400, <strong>tu es au-dessus du niveau physique moyen de la population</strong> — en France comme ailleurs dans le monde.</p>
           <p>Decaform ne te compare pas à la moyenne d’aujourd’hui, parce que cette moyenne est <strong>mauvaise — très mauvaise</strong> — et qu’elle se dégrade <strong>année après année</strong>. Bientôt, monter 10 étages à 30 ans suffira pour être au-dessus de la moyenne.</p>
           <p className="cad-ti-punch">Decaform te note par rapport à ce que le niveau physique d’un être humain devrait être.</p>
-          <LevelScale cat={cat} />
+            </div>
+          ) : (
+            <div>
+              <div className="cad-ti-score-t">Un repère personnel, pas un classement.</div>
+              <p>Chaque épreuve est notée par rapport à un barème propre à ton <strong>âge</strong> et à ton <strong>sexe</strong> : le niveau « Référence » vaut <strong>60 %</strong> des points de l’épreuve, le « Maximum » <strong>100 %</strong>. Le total donne un score sur <strong>{cat.totalPoints || 1000}</strong>.</p>
+              <p>Ce qui compte, ce n’est pas le chiffre d’un jour : c’est de <strong>refaire le test chaque année</strong>, dans les mêmes conditions, et de voir ce qui progresse.</p>
+              <p className="cad-ti-punch">Le test te dit où tu en es — et par quoi commencer.</p>
+            </div>
+          )}
+          <LevelScale cat={cat} noWorld={!deca} />
         </div>
       </section>
     );

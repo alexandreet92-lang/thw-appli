@@ -6,9 +6,10 @@
 // ══════════════════════════════════════════════════════════════════
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getConfig, daysOf } from '@/lib/cadences/catalog'
+import { getConfig, daysOf, qualityShare } from '@/lib/cadences/catalog'
 import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, warmupForTest } from '@/lib/cadences/protocols'
 import { LEVEL_COLORS } from '@/lib/cadences/palette'
+import { presentationOf } from '@/lib/cadences/presentations'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -78,6 +79,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     echauffement: ECHAUFFEMENT_GENERAL,
     hyroxThrusterKg: HYROX_THRUSTER_KG,
     qualities: CONFIG.qualities,
+    presentation: presentationOf(CONFIG.test_key ?? 'decaform'),
+    qualityShare: qualityShare(CONFIG),
     levels: CONFIG.levels,
     palette: LEVEL_COLORS,
   })

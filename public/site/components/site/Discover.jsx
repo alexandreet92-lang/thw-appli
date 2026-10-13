@@ -138,6 +138,13 @@ function Discover() {
             </div>
           </section>
 
+          {/* ─── Les tests : une batterie par âge ─── */}
+          <section id="tests" className="section" style={{ paddingTop: 54, paddingBottom: 10 }}>
+            <div className="st-reveal">
+              {window.CadTestsSection ? <window.CadTestsSection /> : null}
+            </div>
+          </section>
+
           {/* ─── Coach IA en direct ─── */}
           <section className="section" style={{ paddingTop: 64, paddingBottom: 30 }}>
             <CoachLive />

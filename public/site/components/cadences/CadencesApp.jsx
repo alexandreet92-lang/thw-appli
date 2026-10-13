@@ -600,7 +600,11 @@
     var md = React.useState('general'); var mode = md[0], setMode = md[1];
     var er = React.useState(null); var error = er[0], setError = er[1];
     var coS = React.useState(false); var crossOrigin = coS[0], setCrossOrigin = coS[1];
-    var appTestUrl = APP_URL + '/site/cadences.html';
+    // Test demandé par l'adresse (cadences.html?test=kids_8_10) — Decaform par défaut.
+    var wanted = (function () {
+      try { var t = new URLSearchParams(window.location.search).get('test'); return t && /^[a-z0-9_]+$/.test(t) ? t : null; } catch (e) { return null; }
+    })();
+    var appTestUrl = APP_URL + '/site/cadences.html' + (wanted ? '?test=' + wanted : '');
 
     // Catalogue (public) — sonde same-origin, sinon cross-origin vers l'app.
     // Délai de garde + bouton Réessayer (plus de « Loading » infini).
@@ -611,10 +615,10 @@
     }
     function loadCatalog() {
       setError(null);
-      fetchCatalog('')
+      fetchCatalog('', wanted)
         .then(function (j) { API_BASE = ''; setCrossOrigin(false); setCatalog(j); })
         .catch(function () {
-          fetchCatalog(APP_URL)
+          fetchCatalog(APP_URL, wanted)
             .then(function (j) { API_BASE = APP_URL; setCrossOrigin(true); setCatalog(j); })
             .catch(function () { setError('Le serveur n’a pas répondu. Vérifie ta connexion, puis réessaie.'); });
         });
@@ -683,7 +687,7 @@
 
     var body;
     if (view === 'start') {
-      body = <CadStart catalog={catalog} fetchProductCatalog={fetchProductCatalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
+      body = <CadStart catalog={catalog} preferredKey={wanted} fetchProductCatalog={fetchProductCatalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
     } else if (view === 'test' && report) {
       body = <CadTest catalog={catalog} report={report} mode={mode} setMode={setMode} reload={reload}
                       onHome={function () { setView('intro'); }}
@@ -731,6 +735,10 @@
     var enCours = (props.campaigns || []).filter(function (c) { return c.status === 'in_progress'; })[0];
     var terminees = (props.campaigns || []).filter(function (c) { return c.status === 'completed'; });
     var tb = React.useState('apercu'); var tab = tb[0], setTab = tb[1];
+    var pres = cat.presentation || null;
+    var deca = !cat.testKey || cat.testKey === 'decaform';
+    var ageText = cat.age ? (cat.age.min >= 65 ? cat.age.min + ' ans et +' : cat.age.min + (cat.age.max === cat.age.min ? '' : '–' + cat.age.max) + ' ans') : '';
+    var here = 'cadences.html' + (deca ? '' : '?test=' + (cat.testKey || ''));
 
     function makeCta() {
       return props.crossOrigin
@@ -739,7 +747,7 @@
           ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={function () { props.onResume(enCours.id); }}>Reprendre le test →</button>
           : props.loggedIn
             ? <button type="button" className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} onClick={props.onStart}>Démarrer le test</button>
-            : <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent('cadences.html')}>Se connecter pour passer le test</a>;
+            : <a className="thw-btn-primary" style={{ fontSize: 15, padding: '13px 22px' }} href={'compte.html?next=' + encodeURIComponent(here)}>Se connecter pour passer le test</a>;
     }
 
     function panel() {
@@ -754,13 +762,14 @@
     return (
       <div>
         <div className="cad-hero">
-          <div className="t-label" style={{ color: 'var(--brand)' }}>Test de condition générale</div>
-          <h1 className="t-display" style={{ margin: '10px 0 0' }}>Decaform</h1>
+          <a className="cad-link" href="tests.html" style={{ display: 'inline-block', marginBottom: 12 }}>← Tous les tests</a>
+          <div className="t-label" style={{ color: 'var(--brand)' }}>{deca ? 'Test de condition générale' : (pres && pres.audienceLabel) || ''}</div>
+          <h1 className="t-display" style={{ margin: '10px 0 0' }}>{cat.title || 'Decaform'}</h1>
           <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, lineHeight: 1.4, margin: '14px 0 0', color: 'var(--text)', maxWidth: 640 }}>
-            Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.
+            {(pres && pres.tagline) || 'Mesurez vraiment où vous en êtes, physiquement — et suivez vos progrès chaque année.'}
           </p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.6, margin: '12px 0 0', color: 'var(--text-mid)', maxWidth: 640 }}>
-            {cat.totalTests} épreuves · 12 jours · score sur {cat.totalPoints} · 7 qualités · double notation : barème général et ajusté à l'âge · 18 à 80 ans.
+            {cat.totalTests} épreuves · {(cat.days || []).length} jours · score sur {cat.totalPoints} · {(cat.qualities || []).length} qualités · {deca ? 'double notation : barème général et ajusté à l’âge · 18 à 80 ans.' : 'barème général et ajusté à l’âge · ' + ageText + '.'}
           </p>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {makeCta()}
@@ -768,9 +777,11 @@
           </div>
         </div>
 
-        <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Pourquoi ce test, et en quoi il consiste</div>
+        {deca ? <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Pourquoi ce test, et en quoi il consiste</div> : null}
 
-        {window.CadManifesto ? <window.CadManifesto catalog={cat} makeCta={makeCta} /> : null}
+        {deca
+          ? (window.CadManifesto ? <window.CadManifesto catalog={cat} makeCta={makeCta} /> : null)
+          : (window.CadTestIntro ? <div style={{ marginTop: 28 }}><window.CadTestIntro catalog={cat} /><div style={{ marginTop: 22 }}>{makeCta()}</div></div> : null)}
 
         <nav className="cad-tabs" aria-label="Sections">
           {CAD_TABS.map(function (t) {
@@ -846,6 +857,12 @@
 
   function CadStart(props) {
     var cat0 = props.catalog;
+    // Le test choisi sur la page est gardé si l'âge y entre ; sinon, le test de l'âge (avec un message).
+    function pickKey(a) {
+      var pk = props.preferredKey;
+      if (pk && (cat0.testKey || 'decaform') === pk && cat0.age && a >= cat0.age.min && a <= cat0.age.max) return pk;
+      return cadTestKeyForAge(a);
+    }
     var pc = React.useState(props.catalog); var prodCat = pc[0], setProdCat = pc[1];
     var cat = prodCat || cat0;
     var st = React.useState(1); var step = st[0], setStep = st[1];
@@ -858,6 +875,7 @@
     var cs = React.useState(false); var consent = cs[0], setConsent = cs[1];
     var bz = React.useState(false); var busy = bz[0], setBusy = bz[1];
     var er = React.useState(null); var err = er[0], setErr = er[1];
+    var nt = React.useState(null); var note = nt[0], setNote = nt[1];
     var month = new Date(start + 'T12:00:00').getMonth();
     var goodMonth = month === 3 || month === 4 || month === 8 || month === 9;
 
@@ -869,7 +887,9 @@
         if (!isFinite(a) || a < 8 || a > 100) return setErr('Âge requis (8 à 100 ans).');
         if (!isFinite(p) || p < 12 || p > 250) return setErr('Poids de corps requis (12 à 250 kg).');
         // Catalogue du produit correspondant à l'âge (titre, jours, épreuves).
-        var tk = cadTestKeyForAge(a);
+        var tk = pickKey(a);
+        setNote(props.preferredKey && tk !== props.preferredKey && (cat0.testKey || 'decaform') === props.preferredKey
+          ? 'Ce test est prévu pour ' + cat0.age.min + '–' + cat0.age.max + ' ans. Pour ton âge, on te propose le bon test automatiquement.' : null);
         if (tk !== (cat.testKey || 'decaform') && props.fetchProductCatalog) {
           props.fetchProductCatalog(tk).then(function (j) { setProdCat(j); }).catch(function () {});
         } else if (tk === 'decaform' && (cat.testKey && cat.testKey !== 'decaform')) {
@@ -883,7 +903,7 @@
       setErr(null);
       if (!warned) return setErr('Coche la case « J’ai lu les avertissements » pour démarrer.');
       setBusy(true);
-      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: cadTestKeyForAge(Number(age)), sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
+      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: pickKey(Number(age)), sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { setErr((res.j && res.j.erreur) || 'Impossible de démarrer.'); setBusy(false); return; }
@@ -928,11 +948,12 @@
           {step === 2 ? (
             <div style={{ display: 'grid', gap: 18 }}>
               <div>
+                {note ? <div className="cad-err" role="status" style={{ marginBottom: 10 }}>{note}</div> : null}
                 <h3 className="cad-h3">Préparer tes {cat.days.length} jours</h3>
                 <p className="cad-p" style={{ margin: 0 }}>Vérifie ton matériel, puis choisis la date du jour 1 : le calendrier se cale dessus.</p>
               </div>
               <div className="cad-wiz-gear">
-                {GEAR_LIST.map(function (g) {
+                {((cat.testKey && cat.testKey !== 'decaform' && cat.presentation && cat.presentation.gear) || GEAR_LIST).map(function (g) {
                   return (
                     <div key={g.k}>
                       <div className="cad-ec-h">{g.k}</div>

@@ -42,6 +42,21 @@
   ];
   // Libellé + classe du badge selon l'état d'une qualité.
   var QSTATE = { mesuree: { label: 'mesurée', cls: ' is-in' }, sollicitee: { label: 'sollicitée', cls: ' is-work' }, hors: { label: 'hors test', cls: '' } };
+  // Les états « mesurée / sollicitée » du glossaire décrivent Decaform ; les autres batteries n'affichent que les définitions.
+  // « 8-8 » → « 8 ans » ; « 85-100 » → « 85 ans et + » ; sinon « 21–25 ans ».
+  function bandLabel(b) {
+    var m = String(b).split('-');
+    if (m.length === 2 && m[0] === m[1]) return m[0] + ' ans';
+    if (m.length === 2 && Number(m[1]) >= 100) return m[0] + ' ans et +';
+    return m.join('–') + ' ans';
+  }
+  // Barème « général » : calé sur 21–35 ans pour les adultes ; pour les jeunes et les seniors, c'est le barème sans correction d'âge.
+  function generalLabel(c) {
+    var b = (c.age && c.age.bands && c.age.bands[0]) || '';
+    var lo = Number(String(b).split('-')[0]);
+    return lo >= 18 && lo < 65 ? 'Général (21–35 ans)' : 'Général (sans correction)';
+  }
+  function isDeca(c) { return !c || !c.testKey || c.testKey === 'decaform'; }
   function qstate(q) { return QSTATE[q.state] || QSTATE.hors; }
 
   function levelColor(palette, level) { return (palette && palette[level]) || '#9ca3af'; }
@@ -159,9 +174,9 @@
       <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
         <div className="cad-stats">
           <Stat n={catalog.totalTests} l="épreuves" />
-          <Stat n="12" l="jours" />
+          <Stat n={catalog.days.length} l="jours" />
           <Stat n={catalog.totalPoints} l="points de réf." />
-          <Stat n="7" l="qualités" />
+          <Stat n={catalog.qualities.length} l="qualités" />
         </div>
         <div className="cad-card" style={{ position: 'relative' }}>
           <span className="cad-badge-ex">Exemple</span>
@@ -260,7 +275,7 @@
     var autres = QUALITY_GLOSSARY.filter(function (q) { return !q.principal; });
     return (
       <section className="cad-section">
-        <SectionTitle kicker="Ce qu'on mesure" sub="Le score lit 7 qualités. Chacune pèse un certain nombre de points, et chaque épreuve en mesure plusieurs à la fois.">Les qualités physiques</SectionTitle>
+        <SectionTitle kicker="Ce qu'on mesure" sub={'Le score lit ' + catalog.qualities.length + ' qualités. Chacune pèse un certain nombre de points, et chaque épreuve en mesure plusieurs à la fois.'}>Les qualités physiques</SectionTitle>
         <QualityTiles catalog={catalog} />
 
         <div className="cad-card" style={{ marginTop: 'var(--space-5)' }}>
@@ -275,8 +290,8 @@
             var st = qstate(q);
             return (
               <div key={q.t} className="cad-gl-card">
-                <div className="cad-gl-h"><b>{q.t}</b><span className={'cad-gl-tag' + st.cls}>{st.label}</span></div>
-                <p>{q.d}{q.how ? ' ' + q.how : ''}</p>
+                <div className="cad-gl-h"><b>{q.t}</b>{isDeca(catalog) ? <span className={'cad-gl-tag' + st.cls}>{st.label}</span> : null}</div>
+                <p>{q.d}{isDeca(catalog) && q.how ? ' ' + q.how : ''}</p>
               </div>
             );
           })}
@@ -287,10 +302,10 @@
             var st = qstate(q);
             return (
               <div key={q.t} className="cad-gl-row">
-                <span className={'cad-gl-dot' + st.cls}></span>
+                <span className={'cad-gl-dot' + (isDeca(catalog) ? st.cls : '')}></span>
                 <b>{q.t}</b>
-                <span className="cad-gl-d">{q.d}{q.how ? ' ' + q.how : ''}</span>
-                <span className={'cad-gl-tag' + st.cls}>{st.label}</span>
+                <span className="cad-gl-d">{q.d}{isDeca(catalog) && q.how ? ' ' + q.how : ''}</span>
+                {isDeca(catalog) ? <span className={'cad-gl-tag' + st.cls}>{st.label}</span> : null}
               </div>
             );
           })}
@@ -382,7 +397,7 @@
     function go(d) { setDay(d.day); var el = document.getElementById('cad-proto-top'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     return (
       <section className="cad-section" id="cad-proto-top">
-        <SectionTitle kicker="Le déroulé" sub="Un protocole fixe sur 12 jours, à refaire à l'identique chaque année. Choisis un jour : son échauffement, son matériel, puis chaque épreuve avec son schéma et son barème.">Le protocole, jour par jour</SectionTitle>
+        <SectionTitle kicker="Le déroulé" sub={'Un protocole fixe sur ' + catalog.days.length + ' jours, à refaire à l’identique chaque année. Choisis un jour : son échauffement, son matériel, puis chaque épreuve avec son schéma et son barème.'}>Le protocole, jour par jour</SectionTitle>
         <div className="cad-pdays">
           {catalog.days.map(function (d) {
             return (
@@ -397,7 +412,7 @@
           <div className="cad-dayhead-t">
             <span>Jour {cur.day}</span>
             <h3>{cur.label}</h3>
-            <div className="cad-ep-meta"><span>{tests.length} épreuve{tests.length > 1 ? 's' : ''}</span><span>1 h – 1 h 30 avec l’échauffement</span><span>{tests.reduce(function (a, t) { return a + t.pts_max; }, 0)} pts en jeu</span></div>
+            <div className="cad-ep-meta"><span>{tests.length} épreuve{tests.length > 1 ? 's' : ''}</span><span>{(catalog.presentation && !isDeca(catalog) ? catalog.presentation.perDay : '1 h – 1 h 30')} avec l’échauffement</span><span>{tests.reduce(function (a, t) { return a + t.pts_max; }, 0)} pts en jeu</span></div>
           </div>
           <div className="cad-dayhead-g">
             <div>
@@ -412,7 +427,7 @@
                 </div>
               );
             })}
-            <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Règles communes : {catalog.echauffement}</p>
+            {isDeca(catalog) ? <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Règles communes : {catalog.echauffement}</p> : null}
           </div>
         </div>
         <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
@@ -502,7 +517,7 @@
                 var pf = catalog.age.pf[bd]; var on = bd === band;
                 return (
                   <React.Fragment key={bd}>
-                    <div className={'cad-heat-b' + (on ? ' is-on' : '')}>{bd}</div>
+                    <div className={'cad-heat-b' + (on ? ' is-on' : '')}>{bandLabel(bd).replace(' ans', '')}</div>
                     {catalog.qualities.map(function (q) {
                       var v = pf[q.key];
                       return <div key={q.key} className={'cad-heat-c' + (on ? ' is-on' : '')} style={{ background: hexA('#00c8e0', 0.08 + (1 - v) * 1.1), color: v < 0.7 ? '#fff' : 'var(--text-mid)' }}>{v.toFixed(2)}</div>;
@@ -515,7 +530,7 @@
         </div>
 
         <div className="cad-two" style={{ marginTop: 'var(--space-4)' }}>
-          <div className="cad-card">
+          {equip.length ? <div className="cad-card">
             <h3 className="cad-h3">Corrections d’équipement</h3>
             <p className="cad-p">Base : chaussures normales, sans ceinture. Sinon, le résultat est ramené à cette base :</p>
             <div className="cad-ti-tags">
@@ -524,8 +539,8 @@
                 return <span key={t.slug}>{t.name.replace(/\s*\(.*\)$/, '')} · {t.equipment.applies_when} {sign}{Math.round(t.equipment.pct * 100)} %</span>;
               })}
             </div>
-          </div>
-          <div className="cad-card">
+          </div> : null}
+          {catalog.tests.some(function (t) { return t.slug === 'hyrox_circuit'; }) ? <div className="cad-card">
             <h3 className="cad-h3">Charges Hyrox — thrusters</h3>
             <p className="cad-p">Selon le poids de corps. Burpees box jump : box 60 cm (H) / 40 cm (F), 12 par tour.</p>
             <div className="cad-two">
@@ -544,7 +559,7 @@
                 );
               })}
             </div>
-          </div>
+          </div> : null}
         </div>
       </section>
     );
@@ -598,8 +613,8 @@
           </select>
           {bands.length ? (
             <select className="cad-select" value={band} onChange={function (e) { setBand(e.target.value); setVal(null); }} aria-label="Catégorie d’âge">
-              <option value="general">Général (21–35 ans)</option>
-              {bands.map(function (x) { return <option key={x} value={x}>{x.replace('-', '–') + ' ans'}</option>; })}
+              <option value="general">{generalLabel(cat)}</option>
+              {bands.map(function (x) { return <option key={x} value={x}>{bandLabel(x)}</option>; })}
             </select>
           ) : null}
           <div className="cad-seg">
@@ -620,7 +635,7 @@
           <div><em>Ton résultat</em><b>{fmtThreshold(t, v)}</b></div>
           <div><em>Pourcentage</em><b>{Math.round(pct * 100)} %</b></div>
           <div><em>Points</em><b>{fr1(pts)} <small>/ {t.pts_max}</small></b></div>
-          <div><em>{band === 'general' ? 'Niveau' : 'Niveau · ' + band.replace('-', '–') + ' ans'}</em><b className="is-lvl" style={{ color: col }}>{lvl}</b></div>
+          <div><em>{band === 'general' ? 'Niveau' : 'Niveau · ' + bandLabel(band)}</em><b className="is-lvl" style={{ color: col }}>{lvl}</b></div>
         </div>
         {band !== 'general' ? (
           <p className="cad-p" style={{ margin: '10px 0 0', fontSize: 12.5 }}>
@@ -643,7 +658,7 @@
     var STEPS = [
       { n: '1', t: 'Ton résultat', d: 'Temps, distance, charge (ramenée à ton poids de corps) ou watts.' },
       { n: '2', t: 'Un pourcentage', d: 'Référence = 60 %, Maximum = 100 %. Linéaire entre les deux, sans plafond au-dessus, jusqu’à 0 en dessous.' },
-      { n: '3', t: 'Des points', d: '% × points de l’épreuve. Exemple : 400 m à 100 % → ' + ((catalog.tests.filter(function (t) { return t.slug === 'run_400m'; })[0] || { pts_max: 80 }).pts_max) + ' pts.' },
+      { n: '3', t: 'Des points', d: '% × points de l’épreuve. Exemple : ' + ((catalog.tests.filter(function (t) { return t.slug === 'run_400m'; })[0]) ? '400 m' : (catalog.tests[0] ? catalog.tests[0].name.replace(/\s*\(.*\)$/, '') : 'une épreuve')) + ' à 100 % → ' + ((catalog.tests.filter(function (t) { return t.slug === 'run_400m'; })[0] || catalog.tests[0] || { pts_max: 80 }).pts_max) + ' pts.' },
       { n: '4', t: 'Un total sur ' + catalog.totalPoints, d: 'La somme des ' + (catalog.totalTests || 25) + ' épreuves. On peut dépasser ' + catalog.totalPoints + '.' },
       { n: '5', t: 'Un niveau', d: 'Sédentaire → Extraterrestre, posé sur le total et sur chaque qualité.' },
     ];
@@ -670,11 +685,11 @@
             ) : null}
             <div className="cad-card">
               <h3 className="cad-h3">Général ou ajusté à l’âge</h3>
-              <p className="cad-p">Le barème <strong>général</strong> est calé sur 21–35 ans. Le barème <strong>ajusté à l’âge</strong> assouplit les repères selon ta tranche (voir les coefficients dans « Barèmes ») — beaucoup moins sur les efforts très courts. Tu bascules entre les deux sur tes résultats.</p>
+              <p className="cad-p">Le barème <strong>général</strong> {isDeca(catalog) || (catalog.age.bands[0] && Number(catalog.age.bands[0].split('-')[0]) >= 18 && Number(catalog.age.bands[0].split('-')[0]) < 65) ? 'est calé sur 21–35 ans.' : 'n’applique aucune correction d’âge.'} Le barème <strong>ajusté à l’âge</strong> assouplit les repères selon ta tranche (voir les coefficients dans « Barèmes ») — beaucoup moins sur les efforts très courts. Tu bascules entre les deux sur tes résultats.</p>
             </div>
             <div className="cad-card">
               <h3 className="cad-h3">Pourquoi retester</h3>
-              <p className="cad-p" style={{ margin: 0 }}>Le même enchaînement, chaque année — idéalement à la même période (<strong>avril, mai, septembre ou octobre</strong>) — rend tes scores <strong>comparables</strong>. La fatigue accumulée sur les 12 jours fait partie du test : récupérer vite est une qualité.</p>
+              <p className="cad-p" style={{ margin: 0 }}>Le même enchaînement, chaque année — idéalement à la même période (<strong>avril, mai, septembre ou octobre</strong>) — rend tes scores <strong>comparables</strong>. La fatigue accumulée sur les {catalog.days.length} jours fait partie du test : récupérer vite est une qualité.</p>
             </div>
           </div>
         </div>
@@ -684,11 +699,15 @@
 
   // ── Avertissements & limites ────────────────────────────────────────
   function warnings(catalog) {
+    var deca = isDeca(catalog);
+    var safety = catalog.presentation && catalog.presentation.safety;
     var W = [
-      { t: 'Avis médical conseillé', d: 'Decaform demande des efforts intenses et maximaux. Consulte un médecin avant de tester, surtout après 40 ans ou en cas d’antécédent.' },
+      { t: 'Avis médical conseillé', d: safety || 'Decaform demande des efforts intenses et maximaux. Consulte un médecin avant de tester, surtout après 40 ans ou en cas d’antécédent.' },
       { t: 'Pas un diagnostic', d: 'C’est un test de condition physique, pas un examen médical ni une prescription.' },
-      { t: 'Pour des pratiquants réguliers', d: 'Conçu pour des personnes qui s’entraînent déjà, avec un certain niveau — pas pour débuter.' },
-      { t: 'Barèmes d’âge estimés', d: 'Les coefficients par âge sont des estimations (littérature masters), calibrées pour des pratiquants réguliers, à affiner avec de vraies données.' },
+      deca
+        ? { t: 'Pour des pratiquants réguliers', d: 'Conçu pour des personnes qui s’entraînent déjà, avec un certain niveau — pas pour débuter.' }
+        : { t: 'Pour qui', d: (catalog.presentation && catalog.presentation.forWho) || 'Ce test est adapté à une tranche d’âge précise : vérifie que c’est la tienne.' },
+      { t: 'Barèmes estimés', d: deca ? 'Les coefficients par âge sont des estimations (littérature masters), calibrées pour des pratiquants réguliers, à affiner avec de vraies données.' : 'Les barèmes s’appuient sur des tests de terrain publiés, adaptés à cette tranche d’âge ; certains repères sont des estimations, à affiner avec de vraies données.' },
       { t: 'Arrête si ça ne va pas', d: 'Douleur, malaise, vertige : on stoppe l’épreuve. La technique passe toujours avant la charge ou le chrono.' },
     ];
     return (

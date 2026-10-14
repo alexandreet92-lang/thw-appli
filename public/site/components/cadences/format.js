@@ -56,20 +56,20 @@
   function derivedData(test, rawValue, bodyWeightKg) {
     var out = [];
     if (test.kind === 'ratio' && test.unit === 'kg' && bodyWeightKg > 0) {
-      out.push({ label: 'Ratio au poids de corps', value: round(rawValue / bodyWeightKg, 2) + '×' });
+      out.push({ label: 'Ratio au poids de corps', value: frNum(rawValue / bodyWeightKg, 2) + '×' });
       var reps = test.slug.indexOf('2rm') !== -1 ? 2 : 3;
       var oneRm = rawValue * (1 + reps / 30);
-      out.push({ label: '1RM estimé (Epley)', value: round(oneRm, 1) + ' kg' });
+      out.push({ label: '1RM estimé (Epley)', value: frNum(oneRm, 1) + ' kg' });
     }
     if (test.slug === 'bike_20min' && bodyWeightKg > 0) {
       var wkg = rawValue / bodyWeightKg;
-      out.push({ label: 'Puissance', value: round(wkg, 2) + ' W/kg' });
-      out.push({ label: 'FTP estimée (95 %)', value: Math.round(rawValue * 0.95) + ' W · ' + round(wkg * 0.95, 2) + ' W/kg' });
+      out.push({ label: 'Puissance', value: frNum(wkg, 2) + ' W/kg' });
+      out.push({ label: 'FTP estimée (95 %)', value: Math.round(rawValue * 0.95) + ' W · ' + frNum(wkg * 0.95, 2) + ' W/kg' });
     }
     var dist = DISTANCE_M[test.slug];
     if (dist && test.unit === 's' && rawValue > 0) {
       var speed = dist / rawValue;
-      out.push({ label: 'Vitesse moyenne', value: round(speed, 2) + ' m/s · ' + round(speed * 3.6, 1) + ' km/h' });
+      out.push({ label: 'Vitesse moyenne', value: frNum(speed, 2) + ' m/s · ' + frNum(speed * 3.6, 1) + ' km/h' });
       var perKm = rawValue / (dist / 1000);
       if (dist >= 400) out.push({ label: 'Allure', value: formatDuration(perKm) + ' / km' });
       if (SWIM[test.slug]) out.push({ label: 'Allure', value: formatDuration(rawValue / (dist / 100)) + ' / 100 m' });

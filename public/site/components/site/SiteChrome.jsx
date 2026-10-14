@@ -198,7 +198,7 @@ function SiteHeader(props) {
             {navLinks.map(function (l) {
               return (
                 <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
-                   style={l.key === active ? { color: 'var(--text)' } : null}>
+                   style={l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
                   {l.label}
                 </a>
               );

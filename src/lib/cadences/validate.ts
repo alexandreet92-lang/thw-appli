@@ -125,7 +125,29 @@ const totalPts = cfg12.tests.reduce((n, t) => n + t.pts_max, 0)
 if (totalPts === cfg12.total_points) console.log(`  ✓ ${cfg12.tests.length} épreuves, ${totalPts} points, pondérations = 1, facteurs d'âge complets`)
 else { console.error(`  ✗ total de points ${totalPts} ≠ ${cfg12.total_points}`); failures++ }
 const emPts = cfg12.tests.reduce((n, t) => n + t.pts_max * (t.weights.endurance_musculaire ?? 0), 0)
-console.log(`  · endurance musculaire : ${emPts.toFixed(1)} pts (AMRAP, Hyrox, dead hang)`)
+console.log(`  · endurance musculaire : ${emPts.toFixed(1)} pts (circuit Hyrox, dead hang)`)
+
+// ── Decaform v1.2 : Hyrox continu (remplace l'AMRAP et le circuit en 5 tours) ──
+console.log('\nv1.2 — Hyrox continu')
+if (!cfg12.tests.some((t) => t.slug === 'amrap_20min' || t.slug === 'hyrox_circuit')) console.log('  ✓ plus d’AMRAP ni de circuit en 5 tours dans la v1.2')
+else { console.error('  ✗ amrap_20min ou hyrox_circuit encore présent dans la v1.2'); failures++ }
+const hx = t12('hyrox_continu')
+if (hx.pts_max === 140 && hx.attempts === 7 && hx.aggregate === 'sum') console.log('  ✓ hyrox_continu : 140 pts, 7 stations, temps additionnés')
+else { console.error('  ✗ hyrox_continu : paramètres inattendus'); failures++ }
+for (const [label, sex, v, pct] of [
+  ['Hyrox continu homme = Réf (37 min)', 'M', 2220, 0.6], ['Hyrox continu homme = Max (25 min 50 s)', 'M', 1550, 1],
+  ['Hyrox continu femme = Réf (40 min)', 'F', 2400, 0.6], ['Hyrox continu femme = Max (28 min 20 s)', 'F', 1700, 1],
+] as [string, 'M' | 'F', number, number][]) {
+  const s = computeTest(hx, { slug: 'hyrox_continu', value: v }, { sex, bodyWeightKg: 72, ageBand: '21-35' }, 'general', cfg12)
+  if (s && near(s.pct, pct, 1e-9, label)) console.log(`  ✓ ${label} → ${(s.pct * 100).toFixed(1)} %`)
+  else if (!s) { console.error(`  ✗ ${label} : non calculé`); failures++ }
+}
+// Tractions à l'élastique : +5 % sur le temps (2 000 s à l'élastique = 2 100 s en tractions strictes).
+const hxE = computeTest(hx, { slug: 'hyrox_continu', value: 2000, equipment: 'elastique' }, P20, 'general', cfg12)
+const hxS = computeTest(hx, { slug: 'hyrox_continu', value: 2100 }, P20, 'general', cfg12)
+if (hxE && hxS && near(hxE.pct, hxS.pct, 1e-9, 'Hyrox continu : tractions à l’élastique = +5 %')) console.log('  ✓ tractions à l’élastique : +5 % sur le temps')
+if (cfg12.max_days === 15 && cfg12.days?.find((d) => d.day === 8)?.rest === true) console.log('  ✓ max_days = 15, jour 8 = repos')
+else { console.error('  ✗ max_days ou jour 8 inattendu'); failures++ }
 
 console.log(`\nÉcarts max — pct: ${maxPct.toFixed(6)} · points: ${maxPts.toFixed(6)} · total: ${maxTotal.toFixed(6)} · qualité pct: ${maxQPct.toFixed(6)}`)
 if (failures === 0) {

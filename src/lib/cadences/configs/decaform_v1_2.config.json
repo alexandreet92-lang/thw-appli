@@ -41,8 +41,8 @@
     },
     {
       "day": 8,
-      "label": "AMRAP",
-      "rest": false
+      "label": "Repos",
+      "rest": true
     },
     {
       "day": 9,
@@ -698,35 +698,6 @@
       "age_time_exponent": 0.7
     },
     {
-      "slug": "amrap_20min",
-      "group": "AMRAP",
-      "name": "Tours en 20 min (5 tractions / 10 pompes / 20 squats)",
-      "unit": "tours",
-      "direction": "higher_is_better",
-      "kind": "abs",
-      "pts_max": 60,
-      "male": {
-        "ref": 15,
-        "max": 28
-      },
-      "female": {
-        "ref": 11,
-        "max": 22
-      },
-      "weights": {
-        "vitesse": 0,
-        "force": 0.15,
-        "puissance": 0.05,
-        "explosivite": 0,
-        "endurance": 0.15,
-        "endurance_musculaire": 0.35,
-        "vo2max": 0.3,
-        "coordination": 0
-      },
-      "day": 8,
-      "order_in_day": 1
-    },
-    {
       "slug": "run_3200m",
       "venue": "outdoor",
       "group": "3200 m",
@@ -985,38 +956,6 @@
       "order_in_day": 1
     },
     {
-      "slug": "hyrox_circuit",
-      "group": "Hyrox",
-      "name": "Circuit 5 tours (somme des temps, hors récup)",
-      "unit": "s",
-      "direction": "lower_is_better",
-      "kind": "abs",
-      "pts_max": 80,
-      "male": {
-        "ref": 900,
-        "max": 630
-      },
-      "female": {
-        "ref": 1080,
-        "max": 750
-      },
-      "weights": {
-        "vitesse": 0,
-        "force": 0.15,
-        "puissance": 0.05,
-        "explosivite": 0,
-        "endurance": 0.15,
-        "endurance_musculaire": 0.35,
-        "vo2max": 0.25,
-        "coordination": 0.05
-      },
-      "day": 12,
-      "order_in_day": 1,
-      "age_time_exponent": 1,
-      "attempts": 5,
-      "aggregate": "sum"
-    },
-    {
       "slug": "clean_2rm",
       "group": "Haltérophilie",
       "name": "Clean (2RM)",
@@ -1135,6 +1074,45 @@
       "age_time_exponent": 0.5,
       "attempts": 3,
       "aggregate": "best"
+    },
+    {
+      "slug": "hyrox_continu",
+      "group": "Hyrox",
+      "name": "Circuit Hyrox continu (7 stations, temps total)",
+      "unit": "s",
+      "direction": "lower_is_better",
+      "kind": "abs",
+      "pts_max": 140,
+      "male": {
+        "ref": 2220,
+        "max": 1550
+      },
+      "female": {
+        "ref": 2400,
+        "max": 1700
+      },
+      "weights": {
+        "vitesse": 0,
+        "force": 0.15,
+        "puissance": 0.05,
+        "explosivite": 0,
+        "endurance": 0.15,
+        "endurance_musculaire": 0.35,
+        "vo2max": 0.25,
+        "coordination": 0.05
+      },
+      "day": 12,
+      "order_in_day": 1,
+      "equipment": {
+        "field": "tractions",
+        "applies_when": "elastique",
+        "pct": 0.05,
+        "rule": "result_x_(1+pct)"
+      },
+      "age_time_exponent": 1,
+      "attempts": 7,
+      "aggregate": "sum"
     }
-  ]
+  ],
+  "max_days": 15
 }

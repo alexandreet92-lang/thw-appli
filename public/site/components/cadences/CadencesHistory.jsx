@@ -256,7 +256,7 @@
                 {rows.map(function (e) {
                   return (
                     <tr key={e.id} onClick={function () { props.onOpen && props.onOpen(e.id); }}>
-                      <td>{frDate(e.date)} {flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}</td>
+                      <td>{frDate(e.date)} {flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}{e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hbadge is-warn" title={trw('Test étalé sur plus de {max} jours : résultats moins comparables.').replace('{max}', e.maxDays)}>{trw('⏱ {n} j').replace('{n}', e.durationDays)}</span> : null}</td>
                       <td><span className="cad-hscore" style={{ color: colorOf(e) }}>{e.score}</span> {Lcell(e.level)}</td>
                       <td><span className="cad-hscore" style={{ color: colorOfA(e) }}>{e.scoreA != null ? e.scoreA : e.score}</span> {Lcell(e.levelA || e.level)}</td>
                       <td className="num">{frNum(e.weight)} kg</td>

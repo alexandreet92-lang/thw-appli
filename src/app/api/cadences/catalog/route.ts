@@ -7,7 +7,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { getConfig, daysOf, qualityShare } from '@/lib/cadences/catalog'
-import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, warmupForTest } from '@/lib/cadences/protocols'
+import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, HYROX_LOADS_KG, warmupForTest } from '@/lib/cadences/protocols'
 import { LEVEL_COLORS } from '@/lib/cadences/palette'
 import { presentationOf } from '@/lib/cadences/presentations'
 
@@ -37,11 +37,14 @@ export async function GET(request: Request): Promise<NextResponse> {
     aggregate: t.aggregate ?? 'best',
     criteria: t.criteria ?? null,                   // [{aggregate,pts_max}] : meilleur + total des essais
     partCount: t.slug === 'amrap_20min' ? 1 : (t.attempts && t.attempts > 1 ? t.attempts : 1),
+    partLabels: PROTOCOLS[t.slug]?.stations ?? null,        // libellés des parts (stations du Hyrox continu)
+    partShare: PROTOCOLS[t.slug]?.stationShare ?? null,     // part du temps attendue par station (niveau Référence)
     equipmentField: t.equipment?.field ?? null,     // 'chaussures' | 'ceinture' | null
     rmChoice: t.rm_choice === true,                 // 3RM ou 5RM au choix (converti en équivalent 3RM)
     hasTiming: TRACK.has(t.slug),
     hasPool: SWIM.has(t.slug),
     hasVariant: t.slug === 'hyrox_circuit',
+    isHyroxContinu: t.slug === 'hyrox_continu',
     isAmrap: t.slug === 'amrap_20min',
     // Barème publié (pour les tableaux Réf/Max H/F) + corrections d'équipement.
     male: t.male,
@@ -80,6 +83,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     ),
     echauffement: ECHAUFFEMENT_GENERAL,
     hyroxThrusterKg: HYROX_THRUSTER_KG,
+    hyroxLoads: HYROX_LOADS_KG,                      // charges du Hyrox continu (thruster / fentes / soulevé de terre)
+    maxDays: CONFIG.max_days ?? null,                // durée maximale conseillée pour passer tout le test
     qualities: CONFIG.qualities,
     presentation: presentationOf(CONFIG.test_key ?? 'decaform'),
     qualityShare: qualityShare(CONFIG),

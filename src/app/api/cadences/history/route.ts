@@ -80,6 +80,24 @@ export async function GET(request: Request): Promise<NextResponse> {
     return { outdoor: true, tempC: avg, weatherLabel: uniq.slice(0, 3).join(', ') }
   }
 
+  // Durée réelle du test : premier → dernier jour de saisie (tested_on). Au-delà de
+  // `max_days` du produit, les résultats sont moins comparables (affichage d'une alerte).
+  const spanByCamp = new Map<string, { first: string; last: string }>()
+  const { data: dates } = await sb.from('cadences_results').select('campaign_id, tested_on').in('campaign_id', ids)
+  for (const r of dates ?? []) {
+    if (!r.tested_on) continue
+    const d = String(r.tested_on).slice(0, 10)
+    const c = spanByCamp.get(r.campaign_id) ?? { first: d, last: d }
+    if (d < c.first) c.first = d
+    if (d > c.last) c.last = d
+    spanByCamp.set(r.campaign_id, c)
+  }
+  const durationOf = (id: string): number | null => {
+    const c = spanByCamp.get(id)
+    if (!c) return null
+    return Math.round((Date.parse(c.last + 'T12:00:00Z') - Date.parse(c.first + 'T12:00:00Z')) / 86400000) + 1
+  }
+
   // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} } selon la config du produit.
   const mapSnap = (s: Snap | undefined, config: CadencesConfig) => {
     if (!s) return null
@@ -118,6 +136,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       tempC: cond.tempC,
       outdoor: cond.outdoor,
       weatherLabel: cond.weatherLabel,
+      durationDays: durationOf(c.id),               // jours entre la 1re et la dernière saisie
+      maxDays: config.max_days ?? null,             // durée maximale conseillée (produit)
       // Général (primaire)
       score: g.total, level: g.level, tests: g.tests, qualities: g.qualities,
       // Ajusté à l'âge

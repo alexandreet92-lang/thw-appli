@@ -38,6 +38,10 @@
     gainLine: '{points} / {max} pts',
     gapRef: 'il te manque {gap} pour atteindre la référence',
     gapMax: 'référence dépassée : il te manque {gap} pour atteindre le maximum',
+    stationsTitle: 'Ton circuit, station par station',
+    stationsIntro: 'Temps total : {total}. Chaque station est comparée à sa part habituelle du temps chez un athlète de niveau Référence : un écart positif signale une station où tu perds plus de temps que prévu.',
+    stationsSlow: 'Station qui te ralentit le plus : {name} ({share} % de ton temps, contre {exp} % attendu).',
+    stationsFast: 'Station où tu es le plus à l’aise : {name} ({share} % de ton temps, contre {exp} % attendu).',
     proofTitle: 'La preuve en chiffres',
     proofTotal: 'Total = somme des points de {n} épreuves = {total} sur {max}.',
     proofHead: 'Qualité · points · part du possible · niveau',
@@ -95,6 +99,24 @@
     else if (t.unit === 's') txt = gapTime(gap);
     else txt = F.formatValue(t, gap);
     return { toRef: toRef, text: txt };
+  }
+
+  // Épreuve en stations (Hyrox continu) : part de chaque station dans le temps total, comparée à la part attendue.
+  function stationData(cat, results) {
+    var t = (cat.tests || []).filter(function (x) { return x.partLabels && x.partShare; })[0];
+    if (!t) return null;
+    var r = (results || []).filter(function (x) { return x.test_slug === t.slug && x.status === 'validated'; })[0];
+    var parts = r && r.raw_parts;
+    if (!Array.isArray(parts) || parts.length !== t.partLabels.length) return null;
+    var vals = parts.map(Number);
+    if (vals.some(function (v) { return !isFinite(v) || v <= 0; })) return null;
+    var tot = vals.reduce(function (a, b) { return a + b; }, 0);
+    var rows = t.partLabels.map(function (lab, i) {
+      var share = vals[i] / tot, exp = t.partShare[i];
+      return { label: lab, sec: vals[i], share: share, exp: exp, diff: (share - exp) * 100, ratio: share / exp };
+    });
+    var sorted = rows.slice().sort(function (a, b) { return b.ratio - a.ratio; });
+    return { t: t, rows: rows, tot: tot, slow: sorted[0], fast: sorted[sorted.length - 1] };
   }
 
   function interpret(cat, sG, sA, camp, prev) {
@@ -242,6 +264,7 @@
     var F = window.CadencesFormat;
     if (!cat || !sG || !F) return null;
     var r = interpret(cat, sG, sA, camp, props.prev);
+    var st = stationData(cat, props.results);
     var desc = (window.CadLevelDesc || {})[sG.globalLevel] || '';
     var fr = props.frDate || function (d) { return d; };
     return (
@@ -302,6 +325,31 @@
                 );
               })}
             </div>
+          </div>
+        ) : null}
+
+        {st ? (
+          <div>
+            <h3>{T('stationsTitle')}</h3>
+            <p style={{ marginBottom: 8 }}>{T('stationsIntro', { total: F.formatDuration(st.tot, false) })}</p>
+            <p><strong>{T('stationsSlow', { name: tr(st.slow.label), share: pc(st.slow.share), exp: pc(st.slow.exp) })}</strong></p>
+            {st.fast.label !== st.slow.label ? <p style={{ marginTop: 4 }}>{T('stationsFast', { name: tr(st.fast.label), share: pc(st.fast.share), exp: pc(st.fast.exp) })}</p> : null}
+            <table className="cad-int-proof" style={{ marginTop: 10 }}>
+              <thead><tr><th>{tr('Station')}</th><th>{tr('Temps')}</th><th>{tr('Part du total')}</th><th>{tr('Attendu')}</th><th>{tr('Écart')}</th></tr></thead>
+              <tbody>
+                {st.rows.map(function (row) {
+                  return (
+                    <tr key={row.label}>
+                      <td>{tr(row.label)}</td>
+                      <td>{F.formatDuration(row.sec, false)}</td>
+                      <td>{pc(row.share)} %</td>
+                      <td>{pc(row.exp)} %</td>
+                      <td style={{ color: row.diff > 1 ? '#d97706' : row.diff < -1 ? '#16a34a' : 'var(--text-mid)' }}>{signed(row.diff)} {tr('pts')}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : null}
 

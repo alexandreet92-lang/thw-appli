@@ -66,12 +66,12 @@ function DownloadSection() {
 }
 
 var DISC_TICKER = ['Course à pied', 'Vélo', 'Trail', 'Triathlon', 'Hyrox', 'Natation', 'Musculation', 'Aviron',
-  'Coach IA · 7 agents', 'Decaform · 25 épreuves', 'Charge · CTL / ATL / TSB', 'Variabilité cardiaque & sommeil',
+  'Coach IA · 7 agents', 'Decaform · 24 épreuves', 'Charge · CTL / ATL / TSB', 'Variabilité cardiaque & sommeil',
   'Sync Strava · Garmin · Wahoo', 'Nutrition périodisée'];
 var DISC_COVER = [
   { v: 21, label: 'piliers', sub: 'pour couvrir tout ton entraînement' },
   { v: 7, label: 'agents IA', sub: 'qui travaillent pour toi, jour et nuit' },
-  { v: 25, label: 'épreuves Decaform', sub: 'sur 12 jours, notées sur 1000' },
+  { v: 24, label: 'épreuves Decaform', sub: 'sur 12 jours, notées sur 1000' },
   { v: 14, label: "jours d'essai", sub: 'sans carte bancaire, sans engagement' }
 ];
 
@@ -128,7 +128,7 @@ function Discover() {
                 <div className="eyebrow">Nouveau · Test de condition générale</div>
                 <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 'clamp(24px,3.2vw,32px)', margin: '4px 0 8px', color: 'var(--text)' }}>Decaform</div>
                 <p style={{ fontFamily: "var(--font-body)", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', margin: 0, maxWidth: 560 }}>
-                  25 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test <strong style={{ color: 'var(--text)' }}>exigeant</strong>, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
+                  24 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test <strong style={{ color: 'var(--text)' }}>exigeant</strong>, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
                 </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>

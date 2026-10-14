@@ -37,7 +37,7 @@
   function comma(x) { return String(x).replace('.', ','); }
   function formatValue(test, value) {
     switch (test.unit) {
-      case 's': return value < 60 ? comma(round(value, 2)) + ' s' : comma(formatDuration(value, true));
+      case 's': return value < 60 ? comma(round(value, 2)) + ' s' : comma(formatDuration(value, Math.abs(value - Math.round(value)) > 0.05));
       case 'm': return comma(round(value, 2)) + ' m';
       case 'kg': return comma(round(value, 1)) + ' kg';
       case 'W': return Math.round(value) + ' W';

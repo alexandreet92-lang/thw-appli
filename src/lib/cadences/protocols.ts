@@ -16,6 +16,8 @@ export interface Protocol {
   echauffementSpecifique?: string  // en plus de l'échauffement général
   allure?: string                  // allures cibles indicatives
   box?: string                     // hauteur de box (Hyrox)
+  stations?: string[]              // épreuve en plusieurs stations chronométrées une à une (Hyrox continu)
+  stationShare?: number[]          // part du temps total attendue par station à niveau Référence (somme = 1)
   diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
 }
@@ -54,13 +56,13 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
   hyrox: {
     titre: 'Hyrox / circuit',
     texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
-      "charge légère (thrusters, burpees, tractions) pour réviser la technique avant de lancer.",
+      "charge légère (thrusters, burpees, tractions, fentes, soulevé de terre) pour réviser la technique avant de lancer.",
   },
 }
 
 const WARMUP_FORCE = new Set(['squat_3rm', 'bench_press_3rm', 'deadlift_3rm', 'military_press_3rm', 'weighted_pullup_3rm', 'dead_hang'])
 const WARMUP_HALTERO = new Set(['clean_2rm', 'clean_and_press_2rm', 'front_squat_3rm'])
-const WARMUP_HYROX = new Set(['hyrox_circuit', 'amrap_20min'])
+const WARMUP_HYROX = new Set(['hyrox_circuit', 'hyrox_continu', 'amrap_20min'])
 
 /** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
 export function warmupForTest(slug: string): { titre: string; texte: string } {
@@ -98,6 +100,34 @@ export function hyroxThrusterKg(sex: 'M' | 'F', weightKg: number): number {
   const table = HYROX_THRUSTER_KG[sex] ?? HYROX_THRUSTER_KG.M
   for (const b of table) if (weightKg >= b.lo && (b.hi === null || weightKg < b.hi)) return b.kg
   return table[table.length - 1].kg
+}
+
+/** Charges du circuit Hyrox continu par tranche de poids de corps (kg) — ESTIMATIONS à valider.
+ *  thruster : barre ou haltères · lunge : charge TOTALE des fentes (haltères tenus le long du corps, moitié dans chaque main)
+ *  · deadlift : soulevé de terre volontairement LÉGER (sans ceinture, dos neutre, répétitions sous fatigue). */
+export interface HyroxLoadBand { lo: number; hi: number | null; thruster: number; lunge: number; deadlift: number }
+export const HYROX_LOADS_KG: Record<'M' | 'F', HyroxLoadBand[]> = {
+  M: [
+    { lo: 0, hi: 60, thruster: 20, lunge: 16, deadlift: 35 },
+    { lo: 60, hi: 70, thruster: 25, lunge: 20, deadlift: 40 },
+    { lo: 70, hi: 80, thruster: 30, lunge: 24, deadlift: 45 },
+    { lo: 80, hi: 90, thruster: 32.5, lunge: 28, deadlift: 50 },
+    { lo: 90, hi: null, thruster: 35, lunge: 32, deadlift: 55 },
+  ],
+  F: [
+    { lo: 0, hi: 50, thruster: 10, lunge: 8, deadlift: 20 },
+    { lo: 50, hi: 60, thruster: 15, lunge: 12, deadlift: 25 },
+    { lo: 60, hi: 70, thruster: 20, lunge: 16, deadlift: 30 },
+    { lo: 70, hi: 80, thruster: 22.5, lunge: 20, deadlift: 35 },
+    { lo: 80, hi: null, thruster: 25, lunge: 24, deadlift: 40 },
+  ],
+}
+
+/** Charges du circuit Hyrox continu pour un sexe + un poids de corps donné. */
+export function hyroxLoads(sex: 'M' | 'F', weightKg: number): HyroxLoadBand {
+  const table = HYROX_LOADS_KG[sex] ?? HYROX_LOADS_KG.M
+  for (const b of table) if (weightKg >= b.lo && (b.hi === null || weightKg < b.hi)) return b
+  return table[table.length - 1]
 }
 
 export const PROTOCOLS: Record<string, Protocol> = {
@@ -372,6 +402,30 @@ export const PROTOCOLS: Record<string, Protocol> = {
     ],
     saisie: 'Les 5 temps de tour (s), hors récupération : le score est leur somme. Indique la variante de burpee (box / to plate).',
     box: 'Box : 60 cm (hommes) / 40 cm (femmes), 12 burpees box jump par tour.',
+  },
+
+  // ── J12 · Hyrox continu (remplace l'AMRAP et le circuit en 5 tours dans Decaform v1.2) ──
+  hyrox_continu: {
+    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (30 à 40 min).',
+    materiel: ['Rameur', 'Barre ou haltères (thrusters, soulevé de terre)', 'Haltères ou disque (fentes)', 'Barre de traction (ou élastique / anneaux)', 'Chrono avec tours (lap)'],
+    etapes: [
+      '1. Rameur : 1 500 m.',
+      '2. Burpees : 40 (poitrine au sol, saut des deux pieds, mains au-dessus de la tête).',
+      '3. Thrusters : 40 (charge selon ta tranche de poids).',
+      '4. Tractions : 25 hommes / 15 femmes (menton au-dessus de la barre, bras tendus en bas).',
+      '5. Fentes lestées : 50 (25 par jambe, genou arrière près du sol, charge selon ta tranche de poids).',
+      '6. Pompes : 60 hommes / 40 femmes (poitrine près du sol, corps gainé).',
+      '7. Soulevé de terre : 40 (charge légère, dos neutre, sans ceinture).',
+      'Un seul passage, sans pause imposée : le chrono tourne en continu. Tu peux fractionner les séries comme tu veux ; la récupération se fait pendant les transitions et est comptée.',
+      'Note ton temps à chaque changement de station (tour de chrono) : le score est le temps total, les temps par station servent à lire ta course.',
+    ],
+    saisie: 'Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Si tu fais les tractions à l’élastique ou en australiennes, indique-le (+5 % sur le temps).',
+    securite: 'Le soulevé de terre arrive en fin de circuit, sous fatigue : charge volontairement légère, dos neutre, pas de ceinture. Arrête-toi dès que la technique se dégrade. Pas de pompes, de tractions ou de fentes sur sol glissant ; hydrate-toi et arrête-toi au moindre malaise.',
+    echauffementSpecifique: '5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis une série de chaque mouvement à vide ou en charge légère.',
+    stations: ['Rameur 1 500 m', 'Burpees', 'Thrusters', 'Tractions', 'Fentes lestées', 'Pompes', 'Soulevé de terre'],
+    // Temps attendu à niveau Référence (≈ 6:15 · 4:30 · 5:00 · 5:00 · 5:00 · 4:00 · 4:00) ramené en parts du total.
+    stationShare: [0.185, 0.133, 0.147, 0.147, 0.147, 0.118, 0.123],
+    flag: true,
   },
 
   // ══════════════════════════════════════════════════════════════════

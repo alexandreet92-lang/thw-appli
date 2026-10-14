@@ -1087,6 +1087,8 @@
     }
     var parsed = (d.parts || []).map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; });
     if (!parsed.length) return null;
+    // Épreuve en plusieurs stations à additionner (Hyrox continu) : pas d'aperçu tant qu'il en manque.
+    if (t.aggregate === 'sum' && !t.criteria && partCountOf(t) > 1 && parsed.length < partCountOf(t)) return null;
     if (partCountOf(t) === 1) return parsed[0];
     return F().aggregate(t, parsed);
   }
@@ -1099,7 +1101,7 @@
   function emptyDraft(t) {
     return {
       parts: new Array(partCountOf(t)).fill(''), partialReps: '',
-      equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : null,
+      equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : t.equipmentField === 'tractions' ? 'strictes' : null,
       timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.rmChoice ? 'rm3' : (t.hasVariant ? 'box' : null),
       venue: t.venue === 'toggle' ? 'indoor' : null, tempC: '', weather: '',
     };
@@ -1252,9 +1254,9 @@
     function validate(t, after) {
       setErr(null);
       var d = drafts[t.slug];
+      if (t.aggregate === 'sum' && d.parts.some(function (p) { return !String(p || '').trim(); })) { setErr(t.name + ' : renseigne les ' + partCountOf(t) + (t.partLabels ? ' stations.' : ' passages.')); return; }
       var value = aggDraft(t, d);
       if (value == null || value <= 0) { setErr(t.name + ' : saisis une valeur valide.'); return; }
-      if (t.aggregate === 'sum' && d.parts.some(function (p) { return !String(p || '').trim(); })) { setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' passages.'); return; }
       if (t.criteria && d.parts.some(function (p) { return parsePart(t, p) == null; })) {
         setErr(t.name + ' : renseigne les ' + partCountOf(t) + ' essais' + (t.unit === 'm' ? ' (0 pour un saut raté).' : '.')); return;
       }
@@ -1266,7 +1268,7 @@
       }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
-      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
+      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment === 'strictes' ? null : d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
             venue: venue, temperatureC: venue === 'outdoor' ? tempN : null, weather: venue === 'outdoor' ? d.weather : null })
         .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
@@ -1353,6 +1355,15 @@
     // ── Tableau de bord ──
     var curDay = null;
     cat.days.forEach(function (d) { if (isoOf(dateAt(start, d.day - 1)) === today) curDay = d.day; });
+    // Règle des jours : le test se passe en `maxDays` jours maximum (1re saisie → aujourd'hui), au-delà les résultats sont moins comparables.
+    var firstDay = results.map(function (r) { return String(r.tested_on || '').slice(0, 10); }).filter(Boolean).sort()[0];
+    var elapsed = firstDay ? Math.round((new Date(today + 'T12:00:00') - new Date(firstDay + 'T12:00:00')) / 86400000) + 1 : null;
+    var daysBanner = (cat.maxDays && elapsed != null && elapsed >= cat.maxDays - 2)
+      ? (elapsed > cat.maxDays
+        ? window.CadTr('Tu as commencé il y a {n} jours : au-delà de {max} jours, les résultats sont moins comparables. Termine dès que possible.')
+        : window.CadTr('Jour {n} sur {max} maximum : il te reste {left} jour(s) pour finir dans la limite.'))
+        .replace('{n}', elapsed).replace('{max}', cat.maxDays).replace('{left}', cat.maxDays - elapsed)
+      : null;
     return (
       <div className="cad-run">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
@@ -1362,6 +1373,7 @@
           </div>
           <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
         </div>
+        {daysBanner ? <div className={elapsed > cat.maxDays ? 'cad-err' : 'cad-step-note'} role="status" style={{ marginTop: 10 }}>{daysBanner}</div> : null}
         <p className="cad-p" style={{ marginTop: 6 }}>Barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg · jour 1 le {fmtDay(dateAt(start, 0))}</p>
 
         <section className="cad-card cad-dash">
@@ -1391,6 +1403,7 @@
         </section>
 
         <h2 className="cad-h3" style={{ fontSize: 18, margin: '26px 0 12px' }}>Les 12 jours</h2>
+        {cat.maxDays ? <p className="cad-p" style={{ margin: '-6px 0 12px', fontSize: 13 }}>{window.CadTr('C’est le plan idéal : organise-toi comme tu veux (ou comme tu peux), mais termine l’ensemble en {max} jours maximum — au-delà, les résultats sont moins comparables.').replace('{max}', cat.maxDays)}</p> : null}
         <div className="cad-cal is-run">
           {cat.days.map(function (d) {
             var dd = dateAt(start, d.day - 1), iso = isoOf(dd);
@@ -1477,6 +1490,11 @@
     var pColor = prev ? levelColor(cat.palette, prev.level) : 'var(--text-dim)';
     var pColorA = prevA ? levelColor(cat.palette, prevA.level) : 'var(--text-dim)';
     var rec = recupSec(t);
+    var hyroxLd = null;
+    if (t.isHyroxContinu && cat.hyroxLoads) {
+      var hl = cat.hyroxLoads[camp.scale_sex] || [];
+      for (var hj = 0; hj < hl.length; hj++) { var hq = hl[hj]; if (camp.body_weight_kg >= hq.lo && (hq.hi == null || camp.body_weight_kg < hq.hi)) { hyroxLd = hq; break; } }
+    }
     var hyroxKg = null;
     if (t.slug === 'hyrox_circuit' && cat.hyroxThrusterKg) {
       var hr = cat.hyroxThrusterKg[camp.scale_sex] || [];
@@ -1490,7 +1508,7 @@
               <div className="cad-ec-h">Épreuve {props.idx}/{props.n}</div>
               <div className="cad-ec-name" style={{ fontSize: 20 }}>{t.name}</div>
               <div className="cad-ep-meta">
-                <span>{n > 1 ? n + (t.aggregate === 'sum' ? ' passages' : ' essais') : '1 essai'}</span>
+                <span>{n > 1 ? n + (t.partLabels ? ' stations' : t.aggregate === 'sum' ? ' passages' : ' essais') : '1 essai'}</span>
                 {t.criteria ? <span className="is-hl">meilleur {critPts(t, 'best')} + total {critPts(t, 'sum')} pts</span> : null}
                 {validated ? <span className="is-hl">validée</span> : skipped ? <span>passée</span> : null}
               </div>
@@ -1498,6 +1516,7 @@
             <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
           </div>
 
+          {hyroxLd ? <div className="cad-step-note"><strong>Thrusters : {String(hyroxLd.thruster).replace('.', ',')} kg</strong> · fentes : {hyroxLd.lunge} kg au total · soulevé de terre : {hyroxLd.deadlift} kg</div> : null}
           {hyroxKg != null ? <div className="cad-step-note"><strong>Thrusters : {hyroxKg} kg</strong> · box {camp.scale_sex === 'F' ? '40' : '60'} cm · 12 burpees box jump</div> : null}
 
           {proto ? (
@@ -1517,7 +1536,7 @@
             {new Array(n).fill(0).map(function (_, i) {
               return (
                 <label key={i} className="cad-try">
-                  <span>{n > 1 ? (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? (t.rmChoice ? (d.variant === 'rm5' ? 'Charge 5RM (kg)' : 'Charge 3RM (kg)') : 'Charge (kg)') : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
+                  <span>{n > 1 ? (t.partLabels && t.partLabels[i] ? (i + 1) + '. ' + window.CadTr(t.partLabels[i]) : (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1)) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? (t.rmChoice ? (d.variant === 'rm5' ? 'Charge 5RM (kg)' : 'Charge 3RM (kg)') : 'Charge (kg)') : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
                   <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
                          value={d.parts[i] || ''} aria-label={window.CadTr(t.name) + ' ' + window.CadTr('valeur') + ' ' + (i + 1)}
                          onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
@@ -1525,6 +1544,11 @@
               );
             })}
           </div>
+          {t.partLabels && n > 1 ? (function () {
+            var vals = (d.parts || []).map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; });
+            var tot = vals.reduce(function (a, b) { return a + b; }, 0);
+            return <p className="cad-p" style={{ fontSize: 13, margin: '10px 0 0' }}>Temps total : <strong style={{ fontFamily: 'var(--font-mono)' }}>{vals.length ? F().formatDuration(tot, false) : '—'}</strong> · {vals.length} / {n} stations</p>;
+          })() : null}
           {t.isAmrap ? (
             <label className="cad-try" style={{ maxWidth: 260, marginTop: 8 }}>
               <span>Répétitions du tour en cours (optionnel)</span>
@@ -1537,6 +1561,7 @@
             {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
             {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
             {t.rmChoice ? <Sel label="Charge saisie" value={d.variant || 'rm3'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['rm3', '3RM (3 répétitions)'], ['rm5', '5RM (5 répétitions)']]}/> : null}
+            {t.equipmentField === 'tractions' ? <Sel label="Tractions" value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', 'Strictes'], ['elastique', 'Élastique ou australiennes (+5 %)']]}/> : null}
             {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
           </div>
 
@@ -1706,6 +1731,9 @@
     function deltaCls2(v) { return v > 0 ? 'cad-up' : v < 0 ? 'cad-dn' : 'cad-eq'; }
     // Résumé des conditions extérieures du test (si renseignées).
     var outdoorRes = (rep.results || []).filter(function (r) { return r.venue === 'outdoor' && r.temperature_c != null; });
+    // Durée réelle du test (1re → dernière saisie).
+    var rdates = (rep.results || []).map(function (r) { return String(r.tested_on || '').slice(0, 10); }).filter(Boolean).sort();
+    var spanDays = rdates.length ? Math.round((new Date(rdates[rdates.length - 1] + 'T12:00:00') - new Date(rdates[0] + 'T12:00:00')) / 86400000) + 1 : null;
     var condSummary = null;
     if (outdoorRes.length) {
       var temps = outdoorRes.map(function (r) { return Number(r.temperature_c); });
@@ -1772,12 +1800,19 @@
         {condSummary ? (
           <section className="cad-card" style={{ marginTop: 12, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div className="cad-ec-h" style={{ margin: 0 }}>Conditions extérieures</div>
-            <span className="cad-p" style={{ margin: 0 }}>🌡️ {condSummary.range}{condSummary.weathers.length ? ' · ' + condSummary.weathers.join(', ') : ''}</span>
+            <span className="cad-p" style={{ margin: 0 }}>🌡️ {condSummary.range}{condSummary.weathers.length ? ' · ' + condSummary.weathers.map(function (w) { return window.CadTr(w); }).join(', ') : ''}</span>
+          </section>
+        ) : null}
+
+        {spanDays != null && cat.maxDays && spanDays > cat.maxDays ? (
+          <section className="cad-card cad-hnote" style={{ marginTop: 12 }}>
+            <div className="cad-ec-h" style={{ margin: 0 }}>Test étalé sur {spanDays} jours</div>
+            <p className="cad-p" style={{ margin: '6px 0 0' }}>{window.CadTr('Ce test a duré plus de {max} jours entre la première et la dernière épreuve : ta forme a pu changer, les résultats sont donc un peu moins comparables aux autres tests.').replace('{max}', cat.maxDays)}</p>
           </section>
         ) : null}
 
         {window.CadInterpretation ? (
-          <window.CadInterpretation catalog={cat} scoreG={sG} scoreA={sA} campaign={camp}
+          <window.CadInterpretation catalog={cat} scoreG={sG} scoreA={sA} campaign={camp} results={rep.results || []}
             prev={prevG && prevCamp ? { score: prevG, date: prevCamp.completed_on || prevCamp.started_on } : null}
             levelColor={function (l) { return levelColor(cat.palette, l); }} frDate={frDate}/>
         ) : null}

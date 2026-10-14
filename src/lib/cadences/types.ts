@@ -18,8 +18,8 @@ export type Aggregate = 'best' | 'sum'
 export type Weights = Record<QualityKey, number>
 
 export interface EquipmentRule {
-  field: string            // 'chaussures' | 'ceinture'
-  applies_when: string     // 'pointes' | 'ceinture'
+  field: string            // 'chaussures' | 'ceinture' | 'tractions'
+  applies_when: string     // 'pointes' | 'ceinture' | 'elastique'
   pct: number
   rule: 'result_x_(1+pct)' | 'result_x_(1-pct)'
 }
@@ -73,6 +73,8 @@ export interface CadencesConfig {
   population?: string
   /** Plan des séances (remplace le DAYS codé en dur quand présent). */
   days?: DayPlan[]
+  /** Durée maximale conseillée pour passer tout le test (jours) : au-delà, les résultats sont moins comparables. */
+  max_days?: number
   total_points: number
   anchors: { ref_pct: number; max_pct: number }
   /** Facteur 5RM → équivalent 3RM (≈ 1/0,94, formules d'Epley et de Brzycki). */

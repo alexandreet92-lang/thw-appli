@@ -30,11 +30,11 @@
     { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', state: 'mesuree' },
     { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', state: 'mesuree' },
     { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', state: 'mesuree' },
-    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par l\'AMRAP, le circuit Hyrox et le dead hang (répétitions et maintien sous charge dans la durée).' },
+    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par le circuit Hyrox et le dead hang (répétitions et maintien sous charge dans la durée).' },
     { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', state: 'mesuree' },
     { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', state: 'mesuree' },
     { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', state: 'mesuree' },
-    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', state: 'sollicitee', how: 'Travaillée par l\'AMRAP et le circuit Hyrox.' },
+    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', state: 'sollicitee', how: 'Travaillée par le circuit Hyrox.' },
     { t: 'Temps de réaction', d: 'Délai entre la perception d\'un signal et le début du mouvement.', state: 'sollicitee', how: 'Travaillé par les départs de sprint et les parcours de coupelles.' },
     { t: 'Rythme', d: 'Percevoir et reproduire une cadence précise dans l\'effort.', state: 'sollicitee', how: 'Travaillé par le slalom et la cadence des pas chassés.' },
     { t: 'Équilibre', d: 'Maintenir la stabilité du corps, à l\'arrêt comme en mouvement.', state: 'sollicitee', how: 'Travaillé par les réceptions de sauts et les appuis d\'agilité.' },
@@ -546,6 +546,29 @@
               })}
             </div>
           </div> : null}
+          {catalog.hyroxLoads && catalog.tests.some(function (t) { return t.slug === 'hyrox_continu'; }) ? <div className="cad-card">
+            <h3 className="cad-h3">Charges du circuit Hyrox</h3>
+            <p className="cad-p">Selon le poids de corps. Fentes : charge totale (moitié dans chaque main). Soulevé de terre volontairement léger, sans ceinture.</p>
+            <div className="cad-two">
+              {['M', 'F'].map(function (sx) {
+                var rows = (catalog.hyroxLoads && catalog.hyroxLoads[sx]) || [];
+                return (
+                  <div key={sx}>
+                    <div className="cad-ec-h">{sx === 'M' ? 'Hommes' : 'Femmes'}</div>
+                    <table className="cad-table cad-table-sm">
+                      <thead><tr><th style={{ textAlign: 'left' }}>Poids de corps</th><th style={{ textAlign: 'right' }}>Thrusters</th><th style={{ textAlign: 'right' }}>Fentes</th><th style={{ textAlign: 'right' }}>Soulevé de terre</th></tr></thead>
+                      <tbody>
+                        {rows.map(function (b, i) {
+                          var label = b.hi == null ? ('≥ ' + b.lo + ' kg') : (b.lo === 0 ? ('< ' + b.hi + ' kg') : (b.lo + '–' + b.hi + ' kg'));
+                          return <tr key={i}><td style={{ textAlign: 'left' }}>{label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(b.thruster).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.lunge} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.deadlift} kg</td></tr>;
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </div>
+          </div> : null}
           {catalog.tests.some(function (t) { return t.slug === 'hyrox_circuit'; }) ? <div className="cad-card">
             <h3 className="cad-h3">Charges Hyrox — thrusters</h3>
             <p className="cad-p">Selon le poids de corps. Burpees box jump : box 60 cm (H) / 40 cm (F), 12 par tour.</p>
@@ -714,8 +737,9 @@
         ? { t: 'Pour des pratiquants réguliers', d: 'Conçu pour des personnes qui s’entraînent déjà, avec un certain niveau — pas pour débuter.' }
         : { t: 'Pour qui', d: (catalog.presentation && catalog.presentation.forWho) || 'Ce test est adapté à une tranche d’âge précise : vérifie que c’est la tienne.' },
       { t: 'Barèmes estimés', d: deca ? 'Les coefficients par âge sont des estimations (littérature masters), calibrées pour des pratiquants réguliers, à affiner avec de vraies données.' : 'Les barèmes s’appuient sur des tests de terrain publiés, adaptés à cette tranche d’âge ; certains repères sont des estimations, à affiner avec de vraies données.' },
+      catalog.maxDays ? { t: window.CadTr('Finis le test en {max} jours maximum').replace('{max}', catalog.maxDays), d: window.CadTr('Le plan idéal compte 12 jours, avec des jours de repos, mais tu peux t’organiser comme tu veux. Au-delà de {max} jours, ta forme peut changer et les résultats deviennent moins comparables : ils restent enregistrés, avec une mention.').replace('{max}', catalog.maxDays) } : null,
       { t: 'Arrête si ça ne va pas', d: 'Douleur, malaise, vertige : on stoppe l’épreuve. La technique passe toujours avant la charge ou le chrono.' },
-    ];
+    ].filter(Boolean);
     return (
       <section className="cad-section">
         <SectionTitle kicker="À lire avant de tester">Avertissements & limites</SectionTitle>

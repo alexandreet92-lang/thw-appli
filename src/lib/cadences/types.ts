@@ -43,6 +43,8 @@ export interface TestConfig {
    *  'toggle' (vélo) laisse la personne choisir intérieur/extérieur ; sinon intérieur. */
   venue?: 'indoor' | 'outdoor' | 'toggle'
   equipment?: EquipmentRule
+  /** Épreuve de force en 3RM : la personne peut saisir un 5RM (converti en équivalent 3RM × `rm5_to_3rm`). */
+  rm_choice?: boolean
   age_time_exponent?: number
   attempts?: number
   aggregate?: Aggregate
@@ -73,6 +75,8 @@ export interface CadencesConfig {
   days?: DayPlan[]
   total_points: number
   anchors: { ref_pct: number; max_pct: number }
+  /** Facteur 5RM → équivalent 3RM (≈ 1/0,94, formules d'Epley et de Brzycki). */
+  rm5_to_3rm?: number
   age: {
     min: number
     max: number
@@ -96,6 +100,7 @@ export interface TestInput {
   slug: string
   value: number | null     // null = non passée → ignorée
   equipment?: string | null // 'pointes' | 'ceinture' | 'normales' | 'sans' | null
+  variant?: string | null   // 'rm5' : la charge saisie est un 5RM (épreuves `rm_choice`) ; 'box' | 'plate' : Hyrox
   parts?: number[] | null  // essais bruts (épreuves à critères : meilleur + total)
 }
 

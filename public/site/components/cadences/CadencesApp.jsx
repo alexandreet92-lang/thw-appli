@@ -24,7 +24,6 @@
     try { return new Date(iso).toLocaleDateString(window.CadLocale(), { day: 'numeric', month: 'long', year: 'numeric' }); }
     catch (e) { return iso; }
   }
-  var QK = ['vitesse', 'force', 'puissance', 'explosivite', 'endurance', 'vo2max', 'coordination'];
 
   // ── Styles propres à Decaform (le reste vient de colors_and_type.css / site.css) ──
   function CadStyle() {
@@ -605,6 +604,8 @@
       try { var t = new URLSearchParams(window.location.search).get('test'); return t && /^[a-z0-9_]+$/.test(t) ? t : null; } catch (e) { return null; }
     })();
     var appTestUrl = APP_URL + '/site/cadences.html' + (wanted ? '?test=' + wanted : '');
+    // Page dédiée « Mon historique » (historique.html) : s'ouvre directement sur l'historique.
+    var historyPage = window.CAD_START_VIEW === 'history';
 
     // Catalogue (public) — sonde same-origin, sinon cross-origin vers l'app.
     // Délai de garde + bouton Réessayer (plus de « Loading » infini).
@@ -641,9 +642,22 @@
     // sur l'app.
     React.useEffect(function () {
       if (!catalog) return;                   // attend que l'origine de l'API soit connue
-      if (crossOrigin) { setView('intro'); return; }
+      if (crossOrigin) {
+        // L'historique a besoin de la session de l'app : on bascule sur l'app.
+        if (historyPage) { window.location.replace(APP_URL + '/site/historique.html'); return; }
+        setView('intro'); return;
+      }
       if (account === undefined) return;
-      if (!loggedIn) { setView('intro'); return; }
+      if (!loggedIn) {
+        if (historyPage) { window.location.replace('compte.html?next=' + encodeURIComponent('historique.html')); return; }
+        setView('intro'); return;
+      }
+      if (historyPage) {
+        api('/api/cadences/campaign').then(function (r) { return r.ok ? r.json() : { campagnes: [] }; })
+          .then(function (j) { setCampaigns((j && j.campagnes) || []); }).catch(function () {});
+        loadHistory('history').catch(function () { setHistory([]); setView('history'); });
+        return;
+      }
       api('/api/cadences/campaign').then(function (r) { return r.ok ? r.json() : { campagnes: [] }; })
         .then(function (j) {
           var list = (j && j.campagnes) || [];
@@ -686,18 +700,23 @@
     }
 
     var body;
-    if (view === 'start') {
+    if (historyPage && view === 'loading') {
+      body = <p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>Chargement de ton historique…</p>;
+    } else if (view === 'start') {
       body = <CadStart catalog={catalog} preferredKey={wanted} fetchProductCatalog={fetchProductCatalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
     } else if (view === 'test' && report) {
       body = <CadTest catalog={catalog} report={report} mode={mode} setMode={setMode} reload={reload}
                       onHome={function () { setView('intro'); }}
                       onClosed={function () { reload().then(function () { setView('results'); }); }}/>;
     } else if (view === 'results' && report) {
-      body = <CadResults catalog={catalog} report={report} campaigns={campaigns} mode={mode} setMode={setMode} onBack={function () { setView('intro'); }}/>;
+      body = <CadResults catalog={catalog} report={report} campaigns={campaigns} mode={mode} setMode={setMode}
+                         onBack={function () { setView(historyPage ? 'history' : 'intro'); }}
+                         backLabel={historyPage ? '← Mon historique' : null}
+                         onHistory={historyPage ? null : function () { if (history) { setView('history'); } else { loadHistory('history'); } }}/>;
     } else if (view === 'history') {
       body = <CadHistory catalog={catalog} history={history || []} mode={mode}
-                         onBack={function () { setView('intro'); }}
-                         onStart={function () { setView('start'); }}
+                         onBack={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('intro'); } }}
+                         onStart={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('start'); } }}
                          onOpen={function (id) { loadReport(id, 'results'); }}/>;
     } else {
       body = <CadIntro catalog={catalog} loggedIn={loggedIn} campaigns={campaigns}
@@ -711,7 +730,7 @@
     return (
       <div>
         <CadStyle/>
-        <SiteHeader active="cadences"/>
+        <SiteHeader active={historyPage ? 'history' : 'cadences'}/>
         <main className="cad-wrap">
           {error ? <div className="cad-err" role="alert" style={{ marginBottom: 16 }}>{error}</div> : null}
           {body}
@@ -774,6 +793,7 @@
           <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {makeCta()}
             {props.crossOrigin ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Le test se lance sur l'app.</span> : null}
+            {props.loggedIn && !props.crossOrigin ? <a className="cad-link" href="historique.html">Mon historique →</a> : null}
           </div>
         </div>
 
@@ -800,7 +820,7 @@
           <div style={{ marginTop: 'var(--space-8)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
               <div className="t-h2">Mes passages</div>
-              {terminees.length > 1 && props.onHistory ? <button type="button" className="cad-link" onClick={props.onHistory}>Voir l’historique complet →</button> : null}
+              {props.onHistory ? <a className="cad-link" href="historique.html">Voir tout mon historique →</a> : null}
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {terminees.map(function (c) {
@@ -1080,7 +1100,7 @@
     return {
       parts: new Array(partCountOf(t)).fill(''), partialReps: '',
       equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : null,
-      timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.hasVariant ? 'box' : null,
+      timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.rmChoice ? 'rm3' : (t.hasVariant ? 'box' : null),
       venue: t.venue === 'toggle' ? 'indoor' : null, tempC: '', weather: '',
     };
   }
@@ -1119,7 +1139,8 @@
       }
     }
     function norm(v) {
-      var x = v, eq = t.equipment;
+      // 5RM saisi → équivalent 3RM (même facteur que le moteur serveur, engine.ts applyRm).
+      var x = (t.rmChoice && d.variant === 'rm5') ? v * (cat.rm5Factor || 1.06) : v, eq = t.equipment;
       if (eq && d.equipment === eq.applies_when) x = eq.rule === 'result_x_(1-pct)' ? x * (1 - eq.pct) : x * (1 + eq.pct);
       if (t.kind === 'ratio') x = x / camp.body_weight_kg;
       return x;
@@ -1148,7 +1169,7 @@
   // Barème personnalisé (sexe + âge + poids) : seuils Référence / Maximum
   // exprimés dans l'unité de l'épreuve (valeur absolue, poids de corps inclus
   // pour les épreuves en ratio). Même ajustement d'âge que l'aperçu des points.
-  function personalBareme(cat, t, camp, mode) {
+  function personalBareme(cat, t, camp, mode, variant) {
     var base = camp.scale_sex === 'M' ? t.male : t.female;
     var ref = base.ref, max = base.max;
     if (mode === 'age') {
@@ -1160,6 +1181,8 @@
       }
     }
     if (t.kind === 'ratio') { ref *= camp.body_weight_kg; max *= camp.body_weight_kg; }
+    // En 5RM, les seuils sont ceux du 3RM divisés par le facteur de conversion.
+    if (t.rmChoice && variant === 'rm5') { var rf = cat.rm5Factor || 1.06; ref /= rf; max /= rf; }
     return { ref: ref, max: max };
   }
 
@@ -1243,7 +1266,7 @@
       }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
-      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: d.variant, timingMethod: d.timing, poolLength: d.pool,
+      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
             venue: venue, temperatureC: venue === 'outdoor' ? tempN : null, weather: venue === 'outdoor' ? d.weather : null })
         .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
@@ -1335,7 +1358,7 @@
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div className="cad-act-eye">Mon test Decaform</div>
-            <h1 className="cad-act-t" style={{ fontSize: 30 }}>{curDay ? 'Jour ' + curDay + ' aujourd’hui' : 'Ton calendrier'}</h1>
+            <h1 className="cad-act-t" style={{ fontSize: 30 }}>{curDay ? window.CadTr('Jour {n} aujourd’hui').replace('{n}', curDay) : 'Ton calendrier'}</h1>
           </div>
           <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
         </div>
@@ -1441,7 +1464,7 @@
   function TestStep(props) {
     var t = props.t, d = props.draft || emptyDraft(props.t), r = props.result, sc = props.score, cat = props.cat, camp = props.camp;
     var proto = cat.protocols[t.slug];
-    var sp = React.useState(false); var showProto = sp[0], setShowProto = sp[1];
+    var sp = React.useState(true); var showProto = sp[0], setShowProto = sp[1];
     var sk = React.useState(false); var skipping = sk[0], setSkipping = sk[1];
     var sr = React.useState(''); var skipReason = sr[0], setSkipReason = sr[1];
     var n = partCountOf(t);
@@ -1494,7 +1517,7 @@
             {new Array(n).fill(0).map(function (_, i) {
               return (
                 <label key={i} className="cad-try">
-                  <span>{n > 1 ? (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? 'Charge (kg)' : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
+                  <span>{n > 1 ? (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? (t.rmChoice ? (d.variant === 'rm5' ? 'Charge 5RM (kg)' : 'Charge 3RM (kg)') : 'Charge (kg)') : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
                   <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
                          value={d.parts[i] || ''} aria-label={window.CadTr(t.name) + ' ' + window.CadTr('valeur') + ' ' + (i + 1)}
                          onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
@@ -1513,8 +1536,23 @@
             {t.equipmentField === 'ceinture' ? <Sel label="Ceinture" value={d.equipment || 'sans'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['sans', 'Sans'], ['ceinture', 'Avec ceinture']]}/> : null}
             {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
             {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
+            {t.rmChoice ? <Sel label="Charge saisie" value={d.variant || 'rm3'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['rm3', '3RM (3 répétitions)'], ['rm5', '5RM (5 répétitions)']]}/> : null}
             {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
           </div>
+
+          {t.slug === 'bike_20min' ? (
+            <p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>
+              Le score se calcule en <strong>W/kg</strong> (watts ÷ ton poids de corps) : tu saisis ta puissance moyenne en watts, la division est faite pour toi.
+              {parseFloat(String((d.parts && d.parts[0]) || '').replace(',', '.')) > 0 ? ' Ta puissance : ' + (Math.round(parseFloat(String(d.parts[0]).replace(',', '.')) / camp.body_weight_kg * 100) / 100).toString().replace('.', ',') + ' W/kg.' : ''}
+            </p>
+          ) : null}
+          {t.rmChoice ? (
+            <p className="cad-p" style={{ fontSize: 12, margin: '8px 0 0' }}>
+              {d.variant === 'rm5'
+                ? 'Le 5RM est converti en équivalent 3RM (× ' + String(cat.rm5Factor || 1.06).replace('.', ',') + ') pour le score : ton barème ci-dessous est exprimé en 5RM.'
+                : 'Pas l’habitude des charges lourdes ? Choisis le 5RM : charge un peu plus légère, avec pareur, technique stricte et montée progressive.'}
+            </p>
+          ) : null}
 
           {(t.venue === 'outdoor' || t.venue === 'toggle') ? (
             <div className="cad-cond">
@@ -1595,18 +1633,18 @@
           </div>
 
           {(function () {
-            var pbG = personalBareme(cat, t, camp, 'general');
-            var pbA = personalBareme(cat, t, camp, 'age');
+            var pbG = personalBareme(cat, t, camp, 'general', d.variant);
+            var pbA = personalBareme(cat, t, camp, 'age', d.variant);
             var best = critPts(t, 'best'), sum = critPts(t, 'sum');
             return (
               <div className="cad-card">
                 <div className="cad-ec-h">Ton barème</div>
                 <p className="cad-p" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg{t.kind === 'ratio' ? ' · au poids de corps' : ''}.</p>
                 <div className="cad-bar2">
-                  <div><span>Réf · général</span><b>{F().formatValue(t, pbG.ref)}</b></div>
-                  <div><span>Max · général</span><b style={{ color: 'var(--brand)' }}>{F().formatValue(t, pbG.max)}</b></div>
-                  <div><span>Réf · à l’âge</span><b>{F().formatValue(t, pbA.ref)}</b></div>
-                  <div><span>Max · à l’âge</span><b style={{ color: 'var(--brand-alt)' }}>{F().formatValue(t, pbA.max)}</b></div>
+                  <div><span>Réf · général</span><b>{F().formatThreshold(t, pbG.ref, camp.body_weight_kg)}</b></div>
+                  <div><span>Max · général</span><b style={{ color: 'var(--brand)' }}>{F().formatThreshold(t, pbG.max, camp.body_weight_kg)}</b></div>
+                  <div><span>Réf · à l’âge</span><b>{F().formatThreshold(t, pbA.ref, camp.body_weight_kg)}</b></div>
+                  <div><span>Max · à l’âge</span><b style={{ color: 'var(--brand-alt)' }}>{F().formatThreshold(t, pbA.max, camp.body_weight_kg)}</b></div>
                 </div>
                 {t.criteria && (best || sum) ? (
                   <div style={{ marginTop: 12 }}>
@@ -1684,7 +1722,7 @@
       var cg = levelColor(cat.palette, g.level), ca = levelColor(cat.palette, a.level); var raw = rawBySlug[t.slug];
       return (
         <div key={t.slug} className="cad-res-row2">
-          <div className="cad-res-n"><b>{t.name.replace(/\s*\(.*\)$/, '')}</b><span>{raw != null ? F().formatValue(t, raw) : ''}</span></div>
+          <div className="cad-res-n"><b>{t.name.replace(/\s*\(.*\)$/, '')}</b><span>{raw != null ? F().formatThreshold(t, raw, camp.body_weight_kg) : ''}</span></div>
           <div className="cad-res-cell"><b style={{ color: cg }}>{Math.round(g.points)}</b><span>/ {t.pts_max} · {g.level}</span></div>
           <div className="cad-res-cell"><b style={{ color: ca }}>{Math.round(a.points)}</b><span>/ {t.pts_max} · {a.level}</span></div>
         </div>
@@ -1697,7 +1735,10 @@
             <div className="cad-act-eye">Tes résultats</div>
             <h1 className="cad-act-t" style={{ fontSize: 30 }}>Decaform · {frDate(doneOn)}</h1>
           </div>
-          <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            {props.onHistory ? <button type="button" className="cad-link" onClick={props.onHistory}>Voir dans l’historique →</button> : null}
+            <button type="button" className="cad-link" onClick={props.onBack}>{props.backLabel || '← Accueil'}</button>
+          </div>
         </div>
         <div style={{ marginTop: 12 }}>
           <span className="cad-p" style={{ margin: 0 }}>Deux notations : <strong>Général</strong> (référence 21–35 ans) <strong>et Ajusté à l’âge</strong> (tranche {camp.age_band}). {camp.scale_sex === 'M' ? 'Homme' : 'Femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg.</span>
@@ -1735,6 +1776,12 @@
           </section>
         ) : null}
 
+        {window.CadInterpretation ? (
+          <window.CadInterpretation catalog={cat} scoreG={sG} scoreA={sA} campaign={camp}
+            prev={prevG && prevCamp ? { score: prevG, date: prevCamp.completed_on || prevCamp.started_on } : null}
+            levelColor={function (l) { return levelColor(cat.palette, l); }} frDate={frDate}/>
+        ) : null}
+
         <div className="cad-grid2">
           <div className="cad-card">
             <h3 className="cad-h3">Tes points forts</h3>
@@ -1750,7 +1797,7 @@
 
         <div className="cad-grid2">
           <section className="cad-card" style={{ display: 'grid', placeItems: 'center' }}>
-            <h3 className="cad-h3" style={{ justifySelf: 'start' }}>Profil des 7 qualités</h3>
+            <h3 className="cad-h3" style={{ justifySelf: 'start' }}>Profil des qualités</h3>
             <CadRadar items={qualityItemsFrom(cat, sG)} items2={qualityItemsFrom(cat, sA)} color={colG} color2={colA} size={300}/>
           </section>
           <section className="cad-card">

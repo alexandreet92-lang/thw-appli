@@ -13,6 +13,7 @@
     endurance: 'Tenir un effort soutenu dans la durée.',
     vo2max: 'Cylindrée aérobie : consommer de l’oxygène à haute intensité.',
     coordination: 'Enchaîner des mouvements précis et efficaces, surtout sous fatigue.',
+    endurance_musculaire: 'Répéter des efforts musculaires sous charge, longtemps, sans que la technique ne s’effondre.',
     souplesse: 'Amplitude articulaire : atteindre, se baisser, s’habiller sans gêne (marqueur d’autonomie).',
   };
 
@@ -29,7 +30,7 @@
     { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', state: 'mesuree' },
     { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', state: 'mesuree' },
     { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', state: 'mesuree' },
-    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par l\'AMRAP et le circuit Hyrox (répétitions sous charge dans la durée).' },
+    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par l\'AMRAP, le circuit Hyrox et le dead hang (répétitions et maintien sous charge dans la durée).' },
     { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', state: 'mesuree' },
     { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', state: 'mesuree' },
     { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', state: 'mesuree' },
@@ -167,7 +168,7 @@
     );
   }
   function overview(catalog) {
-    var ex = { vitesse: 0.62, force: 0.85, puissance: 0.70, explosivite: 0.58, endurance: 0.90, vo2max: 0.78, coordination: 0.66 };
+    var ex = { vitesse: 0.62, force: 0.85, puissance: 0.70, explosivite: 0.58, endurance: 0.90, endurance_musculaire: 0.64, vo2max: 0.78, coordination: 0.66 };
     var items = catalog.qualities.map(function (q) { var pct = ex[q.key] != null ? ex[q.key] : 0.6; var lvl = levelFor(pct, catalog.levels); return { key: q.key, label: q.label, pct: pct, level: lvl, color: levelColor(catalog.palette, lvl) }; });
     var total = 742, glvl = levelFor(total / catalog.totalPoints, catalog.levels);
     return (
@@ -198,7 +199,7 @@
 
   // ── Les qualités physiques ───────────────────────────────────────────
   // Couleur fonctionnelle par qualité du score (repère visuel, constante).
-  var QCOL = { vitesse: '#00c8e0', force: '#f59e0b', puissance: '#fb923c', explosivite: '#e11d48', endurance: '#22c55e', vo2max: '#2563eb', coordination: '#14b8a6', souplesse: '#a855f7' };
+  var QCOL = { vitesse: '#00c8e0', force: '#f59e0b', puissance: '#fb923c', explosivite: '#e11d48', endurance: '#22c55e', endurance_musculaire: '#84cc16', vo2max: '#2563eb', coordination: '#14b8a6', souplesse: '#a855f7' };
   function qLabel(q) { return q.label === 'VO2max' ? 'VO₂max' : q.label; }
   function hexA(hex, a) {
     var h = hex.replace('#', ''); var n = parseInt(h, 16);
@@ -530,6 +531,11 @@
         </div>
 
         <div className="cad-two" style={{ marginTop: 'var(--space-4)' }}>
+          {catalog.rm5Factor && catalog.tests.some(function (t) { return t.rmChoice; }) ? <div className="cad-card">
+            <h3 className="cad-h3">3RM ou 5RM, à ton choix</h3>
+            <p className="cad-p">Les épreuves de force (squat, développé couché, soulevé de terre, développé militaire, traction lestée, front squat) sont notées en <strong>3RM</strong>. Si tu n’as pas l’habitude des charges lourdes, tu peux saisir un <strong>5RM</strong> : charge un peu plus légère, mêmes règles de technique.</p>
+            <p className="cad-p" style={{ margin: 0 }}>Le 5RM est converti en <strong>équivalent 3RM</strong> (× {String(catalog.rm5Factor).replace('.', ',')}, car un 5RM pèse environ 94 % d’un 3RM) avant le calcul des points : les scores restent comparables, et ton barème s’affiche dans le choix que tu as fait.</p>
+          </div> : null}
           {equip.length ? <div className="cad-card">
             <h3 className="cad-h3">Corrections d’équipement</h3>
             <p className="cad-p">Base : chaussures normales, sans ceinture. Sinon, le résultat est ramené à cette base :</p>

@@ -39,13 +39,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const { data: results } = await sb
     .from('cadences_results')
-    .select('test_slug, raw_value, raw_parts, equipment, status')
+    .select('test_slug, raw_value, raw_parts, equipment, variant, status')
     .eq('campaign_id', campaignId)
     .eq('status', 'validated')
 
   const inputs: TestInput[] = (results ?? [])
     .filter((r) => r.raw_value != null)
-    .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, parts: partsOf(r.raw_parts) }))
+    .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, variant: r.variant, parts: partsOf(r.raw_parts) }))
 
   const profile = { sex: camp.scale_sex as 'M' | 'F', bodyWeightKg: Number(camp.body_weight_kg), ageBand: camp.age_band }
 

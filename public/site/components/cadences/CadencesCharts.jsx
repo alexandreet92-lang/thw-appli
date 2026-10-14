@@ -136,7 +136,7 @@
     var color = props.color || BRAND;
     var color2 = props.color2 || '#5b6fff';
     var dual = !!items2;
-    var SHORT = { 'Puissance': 'Puiss.', 'Explosivité': 'Explo.', 'Endurance': 'Endur.', 'VO2max': 'VO₂max', 'Coordination': 'Coord.' };
+    var SHORT = { 'Puissance': 'Puiss.', 'Explosivité': 'Explo.', 'Endurance': 'Endur.', 'Endurance musculaire': 'Endur. musc.', 'VO2max': 'VO₂max', 'Coordination': 'Coord.' };
     function pt(i, rad) {
       var a = -Math.PI / 2 + i * (2 * Math.PI / n);
       return [cx + rad * Math.cos(a), cy + rad * Math.sin(a)];

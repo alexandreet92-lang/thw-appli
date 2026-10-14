@@ -70,6 +70,7 @@
     "ref_pct": 0.6,
     "max_pct": 1
   },
+  "rm5_to_3rm": 1.06,
   "age": {
     "min": 18,
     "max": 80,
@@ -95,7 +96,8 @@
         "explosivite": 1,
         "endurance": 0.95,
         "vo2max": 0.95,
-        "coordination": 1
+        "coordination": 1,
+        "endurance_musculaire": 0.95
       },
       "21-25": {
         "vitesse": 1,
@@ -104,7 +106,8 @@
         "explosivite": 1,
         "endurance": 1,
         "vo2max": 1,
-        "coordination": 1
+        "coordination": 1,
+        "endurance_musculaire": 1
       },
       "26-35": {
         "vitesse": 1,
@@ -113,7 +116,8 @@
         "explosivite": 1,
         "endurance": 1,
         "vo2max": 1,
-        "coordination": 1
+        "coordination": 1,
+        "endurance_musculaire": 1
       },
       "36-40": {
         "vitesse": 0.95,
@@ -122,7 +126,8 @@
         "explosivite": 0.9,
         "endurance": 0.95,
         "vo2max": 0.95,
-        "coordination": 0.95
+        "coordination": 0.95,
+        "endurance_musculaire": 0.95
       },
       "41-45": {
         "vitesse": 0.9,
@@ -131,7 +136,8 @@
         "explosivite": 0.83,
         "endurance": 0.9,
         "vo2max": 0.9,
-        "coordination": 0.9
+        "coordination": 0.9,
+        "endurance_musculaire": 0.9
       },
       "46-50": {
         "vitesse": 0.84,
@@ -140,7 +146,8 @@
         "explosivite": 0.75,
         "endurance": 0.85,
         "vo2max": 0.85,
-        "coordination": 0.84
+        "coordination": 0.84,
+        "endurance_musculaire": 0.85
       },
       "51-55": {
         "vitesse": 0.78,
@@ -149,7 +156,8 @@
         "explosivite": 0.67,
         "endurance": 0.8,
         "vo2max": 0.8,
-        "coordination": 0.78
+        "coordination": 0.78,
+        "endurance_musculaire": 0.8
       },
       "56-60": {
         "vitesse": 0.72,
@@ -158,7 +166,8 @@
         "explosivite": 0.59,
         "endurance": 0.74,
         "vo2max": 0.74,
-        "coordination": 0.72
+        "coordination": 0.72,
+        "endurance_musculaire": 0.74
       },
       "61-65": {
         "vitesse": 0.64,
@@ -167,7 +176,8 @@
         "explosivite": 0.5,
         "endurance": 0.67,
         "vo2max": 0.67,
-        "coordination": 0.64
+        "coordination": 0.64,
+        "endurance_musculaire": 0.67
       },
       "66-70": {
         "vitesse": 0.56,
@@ -176,7 +186,8 @@
         "explosivite": 0.41,
         "endurance": 0.59,
         "vo2max": 0.59,
-        "coordination": 0.56
+        "coordination": 0.56,
+        "endurance_musculaire": 0.59
       },
       "71-75": {
         "vitesse": 0.46,
@@ -185,7 +196,8 @@
         "explosivite": 0.32,
         "endurance": 0.49,
         "vo2max": 0.49,
-        "coordination": 0.46
+        "coordination": 0.46,
+        "endurance_musculaire": 0.49
       },
       "76-80": {
         "vitesse": 0.36,
@@ -194,7 +206,8 @@
         "explosivite": 0.24,
         "endurance": 0.39,
         "vo2max": 0.39,
-        "coordination": 0.36
+        "coordination": 0.36,
+        "endurance_musculaire": 0.39
       }
     }
   },
@@ -218,6 +231,10 @@
     {
       "key": "endurance",
       "label": "Endurance"
+    },
+    {
+      "key": "endurance_musculaire",
+      "label": "Endurance musculaire"
     },
     {
       "key": "vo2max",
@@ -282,6 +299,7 @@
         "puissance": 0,
         "explosivite": 0.85,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.15
       },
@@ -323,6 +341,7 @@
         "puissance": 0.1,
         "explosivite": 0.65,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.25
       },
@@ -364,6 +383,7 @@
         "puissance": 0.45,
         "explosivite": 0.3,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
@@ -402,6 +422,7 @@
         "puissance": 0.3,
         "explosivite": 0.1,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
@@ -440,6 +461,7 @@
         "puissance": 0.3,
         "explosivite": 0.4,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.05
       },
@@ -482,6 +504,7 @@
         "puissance": 0.3,
         "explosivite": 0.4,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.05
       },
@@ -524,6 +547,7 @@
         "puissance": 0.4,
         "explosivite": 0.1,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.05
       },
@@ -566,6 +590,7 @@
         "puissance": 0.1,
         "explosivite": 0,
         "endurance": 0.4,
+        "endurance_musculaire": 0,
         "vo2max": 0.2,
         "coordination": 0
       },
@@ -597,6 +622,7 @@
         "puissance": 0.35,
         "explosivite": 0.15,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.3
       },
@@ -626,6 +652,7 @@
         "puissance": 0.15,
         "explosivite": 0,
         "endurance": 0.2,
+        "endurance_musculaire": 0,
         "vo2max": 0.35,
         "coordination": 0.2
       },
@@ -656,6 +683,7 @@
         "puissance": 0.1,
         "explosivite": 0,
         "endurance": 0.45,
+        "endurance_musculaire": 0,
         "vo2max": 0.2,
         "coordination": 0
       },
@@ -687,10 +715,11 @@
       },
       "weights": {
         "vitesse": 0,
-        "force": 0.25,
-        "puissance": 0.1,
+        "force": 0.15,
+        "puissance": 0.05,
         "explosivite": 0,
-        "endurance": 0.35,
+        "endurance": 0.15,
+        "endurance_musculaire": 0.35,
         "vo2max": 0.3,
         "coordination": 0
       },
@@ -720,6 +749,7 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0.05,
+        "endurance_musculaire": 0,
         "vo2max": 0.85,
         "coordination": 0
       },
@@ -742,11 +772,11 @@
       "kind": "ratio",
       "pts_max": 28,
       "male": {
-        "ref": 1.35,
+        "ref": 1.25,
         "max": 2.25
       },
       "female": {
-        "ref": 0.9,
+        "ref": 0.83,
         "max": 1.5
       },
       "weights": {
@@ -755,6 +785,7 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
@@ -765,7 +796,8 @@
         "applies_when": "ceinture",
         "pct": 0.07,
         "rule": "result_x_(1-pct)"
-      }
+      },
+      "rm_choice": true
     },
     {
       "slug": "bench_press_3rm",
@@ -789,11 +821,13 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
       "day": 4,
-      "order_in_day": 2
+      "order_in_day": 2,
+      "rm_choice": true
     },
     {
       "slug": "deadlift_3rm",
@@ -804,11 +838,11 @@
       "kind": "ratio",
       "pts_max": 28,
       "male": {
-        "ref": 1.8,
+        "ref": 1.6,
         "max": 2.7
       },
       "female": {
-        "ref": 1.2,
+        "ref": 1.07,
         "max": 1.8
       },
       "weights": {
@@ -817,6 +851,7 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
@@ -827,7 +862,8 @@
         "applies_when": "ceinture",
         "pct": 0.07,
         "rule": "result_x_(1-pct)"
-      }
+      },
+      "rm_choice": true
     },
     {
       "slug": "military_press_3rm",
@@ -851,11 +887,13 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
       "day": 4,
-      "order_in_day": 4
+      "order_in_day": 4,
+      "rm_choice": true
     },
     {
       "slug": "weighted_pullup_3rm",
@@ -879,11 +917,13 @@
         "puissance": 0.25,
         "explosivite": 0.1,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0
       },
       "day": 4,
-      "order_in_day": 5
+      "order_in_day": 5,
+      "rm_choice": true
     },
     {
       "slug": "dead_hang",
@@ -906,7 +946,8 @@
         "force": 0.7,
         "puissance": 0,
         "explosivite": 0,
-        "endurance": 0.3,
+        "endurance": 0,
+        "endurance_musculaire": 0.3,
         "vo2max": 0,
         "coordination": 0
       },
@@ -936,6 +977,7 @@
         "puissance": 0.1,
         "explosivite": 0,
         "endurance": 0.15,
+        "endurance_musculaire": 0,
         "vo2max": 0.75,
         "coordination": 0
       },
@@ -960,12 +1002,13 @@
       },
       "weights": {
         "vitesse": 0,
-        "force": 0.2,
-        "puissance": 0.1,
+        "force": 0.15,
+        "puissance": 0.05,
         "explosivite": 0,
-        "endurance": 0.25,
-        "vo2max": 0.35,
-        "coordination": 0.1
+        "endurance": 0.15,
+        "endurance_musculaire": 0.35,
+        "vo2max": 0.25,
+        "coordination": 0.05
       },
       "day": 12,
       "order_in_day": 1,
@@ -995,6 +1038,7 @@
         "puissance": 0.55,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.2
       },
@@ -1023,6 +1067,7 @@
         "puissance": 0.4,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.2
       },
@@ -1051,11 +1096,13 @@
         "puissance": 0,
         "explosivite": 0,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.1
       },
       "day": 1,
-      "order_in_day": 3
+      "order_in_day": 3,
+      "rm_choice": true
     },
     {
       "slug": "mixed_course",
@@ -1079,6 +1126,7 @@
         "puissance": 0.15,
         "explosivite": 0.3,
         "endurance": 0,
+        "endurance_musculaire": 0,
         "vo2max": 0,
         "coordination": 0.25
       },

@@ -128,9 +128,9 @@ export const PROTOCOLS: Record<string, Protocol> = {
     etapes: [
       'Barre sur les épaules en front rack, coudes hauts.',
       'Descente contrôlée cuisses parallèles (ou sous la parallèle), remontée complète.',
-      'Chercher le 3RM propre.',
+      'Chercher le 3RM propre (ou le 5RM, au choix : voir la saisie).',
     ],
-    saisie: 'La charge (kg) du 3RM réussi.',
+    saisie: 'La charge (kg) du 3RM réussi. Au choix, tu peux saisir un 5RM : il est converti en équivalent 3RM (× 1,06) pour le score.',
     echauffementSpecifique: 'Montée progressive : 50 % du 3RM estimé ×8, 70 % ×5, 85 % ×3, 2–3 min de récup entre paliers.',
   },
 
@@ -245,9 +245,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Barre + rack', 'Disques'],
     etapes: [
       'Barre sur le haut du dos, descente cuisses parallèles (ou sous la parallèle), remontée complète.',
-      'Chercher la charge max sur 3 répétitions propres (3RM). Comparée au barème en ratio au poids de corps.',
+      'Chercher la charge max sur 3 répétitions propres (3RM), ou sur 5 (5RM, au choix). Comparée au barème en ratio au poids de corps.',
     ],
-    saisie: 'La charge (kg) du 3RM. Indique si tu portes une ceinture (correction vers « sans ceinture »).',
+    saisie: 'La charge (kg) du 3RM. Indique si tu portes une ceinture (correction vers « sans ceinture »). Au choix, tu peux saisir un 5RM : il est converti en équivalent 3RM (× 1,06) pour le score.',
+    securite: 'Pas l\'habitude des charges lourdes ? Choisis le 5RM : technique stricte, dos gainé, montée progressive en charge, pareur ou stops de sécurité. Arrête dès que la technique se dégrade.',
     echauffementSpecifique: 'Paliers : 50 % du 3RM estimé ×8, 70 % ×5, 85 % ×3, puis 1–2 tentatives proches du 3RM. 2–3 min de récup entre paliers.',
   },
   bench_press_3rm: {
@@ -255,9 +256,9 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Banc + barre', 'Pareur conseillé'],
     etapes: [
       'Barre descendue à la poitrine, poussée complète bras tendus.',
-      'Chercher le 3RM propre.',
+      'Chercher le 3RM propre (ou le 5RM, au choix : voir la saisie).',
     ],
-    saisie: 'La charge (kg) du 3RM.',
+    saisie: 'La charge (kg) du 3RM. Au choix, tu peux saisir un 5RM : il est converti en équivalent 3RM (× 1,06) pour le score.',
     securite: 'Un pareur ou des stops de sécurité sont recommandés.',
     echauffementSpecifique: 'Paliers : 50 % ×8, 70 % ×5, 85 % ×3, 2–3 min de récup.',
   },
@@ -266,9 +267,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Barre + disques'],
     etapes: [
       'Soulevé de terre conventionnel, dos gainé, verrouillage debout.',
-      'Chercher le 3RM propre.',
+      'Chercher le 3RM propre (ou le 5RM, au choix : voir la saisie).',
     ],
-    saisie: 'La charge (kg) du 3RM. Indique si tu portes une ceinture.',
+    saisie: 'La charge (kg) du 3RM. Indique si tu portes une ceinture. Au choix, tu peux saisir un 5RM : il est converti en équivalent 3RM (× 1,06) pour le score.',
+    securite: 'Pas l\'habitude des charges lourdes ? Choisis le 5RM : technique stricte, dos gainé, montée progressive en charge, pareur ou stops de sécurité. Arrête dès que la technique se dégrade.',
     echauffementSpecifique: 'Paliers : 50 % ×8, 70 % ×5, 85 % ×3, 2–3 min de récup.',
   },
   military_press_3rm: {
@@ -276,9 +278,9 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Barre + disques'],
     etapes: [
       'Debout, barre des épaules au-dessus de la tête sans à-coup des jambes (strict).',
-      'Chercher le 3RM propre.',
+      'Chercher le 3RM propre (ou le 5RM, au choix : voir la saisie).',
     ],
-    saisie: 'La charge (kg) du 3RM.',
+    saisie: 'La charge (kg) du 3RM. Au choix, tu peux saisir un 5RM : il est converti en équivalent 3RM (× 1,06) pour le score.',
     echauffementSpecifique: 'Paliers : 50 % ×8, 70 % ×5, 85 % ×3, 2–3 min de récup.',
   },
   weighted_pullup_3rm: {
@@ -286,9 +288,9 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Barre de traction', 'Ceinture ou gilet de lest'],
     etapes: [
       'Lest ajouté (ceinture ou gilet), mesuré en kilos ajoutés au poids de corps.',
-      'Amplitude complète, menton au-dessus de la barre. Chercher le 3RM.',
+      'Amplitude complète, menton au-dessus de la barre. Chercher le 3RM (ou le 5RM, au choix : voir la saisie).',
     ],
-    saisie: 'Le lest ajouté (kg), hors poids de corps.',
+    saisie: 'Le lest ajouté (kg), hors poids de corps (3RM, ou 5RM au choix : converti en équivalent 3RM, × 1,06).',
   },
   dead_hang: {
     objectif: 'Endurance de force de préhension (grip).',

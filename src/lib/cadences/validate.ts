@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import config from './cadences.config.json'
+import v12 from './configs/decaform_v1_2.config.json'
 import cases from './reference-cases.json'
 import { computeCampaign, computeTest } from './engine'
 import type { CadencesConfig, Profile, TestInput, QualityKey } from './types'
@@ -82,6 +83,49 @@ for (const k of CRIT_CASES) {
   if (!s) { console.error(`  ✗ ${k.slug} : non calculé`); failures++; continue }
   if (near(s.points, k.points, 0.001, `${k.slug} points (critères)`)) console.log(`  ✓ ${k.slug} ${k.parts ? '[' + k.parts.join(', ') + ']' : '(sans détail)'} → ${s.points.toFixed(3)} pts`)
 }
+
+// ── Decaform v1.2 : références abaissées (squat, soulevé de terre) et choix 3RM / 5RM ──
+const cfg12 = v12 as unknown as CadencesConfig
+const t12 = (slug: string) => cfg12.tests.find((t) => t.slug === slug)!
+const P20: Profile = { sex: 'M', bodyWeightKg: 72, ageBand: '18-20' }
+console.log('\nv1.2 — force : 3RM / 5RM (homme de 20 ans, 72 kg)')
+const RM_CASES: { label: string; slug: string; value: number; variant?: string; pct: number }[] = [
+  // Référence = 60 % : 1,6 × 0,9 × 72 = 103,68 kg (soulevé de terre) ; 1,25 × 0,9 × 72 = 81 kg (squat)
+  { label: 'soulevé de terre 3RM = référence', slug: 'deadlift_3rm', value: 103.68, pct: 0.6 },
+  { label: 'squat 3RM = référence', slug: 'squat_3rm', value: 81, pct: 0.6 },
+  // Max inchangé : 2,7 × 0,9 × 72 = 174,96 kg → 100 %
+  { label: 'soulevé de terre 3RM = max', slug: 'deadlift_3rm', value: 174.96, pct: 1 },
+  // 5RM converti : 97,81 kg × 1,06 = 103,68 kg → référence
+  { label: 'soulevé de terre 5RM → équivalent 3RM = référence', slug: 'deadlift_3rm', value: 103.68 / 1.06, variant: 'rm5', pct: 0.6 },
+  { label: 'développé couché 5RM → équivalent 3RM = référence', slug: 'bench_press_3rm', value: (0.9 * 0.9 * 72) / 1.06, variant: 'rm5', pct: 0.6 },
+]
+for (const k of RM_CASES) {
+  const s = computeTest(t12(k.slug), { slug: k.slug, value: k.value, variant: k.variant }, P20, 'age', cfg12)
+  if (!s) { console.error(`  ✗ ${k.label} : non calculé`); failures++; continue }
+  if (near(s.pct, k.pct, 0.0005, k.label)) console.log(`  ✓ ${k.label} → ${(s.pct * 100).toFixed(1)} %`)
+}
+// Un 5RM sur une épreuve sans `rm_choice` (ex. clean 2RM) ne doit PAS être converti.
+const cl = computeTest(t12('clean_2rm'), { slug: 'clean_2rm', value: 80, variant: 'rm5' }, P20, 'age', cfg12)
+const cl0 = computeTest(t12('clean_2rm'), { slug: 'clean_2rm', value: 80 }, P20, 'age', cfg12)
+if (cl && cl0 && near(cl.pct, cl0.pct, 1e-9, 'clean 2RM : pas de conversion 5RM')) console.log('  ✓ clean 2RM : variante rm5 ignorée (pas de rm_choice)')
+
+// ── Decaform v1.2 : 8 qualités, pondérations cohérentes, points par qualité ──
+console.log('\nv1.2 — qualités et pondérations')
+const qkeys = cfg12.qualities.map((q) => q.key)
+if (qkeys.length === 8 && qkeys.includes('endurance_musculaire')) console.log('  ✓ 8 qualités, dont l’endurance musculaire')
+else { console.error('  ✗ les 8 qualités attendues ne sont pas là :', qkeys.join(', ')); failures++ }
+for (const t of cfg12.tests) {
+  const sum = qkeys.reduce((n, k) => n + (t.weights[k] ?? 0), 0)
+  if (Math.abs(sum - 1) > 1e-9) { console.error(`  ✗ ${t.slug} : pondérations = ${sum} (≠ 1)`); failures++ }
+}
+for (const band of Object.keys(cfg12.age.pf)) {
+  for (const k of qkeys) if (cfg12.age.pf[band][k] == null) { console.error(`  ✗ facteur d'âge manquant : ${band} / ${k}`); failures++ }
+}
+const totalPts = cfg12.tests.reduce((n, t) => n + t.pts_max, 0)
+if (totalPts === cfg12.total_points) console.log(`  ✓ ${cfg12.tests.length} épreuves, ${totalPts} points, pondérations = 1, facteurs d'âge complets`)
+else { console.error(`  ✗ total de points ${totalPts} ≠ ${cfg12.total_points}`); failures++ }
+const emPts = cfg12.tests.reduce((n, t) => n + t.pts_max * (t.weights.endurance_musculaire ?? 0), 0)
+console.log(`  · endurance musculaire : ${emPts.toFixed(1)} pts (AMRAP, Hyrox, dead hang)`)
 
 console.log(`\nÉcarts max — pct: ${maxPct.toFixed(6)} · points: ${maxPts.toFixed(6)} · total: ${maxTotal.toFixed(6)} · qualité pct: ${maxQPct.toFixed(6)}`)
 if (failures === 0) {

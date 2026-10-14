@@ -38,6 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     criteria: t.criteria ?? null,                   // [{aggregate,pts_max}] : meilleur + total des essais
     partCount: t.slug === 'amrap_20min' ? 1 : (t.attempts && t.attempts > 1 ? t.attempts : 1),
     equipmentField: t.equipment?.field ?? null,     // 'chaussures' | 'ceinture' | null
+    rmChoice: t.rm_choice === true,                 // 3RM ou 5RM au choix (converti en équivalent 3RM)
     hasTiming: TRACK.has(t.slug),
     hasPool: SWIM.has(t.slug),
     hasVariant: t.slug === 'hyrox_circuit',
@@ -57,6 +58,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     version: CONFIG.version,
     totalPoints: CONFIG.total_points,
     totalTests: CONFIG.tests.length,
+    rm5Factor: CONFIG.rm5_to_3rm ?? 1.06,            // 5RM → équivalent 3RM
     anchors: CONFIG.anchors,                         // {ref_pct, max_pct}
     age: CONFIG.age,                                 // {min,max,bands,pf}
     days: DAYS,

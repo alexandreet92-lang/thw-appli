@@ -11,6 +11,7 @@ var MENU_ITEMS = [
   { label: 'Découvrir les piliers',        href: 'decouvrir.html' },
   { label: 'Le test Decaform',             href: 'cadences.html' },
   { label: 'Tous les tests',              href: 'tests.html' },
+  { label: 'Mon historique',              href: 'historique.html' },
   { label: 'Abonnement athlète',          href: 'abonnement-athlete.html', group: 'shop' },
   { label: 'Abonnement coach',            href: 'abonnement-coach.html', group: 'shop' },
   { label: 'Recharge de tokens',          href: 'recharge-tokens.html', group: 'shop' },
@@ -172,6 +173,8 @@ function SiteHeader(props) {
     { label: 'Plans', href: 'theme.html#abonnements', key: 'plans' },
     { label: 'Connexion', href: 'compte.html', key: 'login' },
   ];
+  // Une fois connecté : accès direct à l'historique des tests (page dédiée).
+  if (account) navLinks.splice(3, 0, { label: 'Mon historique', href: 'historique.html', key: 'history' });
   // App Store 3.1.1 : quand une page du site est ouverte DEPUIS l'app (navigateur
   // in-app, ?app=1 → sessionStorage thw_app_noprice), on masque toute la
   // navigation du site (nav + CTA compte + burger). Sinon on pourrait, depuis

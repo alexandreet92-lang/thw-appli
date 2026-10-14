@@ -18,7 +18,8 @@
   function levelColor(cat, lv) { return (cat.palette && cat.palette[lv]) || '#9ca3af'; }
   // Conditions non renseignées (ex. test antérieur à la fonctionnalité) → « — ».
   function hasCond(e) { return e && e.tempC != null; }
-  function condLabel(e) { return hasCond(e) ? (e.outdoor ? (frNum(e.tempC) + ' °C · ' + (e.weatherLabel || '')) : 'Intérieur · ' + frNum(e.tempC) + ' °C') : '—'; }
+  function trw(s) { return window.CadTr ? window.CadTr(s) : s; }
+  function condLabel(e) { return hasCond(e) ? (e.outdoor ? (frNum(e.tempC) + ' °C · ' + trw(e.weatherLabel || '')) : trw('Intérieur') + ' · ' + frNum(e.tempC) + ' °C') : '—'; }
   // Lieu + météo pour la colonne « Conditions » (la température a sa propre colonne).
   function condVenue(e) { return hasCond(e) ? (e.outdoor ? ('Extérieur · ' + (e.weatherLabel || '')) : 'Intérieur') : '—'; }
 
@@ -75,6 +76,13 @@
         .cad-hcmp-q b { font-family: var(--font-display); font-weight: 800; text-align: right; }
         .cad-hcmp-q.is-head { border-bottom: 1px solid var(--border-mid); }
         .cad-hcmp-q.is-head b, .cad-hcmp-q.is-head span { font-family: var(--font-body); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
+        .cad-hyr-bars { width: 100%; height: auto; display: block; margin: 6px 0 4px; }
+        .cad-hyr-bars text { font-family: var(--font-mono); font-size: 11px; fill: var(--text-dim); }
+        .cad-hyr-bars .v { font-family: var(--font-display); font-weight: 800; font-size: 13px; fill: var(--text); }
+        .cad-hmx td, .cad-hmx th { white-space: nowrap; }
+        .cad-hmx tbody tr { cursor: pointer; }
+        .cad-hmx tbody tr.is-on td { background: var(--bg-card-2); }
+        .cad-hmx td small { display: block; font-family: var(--font-body); font-size: 10.5px; color: var(--text-dim); }
         .cad-hnote { border-left: 4px solid #f59e0b; }
         .cad-hdelta-up { color: #22c55e; } .cad-hdelta-dn { color: #ef4444; } .cad-hdelta-eq { color: var(--text-dim); }
       `}</style>
@@ -95,6 +103,8 @@
     var so = React.useState('recent'); var sort = so[0], setSort = so[1];
     var ca = React.useState(latest ? latest.id : null); var cmpA = ca[0], setCmpA = ca[1];
     var cb = React.useState(hist[0] ? hist[0].id : null); var cmpB = cb[0], setCmpB = cb[1];
+    var ytS = React.useState(null); var ytSel = ytS[0], setYtSel = ytS[1];
+    var ysS = React.useState('recent'); var ySort = ysS[0], setYSort = ysS[1];
 
     if (!hist.length) {
       return (
@@ -147,6 +157,8 @@
       var v = r.value != null ? r.value : r.valueUsed;
       if (v == null) return '—';
       var F = window.CadencesFormat;
+      // valueUsed = valeur normalisée du moteur : ratio au poids de corps (charges) ou W/kg (vélo).
+      if (t.kind === 'ratio' && F && F.formatRatio) return F.formatRatio(t, v);
       return F && F.formatValue ? F.formatValue(t, v) : String(v);
     }
     // Records personnels : meilleur résultat par épreuve (plus de points).
@@ -155,6 +167,39 @@
       hist.forEach(function (e) { var r = e.tests[t.slug]; if (r && (best === null || r.points > best.points)) { best = r; bestE = e; } });
       return best ? { slug: t.slug, name: t.name.replace(/\s*\(.*\)$/, ''), display: fmtVal(t, best), date: bestE.date, points: best.points, max: best.max != null ? best.max : t.pts_max, level: best.level } : null;
     }).filter(Boolean);
+
+    // ── Épreuve par épreuve, année après année ──
+    function cleanName(t) { return t.name.replace(/\s*\(.*\)$/, ''); }
+    function passages(slug) {
+      return hist.filter(function (e) { return e.tests && e.tests[slug]; });
+    }
+    var withData = tests.filter(function (t) { return passages(t.slug).length > 0; });
+    var ytSlug = (ytSel && withData.filter(function (t) { return t.slug === ytSel; })[0])
+      ? ytSel
+      : (withData.slice().sort(function (a, b) { return passages(b.slug).length - passages(a.slug).length; })[0] || {}).slug;
+    var ytTest = tests.filter(function (t) { return t.slug === ytSlug; })[0] || null;
+    var ytRows = [];
+    if (ytTest) {
+      var prev = null;
+      passages(ytSlug).forEach(function (e) {   // chronologique
+        var r = e.tests[ytSlug];
+        ytRows.push({ e: e, r: r, year: dOf(e.date).getFullYear(), points: r.points, max: r.max != null ? r.max : ytTest.pts_max,
+          delta: prev ? r.points - prev.points : null });
+        prev = r;
+      });
+      if (ySort === 'recent') ytRows.reverse();
+      else if (ySort === 'best') ytRows.sort(function (a, b) { return b.points - a.points; });
+    }
+    var ytChrono = ytRows.slice().sort(function (a, b) { return dOf(a.e.date) - dOf(b.e.date); });
+    var years = [];
+    hist.forEach(function (e) { var y = dOf(e.date).getFullYear(); if (years.indexOf(y) === -1) years.push(y); });
+    years.sort(function (a, b) { return b - a; });
+    // Matrice épreuves × années : meilleur résultat de l'année.
+    function bestOfYear(slug, y) {
+      var best = null;
+      hist.forEach(function (e) { if (dOf(e.date).getFullYear() === y && e.tests[slug] && (!best || e.tests[slug].points > best.points)) best = e.tests[slug]; });
+      return best;
+    }
 
     var ea = hist.filter(function (e) { return e.id === cmpA; })[0] || latest;
     var eb = hist.filter(function (e) { return e.id === cmpB; })[0] || hist[0];
@@ -226,6 +271,93 @@
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* ②bis Épreuve par épreuve, année après année */}
+        <section className="cad-card" style={{ marginTop: 18 }}>
+          <h3 className="cad-h3">Épreuve par épreuve, année après année</h3>
+          <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Choisis une épreuve : tu vois comment elle a évolué d’un passage à l’autre, et l’écart avec la fois d’avant.</p>
+          {ytTest ? (
+            <div>
+              <div className="cad-hsort" style={{ marginTop: 6 }}>
+                <label htmlFor="cad-hyr-sel">Épreuve</label>
+                <select id="cad-hyr-sel" className="cad-hsel" value={ytSlug} onChange={function (e) { setYtSel(e.target.value); }}>
+                  {withData.map(function (t) { return <option key={t.slug} value={t.slug}>{cleanName(t)} · {passages(t.slug).length}×</option>; })}
+                </select>
+                <label htmlFor="cad-hyr-sort" style={{ marginLeft: 12 }}>Trier</label>
+                <select id="cad-hyr-sort" className="cad-hsel" value={ySort} onChange={function (e) { setYSort(e.target.value); }}>
+                  <option value="recent">Plus récent</option>
+                  <option value="old">Plus ancien</option>
+                  <option value="best">Meilleur résultat</option>
+                </select>
+              </div>
+              {ytChrono.length > 1 ? (function () {
+                var W = 420, H = 130, pad = 22, bw = Math.min(48, (W - pad * 2) / ytChrono.length - 12);
+                var step = (W - pad * 2) / ytChrono.length;
+                return (
+                  <svg className="cad-hyr-bars" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={cleanName(ytTest) + ' — ' + window.CadTr('points par passage')}>
+                    <line x1={pad} x2={W - pad} y1={H - 22} y2={H - 22} stroke="var(--border-mid)" strokeWidth="1"/>
+                    {ytChrono.map(function (row, i) {
+                      var h = Math.max(2, (row.points / row.max) * (H - 56));
+                      var x = pad + step * i + (step - bw) / 2;
+                      return (
+                        <g key={row.e.id}>
+                          <rect x={x} y={H - 22 - h} width={bw} height={h} rx="5" fill={levelColor(cat, row.r.level)} opacity=".9"/>
+                          <text className="v" x={x + bw / 2} y={H - 26 - h} textAnchor="middle">{frNum(row.points)}</text>
+                          <text x={x + bw / 2} y={H - 8} textAnchor="middle">{shortDate(row.e.date)}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                );
+              })() : null}
+              <div className="cad-htable-wrap">
+                <table className="cad-htable">
+                  <thead><tr><th>Année</th><th>Date</th><th>Résultat</th><th>Points</th><th>Niveau</th><th>Écart avec le passage précédent</th><th>Conditions</th></tr></thead>
+                  <tbody>
+                    {ytRows.map(function (row) {
+                      return (
+                        <tr key={row.e.id} onClick={function () { props.onOpen && props.onOpen(row.e.id); }}>
+                          <td className="num" style={{ fontWeight: 800 }}>{row.year}</td>
+                          <td>{frDate(row.e.date)}</td>
+                          <td className="num" style={{ fontWeight: 700 }}>{fmtVal(ytTest, row.r)}</td>
+                          <td className="num">{frNum(row.points)} / {row.max}</td>
+                          <td>{Lcell(row.r.level)}</td>
+                          <td className={row.delta == null ? '' : deltaCls(row.delta)}>{row.delta == null ? '—' : deltaStr(Math.round(row.delta * 10) / 10) + ' pts'}</td>
+                          <td>{ytTest.venue === 'indoor' ? 'Intérieur' : condLabel(row.e)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : <p className="cad-p">Aucun résultat enregistré pour l’instant.</p>}
+
+          {withData.length > 1 && years.length > 0 ? (
+            <div style={{ marginTop: 18 }}>
+              <div className="cad-ec-h">Toutes les épreuves, année par année</div>
+              <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Meilleur résultat de chaque année. Clique sur une ligne pour la détailler au-dessus.</p>
+              <div className="cad-htable-wrap">
+                <table className="cad-htable cad-hmx">
+                  <thead><tr><th>Épreuve</th>{years.map(function (y) { return <th key={y}>{y}</th>; })}</tr></thead>
+                  <tbody>
+                    {withData.map(function (t) {
+                      return (
+                        <tr key={t.slug} className={t.slug === ytSlug ? 'is-on' : ''} onClick={function () { setYtSel(t.slug); }}>
+                          <td style={{ fontWeight: 700 }}>{cleanName(t)}</td>
+                          {years.map(function (y) {
+                            var b = bestOfYear(t.slug, y);
+                            return <td key={y} className="num">{b ? <span>{fmtVal(t, b)}<small>{frNum(b.points)} / {b.max != null ? b.max : t.pts_max}</small></span> : '—'}</td>;
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* ③ Progression par qualité */}

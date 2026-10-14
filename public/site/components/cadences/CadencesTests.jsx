@@ -15,7 +15,7 @@
     { key: 'seniors', label: 'Seniors' },
   ];
   // Même couleur par qualité que le reste de Decaform (la lecture ne change pas d'une page à l'autre).
-  var QCOLOR = { vitesse: '#f59e0b', force: '#ef4444', puissance: '#f97316', explosivite: '#eab308', endurance: '#22c55e', vo2max: '#06b6d4', coordination: '#a855f7' };
+  var QCOLOR = { vitesse: '#f59e0b', force: '#ef4444', puissance: '#f97316', explosivite: '#eab308', endurance: '#22c55e', endurance_musculaire: '#84cc16', vo2max: '#06b6d4', coordination: '#a855f7' };
 
   function useProducts() {
     var s = React.useState(null); var data = s[0], setData = s[1];
@@ -36,7 +36,7 @@
     return { data: data, err: err, retry: function () { setData(null); setTries(function (t) { return t + 1; }); } };
   }
 
-  /* Mini radar : les 7 qualités, surface = part du score que chacune pèse. SVG brut, sans lib. */
+  /* Mini radar : les qualités du test, surface = part du score que chacune pèse. SVG brut, sans lib. */
   function MiniRadar(props) {
     var items = props.items || [];
     var n = items.length || 7;
@@ -155,7 +155,7 @@
             <div className="eyebrow">Les tests</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'clamp(30px,5vw,46px)', lineHeight: 1.1, margin: '6px 0 12px', color: 'var(--text)' }}>Un test pour chaque âge.</h1>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, lineHeight: 1.65, color: 'var(--text-mid)', margin: 0 }}>
-              Même méthode partout : un score sur 1000, sept qualités physiques et un niveau pour chacune. Les épreuves, le matériel et les barèmes s’adaptent à l’âge. Choisis le tien pour voir le détail.
+              Même méthode partout : un score sur 1000, des qualités physiques mesurées une à une et un niveau pour chacune. Les épreuves, le matériel et les barèmes s’adaptent à l’âge. Choisis le tien pour voir le détail.
             </p>
           </div>
           <div className="cad-tfilter" role="group" aria-label="Filtrer par public">

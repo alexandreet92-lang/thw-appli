@@ -62,7 +62,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Aperçu en direct, recalculé sur les épreuves validées (config épinglée).
     const inputs: TestInput[] = (results ?? [])
       .filter((r) => r.status === 'validated' && r.raw_value != null)
-      .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, parts: partsOf(r.raw_parts) }))
+      .map((r) => ({ slug: r.test_slug, value: Number(r.raw_value), equipment: r.equipment, variant: r.variant, parts: partsOf(r.raw_parts) }))
     const profile = { sex: camp.scale_sex as 'M' | 'F', bodyWeightKg: Number(camp.body_weight_kg), ageBand: camp.age_band }
     scores = {
       general: computeCampaign(inputs, profile, 'general', config),

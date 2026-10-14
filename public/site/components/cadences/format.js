@@ -33,14 +33,16 @@
     return Math.round(n * f) / f;
   }
 
+  // Affichage (jamais en saisie) : virgule décimale, comme partout ailleurs sur le site.
+  function comma(x) { return String(x).replace('.', ','); }
   function formatValue(test, value) {
     switch (test.unit) {
-      case 's': return formatDuration(value, value < 60);
-      case 'm': return round(value, 2) + ' m';
-      case 'kg': return round(value, 1) + ' kg';
+      case 's': return value < 60 ? comma(round(value, 2)) + ' s' : comma(formatDuration(value, true));
+      case 'm': return comma(round(value, 2)) + ' m';
+      case 'kg': return comma(round(value, 1)) + ' kg';
       case 'W': return Math.round(value) + ' W';
-      case 'tours': return round(value, 2) + ' tours';
-      default: return String(round(value, 2));
+      case 'tours': return comma(round(value, 2)) + ' tours';
+      default: return comma(round(value, 2));
     }
   }
 
@@ -84,7 +86,28 @@
     return test.direction === 'higher_is_better' ? Math.max.apply(null, vals) : Math.min.apply(null, vals);
   }
 
+  var BIKE = 'bike_20min';
+  function frNum(n, d) { return String(round(n, d)).replace('.', ','); }
+
+  /* Valeur NORMALISÉE d'une épreuve en ratio (valueUsed du moteur) : × poids de corps
+     pour les charges, W/kg pour le vélo. Jamais en kg ni en W : le score est calculé en ratio. */
+  function formatRatio(test, ratio) {
+    if (ratio == null) return '—';
+    if (test.unit === 'W') return frNum(ratio, 2) + ' W/kg';
+    if (test.unit === 'kg') return frNum(ratio, 2) + ' × poids de corps';
+    return formatValue(test, ratio);
+  }
+
+  /* Seuil (Réf / Max) ou valeur brute exprimé pour l'affichage. Le vélo est noté en W/kg :
+     on met les W/kg en premier et les watts entre parenthèses. */
+  function formatThreshold(test, value, bodyWeightKg) {
+    if (test.slug === BIKE && bodyWeightKg > 0) return frNum(value / bodyWeightKg, 2) + ' W/kg · ' + Math.round(value) + ' W';
+    return formatValue(test, value);
+  }
+
   window.CadencesFormat = {
+    formatRatio: formatRatio,
+    formatThreshold: formatThreshold,
     parseDuration: parseDuration,
     formatDuration: formatDuration,
     formatValue: formatValue,

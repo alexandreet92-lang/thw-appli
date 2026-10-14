@@ -52,7 +52,8 @@ export async function PUT(request: Request): Promise<NextResponse> {
     tested_on: new Date().toISOString().slice(0, 10),
     raw_value: statut === 'skipped' ? null : value,
     raw_parts: Array.isArray(b?.rawParts) ? b.rawParts : null,
-    variant: b?.variant === 'box' || b?.variant === 'plate' ? b.variant : null,
+    // 'box' | 'plate' : Hyrox ; 'rm5' : un 5RM saisi à la place du 3RM (épreuves `rm_choice` seulement).
+    variant: b?.variant === 'box' || b?.variant === 'plate' || (b?.variant === 'rm5' && test.rm_choice) ? b.variant : null,
     equipment: ['normales', 'pointes', 'sans', 'ceinture'].includes(b?.equipment as string) ? b?.equipment : null,
     timing_method: ['manuel', 'cellules', 'montre'].includes(b?.timingMethod as string) ? b?.timingMethod : null,
     pool_length_m: b?.poolLength === 25 || b?.poolLength === 50 ? b?.poolLength : null,

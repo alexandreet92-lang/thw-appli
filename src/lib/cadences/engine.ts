@@ -48,6 +48,13 @@ export function adjustedThresholds(
   return { ref: base.ref / d, max: base.max / d }
 }
 
+/** Convertit un 5RM saisi en équivalent 3RM (épreuves `rm_choice`) pour que le score reste
+ *  comparable : un 5RM pèse environ 94 % d'un 3RM, donc × 1,06. Sans effet sinon. */
+export function applyRm(value: number, test: TestConfig, variant: string | null | undefined, config: CadencesConfig): number {
+  if (!test.rm_choice || variant !== 'rm5') return value
+  return value * (config.rm5_to_3rm ?? 1.06)
+}
+
 /** Applique la correction d'équipement (§12) à la valeur brute. */
 export function applyEquipment(value: number, test: TestConfig, equipment?: string | null): number {
   const eq = test.equipment
@@ -61,8 +68,8 @@ export function computeTest(
 ): TestScore | null {
   if (input.value == null || !Number.isFinite(input.value)) return null
 
-  // 2. équipement
-  let x = applyEquipment(input.value, test, input.equipment)
+  // 2. 5RM → équivalent 3RM, puis équipement
+  let x = applyEquipment(applyRm(input.value, test, input.variant, config), test, input.equipment)
   // 3. normalisation (ratio au poids de corps : kg→ratio, W→W/kg, lest→ratio)
   if (test.kind === 'ratio') x = x / profile.bodyWeightKg
 

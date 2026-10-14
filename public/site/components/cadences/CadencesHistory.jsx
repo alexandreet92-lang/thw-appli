@@ -87,6 +87,8 @@
         .cad-bt-seg { display: inline-flex; border: 1px solid var(--border-mid); border-radius: 999px; overflow: hidden; background: var(--bg-card-2); }
         .cad-bt-seg button { border: 0; background: transparent; color: var(--text-mid); font-family: var(--font-body); font-size: 12.5px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
         .cad-bt-seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+        .cad-bt-csv { border: 1px solid var(--border-mid); background: var(--bg-card-2); color: var(--text); border-radius: 999px; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; padding: 7px 14px; cursor: pointer; margin-left: auto; }
+        .cad-bt-csv:hover, .cad-bt-csv:focus-visible { border-color: var(--brand); color: var(--brand); outline: none; }
         .cad-bt-wrap { overflow: auto; max-height: min(78vh, 760px); border: 1px solid var(--border); border-radius: var(--radius-md); }
         .cad-bt-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
         .cad-bt-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-family: var(--font-body); font-size: 12.5px; }
@@ -127,7 +129,9 @@
     var byRecent = hist.slice().reverse();
     var latest = byRecent[0];
     var qualities = cat.qualities || [];
-    var tests = cat.tests || [];
+    // Épreuves d'anciennes versions (absentes du catalogue servi) : conservées en colonnes, marquées « ancienne version ».
+    var legacy = (props.legacyTests || []).map(function (t) { return Object.assign({}, t, { legacy: true }); });
+    var tests = (cat.tests || []).concat(legacy);
 
     var btS = React.useState({ key: 'date', dir: 'desc' }); var bt = btS[0], setBt = btS[1];
     var bmS = React.useState('general'); var bmode = bmS[0], setBmode = bmS[1];
@@ -225,6 +229,30 @@
       return frDate(e.date) + ' · ' + trw('score général') + ' ' + e.score + ' / ' + cat.totalPoints + ' · ' + Object.keys(e.tests || {}).length + ' ' + trw('épreuves');
     }
 
+    // Export CSV du tableau (ordre de tri courant) : séparateur « ; » et virgule décimale pour Excel en français.
+    function exportCsv() {
+      var q = function (v) { var t = String(v == null ? '' : v); return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+      var num = function (v, d) { return v == null || !isFinite(v) ? '' : String(Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).replace('.', ','); };
+      var head = ['Date', 'Âge', 'Poids (kg)', 'Score général', 'Niveau général', 'Score ajusté à l’âge', 'Niveau ajusté à l’âge'].map(trw);
+      var G = trw('général'), A = trw('ajusté à l’âge');
+      qualities.forEach(function (x) { head.push(trw(x.label) + ' — ' + G + ' (%)'); head.push(trw(x.label) + ' — ' + A + ' (%)'); });
+      tests.forEach(function (t) { var n = trw(t.name.replace(/\s*\(.*\)$/, '')); head.push(n + ' — ' + trw('résultat')); head.push(n + ' — ' + trw('points') + ' ' + G); head.push(n + ' — ' + trw('points') + ' ' + A); });
+      var lines = [head.map(q).join(';')];
+      bRows.forEach(function (e) {
+        var row = [String(e.date).slice(0, 10), e.age, num(e.weight, 1), e.score, trw(e.level), e.scoreA != null ? e.scoreA : e.score, trw(e.levelA || e.level)];
+        qualities.forEach(function (x) { var g = (e.qualities || {})[x.key], a = (e.qualitiesA || e.qualities || {})[x.key]; row.push(g ? num(g.pct * 100, 1) : ''); row.push(a ? num(a.pct * 100, 1) : ''); });
+        tests.forEach(function (t) { var g = (e.tests || {})[t.slug], a = (e.testsA || e.tests || {})[t.slug]; row.push(g ? fmtVal(t, g) : ''); row.push(g ? num(g.points, 1) : ''); row.push(a ? num(a.points, 1) : ''); });
+        lines.push(row.map(q).join(';'));
+      });
+      try {
+        var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = 'decaform-resultats-' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      } catch (err) { /* navigateur sans Blob : on ignore */ }
+    }
+
     // ── Épreuve par épreuve, année après année ──
     function cleanName(t) { return t.name.replace(/\s*\(.*\)$/, ''); }
     function passages(slug) {
@@ -304,6 +332,7 @@
               <button type="button" aria-pressed={bmode === 'general'} onClick={function () { setBmode('general'); }}>Général</button>
               <button type="button" aria-pressed={bmode === 'age'} onClick={function () { setBmode('age'); }}>Ajusté à l’âge</button>
             </div>
+            <button type="button" className="cad-bt-csv" onClick={exportCsv}>Exporter en CSV</button>
             <div className="cad-bt-seg" role="group" aria-label="Affichage des épreuves">
               <button type="button" aria-pressed={bview === 'points'} onClick={function () { setBview('points'); }}>Points</button>
               <button type="button" aria-pressed={bview === 'value'} onClick={function () { setBview('value'); }}>Résultat brut</button>
@@ -325,7 +354,7 @@
                   <Th k="score" cls="is-score">Général /{cat.totalPoints}</Th>
                   <Th k="scoreA" cls="is-score">Ajusté à l’âge /{cat.totalPoints}</Th>
                   {qualities.map(function (q) { return <Th key={q.key} k={'q:' + q.key}>{q.label}</Th>; })}
-                  {tests.map(function (t) { return <Th key={t.slug} k={'t:' + t.slug} title={t.name}>{t.name.replace(/\s*\(.*\)$/, '')}</Th>; })}
+                  {tests.map(function (t) { return <Th key={t.slug} k={'t:' + t.slug} title={t.name + (t.legacy ? ' — ' + trw('ancienne version du barème') : '')}>{t.name.replace(/\s*\(.*\)$/, '')}{t.legacy ? ' ⌛' : ''}</Th>; })}
                 </tr>
               </thead>
               <tbody>
@@ -333,7 +362,7 @@
                   var qm = modeMap(e, 'qualities') || {}, tm = modeMap(e, 'tests') || {};
                   return (
                     <tr key={e.id} onClick={function () { props.onOpen && props.onOpen(e.id); }}>
-                      <td className="cad-bt-sticky"><b>{frDate(e.date)}</b>{flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}{e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hbadge is-warn" title={trw('Test étalé sur plus de {max} jours : résultats moins comparables.').replace('{max}', e.maxDays)}>{trw('⏱ {n} j').replace('{n}', e.durationDays)}</span> : null}</td>
+                      <td className="cad-bt-sticky"><b>{frDate(e.date)}</b>{flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}{e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hbadge is-warn" title={trw('Test étalé sur plus de {max} jours : résultats moins comparables.').replace('{max}', e.maxDays)}>{trw('⏱ {n} j').replace('{n}', e.durationDays)}</span> : null}{e.stationsPassees ? <span className="cad-hbadge is-warn" title={trw('Stations du Conditioning passées (forfait) : {n}').replace('{n}', e.stationsPassees)}>{trw('⚑ {n} station(s) passée(s)').replace('{n}', e.stationsPassees)}</span> : null}</td>
                       <td className="num">{e.age}</td>
                       <td className="num">{frNum(e.weight)} kg</td>
                       <td className={'num' + (e.score === bestOf('score') ? ' is-best' : '')}><span className="cad-hscore" style={{ color: colorOf(e) }}>{e.score}</span> {Lcell(e.level)}</td>

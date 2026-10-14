@@ -9,7 +9,9 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { levelFor } from '@/lib/cadences/engine'
-import { CONFIG } from '@/lib/cadences/catalog'
+import { CONFIG, getConfig } from '@/lib/cadences/catalog'
+import { legacyTestsOf } from '@/lib/cadences/catalogView'
+import { parseSkippedStations } from '@/lib/cadences/protocols'
 import type { CadencesConfig } from '@/lib/cadences/types'
 
 export const dynamic = 'force-dynamic'
@@ -98,6 +100,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     return Math.round((Date.parse(c.last + 'T12:00:00Z') - Date.parse(c.first + 'T12:00:00Z')) / 86400000) + 1
   }
 
+  // Stations du Conditioning « passées » (forfait), pour la pastille du grand tableau.
+  const skippedByCamp = new Map<string, number>()
+  const { data: notesRows } = await sb.from('cadences_results').select('campaign_id, notes').in('campaign_id', ids).like('notes', 'stations_passees=%')
+  for (const r of notesRows ?? []) skippedByCamp.set(r.campaign_id, parseSkippedStations(r.notes).length)
+
   // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} } selon la config du produit.
   const mapSnap = (s: Snap | undefined, config: CadencesConfig) => {
     if (!s) return null
@@ -136,6 +143,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       tempC: cond.tempC,
       outdoor: cond.outdoor,
       weatherLabel: cond.weatherLabel,
+      version: config.version,                      // version du barème épinglée à ce test
+      stationsPassees: skippedByCamp.get(c.id) ?? 0, // stations du Conditioning passées (forfait)
       durationDays: durationOf(c.id),               // jours entre la 1re et la dernière saisie
       maxDays: config.max_days ?? null,             // durée maximale conseillée (produit)
       // Général (primaire)
@@ -145,7 +154,14 @@ export async function GET(request: Request): Promise<NextResponse> {
     }]
   })
 
-  return NextResponse.json({ tests })
+  // Épreuves d'anciennes versions absentes du catalogue servi (ex. AMRAP / circuit Hyrox v1.x) : le site les garde en colonnes.
+  const legacy = new Map<string, ReturnType<typeof legacyTestsOf>[number]>()
+  for (const c of camps) {
+    for (const t of legacyTestsOf(configFor(c.scale_version_id), getConfig(c.test_key as string | undefined))) {
+      if (!legacy.has(t.slug)) legacy.set(t.slug, t)
+    }
+  }
+  return NextResponse.json({ tests, legacyTests: Array.from(legacy.values()) })
 }
 
 type Snap = { campaign_id: string; age_mode: string; total_points: number; quality_scores: unknown; test_scores: unknown }

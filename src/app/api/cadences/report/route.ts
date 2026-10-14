@@ -7,7 +7,8 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeCampaign, levelFor } from '@/lib/cadences/engine'
-import { CONFIG } from '@/lib/cadences/catalog'
+import { CONFIG, getConfig } from '@/lib/cadences/catalog'
+import { buildCatalogView } from '@/lib/cadences/catalogView'
 import type { CadencesConfig, Mode, TestInput } from '@/lib/cadences/types'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const { data: results } = await sb
     .from('cadences_results')
-    .select('test_slug, tested_on, raw_value, raw_parts, equipment, variant, timing_method, pool_length_m, venue, temperature_c, weather, status, skip_reason')
+    .select('test_slug, tested_on, notes, raw_value, raw_parts, equipment, variant, timing_method, pool_length_m, venue, temperature_c, weather, status, skip_reason')
     .eq('campaign_id', campaignId)
 
   let scores: Record<Mode, unknown>
@@ -70,7 +71,14 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
   }
 
+  // Test passé sur une ANCIENNE version du barème (épreuves retirées ou ajoutées depuis) : on renvoie la vue
+  // catalogue de la version épinglée pour que le site n'affiche ni n'oublie aucune de ses épreuves.
+  const served = getConfig(camp.test_key as string | undefined)
+  const sameTests = served.tests.length === config.tests.length && served.tests.every((t) => config.tests.some((u) => u.slug === t.slug))
+  const catalogOverlay = (config.version !== served.version || !sameTests) ? buildCatalogView(config) : null
+
   return NextResponse.json({
+    catalogOverlay,
     campaign: {
       id: camp.id,
       test_key: camp.test_key ?? config.test_key ?? 'decaform',
@@ -83,6 +91,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       started_on: camp.started_on,
       completed_on: camp.completed_on,
       status: camp.status,
+      version: config.version,
     },
     results: results ?? [],
     scores,

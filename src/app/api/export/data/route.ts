@@ -41,6 +41,27 @@ export async function GET() {
     }
   }
 
+  // Decaform / tests physiques : campagnes de l'utilisateur, puis leurs résultats saisis et leurs scores figés
+  // (ces deux tables n'ont pas de user_id : elles se rattachent à la campagne, la RLS reste le garde-fou).
+  try {
+    const { data: camps, error } = await supabase.from('cadences_campaigns').select('*').eq('user_id', user.id)
+    if (!error) {
+      data.cadences_campaigns = camps ?? []
+      const ids = (camps ?? []).map((c) => c.id as string)
+      if (ids.length) {
+        for (const name of ['cadences_results', 'cadences_snapshots']) {
+          const { data: rows, error: e2 } = await supabase.from(name).select('*').in('campaign_id', ids)
+          if (!e2) data[name] = rows ?? []
+        }
+      } else {
+        data.cadences_results = []
+        data.cadences_snapshots = []
+      }
+    }
+  } catch {
+    /* tables absentes → ignorées */
+  }
+
   const payload = {
     export_meta: {
       app: 'THW Coaching',

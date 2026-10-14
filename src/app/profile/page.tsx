@@ -1163,6 +1163,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'entrainement.seance_telechargee',   label:'Séance téléchargée',     sub:'Une séance a été ajoutée à ton planning', def:true },
     { key:'entrainement.rappel_enregistrement',label:"Rappel d'enregistrement",sub:'Pense à enregistrer ta séance manuelle', def:false },
     { key:'entrainement.test_suggere',         label:'Test suggéré',           sub:'Un test de performance est recommandé', def:false },
+    { key:'entrainement.test_decaform',         label:'Test Decaform',          sub:'Rappels avant la limite de durée de ton test', def:true },
   ]},
   { id:'recuperation', label:'Récupération', color:'#22c55e', Icon: Moon, items:[
     { key:'recuperation.rappel_hrv',          label:'Rappel HRV',             sub:'Mesure HRV au réveil', def:true },

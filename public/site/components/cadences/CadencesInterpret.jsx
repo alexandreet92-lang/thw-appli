@@ -102,6 +102,7 @@
   }
 
   // Épreuve en stations (Conditioning) : part de chaque station dans le temps total, comparée à la part attendue.
+  function F_() { return window.CadencesFormat || {}; }
   function stationData(cat, results, sex) {
     var t = (cat.tests || []).filter(function (x) { return x.partLabels && x.partShare; })[0];
     if (!t) return null;
@@ -112,11 +113,14 @@
     if (vals.some(function (v) { return !isFinite(v) || v <= 0; })) return null;
     var tot = vals.reduce(function (a, b) { return a + b; }, 0);
     var labels = (sex === 'F' && t.partLabelsF) ? t.partLabelsF : t.partLabels;
+    var skipped = F_().skippedStations ? F_().skippedStations(r.notes) : [];
     var rows = labels.map(function (lab, i) {
       var share = vals[i] / tot, exp = t.partShare[i];
-      return { label: lab, sec: vals[i], share: share, exp: exp, diff: (share - exp) * 100, ratio: share / exp };
+      return { label: lab, sec: vals[i], share: share, exp: exp, diff: (share - exp) * 100, ratio: share / exp, skipped: skipped.indexOf(i + 1) !== -1 };
     });
-    var sorted = rows.slice().sort(function (a, b) { return b.ratio - a.ratio; });
+    // Une station passée (forfait) n'est pas une performance : exclue du « plus lent / plus à l'aise ».
+    var sorted = rows.filter(function (x) { return !x.skipped; }).sort(function (a, b) { return b.ratio - a.ratio; });
+    if (!sorted.length) return null;
     return { t: t, rows: rows, tot: tot, slow: sorted[0], fast: sorted[sorted.length - 1] };
   }
 
@@ -341,7 +345,7 @@
                 {st.rows.map(function (row) {
                   return (
                     <tr key={row.label}>
-                      <td>{tr(row.label)}</td>
+                      <td>{tr(row.label)}{row.skipped ? <span className="cad-int-badge is-weak">{tr('forfait')}</span> : null}</td>
                       <td>{F.formatDuration(row.sec, false)}</td>
                       <td>{pc(row.share)} %</td>
                       <td>{pc(row.exp)} %</td>

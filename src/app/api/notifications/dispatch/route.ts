@@ -18,6 +18,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { onAthleteMissedSession } from '@/lib/notifications/events'
+import { getConfig } from '@/lib/cadences/catalog'
+import { deadlineReminder, testDayNumber } from '@/lib/cadences/deadline'
 
 const DAY = 86400000
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
@@ -59,6 +61,30 @@ export async function GET(req: NextRequest) {
     const { data, error } = await sb.from('native_push_tokens').select('user_id')
     if (!error) nativeSubs = (data ?? []) as Array<{ user_id: string }>
   } catch { /* table absente (migration non appliquée) → web seul */ }
+  // ── Decaform : rappels avant la limite de durée du test (indépendant du push : la notification in-app suffit) ──
+  try {
+    const { data: camps } = await sb.from('cadences_campaigns').select('id, user_id, test_key, started_on').eq('status', 'in_progress')
+    const list = (camps ?? []) as Array<{ id: string; user_id: string; test_key: string | null; started_on: string }>
+    if (list.length) {
+      const { data: dates } = await sb.from('cadences_results').select('campaign_id, tested_on').in('campaign_id', list.map((c) => c.id))
+      const first = new Map<string, string>()
+      for (const r of (dates ?? []) as Array<{ campaign_id: string; tested_on: string | null }>) {
+        if (!r.tested_on) continue
+        const d = String(r.tested_on).slice(0, 10)
+        if (!first.has(r.campaign_id) || d < (first.get(r.campaign_id) as string)) first.set(r.campaign_id, d)
+      }
+      for (const c of list) {
+        const max = getConfig(c.test_key).max_days
+        const start = first.get(c.id)
+        if (!max || !start) continue                       // limite non définie ou test pas encore commencé
+        const msg = deadlineReminder(testDayNumber(start, today), max)
+        if (msg) {
+          try { await notifyUser(c.user_id, 'entrainement.test_decaform', { title: msg.title, body: msg.body, url: '/site/cadences.html', dedupKey: `decaform-${c.id}-${msg.m}`, once: true }) } catch { /* best-effort */ }
+        }
+      }
+    }
+  } catch { /* best-effort : tables absentes → ignoré */ }
+
   const userIds = Array.from(new Set([...((subs ?? []) as Array<{ user_id: string }>), ...nativeSubs].map(s => s.user_id))).filter(Boolean)
   if (userIds.length === 0) return NextResponse.json({ ok: true, users: 0, sent: 0 })
 

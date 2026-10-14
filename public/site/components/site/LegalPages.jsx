@@ -79,7 +79,7 @@ function BodyConfidentialite() {
         <ul>
           <li><strong>Compte &amp; identité</strong> : email, nom/prénom (facultatif), photo de profil (facultative), mot de passe (chiffré, jamais lisible par nous).</li>
           <li><strong>Données de profil sportif</strong> : taille, poids, sports pratiqués, objectifs, bio, préférences d'unités.</li>
-          <li><strong>Données d'entraînement &amp; santé</strong> : séances, distances, durées, fréquence cardiaque, puissance, allure, récupération, blessures. Ces données peuvent constituer des <strong>données de santé</strong> ; elles sont traitées avec ton consentement explicite et pour te fournir le service.</li>
+          <li><strong>Données d'entraînement &amp; santé</strong> : séances, distances, durées, fréquence cardiaque, puissance, allure, récupération, blessures, résultats des tests physiques Decaform. Ces données peuvent constituer des <strong>données de santé</strong> ; elles sont traitées avec ton consentement explicite et pour te fournir le service.</li>
           <li><strong>Connexions tierces</strong> : si tu connectes un service externe (ex. Strava), les données que tu autorises à importer.</li>
           <li><strong>Paiement</strong> : gérées par notre prestataire <strong>Stripe</strong>. Nous ne stockons jamais ton numéro de carte.</li>
           <li><strong>Données d'usage &amp; techniques</strong> : logs, appareil, statistiques d'utilisation de l'assistant IA.</li>
@@ -229,6 +229,7 @@ function BodyExport() {
           <li>Ton profil (identité, mensurations, préférences).</li>
           <li>Tes séances, activités et statistiques d'entraînement.</li>
           <li>Tes données de nutrition, récupération et blessures.</li>
+          <li>Tes tests physiques Decaform : résultats saisis, scores et conditions de chaque passage.</li>
           <li>L'historique de tes conversations avec l'assistant IA.</li>
         </ul>
       </section>

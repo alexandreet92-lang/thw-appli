@@ -31,6 +31,7 @@ export async function POST() {
       admin.from('dm_reports').delete().eq('reporter_id', uid),
       admin.from('ai_conversations').delete().eq('user_id', uid),
       admin.from('activities').delete().eq('user_id', uid),
+      admin.from('cadences_campaigns').delete().eq('user_id', uid),   // Decaform : résultats et scores partent en cascade
       admin.from('profiles').delete().eq('id', uid),
     ]
     await Promise.allSettled(cleanups)

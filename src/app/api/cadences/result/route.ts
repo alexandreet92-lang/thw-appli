@@ -6,6 +6,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { testBySlug, getConfig } from '@/lib/cadences/catalog'
+import { PROTOCOLS, MAX_SKIPPED_STATIONS, parseSkippedStations, stationPenaltySec } from '@/lib/cadences/protocols'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -21,7 +22,7 @@ export async function PUT(request: Request): Promise<NextResponse> {
   if (!campaignId) return NextResponse.json({ erreur: 'Campagne manquante.' }, { status: 400 })
 
   // Résout l'épreuve dans la config DU PRODUIT de la campagne (test_key).
-  const { data: camp } = await sb.from('cadences_campaigns').select('test_key').eq('id', campaignId).maybeSingle()
+  const { data: camp } = await sb.from('cadences_campaigns').select('test_key, scale_sex').eq('id', campaignId).maybeSingle()
   const test = testBySlug(slug, getConfig(camp?.test_key as string | undefined))
   if (!test) return NextResponse.json({ erreur: 'Épreuve invalide pour ce test.' }, { status: 400 })
 
@@ -44,6 +45,22 @@ export async function PUT(request: Request): Promise<NextResponse> {
     return NextResponse.json({ erreur: 'Température requise pour une épreuve en extérieur (°C).' }, { status: 400 })
   }
   const weather = venueEff === 'outdoor' && typeof b?.weather === 'string' && b.weather.trim() ? b.weather.slice(0, 40) : null
+
+  // Conditioning : stations « passées » (forfait). Au plus 2, et le temps enregistré doit être le forfait calculé.
+  const skippedStations = test.slug === 'conditioning' ? parseSkippedStations(b?.notes) : []
+  if (skippedStations.length && statut === 'validated') {
+    const share = PROTOCOLS.conditioning?.stationShare ?? []
+    const parts = Array.isArray(b?.rawParts) ? (b.rawParts as unknown[]).map(Number) : []
+    const ref = camp?.scale_sex === 'F' ? test.female.ref : test.male.ref
+    if (skippedStations.length > MAX_SKIPPED_STATIONS || skippedStations.some((i) => i > share.length)) {
+      return NextResponse.json({ erreur: `Tu peux passer ${MAX_SKIPPED_STATIONS} stations au maximum.` }, { status: 400 })
+    }
+    for (const i of skippedStations) {
+      if (!(Math.abs((parts[i - 1] ?? NaN) - stationPenaltySec(ref, share[i - 1])) <= 2)) {
+        return NextResponse.json({ erreur: 'Temps forfaitaire invalide pour une station passée.' }, { status: 400 })
+      }
+    }
+  }
 
   const row: Record<string, unknown> = {
     campaign_id: campaignId,

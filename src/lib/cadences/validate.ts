@@ -8,7 +8,9 @@ import config from './cadences.config.json'
 import v12 from './configs/decaform_v1_2.config.json'
 import cases from './reference-cases.json'
 import { computeCampaign, computeTest } from './engine'
-import { conditioningLoads, rowerDistanceM, PROTOCOLS } from './protocols'
+import { conditioningLoads, rowerDistanceM, PROTOCOLS, stationPenaltySec, parseSkippedStations, MAX_SKIPPED_STATIONS } from './protocols'
+import { buildCatalogView, legacyTestsOf } from './catalogView'
+import { deadlineReminder, testDayNumber } from './deadline'
 import type { CadencesConfig, Profile, TestInput, QualityKey } from './types'
 
 const cfg = config as unknown as CadencesConfig
@@ -170,6 +172,33 @@ if (eq(rowerDistanceM(0), 2000, 'rameur 0 %') && eq(rowerDistanceM(10), 2200, 'r
 const shareSum = PROTOCOLS.conditioning.stationShare!.reduce((a, b) => a + b, 0)
 if (Math.abs(shareSum - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 7 && PROTOCOLS.conditioning.stationsF!.length === 7) console.log('  ✓ 7 stations, parts attendues = 100 %')
 else { console.error(`  ✗ stations / parts attendues incohérentes (somme ${shareSum})`); failures++ }
+
+// Station du Conditioning passée : forfait = 1,5 × son temps attendu à niveau Référence ; 2 stations au maximum.
+const shares = PROTOCOLS.conditioning.stationShare!
+if (eq(stationPenaltySec(hx.male.ref, shares[1]), 879, 'forfait tractions (H)') && eq(stationPenaltySec(hx.female.ref, shares[0]), 312, 'forfait burpees (F)')) console.log('  ✓ forfait d’une station passée : 1,5 × temps attendu (tractions H = 14 min 39, burpees F = 5 min 12)')
+if (eq(parseSkippedStations('stations_passees=3,5').join(','), '3,5', 'lecture des stations passées') && eq(parseSkippedStations('autre note').length, 0, 'notes sans marqueur') && eq(MAX_SKIPPED_STATIONS, 2, 'plafond de stations passées')) console.log('  ✓ stations passées lues dans notes, plafond de 2')
+// Une station passée alourdit le temps total : le score baisse mais le circuit reste noté (140 pts).
+const base7 = [190, 560, 430, 500, 310, 220, 560]
+const withSkip = base7.map((v, i) => (i === 1 ? stationPenaltySec(hx.male.ref, shares[1]) : v))
+const sNo = computeTest(hx, { slug: 'conditioning', value: base7.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)
+const sSk = computeTest(hx, { slug: 'conditioning', value: withSkip.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)
+if (sNo && sSk && sSk.points > 0 && sSk.points < sNo.points) console.log(`  ✓ une station passée coûte des points sans annuler le circuit (${sNo.points.toFixed(1)} → ${sSk.points.toFixed(1)} / 140)`)
+else { console.error('  ✗ comportement d’une station passée inattendu'); failures++ }
+
+// Rappels de la limite de durée (max_days = 15) : J12, J14 et J16, jamais les autres jours.
+const msgs = Array.from({ length: 20 }, (_, i) => deadlineReminder(i + 1, 15)?.m ?? '-').join(',')
+if (eq(msgs, '-,-,-,-,-,-,-,-,-,-,-,J-3,-,J-1,-,depasse,-,-,-,-', 'jalons des rappels') && eq(testDayNumber('2026-10-01', '2026-10-12'), 12, 'jour du test') && eq(deadlineReminder(5, 3) === null, true, 'limite trop courte')) console.log('  ✓ rappels de la limite : jours 12 (J-3), 14 (J-1) et 16 (dépassée), aucun autre')
+
+// ── Tests passés sur une ANCIENNE version : l'affichage ne doit perdre aucune épreuve ──
+console.log('\nAnciennes versions — affichage')
+const oldCfg = config as unknown as CadencesConfig
+const view = buildCatalogView(oldCfg)
+const missing = oldCfg.tests.filter((t) => !view.tests.some((u) => u.slug === t.slug))
+if (!missing.length) console.log(`  ✓ la vue catalogue d'une config épinglée contient ses ${oldCfg.tests.length} épreuves`)
+else { console.error('  ✗ épreuves absentes de la vue :', missing.map((t) => t.slug).join(', ')); failures++ }
+const legacy = legacyTestsOf(oldCfg, cfg12).map((t) => t.slug)
+if (legacy.includes('amrap_20min') && legacy.includes('hyrox_circuit') && !legacy.includes('conditioning')) console.log('  ✓ épreuves d’ancienne version détectées pour l’historique : ' + legacy.join(', '))
+else { console.error('  ✗ épreuves d’ancienne version : ' + legacy.join(', ')); failures++ }
 
 console.log(`\nÉcarts max — pct: ${maxPct.toFixed(6)} · points: ${maxPts.toFixed(6)} · total: ${maxTotal.toFixed(6)} · qualité pct: ${maxQPct.toFixed(6)}`)
 if (failures === 0) {

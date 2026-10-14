@@ -128,7 +128,25 @@
     return Math.round((baseM || 2000) * (1 + p / 100));
   }
 
+  /* Temps forfaitaire (s) d'une station du Conditioning non faite : 1,5 × son temps attendu à niveau Référence.
+     Même calcul que stationPenaltySec() dans src/lib/cadences/protocols.ts. */
+  function stationPenaltySec(test, sex, i) {
+    var base = sex === 'F' ? test.female : test.male;
+    if (!test.partShare || !base) return null;
+    return Math.round(1.5 * test.partShare[i] * base.ref);
+  }
+  /* Stations passées lues dans notes (« stations_passees=3,5 » → [3, 5], à partir de 1). */
+  function skippedStations(notes) {
+    var m = typeof notes === 'string' ? notes.match(/stations_passees=([0-9,]+)/) : null;
+    if (!m) return [];
+    var out = [];
+    m[1].split(',').forEach(function (x) { var n = parseInt(x, 10); if (isFinite(n) && n >= 1 && out.indexOf(n) === -1) out.push(n); });
+    return out;
+  }
+
   window.CadencesFormat = {
+    stationPenaltySec: stationPenaltySec,
+    skippedStations: skippedStations,
     conditioningLoads: conditioningLoads,
     rowerDistanceM: rowerDistanceM,
     formatRatio: formatRatio,

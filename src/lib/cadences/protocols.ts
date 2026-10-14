@@ -146,6 +146,21 @@ export function conditioningLoads(sex: 'M' | 'F', weightKg: number, ageFactor = 
   }
 }
 
+/** Nombre maximum de stations du Conditioning qu'on peut « passer » (au-delà, le circuit entier est non passé). */
+export const MAX_SKIPPED_STATIONS = 2
+
+/** Temps forfaitaire (s) d'une station non faite : 1,5 × son temps attendu à niveau Référence (part attendue × Réf du barème). */
+export function stationPenaltySec(refTotalSec: number, share: number): number {
+  return Math.round(1.5 * share * refTotalSec)
+}
+
+/** Stations passées, lues dans `notes` (« stations_passees=3,5 » → [3, 5], indices à partir de 1). */
+export function parseSkippedStations(notes: unknown): number[] {
+  const m = typeof notes === 'string' ? notes.match(/stations_passees=([0-9,]+)/) : null
+  if (!m) return []
+  return Array.from(new Set(m[1].split(',').map((x) => parseInt(x, 10)).filter((n) => Number.isFinite(n) && n >= 1)))
+}
+
 /** Distance à ramer sur un rameur qui surestime de `overPct` % (Concept2 = référence, 0 %). */
 export function rowerDistanceM(overPct: number, baseM = 2000): number {
   const p = Number.isFinite(overPct) && overPct > 0 ? overPct : 0

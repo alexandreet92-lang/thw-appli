@@ -351,8 +351,8 @@
                 <tr>
                   <Th k="age">Âge</Th>
                   <Th k="weight">Poids</Th>
-                  <Th k="score" cls="is-score">Général /{cat.totalPoints}</Th>
-                  <Th k="scoreA" cls="is-score">Ajusté à l’âge /{cat.totalPoints}</Th>
+                  <Th k="score" cls="is-score">{trw('Général') + ' /' + cat.totalPoints}</Th>
+                  <Th k="scoreA" cls="is-score">{trw('Ajusté à l’âge') + ' /' + cat.totalPoints}</Th>
                   {qualities.map(function (q) { return <Th key={q.key} k={'q:' + q.key}>{q.label}</Th>; })}
                   {tests.map(function (t) { return <Th key={t.slug} k={'t:' + t.slug} title={t.name + (t.legacy ? ' — ' + trw('ancienne version du barème') : '')}>{t.name.replace(/\s*\(.*\)$/, '')}{t.legacy ? ' ⌛' : ''}</Th>; })}
                 </tr>

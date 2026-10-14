@@ -1432,7 +1432,7 @@
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <h3 className="cad-h3" style={{ marginBottom: 4 }}>{missing ? 'Encore ' + missing + ' épreuve' + (missing > 1 ? 's' : '') + ' à saisir' : 'Tout est saisi'}</h3>
+                <h3 className="cad-h3" style={{ marginBottom: 4 }}>{missing ? window.CadTr(missing > 1 ? 'Encore {n} épreuves à saisir' : 'Encore {n} épreuve à saisir').replace('{n}', missing) : 'Tout est saisi'}</h3>
                 <p className="cad-p" style={{ margin: 0 }}>{missing ? 'Tu pourras clôturer quand chaque épreuve est validée ou passée.' : 'Tu peux clôturer pour figer ton score.'}</p>
               </div>
               {missing === 0

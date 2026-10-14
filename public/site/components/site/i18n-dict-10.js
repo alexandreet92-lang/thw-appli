@@ -1590,6 +1590,8 @@
     "Abandonner et supprimer le test en cours": "Abandon and delete the test in progress",
     "Abandonner et supprimer ce test": "Abandon and delete this test",
     "Test commencé le": "Test started on",
+    "— Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Hommes : si tu fais les tractions en australiennes ou les pompes sur les genoux, indique-le (+5 % sur le temps).": "— The 7 station times (m:ss or s) in order: the score is their sum. Men: if you do inverted rows or knee push-ups, say so (+5% on the time).",
+    "La somme des 24 épreuves. On peut dépasser 1000.": "The sum of the 24 events. You can go beyond 1000.",
   });
 
   Object.assign(D.es, {
@@ -3173,6 +3175,8 @@
     "Abandonner et supprimer le test en cours": "Abandonar y eliminar el test en curso",
     "Abandonner et supprimer ce test": "Abandonar y eliminar este test",
     "Test commencé le": "Test empezado el",
+    "— Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Hommes : si tu fais les tractions en australiennes ou les pompes sur les genoux, indique-le (+5 % sur le temps).": "— Los 7 tiempos de estación (m:ss o s) en orden: la puntuación es su suma. Hombres: si haces dominadas australianas o flexiones sobre las rodillas, indícalo (+5 % sobre el tiempo).",
+    "La somme des 24 épreuves. On peut dépasser 1000.": "La suma de las 24 pruebas. Se puede superar 1000.",
   });
 
 

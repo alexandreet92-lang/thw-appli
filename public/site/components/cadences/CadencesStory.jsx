@@ -697,7 +697,7 @@
     'Phénomène': 'Au-delà du maximum du barème sur l’ensemble des qualités. Rarissime : des profils hybrides d’exception.',
     'Extraterrestre': 'Niveau presque anormal : des capacités physiques plus qu’exceptionnelles.',
   };
-  var FAMILIES = ['Haltérophilie', 'Sauts, sprints & agilité', 'La Chimère (parcours mixte)', 'Natation', 'Force maximale', 'Course : 400 m, 6 × 200 m, 3200 m', 'Vélo 20 min', 'Circuit Hyrox (7 stations)'];
+  var FAMILIES = ['Haltérophilie', 'Sauts, sprints & agilité', 'La Chimère (parcours mixte)', 'Natation', 'Force maximale', 'Course : 400 m, 6 × 200 m, 3200 m', 'Vélo 20 min', 'Circuit Conditioning (7 stations)'];
   var GEAR = [
     { k: 'Salle', items: ['Barre olympique + disques', 'Rack', 'Banc', 'Barre de traction + ceinture ou gilet de lest', 'Box (60 cm H / 40 cm F)', 'Rameur'] },
     { k: 'Extérieur', items: ['Piste de 400 m', 'Gazon', 'Plots', 'Mètre ruban', 'Chrono (idéalement cellules)'] },

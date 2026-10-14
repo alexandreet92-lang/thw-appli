@@ -30,11 +30,11 @@
     { t: 'Puissance', d: 'Exprimer une force maximale le plus vite possible (force × vitesse).', state: 'mesuree' },
     { t: 'Explosivité', d: 'Déclencher la plus grande force possible en un minimum de temps, à partir de l\'arrêt.', state: 'mesuree' },
     { t: 'Résistance', d: 'Soutenir un effort d\'intensité très élevée malgré la fatigue et l\'acide lactique.', state: 'mesuree' },
-    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par le circuit Hyrox et le dead hang (répétitions et maintien sous charge dans la durée).' },
+    { t: 'Endurance musculaire', d: 'Répéter ou maintenir des efforts musculaires sous-maximaux dans la durée.', state: 'mesuree', how: 'Mesurée par le circuit Conditioning et le dead hang (répétitions et maintien sous charge dans la durée).' },
     { t: 'Vitesse-endurance', d: 'Maintenir une vitesse proche du maximum le plus longtemps possible.', state: 'mesuree' },
     { t: 'Agilité', d: 'Changer rapidement, efficacement et de façon contrôlée de direction ou de trajectoire.', state: 'mesuree' },
     { t: 'VO₂max', d: 'Cylindrée aérobie : volume maximal d\'oxygène consommé à l\'effort.', state: 'mesuree' },
-    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', state: 'sollicitee', how: 'Travaillée par le circuit Hyrox.' },
+    { t: 'Endurance de force', d: 'Répéter ou maintenir un niveau de force élevé dans le temps.', state: 'sollicitee', how: 'Travaillée par le circuit Conditioning.' },
     { t: 'Temps de réaction', d: 'Délai entre la perception d\'un signal et le début du mouvement.', state: 'sollicitee', how: 'Travaillé par les départs de sprint et les parcours de coupelles.' },
     { t: 'Rythme', d: 'Percevoir et reproduire une cadence précise dans l\'effort.', state: 'sollicitee', how: 'Travaillé par le slalom et la cadence des pas chassés.' },
     { t: 'Équilibre', d: 'Maintenir la stabilité du corps, à l\'arrêt comme en mouvement.', state: 'sollicitee', how: 'Travaillé par les réceptions de sauts et les appuis d\'agilité.' },
@@ -150,7 +150,7 @@
     'Sauts': 'Sauts', 'Sprints': 'Vitesse', 'Agilité': 'Agilité',
     '6.200': 'Course', '400 m': 'Course', '3200 m': 'Course',
     'Natation': 'Natation', 'Force max': 'Force', 'Haltérophilie': 'Haltérophilie',
-    'Vélo': 'Vélo', 'AMRAP': 'Hybride', 'Hyrox': 'Hybride',
+    'Vélo': 'Vélo', 'AMRAP': 'Hybride', 'Hyrox': 'Hybride', 'Conditioning': 'Hybride',
   };
   var FAM_COLOR = { 'Sauts': '#38bdf8', 'Vitesse': '#00c8e0', 'Agilité': '#5b6fff', 'Course': '#2dd4bf', 'Natation': '#22c55e', 'Force': '#f59e0b', 'Haltérophilie': '#fb923c', 'Vélo': '#a3e635', 'Hybride': '#f472b6' };
   function familyData(catalog) {
@@ -546,21 +546,31 @@
               })}
             </div>
           </div> : null}
-          {catalog.hyroxLoads && catalog.tests.some(function (t) { return t.slug === 'hyrox_continu'; }) ? <div className="cad-card">
-            <h3 className="cad-h3">Charges du circuit Hyrox</h3>
-            <p className="cad-p">Selon le poids de corps. Fentes : charge totale (moitié dans chaque main). Soulevé de terre volontairement léger, sans ceinture.</p>
+          {catalog.conditioningLoads && catalog.tests.some(function (t) { return t.slug === 'conditioning'; }) ? <div className="cad-card">
+            <h3 className="cad-h3">Charges du circuit Conditioning</h3>
+            <p className="cad-p">Soulevé de terre à la barre (sans ceinture) ; fentes et thrusters avec des haltères, charge indiquée par main. Choisis la ligne de ton poids de corps, puis la correction selon ton âge ci-dessous.</p>
             <div className="cad-two">
               {['M', 'F'].map(function (sx) {
-                var rows = (catalog.hyroxLoads && catalog.hyroxLoads[sx]) || [];
+                var T = catalog.conditioningLoads;
+                var dl = T.deadlift[sx], lg = T.lunge[sx], th = T.thruster;
+                // Tranches communes aux trois mouvements (union des bornes), affichées de la plus légère à la plus lourde.
+                var cuts = []; [dl, lg, th].forEach(function (arr) { arr.forEach(function (b) { if (b.max != null && cuts.indexOf(b.max) === -1) cuts.push(b.max); }); });
+                cuts.sort(function (x, y) { return x - y; });
+                var rows = cuts.concat([null]).map(function (mx, i) {
+                  var probe = mx == null ? (cuts[cuts.length - 1] + 1) : mx;
+                  var pick = function (arr) { for (var k = 0; k < arr.length; k++) { if (arr[k].max == null || probe <= arr[k].max) return arr[k].kg; } return arr[arr.length - 1].kg; };
+                  var lo = i === 0 ? null : cuts[i - 1];
+                  var label = mx == null ? ('> ' + lo + ' kg') : (lo == null ? ('≤ ' + mx + ' kg') : (lo + '–' + mx + ' kg'));
+                  return { label: label, dl: pick(dl), lg: pick(lg), th: pick(th) };
+                });
                 return (
                   <div key={sx}>
                     <div className="cad-ec-h">{sx === 'M' ? 'Hommes' : 'Femmes'}</div>
                     <table className="cad-table cad-table-sm">
-                      <thead><tr><th style={{ textAlign: 'left' }}>Poids de corps</th><th style={{ textAlign: 'right' }}>Thrusters</th><th style={{ textAlign: 'right' }}>Fentes</th><th style={{ textAlign: 'right' }}>Soulevé de terre</th></tr></thead>
+                      <thead><tr><th style={{ textAlign: 'left' }}>Poids de corps</th><th style={{ textAlign: 'right' }}>Soulevé de terre</th><th style={{ textAlign: 'right' }}>Fentes</th><th style={{ textAlign: 'right' }}>Thrusters</th></tr></thead>
                       <tbody>
-                        {rows.map(function (b, i) {
-                          var label = b.hi == null ? ('≥ ' + b.lo + ' kg') : (b.lo === 0 ? ('< ' + b.hi + ' kg') : (b.lo + '–' + b.hi + ' kg'));
-                          return <tr key={i}><td style={{ textAlign: 'left' }}>{label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(b.thruster).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.lunge} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{b.deadlift} kg</td></tr>;
+                        {rows.map(function (r, i) {
+                          return <tr key={i}><td style={{ textAlign: 'left' }}>{r.label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.dl).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.lg).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.th).replace('.', ',')} kg</td></tr>;
                         })}
                       </tbody>
                     </table>
@@ -568,6 +578,12 @@
                 );
               })}
             </div>
+            <div className="cad-ec-h" style={{ marginTop: 14 }}>Correction selon l’âge</div>
+            <p className="cad-p" style={{ margin: '4px 0 8px' }}>Les charges ci-dessus sont multipliées par le facteur de force de ta tranche d’âge, puis arrondies à 2,5 kg (barre 20 kg minimum, haltère 5 kg minimum).</p>
+            <table className="cad-table cad-table-sm"><tbody>
+              <tr>{(catalog.age.bands || []).map(function (b) { return <th key={b} style={{ textAlign: 'center' }}>{b}</th>; })}</tr>
+              <tr>{(catalog.age.bands || []).map(function (b) { var f = catalog.age.pf[b] && catalog.age.pf[b].force; return <td key={b} style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text)' }}>× {String(f).replace('.', ',')}</td>; })}</tr>
+            </tbody></table>
           </div> : null}
           {catalog.tests.some(function (t) { return t.slug === 'hyrox_circuit'; }) ? <div className="cad-card">
             <h3 className="cad-h3">Charges Hyrox — thrusters</h3>

@@ -8,6 +8,7 @@ import config from './cadences.config.json'
 import v12 from './configs/decaform_v1_2.config.json'
 import cases from './reference-cases.json'
 import { computeCampaign, computeTest } from './engine'
+import { conditioningLoads, rowerDistanceM, PROTOCOLS } from './protocols'
 import type { CadencesConfig, Profile, TestInput, QualityKey } from './types'
 
 const cfg = config as unknown as CadencesConfig
@@ -127,27 +128,48 @@ else { console.error(`  ✗ total de points ${totalPts} ≠ ${cfg12.total_points
 const emPts = cfg12.tests.reduce((n, t) => n + t.pts_max * (t.weights.endurance_musculaire ?? 0), 0)
 console.log(`  · endurance musculaire : ${emPts.toFixed(1)} pts (circuit Hyrox, dead hang)`)
 
-// ── Decaform v1.2 : Hyrox continu (remplace l'AMRAP et le circuit en 5 tours) ──
-console.log('\nv1.2 — Hyrox continu')
-if (!cfg12.tests.some((t) => t.slug === 'amrap_20min' || t.slug === 'hyrox_circuit')) console.log('  ✓ plus d’AMRAP ni de circuit en 5 tours dans la v1.2')
-else { console.error('  ✗ amrap_20min ou hyrox_circuit encore présent dans la v1.2'); failures++ }
-const hx = t12('hyrox_continu')
-if (hx.pts_max === 140 && hx.attempts === 7 && hx.aggregate === 'sum') console.log('  ✓ hyrox_continu : 140 pts, 7 stations, temps additionnés')
-else { console.error('  ✗ hyrox_continu : paramètres inattendus'); failures++ }
+// ── Decaform v1.2 : Conditioning (remplace l'AMRAP et le circuit en 5 tours) ──
+console.log('\nv1.2 — Conditioning')
+if (!cfg12.tests.some((t) => t.slug === 'amrap_20min' || t.slug === 'hyrox_circuit' || t.slug === 'hyrox_continu')) console.log('  ✓ plus d’AMRAP ni d’ancien circuit dans la v1.2')
+else { console.error('  ✗ amrap_20min, hyrox_circuit ou hyrox_continu encore présent dans la v1.2'); failures++ }
+const hx = t12('conditioning')
+if (hx.pts_max === 140 && hx.attempts === 7 && hx.aggregate === 'sum' && hx.group === 'Conditioning') console.log('  ✓ conditioning : 140 pts, 7 stations, temps additionnés')
+else { console.error('  ✗ conditioning : paramètres inattendus'); failures++ }
 for (const [label, sex, v, pct] of [
-  ['Hyrox continu homme = Réf (37 min)', 'M', 2220, 0.6], ['Hyrox continu homme = Max (25 min 50 s)', 'M', 1550, 1],
-  ['Hyrox continu femme = Réf (40 min)', 'F', 2400, 0.6], ['Hyrox continu femme = Max (28 min 20 s)', 'F', 1700, 1],
+  ['Conditioning homme = Réf (48 min 20)', 'M', 2900, 0.6], ['Conditioning homme = Max (34 min 10)', 'M', 2050, 1],
+  ['Conditioning femme = Réf (51 min 40)', 'F', 3100, 0.6], ['Conditioning femme = Max (36 min 40)', 'F', 2200, 1],
 ] as [string, 'M' | 'F', number, number][]) {
-  const s = computeTest(hx, { slug: 'hyrox_continu', value: v }, { sex, bodyWeightKg: 72, ageBand: '21-35' }, 'general', cfg12)
+  const s = computeTest(hx, { slug: 'conditioning', value: v }, { sex, bodyWeightKg: 72, ageBand: '21-25' }, 'general', cfg12)
   if (s && near(s.pct, pct, 1e-9, label)) console.log(`  ✓ ${label} → ${(s.pct * 100).toFixed(1)} %`)
   else if (!s) { console.error(`  ✗ ${label} : non calculé`); failures++ }
 }
-// Tractions à l'élastique : +5 % sur le temps (2 000 s à l'élastique = 2 100 s en tractions strictes).
-const hxE = computeTest(hx, { slug: 'hyrox_continu', value: 2000, equipment: 'elastique' }, P20, 'general', cfg12)
-const hxS = computeTest(hx, { slug: 'hyrox_continu', value: 2100 }, P20, 'general', cfg12)
-if (hxE && hxS && near(hxE.pct, hxS.pct, 1e-9, 'Hyrox continu : tractions à l’élastique = +5 %')) console.log('  ✓ tractions à l’élastique : +5 % sur le temps')
-if (cfg12.max_days === 15 && cfg12.days?.find((d) => d.day === 8)?.rest === true) console.log('  ✓ max_days = 15, jour 8 = repos')
-else { console.error('  ✗ max_days ou jour 8 inattendu'); failures++ }
+// Régression (australiennes / pompes genoux) : +5 % sur le temps.
+const hxE = computeTest(hx, { slug: 'conditioning', value: 3000, equipment: 'regression' }, P20, 'general', cfg12)
+const hxS = computeTest(hx, { slug: 'conditioning', value: 3150 }, P20, 'general', cfg12)
+if (hxE && hxS && near(hxE.pct, hxS.pct, 1e-9, 'Conditioning : régression = +5 %')) console.log('  ✓ régression (australiennes / genoux) : +5 % sur le temps')
+if (cfg12.max_days === 15 && cfg12.days?.find((d) => d.day === 8)?.rest === true && cfg12.days?.find((d) => d.day === 12)?.label === 'Conditioning') console.log('  ✓ max_days = 15, jour 8 = repos, jour 12 = Conditioning')
+else { console.error('  ✗ max_days ou jours inattendus'); failures++ }
+
+// Charges du Conditioning : tranches de poids (bornes incluses côté léger) et facteur d'âge (facteur de force).
+const eq = (a: number, b: number, label: string) => { if (a === b) return true; console.error(`  ✗ ${label} : ${a} ≠ ${b}`); failures++; return false }
+let okLoads = true
+for (const [sex, w, dl, th, lg] of [
+  ['M', 55, 50, 10, 10], ['M', 60, 50, 10, 10], ['M', 60.1, 60, 12.5, 15], ['M', 72, 65, 15, 17.5], ['M', 80, 75, 15, 20], ['M', 84, 85, 17.5, 22.5],
+  ['M', 88, 95, 20, 25], ['M', 95, 100, 20, 27.5],
+  ['F', 48, 30, 7.5, 7.5], ['F', 55, 40, 10, 7.5], ['F', 64, 45, 12.5, 12.5], ['F', 68, 50, 12.5, 12.5], ['F', 72, 52.5, 15, 15], ['F', 78, 55, 15, 17.5], ['F', 90, 60, 20, 22.5],
+] as [ 'M' | 'F', number, number, number, number ][]) {
+  const l = conditioningLoads(sex, w)
+  okLoads = eq(l.deadlift, dl, `soulevé de terre ${sex} ${w} kg`) && eq(l.thruster, th, `thrusters ${sex} ${w} kg`) && eq(l.lunge, lg, `fentes ${sex} ${w} kg`) && okLoads
+}
+if (okLoads) console.log('  ✓ charges Conditioning par tranche de poids (H et F, bornes comprises)')
+const f65 = cfg12.age.pf['61-65'].force
+const l65 = conditioningLoads('M', 82, f65)
+if (eq(l65.deadlift, 60, 'soulevé de terre homme 82 kg à 63 ans') && eq(conditioningLoads('M', 82, cfg12.age.pf['71-75'].force).deadlift, 45, 'soulevé de terre homme 82 kg à 73 ans') && eq(conditioningLoads('F', 65, f65).deadlift, 32.5, 'soulevé de terre femme 65 kg à 63 ans')) console.log('  ✓ charges réduites selon l’âge (facteur de force) : 85 → 60 kg à 63 ans, 45 kg à 73 ans')
+if (eq(conditioningLoads('F', 48, 0.42).lunge, 5, 'plancher haltère 5 kg') && eq(conditioningLoads('F', 48, 0.42).deadlift, 20, 'plancher barre 20 kg')) console.log('  ✓ planchers : haltère 5 kg, barre 20 kg')
+if (eq(rowerDistanceM(0), 2000, 'rameur 0 %') && eq(rowerDistanceM(10), 2200, 'rameur +10 %') && eq(rowerDistanceM(7.5), 2150, 'rameur +7,5 %')) console.log('  ✓ rameur : 2 000 m + % de surestimation (10 % → 2 200 m)')
+const shareSum = PROTOCOLS.conditioning.stationShare!.reduce((a, b) => a + b, 0)
+if (Math.abs(shareSum - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 7 && PROTOCOLS.conditioning.stationsF!.length === 7) console.log('  ✓ 7 stations, parts attendues = 100 %')
+else { console.error(`  ✗ stations / parts attendues incohérentes (somme ${shareSum})`); failures++ }
 
 console.log(`\nÉcarts max — pct: ${maxPct.toFixed(6)} · points: ${maxPts.toFixed(6)} · total: ${maxTotal.toFixed(6)} · qualité pct: ${maxQPct.toFixed(6)}`)
 if (failures === 0) {

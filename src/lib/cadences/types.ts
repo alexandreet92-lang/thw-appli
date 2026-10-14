@@ -18,8 +18,8 @@ export type Aggregate = 'best' | 'sum'
 export type Weights = Record<QualityKey, number>
 
 export interface EquipmentRule {
-  field: string            // 'chaussures' | 'ceinture' | 'tractions'
-  applies_when: string     // 'pointes' | 'ceinture' | 'elastique'
+  field: string            // 'chaussures' | 'ceinture' | 'regression'
+  applies_when: string     // 'pointes' | 'ceinture' | 'regression'
   pct: number
   rule: 'result_x_(1+pct)' | 'result_x_(1-pct)'
 }

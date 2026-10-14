@@ -61,7 +61,7 @@
     },
     {
       "day": 12,
-      "label": "Hyrox",
+      "label": "Conditioning",
       "rest": false
     }
   ],
@@ -1076,20 +1076,20 @@
       "aggregate": "best"
     },
     {
-      "slug": "hyrox_continu",
-      "group": "Hyrox",
-      "name": "Circuit Hyrox continu (7 stations, temps total)",
+      "slug": "conditioning",
+      "group": "Conditioning",
+      "name": "Circuit Conditioning (7 stations, temps total)",
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
       "pts_max": 140,
       "male": {
-        "ref": 2220,
-        "max": 1550
+        "ref": 2900,
+        "max": 2050
       },
       "female": {
-        "ref": 2400,
-        "max": 1700
+        "ref": 3100,
+        "max": 2200
       },
       "weights": {
         "vitesse": 0,
@@ -1104,8 +1104,8 @@
       "day": 12,
       "order_in_day": 1,
       "equipment": {
-        "field": "tractions",
-        "applies_when": "elastique",
+        "field": "regression",
+        "applies_when": "regression",
         "pct": 0.05,
         "rule": "result_x_(1+pct)"
       },

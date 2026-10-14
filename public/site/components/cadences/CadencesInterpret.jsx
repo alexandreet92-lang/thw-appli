@@ -101,8 +101,8 @@
     return { toRef: toRef, text: txt };
   }
 
-  // Épreuve en stations (Hyrox continu) : part de chaque station dans le temps total, comparée à la part attendue.
-  function stationData(cat, results) {
+  // Épreuve en stations (Conditioning) : part de chaque station dans le temps total, comparée à la part attendue.
+  function stationData(cat, results, sex) {
     var t = (cat.tests || []).filter(function (x) { return x.partLabels && x.partShare; })[0];
     if (!t) return null;
     var r = (results || []).filter(function (x) { return x.test_slug === t.slug && x.status === 'validated'; })[0];
@@ -111,7 +111,8 @@
     var vals = parts.map(Number);
     if (vals.some(function (v) { return !isFinite(v) || v <= 0; })) return null;
     var tot = vals.reduce(function (a, b) { return a + b; }, 0);
-    var rows = t.partLabels.map(function (lab, i) {
+    var labels = (sex === 'F' && t.partLabelsF) ? t.partLabelsF : t.partLabels;
+    var rows = labels.map(function (lab, i) {
       var share = vals[i] / tot, exp = t.partShare[i];
       return { label: lab, sec: vals[i], share: share, exp: exp, diff: (share - exp) * 100, ratio: share / exp };
     });
@@ -264,7 +265,7 @@
     var F = window.CadencesFormat;
     if (!cat || !sG || !F) return null;
     var r = interpret(cat, sG, sA, camp, props.prev);
-    var st = stationData(cat, props.results);
+    var st = stationData(cat, props.results, camp && camp.scale_sex);
     var desc = (window.CadLevelDesc || {})[sG.globalLevel] || '';
     var fr = props.frDate || function (d) { return d; };
     return (

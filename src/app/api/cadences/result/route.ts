@@ -54,7 +54,7 @@ export async function PUT(request: Request): Promise<NextResponse> {
     raw_parts: Array.isArray(b?.rawParts) ? b.rawParts : null,
     // 'box' | 'plate' : Hyrox ; 'rm5' : un 5RM saisi à la place du 3RM (épreuves `rm_choice` seulement).
     variant: b?.variant === 'box' || b?.variant === 'plate' || (b?.variant === 'rm5' && test.rm_choice) ? b.variant : null,
-    equipment: ['normales', 'pointes', 'sans', 'ceinture', 'elastique'].includes(b?.equipment as string) ? b?.equipment : null,
+    equipment: ['normales', 'pointes', 'sans', 'ceinture', 'regression'].includes(b?.equipment as string) ? b?.equipment : null,
     timing_method: ['manuel', 'cellules', 'montre'].includes(b?.timingMethod as string) ? b?.timingMethod : null,
     pool_length_m: b?.poolLength === 25 || b?.poolLength === 50 ? b?.poolLength : null,
     venue: venueEff,

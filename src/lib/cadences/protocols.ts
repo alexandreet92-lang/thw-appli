@@ -16,7 +16,8 @@ export interface Protocol {
   echauffementSpecifique?: string  // en plus de l'échauffement général
   allure?: string                  // allures cibles indicatives
   box?: string                     // hauteur de box (Hyrox)
-  stations?: string[]              // épreuve en plusieurs stations chronométrées une à une (Hyrox continu)
+  stations?: string[]              // épreuve en plusieurs stations chronométrées une à une (Conditioning)
+  stationsF?: string[]             // libellés des stations pour les femmes (variantes : australiennes, pompes sur les genoux)
   stationShare?: number[]          // part du temps total attendue par station à niveau Référence (somme = 1)
   diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
@@ -54,7 +55,7 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
     texte: "10 min progressif, 3 min facile, 3 accélérations de 1 min proches du seuil, puis 5 min facile avant le test.",
   },
   hyrox: {
-    titre: 'Hyrox / circuit',
+    titre: 'Conditioning / circuit',
     texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
       "charge légère (thrusters, burpees, tractions, fentes, soulevé de terre) pour réviser la technique avant de lancer.",
   },
@@ -62,7 +63,7 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
 
 const WARMUP_FORCE = new Set(['squat_3rm', 'bench_press_3rm', 'deadlift_3rm', 'military_press_3rm', 'weighted_pullup_3rm', 'dead_hang'])
 const WARMUP_HALTERO = new Set(['clean_2rm', 'clean_and_press_2rm', 'front_squat_3rm'])
-const WARMUP_HYROX = new Set(['hyrox_circuit', 'hyrox_continu', 'amrap_20min'])
+const WARMUP_HYROX = new Set(['hyrox_circuit', 'conditioning', 'amrap_20min'])
 
 /** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
 export function warmupForTest(slug: string): { titre: string; texte: string } {
@@ -102,32 +103,53 @@ export function hyroxThrusterKg(sex: 'M' | 'F', weightKg: number): number {
   return table[table.length - 1].kg
 }
 
-/** Charges du circuit Hyrox continu par tranche de poids de corps (kg) — ESTIMATIONS à valider.
- *  thruster : barre ou haltères · lunge : charge TOTALE des fentes (haltères tenus le long du corps, moitié dans chaque main)
- *  · deadlift : soulevé de terre volontairement LÉGER (sans ceinture, dos neutre, répétitions sous fatigue). */
-export interface HyroxLoadBand { lo: number; hi: number | null; thruster: number; lunge: number; deadlift: number }
-export const HYROX_LOADS_KG: Record<'M' | 'F', HyroxLoadBand[]> = {
-  M: [
-    { lo: 0, hi: 60, thruster: 20, lunge: 16, deadlift: 35 },
-    { lo: 60, hi: 70, thruster: 25, lunge: 20, deadlift: 40 },
-    { lo: 70, hi: 80, thruster: 30, lunge: 24, deadlift: 45 },
-    { lo: 80, hi: 90, thruster: 32.5, lunge: 28, deadlift: 50 },
-    { lo: 90, hi: null, thruster: 35, lunge: 32, deadlift: 55 },
-  ],
-  F: [
-    { lo: 0, hi: 50, thruster: 10, lunge: 8, deadlift: 20 },
-    { lo: 50, hi: 60, thruster: 15, lunge: 12, deadlift: 25 },
-    { lo: 60, hi: 70, thruster: 20, lunge: 16, deadlift: 30 },
-    { lo: 70, hi: 80, thruster: 22.5, lunge: 20, deadlift: 35 },
-    { lo: 80, hi: null, thruster: 25, lunge: 24, deadlift: 40 },
-  ],
+/** Tranche de poids de corps : charge pour un poids ≤ `max` (kg) ; `max: null` = toutes les tranches au-dessus.
+ *  Borne haute INCLUSIVE : à poids pile, on prend la charge la plus légère (sécurité). */
+export interface LoadBand { max: number | null; kg: number }
+
+/** Charges du circuit Conditioning (kg), fournies par Alex. Soulevé de terre = barre ; thrusters et fentes = haltères PAR MAIN.
+ *  Ces valeurs sont ensuite multipliées par le facteur de force de la tranche d'âge (voir `conditioningLoads`). */
+export const CONDITIONING_LOADS: {
+  deadlift: Record<'M' | 'F', LoadBand[]>
+  thruster: LoadBand[]
+  lunge: Record<'M' | 'F', LoadBand[]>
+} = {
+  deadlift: {
+    M: [{ max: 60, kg: 50 }, { max: 70, kg: 60 }, { max: 75, kg: 65 }, { max: 80, kg: 75 }, { max: 85, kg: 85 }, { max: 90, kg: 95 }, { max: null, kg: 100 }],
+    F: [{ max: 50, kg: 30 }, { max: 60, kg: 40 }, { max: 65, kg: 45 }, { max: 70, kg: 50 }, { max: 75, kg: 52.5 }, { max: 80, kg: 55 }, { max: null, kg: 60 }],
+  },
+  thruster: [{ max: 50, kg: 7.5 }, { max: 60, kg: 10 }, { max: 70, kg: 12.5 }, { max: 80, kg: 15 }, { max: 85, kg: 17.5 }, { max: null, kg: 20 }],
+  lunge: {
+    M: [{ max: 60, kg: 10 }, { max: 70, kg: 15 }, { max: 75, kg: 17.5 }, { max: 80, kg: 20 }, { max: 85, kg: 22.5 }, { max: 90, kg: 25 }, { max: null, kg: 27.5 }],
+    F: [{ max: 60, kg: 7.5 }, { max: 70, kg: 12.5 }, { max: 75, kg: 15 }, { max: 80, kg: 17.5 }, { max: 85, kg: 20 }, { max: 90, kg: 22.5 }, { max: null, kg: 25 }],
+  },
 }
 
-/** Charges du circuit Hyrox continu pour un sexe + un poids de corps donné. */
-export function hyroxLoads(sex: 'M' | 'F', weightKg: number): HyroxLoadBand {
-  const table = HYROX_LOADS_KG[sex] ?? HYROX_LOADS_KG.M
-  for (const b of table) if (weightKg >= b.lo && (b.hi === null || weightKg < b.hi)) return b
-  return table[table.length - 1]
+export interface ConditioningLoadsKg { deadlift: number; thruster: number; lunge: number }
+
+function bandKg(bands: LoadBand[], weightKg: number): number {
+  for (const b of bands) if (b.max === null || weightKg <= b.max) return b.kg
+  return bands[bands.length - 1].kg
+}
+/** Arrondi à 2,5 kg avec plancher (une barre pèse au moins 20 kg, un haltère au moins 5 kg). */
+function roundLoad(kg: number, floor: number): number { return Math.max(floor, Math.round(kg / 2.5) * 2.5) }
+
+/** Charges du circuit Conditioning pour un sexe, un poids de corps et un facteur d'âge (= facteur de force de la
+ *  tranche d'âge dans `config.age.pf`, 1 = pas de correction). */
+export function conditioningLoads(sex: 'M' | 'F', weightKg: number, ageFactor = 1): ConditioningLoadsKg {
+  const sx = sex === 'F' ? 'F' : 'M'
+  const f = Number.isFinite(ageFactor) && ageFactor > 0 ? ageFactor : 1
+  return {
+    deadlift: roundLoad(bandKg(CONDITIONING_LOADS.deadlift[sx], weightKg) * f, 20),
+    thruster: roundLoad(bandKg(CONDITIONING_LOADS.thruster, weightKg) * f, 5),
+    lunge: roundLoad(bandKg(CONDITIONING_LOADS.lunge[sx], weightKg) * f, 5),
+  }
+}
+
+/** Distance à ramer sur un rameur qui surestime de `overPct` % (Concept2 = référence, 0 %). */
+export function rowerDistanceM(overPct: number, baseM = 2000): number {
+  const p = Number.isFinite(overPct) && overPct > 0 ? overPct : 0
+  return Math.round(baseM * (1 + p / 100))
 }
 
 export const PROTOCOLS: Record<string, Protocol> = {
@@ -404,27 +426,28 @@ export const PROTOCOLS: Record<string, Protocol> = {
     box: 'Box : 60 cm (hommes) / 40 cm (femmes), 12 burpees box jump par tour.',
   },
 
-  // ── J12 · Hyrox continu (remplace l'AMRAP et le circuit en 5 tours dans Decaform v1.2) ──
-  hyrox_continu: {
-    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (30 à 40 min).',
-    materiel: ['Rameur', 'Barre ou haltères (thrusters, soulevé de terre)', 'Haltères ou disque (fentes)', 'Barre de traction (ou élastique / anneaux)', 'Chrono avec tours (lap)'],
+  // ── J12 · Conditioning (remplace l'AMRAP et le circuit en 5 tours dans Decaform v1.2) ──
+  conditioning: {
+    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 45 à 60 min).',
+    materiel: ['Barre olympique + disques (soulevé de terre, burpees to the bar)', 'Barre de traction (ou barre basse / anneaux pour les tractions australiennes)', 'Haltères (fentes, thrusters)', 'Rameur (Concept2 de préférence)', 'Chrono avec tours (lap)'],
     etapes: [
-      '1. Rameur : 1 500 m.',
-      '2. Burpees : 40 (poitrine au sol, saut des deux pieds, mains au-dessus de la tête).',
-      '3. Thrusters : 40 (charge selon ta tranche de poids).',
-      '4. Tractions : 25 hommes / 15 femmes (menton au-dessus de la barre, bras tendus en bas).',
-      '5. Fentes lestées : 50 (25 par jambe, genou arrière près du sol, charge selon ta tranche de poids).',
-      '6. Pompes : 60 hommes / 40 femmes (poitrine près du sol, corps gainé).',
-      '7. Soulevé de terre : 40 (charge légère, dos neutre, sans ceinture).',
+      '1. Burpees to the bar : 25. La barre du soulevé de terre est posée au sol : à chaque répétition, saute par-dessus la barre (les deux pieds au-dessus) et touche-la des deux mains en bas.',
+      '2. Tractions : 50 tractions strictes (menton au-dessus de la barre, bras tendus en bas, sans élan). Femmes : 50 tractions australiennes (poitrine à la barre, corps gainé).',
+      '3. Pompes : 100 (poitrine près du sol, corps gainé). Femmes : 100 pompes sur les genoux.',
+      '4. Soulevé de terre : 100, sans ceinture, dos neutre (charge selon ton poids de corps et ton âge).',
+      '5. Fentes : 50 (25 par jambe), haltères dans les mains (charge selon ton poids de corps et ton âge).',
+      '6. Thrusters : 25 avec haltères (pas à la barre), charge selon ton poids de corps et ton âge.',
+      '7. Rameur : 2 000 m. Le Concept2 est la référence : certains rameurs surestiment la distance. Si le tien surestime de x %, rame 2 000 m + x % (ex. 10 % → 2 200 m).',
       'Un seul passage, sans pause imposée : le chrono tourne en continu. Tu peux fractionner les séries comme tu veux ; la récupération se fait pendant les transitions et est comptée.',
       'Note ton temps à chaque changement de station (tour de chrono) : le score est le temps total, les temps par station servent à lire ta course.',
     ],
-    saisie: 'Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Si tu fais les tractions à l’élastique ou en australiennes, indique-le (+5 % sur le temps).',
-    securite: 'Le soulevé de terre arrive en fin de circuit, sous fatigue : charge volontairement légère, dos neutre, pas de ceinture. Arrête-toi dès que la technique se dégrade. Pas de pompes, de tractions ou de fentes sur sol glissant ; hydrate-toi et arrête-toi au moindre malaise.',
+    saisie: 'Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Hommes : si tu fais les tractions en australiennes ou les pompes sur les genoux, indique-le (+5 % sur le temps).',
+    securite: 'Effort long et exigeant : avis médical conseillé. Le soulevé de terre arrive sous fatigue, 100 répétitions sans ceinture : dos neutre, séries fractionnées autorisées, arrête-toi dès que la technique se dégrade. Pas de sol glissant ; hydrate-toi et arrête-toi au moindre malaise.',
     echauffementSpecifique: '5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis une série de chaque mouvement à vide ou en charge légère.',
-    stations: ['Rameur 1 500 m', 'Burpees', 'Thrusters', 'Tractions', 'Fentes lestées', 'Pompes', 'Soulevé de terre'],
-    // Temps attendu à niveau Référence (≈ 6:15 · 4:30 · 5:00 · 5:00 · 5:00 · 4:00 · 4:00) ramené en parts du total.
-    stationShare: [0.185, 0.133, 0.147, 0.147, 0.147, 0.118, 0.123],
+    stations: ['Burpees to the bar', 'Tractions', 'Pompes', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
+    stationsF: ['Burpees to the bar', 'Tractions australiennes', 'Pompes sur les genoux', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
+    // Temps attendu à niveau Référence (≈ 3:00 · 9:00 · 7:00 · 8:00 · 5:00 · 3:30 · 9:00) ramené en parts du total.
+    stationShare: [0.067, 0.202, 0.157, 0.180, 0.112, 0.079, 0.203],
     flag: true,
   },
 

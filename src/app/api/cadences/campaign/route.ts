@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// CADENCES — campagnes (SITE uniquement). GET liste · POST crée.
+// CADENCES — campagnes (SITE uniquement). GET liste · POST crée · DELETE supprime un test entier.
 //
 // On utilise le client serveur BASÉ COOKIE : l'app native (Bearer sans cookie)
 // n'a pas de session cookie → 401 automatique. La saisie reste donc « site
@@ -77,4 +77,25 @@ export async function POST(request: Request): Promise<NextResponse> {
     .single()
   if (error) return NextResponse.json({ erreur: error.message }, { status: 502 })
   return NextResponse.json({ ok: true, id: data.id })
+}
+
+/** Supprime un test ENTIER (campagne + résultats + instantanés).
+ *  Pas de migration : la politique RLS `cadences_campaigns_del` (propriétaire) existe et les résultats / instantanés
+ *  sont en `on delete cascade` (20261004_cadences.sql). Irréversible : la confirmation est faite côté site. */
+export async function DELETE(request: Request): Promise<NextResponse> {
+  const sb = await createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return NextResponse.json({ erreur: 'Connecte-toi sur le site.' }, { status: 401 })
+
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+  const campaignId = typeof body?.campaignId === 'string' ? body.campaignId : ''
+  if (!/^[0-9a-f-]{36}$/i.test(campaignId)) return NextResponse.json({ erreur: 'Test introuvable.' }, { status: 400 })
+
+  // Propriétaire seulement (RLS + filtre explicite) ; select d'abord pour distinguer « absent » de « refusé ».
+  const { data: camp } = await sb.from('cadences_campaigns').select('id').eq('id', campaignId).eq('user_id', user.id).maybeSingle()
+  if (!camp) return NextResponse.json({ erreur: 'Test introuvable.' }, { status: 404 })
+
+  const { error } = await sb.from('cadences_campaigns').delete().eq('id', campaignId).eq('user_id', user.id)
+  if (error) return NextResponse.json({ erreur: error.message }, { status: 502 })
+  return NextResponse.json({ ok: true })
 }

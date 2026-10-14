@@ -682,6 +682,20 @@
         .then(function (j) { var list = (j && j.tests) || []; setHistory(list); if (nextView) setView(nextView); return list; });
     }
 
+    // Suppression d'un test entier (campagne + résultats + instantanés). La confirmation est faite par CadDeleteDialog.
+    function deleteCampaign(id) {
+      return api('/api/cadences/campaign', { method: 'DELETE', body: JSON.stringify({ campaignId: id }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return r.ok ? { ok: true } : { ok: false, erreur: (j && j.erreur) || 'Suppression impossible.' }; }); })
+        .then(function (res) {
+          if (!res.ok) return res;
+          setCampaigns(function (l) { return (l || []).filter(function (c) { return c.id !== id; }); });
+          setHistory(function (h) { return h ? h.filter(function (e) { return e.id !== id; }) : h; });
+          if (report && report.campaign && report.campaign.id === id) { setReport(null); setView(historyPage ? 'history' : 'intro'); }
+          return res;
+        })
+        .catch(function () { return { ok: false, erreur: 'Erreur réseau.' }; });
+    }
+
     if (!catalog) {
       return (
         <div><CadStyle/><SiteHeader active="cadences"/>
@@ -705,7 +719,7 @@
     } else if (view === 'start') {
       body = <CadStart catalog={catalog} preferredKey={wanted} fetchProductCatalog={fetchProductCatalog} onCreated={function (id) { loadReport(id, 'test'); }} onCancel={function () { setView('intro'); }}/>;
     } else if (view === 'test' && report) {
-      body = <CadTest catalog={catalog} report={report} mode={mode} setMode={setMode} reload={reload}
+      body = <CadTest catalog={catalog} report={report} mode={mode} setMode={setMode} reload={reload} onDelete={deleteCampaign}
                       onHome={function () { setView('intro'); }}
                       onClosed={function () { reload().then(function () { setView('results'); }); }}/>;
     } else if (view === 'results' && report) {
@@ -717,6 +731,7 @@
       body = <CadHistory catalog={catalog} history={history || []} mode={mode}
                          onBack={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('intro'); } }}
                          onStart={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('start'); } }}
+                         onDelete={deleteCampaign}
                          onOpen={function (id) { loadReport(id, 'results'); }}/>;
     } else {
       body = <CadIntro catalog={catalog} loggedIn={loggedIn} campaigns={campaigns}
@@ -724,6 +739,7 @@
                        onStart={function () { setView('start'); }}
                        onResume={function (id) { loadReport(id, 'test'); }}
                        onHistory={function () { loadHistory('history'); }}
+                       onDelete={deleteCampaign}
                        onOpenResults={function (id) { loadReport(id, 'results'); }}/>;
     }
 
@@ -754,6 +770,7 @@
     var enCours = (props.campaigns || []).filter(function (c) { return c.status === 'in_progress'; })[0];
     var terminees = (props.campaigns || []).filter(function (c) { return c.status === 'completed'; });
     var tb = React.useState('apercu'); var tab = tb[0], setTab = tb[1];
+    var dcS = React.useState(null); var delC = dcS[0], setDelC = dcS[1];
     var pres = cat.presentation || null;
     var deca = !cat.testKey || cat.testKey === 'decaform';
     var ageText = cat.age ? (cat.age.min >= 65 ? cat.age.min + ' ans et +' : cat.age.min + (cat.age.max === cat.age.min ? '' : '–' + cat.age.max) + ' ans') : '';
@@ -794,6 +811,7 @@
             {makeCta()}
             {props.crossOrigin ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>Le test se lance sur l'app.</span> : null}
             {props.loggedIn && !props.crossOrigin ? <a className="cad-link" href="historique.html">Mon historique →</a> : null}
+            {enCours && !props.crossOrigin && props.onDelete ? <button type="button" className="cad-link" onClick={function () { setDelC(enCours); }}>Abandonner et supprimer le test en cours</button> : null}
           </div>
         </div>
 
@@ -825,16 +843,28 @@
             <div style={{ display: 'grid', gap: 8 }}>
               {terminees.map(function (c) {
                 return (
-                  <button key={c.id} type="button" onClick={function () { props.onOpenResults(c.id); }}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, textAlign: 'left',
-                                   background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: '12px 14px', cursor: 'pointer', color: 'var(--text)' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{frDate(c.completed_on || c.started_on)}</span>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.scale_sex === 'M' ? 'H' : 'F'} · {c.age_at_start} ans · {Math.round(c.body_weight_kg)} kg →</span>
-                  </button>
+                  <div key={c.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                    <button type="button" onClick={function () { props.onOpenResults(c.id); }}
+                            style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, textAlign: 'left',
+                                     background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius-md)', padding: '12px 14px', cursor: 'pointer', color: 'var(--text)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{frDate(c.completed_on || c.started_on)}</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.scale_sex === 'M' ? 'H' : 'F'} · {c.age_at_start} ans · {Math.round(c.body_weight_kg)} kg →</span>
+                    </button>
+                    {props.onDelete ? (
+                      <button type="button" className="cad-bt-del" style={{ width: 44, height: 'auto', borderRadius: 'var(--radius-md)' }} aria-label={window.CadTr('Supprimer ce test') + ' — ' + frDate(c.completed_on || c.started_on)} title={window.CadTr('Supprimer ce test')} onClick={function () { setDelC(c); }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14M10 11v6m4-6v6"/></svg>
+                      </button>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
           </div>
+        ) : null}
+        {delC && window.CadDeleteDialog ? (
+          <window.CadDeleteDialog summary={frDate(delC.completed_on || delC.started_on) + ' · ' + (delC.scale_sex === 'M' ? 'H' : 'F') + ' · ' + delC.age_at_start + ' ' + window.CadTr('ans')}
+            onCancel={function () { setDelC(null); }}
+            onConfirm={function () { return props.onDelete(delC.id).then(function (res) { if (res && res.ok) setDelC(null); return res; }); }}/>
         ) : null}
       </div>
     );
@@ -1071,6 +1101,7 @@
 
   // ════════════════ TABLEAU DE BORD / SAISIE ════════════════
   function partCountOf(t) { return t.partCount || 1; }
+  function fmtKg(v) { return String(v).replace('.', ','); }
   function critPts(t, agg) { var c = (t.criteria || []).filter(function (x) { return x.aggregate === agg; })[0]; return c ? c.pts_max : 0; }
   function parsePart(t, s) {
     if (!String(s == null ? '' : s).trim()) return null;
@@ -1101,7 +1132,7 @@
   function emptyDraft(t) {
     return {
       parts: new Array(partCountOf(t)).fill(''), partialReps: '',
-      equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : t.equipmentField === 'tractions' ? 'strictes' : null,
+      equipment: t.equipmentField === 'chaussures' ? 'normales' : t.equipmentField === 'ceinture' ? 'sans' : t.equipmentField === 'regression' ? 'strictes' : null,
       timing: t.hasTiming ? 'manuel' : null, pool: t.hasPool ? 25 : null, variant: t.rmChoice ? 'rm3' : (t.hasVariant ? 'box' : null),
       venue: t.venue === 'toggle' ? 'indoor' : null, tempC: '', weather: '',
     };
@@ -1226,6 +1257,7 @@
   function CadTest(props) {
     var cat = props.catalog, rep = props.report;
     var camp = rep.campaign;
+    var dlS = React.useState(false); var delOpen = dlS[0], setDelOpen = dlS[1];
     var results = rep.results || [];
     var resultBySlug = {}; results.forEach(function (r) { resultBySlug[r.test_slug] = r; });
     var empty = { total: 0, globalLevel: cat.levels[0].label, byQuality: {}, byTest: {} };
@@ -1268,7 +1300,7 @@
       }
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
-      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: d.equipment === 'strictes' ? null : d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
+      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', equipment: (d.equipment === 'strictes' || (t.equipmentField === 'regression' && camp.scale_sex === 'F')) ? null : d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
             venue: venue, temperatureC: venue === 'outdoor' ? tempN : null, weather: venue === 'outdoor' ? d.weather : null })
         .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
@@ -1371,8 +1403,16 @@
             <div className="cad-act-eye">Mon test Decaform</div>
             <h1 className="cad-act-t" style={{ fontSize: 30 }}>{curDay ? window.CadTr('Jour {n} aujourd’hui').replace('{n}', curDay) : 'Ton calendrier'}</h1>
           </div>
-          <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            {props.onDelete ? <button type="button" className="cad-link" onClick={function () { setDelOpen(true); }}>Abandonner et supprimer ce test</button> : null}
+            <button type="button" className="cad-link" onClick={props.onHome}>← Présentation</button>
+          </div>
         </div>
+        {delOpen && window.CadDeleteDialog ? (
+          <window.CadDeleteDialog summary={window.CadTr('Test commencé le') + ' ' + frDate(camp.started_on) + ' · ' + (validated + skippedN) + ' ' + window.CadTr('épreuves saisies')}
+            onCancel={function () { setDelOpen(false); }}
+            onConfirm={function () { return props.onDelete(camp.id).then(function (res) { if (res && res.ok) setDelOpen(false); return res; }); }}/>
+        ) : null}
         {daysBanner ? <div className={elapsed > cat.maxDays ? 'cad-err' : 'cad-step-note'} role="status" style={{ marginTop: 10 }}>{daysBanner}</div> : null}
         <p className="cad-p" style={{ marginTop: 6 }}>Barème {camp.scale_sex === 'M' ? 'homme' : 'femme'} · {camp.age_at_start} ans · {Math.round(camp.body_weight_kg)} kg · jour 1 le {fmtDay(dateAt(start, 0))}</p>
 
@@ -1478,6 +1518,7 @@
     var t = props.t, d = props.draft || emptyDraft(props.t), r = props.result, sc = props.score, cat = props.cat, camp = props.camp;
     var proto = cat.protocols[t.slug];
     var sp = React.useState(true); var showProto = sp[0], setShowProto = sp[1];
+    var rwS = React.useState(''); var rowOver = rwS[0], setRowOver = rwS[1];
     var sk = React.useState(false); var skipping = sk[0], setSkipping = sk[1];
     var sr = React.useState(''); var skipReason = sr[0], setSkipReason = sr[1];
     var n = partCountOf(t);
@@ -1490,11 +1531,8 @@
     var pColor = prev ? levelColor(cat.palette, prev.level) : 'var(--text-dim)';
     var pColorA = prevA ? levelColor(cat.palette, prevA.level) : 'var(--text-dim)';
     var rec = recupSec(t);
-    var hyroxLd = null;
-    if (t.isHyroxContinu && cat.hyroxLoads) {
-      var hl = cat.hyroxLoads[camp.scale_sex] || [];
-      for (var hj = 0; hj < hl.length; hj++) { var hq = hl[hj]; if (camp.body_weight_kg >= hq.lo && (hq.hi == null || camp.body_weight_kg < hq.hi)) { hyroxLd = hq; break; } }
-    }
+    var condLd = (t.isConditioning && F().conditioningLoads) ? F().conditioningLoads(cat, camp.scale_sex, camp.body_weight_kg, camp.age_band) : null;
+    var stationLabels = t.partLabels ? ((camp.scale_sex === 'F' && t.partLabelsF) ? t.partLabelsF : t.partLabels) : null;
     var hyroxKg = null;
     if (t.slug === 'hyrox_circuit' && cat.hyroxThrusterKg) {
       var hr = cat.hyroxThrusterKg[camp.scale_sex] || [];
@@ -1516,7 +1554,7 @@
             <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
           </div>
 
-          {hyroxLd ? <div className="cad-step-note"><strong>Thrusters : {String(hyroxLd.thruster).replace('.', ',')} kg</strong> · fentes : {hyroxLd.lunge} kg au total · soulevé de terre : {hyroxLd.deadlift} kg</div> : null}
+          {condLd ? <div className="cad-step-note"><strong>{window.CadTr('Tes charges')} ({camp.age_at_start} {window.CadTr('ans')}, {Math.round(camp.body_weight_kg)} kg) :</strong> {window.CadTr('soulevé de terre')} {fmtKg(condLd.deadlift)} kg · {window.CadTr('fentes')} {fmtKg(condLd.lunge)} kg {window.CadTr('par main')} · thrusters {fmtKg(condLd.thruster)} kg {window.CadTr('par main')}{condLd.factor < 1 ? ' · ' + window.CadTr('réduites selon ton âge') : ''}</div> : null}
           {hyroxKg != null ? <div className="cad-step-note"><strong>Thrusters : {hyroxKg} kg</strong> · box {camp.scale_sex === 'F' ? '40' : '60'} cm · 12 burpees box jump</div> : null}
 
           {proto ? (
@@ -1536,7 +1574,7 @@
             {new Array(n).fill(0).map(function (_, i) {
               return (
                 <label key={i} className="cad-try">
-                  <span>{n > 1 ? (t.partLabels && t.partLabels[i] ? (i + 1) + '. ' + window.CadTr(t.partLabels[i]) : (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1)) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? (t.rmChoice ? (d.variant === 'rm5' ? 'Charge 5RM (kg)' : 'Charge 3RM (kg)') : 'Charge (kg)') : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
+                  <span>{n > 1 ? (stationLabels && stationLabels[i] ? (i + 1) + '. ' + window.CadTr(stationLabels[i]) : (t.aggregate === 'sum' ? 'Passage ' : 'Essai ') + (i + 1)) : t.unit === 's' ? 'Temps' : t.unit === 'kg' ? (t.rmChoice ? (d.variant === 'rm5' ? 'Charge 5RM (kg)' : 'Charge 3RM (kg)') : 'Charge (kg)') : t.unit === 'W' ? 'Puissance moyenne (W)' : t.unit === 'tours' ? 'Tours complets' : 'Résultat'}</span>
                   <input className="cad-input" inputMode={t.unit === 's' ? 'text' : 'decimal'} placeholder={placeholderFor(t)}
                          value={d.parts[i] || ''} aria-label={window.CadTr(t.name) + ' ' + window.CadTr('valeur') + ' ' + (i + 1)}
                          onChange={function (e) { var parts = d.parts.slice(); parts[i] = e.target.value; props.setDraft({ parts: parts }); }}/>
@@ -1548,6 +1586,22 @@
             var vals = (d.parts || []).map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; });
             var tot = vals.reduce(function (a, b) { return a + b; }, 0);
             return <p className="cad-p" style={{ fontSize: 13, margin: '10px 0 0' }}>Temps total : <strong style={{ fontFamily: 'var(--font-mono)' }}>{vals.length ? F().formatDuration(tot, false) : '—'}</strong> · {vals.length} / {n} stations</p>;
+          })() : null}
+          {t.isConditioning ? (function () {
+            var pct = parseFloat(String(rowOver).replace(',', '.'));
+            var dist = F().rowerDistanceM(pct, 2000);
+            return (
+              <div className="cad-step-note" style={{ marginTop: 12 }}>
+                <strong>{window.CadTr('Rameur : le Concept2 est la référence.')}</strong> {window.CadTr('Certains rameurs surestiment la distance : si le tien surestime de x %, rame 2 000 m + x % (ex. 10 % → 2 200 m).')}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 8 }}>
+                  <label className="cad-try" style={{ maxWidth: 220, margin: 0 }}>
+                    <span>{window.CadTr('Mon rameur surestime de (%)')}</span>
+                    <input className="cad-input" inputMode="decimal" placeholder="0" value={rowOver} onChange={function (e) { setRowOver(e.target.value); }} aria-label="Surestimation du rameur en pourcentage"/>
+                  </label>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{window.CadTr('Distance à ramer')} : <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{String(dist).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} m</strong></span>
+                </div>
+              </div>
+            );
           })() : null}
           {t.isAmrap ? (
             <label className="cad-try" style={{ maxWidth: 260, marginTop: 8 }}>
@@ -1561,7 +1615,7 @@
             {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
             {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
             {t.rmChoice ? <Sel label="Charge saisie" value={d.variant || 'rm3'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['rm3', '3RM (3 répétitions)'], ['rm5', '5RM (5 répétitions)']]}/> : null}
-            {t.equipmentField === 'tractions' ? <Sel label="Tractions" value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', 'Strictes'], ['elastique', 'Élastique ou australiennes (+5 %)']]}/> : null}
+            {t.equipmentField === 'regression' && camp.scale_sex !== 'F' ? <Sel label="Tractions et pompes" value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', 'Strictes (tractions) et classiques (pompes)'], ['regression', 'Australiennes et / ou pompes sur les genoux (+5 %)']]}/> : null}
             {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
           </div>
 

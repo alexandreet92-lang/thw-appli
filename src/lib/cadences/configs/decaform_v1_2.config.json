@@ -1078,18 +1078,18 @@
     {
       "slug": "conditioning",
       "group": "Conditioning",
-      "name": "Circuit Conditioning (7 stations, temps total)",
+      "name": "Circuit Conditioning (5 stations, temps total)",
       "unit": "s",
       "direction": "lower_is_better",
       "kind": "abs",
       "pts_max": 140,
       "male": {
-        "ref": 1895,
-        "max": 1305
+        "ref": 2640,
+        "max": 1800
       },
       "female": {
-        "ref": 1975,
-        "max": 1350
+        "ref": 2730,
+        "max": 1845
       },
       "weights": {
         "vitesse": 0,
@@ -1110,7 +1110,7 @@
         "rule": "result_x_(1+pct)"
       },
       "age_time_exponent": 1,
-      "attempts": 7,
+      "attempts": 5,
       "aggregate": "sum"
     }
   ],

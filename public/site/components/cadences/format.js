@@ -106,7 +106,7 @@
   }
 
   /* Charges du Conditioning (kg) : tranche de poids de corps (borne haute incluse = charge la plus légère à poids pile),
-     puis facteur de force de la tranche d'âge, arrondi à 2,5 kg avec plancher (barre 20 kg, haltère 5 kg).
+     puis facteur de force de la tranche d'âge, arrondi à 2,5 kg avec plancher (barre 20 kg hommes / 15 kg femmes, haltère 5 kg).
      Même calcul que conditioningLoads() dans src/lib/cadences/protocols.ts. */
   function bandKg(bands, w) { for (var i = 0; i < bands.length; i++) { if (bands[i].max == null || w <= bands[i].max) return bands[i].kg; } return bands[bands.length - 1].kg; }
   function roundLoad(kg, floor) { return Math.max(floor, Math.round(kg / 2.5) * 2.5); }
@@ -116,8 +116,7 @@
     var pf = cat.age && cat.age.pf && cat.age.pf[ageBand];
     var f = pf && isFinite(pf.force) && pf.force > 0 ? pf.force : 1;
     return {
-      deadlift: roundLoad(bandKg(T.deadlift[sx], weightKg) * f, 20),
-      thruster: roundLoad(bandKg(T.thruster, weightKg) * f, 5),
+      thruster: roundLoad(bandKg(T.thruster[sx], weightKg) * f, sx === 'F' ? 15 : 20),
       lunge: roundLoad(bandKg(T.lunge[sx], weightKg) * f, 5),
       factor: f,
     };

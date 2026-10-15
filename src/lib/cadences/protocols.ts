@@ -58,7 +58,7 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
   hyrox: {
     titre: 'Conditioning / circuit',
     texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
-      "charge légère (thrusters, burpees, tractions, fentes, soulevé de terre) pour réviser la technique avant de lancer.",
+      "charge légère pour réviser la technique avant de lancer.",
   },
 }
 
@@ -108,31 +108,29 @@ export function hyroxThrusterKg(sex: 'M' | 'F', weightKg: number): number {
  *  Borne haute INCLUSIVE : à poids pile, on prend la charge la plus légère (sécurité). */
 export interface LoadBand { max: number | null; kg: number }
 
-/** Charges du circuit Conditioning (kg), fournies par Alex. Soulevé de terre = barre ; thrusters et fentes = haltères PAR MAIN.
+/** Charges du circuit Conditioning (kg). Thrusters = barre (charge totale, barre comprise) ; fentes = haltères PAR MAIN.
  *  Ces valeurs sont ensuite multipliées par le facteur de force de la tranche d'âge (voir `conditioningLoads`). */
 export const CONDITIONING_LOADS: {
-  deadlift: Record<'M' | 'F', LoadBand[]>
-  thruster: LoadBand[]
+  thruster: Record<'M' | 'F', LoadBand[]>
   lunge: Record<'M' | 'F', LoadBand[]>
 } = {
-  deadlift: {
-    M: [{ max: 60, kg: 50 }, { max: 70, kg: 60 }, { max: 75, kg: 65 }, { max: 80, kg: 75 }, { max: 85, kg: 85 }, { max: 90, kg: 95 }, { max: null, kg: 100 }],
-    F: [{ max: 50, kg: 30 }, { max: 60, kg: 40 }, { max: 65, kg: 45 }, { max: 70, kg: 50 }, { max: 75, kg: 52.5 }, { max: 80, kg: 55 }, { max: null, kg: 60 }],
+  thruster: {
+    M: [{ max: 60, kg: 20 }, { max: 70, kg: 30 }, { max: 80, kg: 35 }, { max: 90, kg: 40 }, { max: null, kg: 45 }],
+    F: [{ max: 55, kg: 15 }, { max: 65, kg: 20 }, { max: 75, kg: 25 }, { max: null, kg: 30 }],
   },
-  thruster: [{ max: 50, kg: 7.5 }, { max: 60, kg: 10 }, { max: 70, kg: 12.5 }, { max: 80, kg: 15 }, { max: 85, kg: 17.5 }, { max: null, kg: 20 }],
   lunge: {
     M: [{ max: 60, kg: 10 }, { max: 70, kg: 15 }, { max: 75, kg: 17.5 }, { max: 80, kg: 20 }, { max: 85, kg: 22.5 }, { max: 90, kg: 25 }, { max: null, kg: 27.5 }],
     F: [{ max: 60, kg: 7.5 }, { max: 70, kg: 12.5 }, { max: 75, kg: 15 }, { max: 80, kg: 17.5 }, { max: 85, kg: 20 }, { max: 90, kg: 22.5 }, { max: null, kg: 25 }],
   },
 }
 
-export interface ConditioningLoadsKg { deadlift: number; thruster: number; lunge: number }
+export interface ConditioningLoadsKg { thruster: number; lunge: number }
 
 function bandKg(bands: LoadBand[], weightKg: number): number {
   for (const b of bands) if (b.max === null || weightKg <= b.max) return b.kg
   return bands[bands.length - 1].kg
 }
-/** Arrondi à 2,5 kg avec plancher (une barre pèse au moins 20 kg, un haltère au moins 5 kg). */
+/** Arrondi à 2,5 kg avec plancher (barre : 20 kg hommes / 15 kg femmes ; haltère : 5 kg). */
 function roundLoad(kg: number, floor: number): number { return Math.max(floor, Math.round(kg / 2.5) * 2.5) }
 
 /** Charges du circuit Conditioning pour un sexe, un poids de corps et un facteur d'âge (= facteur de force de la
@@ -141,8 +139,7 @@ export function conditioningLoads(sex: 'M' | 'F', weightKg: number, ageFactor = 
   const sx = sex === 'F' ? 'F' : 'M'
   const f = Number.isFinite(ageFactor) && ageFactor > 0 ? ageFactor : 1
   return {
-    deadlift: roundLoad(bandKg(CONDITIONING_LOADS.deadlift[sx], weightKg) * f, 20),
-    thruster: roundLoad(bandKg(CONDITIONING_LOADS.thruster, weightKg) * f, 5),
+    thruster: roundLoad(bandKg(CONDITIONING_LOADS.thruster[sx], weightKg) * f, sx === 'F' ? 15 : 20),
     lunge: roundLoad(bandKg(CONDITIONING_LOADS.lunge[sx], weightKg) * f, 5),
   }
 }
@@ -450,28 +447,26 @@ export const PROTOCOLS: Record<string, Protocol> = {
 
   // ── J12 · Conditioning (remplace l'AMRAP et le circuit en 5 tours dans Decaform v1.2) ──
   conditioning: {
-    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 25 à 40 min selon le niveau).',
-    materiel: ['Barre olympique + disques (soulevé de terre, burpees to the bar)', 'Barre de traction (ou barre basse / anneaux pour les tractions australiennes)', 'Haltères (fentes, thrusters)', 'Rameur (Concept2 de préférence)', 'Chrono avec tours (lap)'],
+    objectif: 'Endurance musculaire et capacité hybride force-endurance : 5 stations enchaînées, un seul chrono (environ 30 à 60 min selon le niveau).',
+    materiel: ['Barre olympique + disques (thrusters)', 'Barre de traction (ou barre basse / anneaux pour les tractions australiennes)', 'Haltères (fentes)', 'Rameur (Concept2 de préférence)', 'Chrono avec tours (lap)'],
     etapes: [
-      '1. Burpees to the bar : 25. La barre du soulevé de terre est posée au sol : à chaque répétition, saute par-dessus la barre (les deux pieds au-dessus) et touche-la des deux mains en bas.',
-      '2. Tractions : 50 tractions strictes (menton au-dessus de la barre, bras tendus en bas, sans élan). Femmes : 50 tractions australiennes (poitrine à la barre, corps gainé).',
+      '1. Thrusters : 100 à la barre (charge selon ton poids de corps et ton âge). Squat avant, barre sur les épaules, puis poussée au-dessus de la tête dans le même mouvement : bras tendus en haut, hanches ouvertes.',
+      '2. Tractions : 100 tractions strictes (menton au-dessus de la barre, bras tendus en bas, sans élan). Femmes : 100 tractions australiennes (poitrine à la barre, corps gainé).',
       '3. Pompes : 100 (poitrine près du sol, corps gainé). Femmes : 100 pompes sur les genoux.',
-      '4. Soulevé de terre : 100, sans ceinture, dos neutre (charge selon ton poids de corps et ton âge).',
-      '5. Fentes : 50 (25 par jambe), haltères dans les mains (charge selon ton poids de corps et ton âge).',
-      '6. Thrusters : 25 avec haltères (pas à la barre), charge selon ton poids de corps et ton âge.',
-      '7. Rameur : 2 000 m. Le Concept2 est la référence : certains rameurs surestiment la distance. Si le tien surestime de x %, rame 2 000 m + x % (ex. 10 % → 2 200 m).',
+      '4. Fentes : 100 répétitions au total, en alternant les jambes (50 par jambe), haltères dans les mains (charge selon ton poids de corps et ton âge).',
+      '5. Rameur : 2 000 m. Le Concept2 est la référence : certains rameurs surestiment la distance. Si le tien surestime de x %, rame 2 000 m + x % (ex. 10 % → 2 200 m).',
       'Un seul passage, sans pause imposée : le chrono tourne en continu. Tu peux fractionner les séries comme tu veux ; la récupération se fait pendant les transitions et est comptée.',
       'Note ton temps à chaque changement de station (tour de chrono) : le score est le temps total, les temps par station servent à lire ta course.',
     ],
-    saisie: 'Les 7 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Hommes : si tu fais les tractions en australiennes ou les pompes sur les genoux, indique-le (+5 % sur le temps).',
-    securite: 'Effort long et exigeant : avis médical conseillé. Le soulevé de terre arrive sous fatigue, 100 répétitions sans ceinture : dos neutre, séries fractionnées autorisées, arrête-toi dès que la technique se dégrade. Pas de sol glissant ; hydrate-toi et arrête-toi au moindre malaise.',
-    echauffementSpecifique: '5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis une série de chaque mouvement à vide ou en charge légère.',
-    stations: ['Burpees to the bar', 'Tractions', 'Pompes', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
-    stationsF: ['Burpees to the bar', 'Tractions australiennes', 'Pompes sur les genoux', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
+    saisie: 'Les 5 temps de station (m:ss ou s) dans l’ordre : le score est leur somme. Hommes : si tu fais les tractions en australiennes ou les pompes sur les genoux, indique-le (+5 % sur le temps).',
+    securite: 'Effort long et exigeant : avis médical conseillé. Les 100 tractions et les 100 thrusters sollicitent fortement épaules, coudes et mains : séries fractionnées autorisées, technique stricte, arrête-toi dès qu’elle se dégrade ou à la moindre douleur articulaire. Pas de sol glissant ; hydrate-toi et arrête-toi au moindre malaise.',
+    echauffementSpecifique: '5–8 min de cardio léger (rameur, vélo ou corde) + mobilité des épaules et des hanches, puis une série de chaque mouvement à vide ou en charge légère.',
+    stations: ['Thrusters', 'Tractions', 'Pompes', 'Fentes', 'Rameur 2 000 m'],
+    stationsF: ['Thrusters', 'Tractions australiennes', 'Pompes sur les genoux', 'Fentes', 'Rameur 2 000 m'],
     // Temps de tour attendu à niveau Référence (transition incluse), ramené en parts du total.
-    // Hommes : 2:10 · 4:50 · 3:50 · 5:00 · 2:55 · 2:00 · 8:20 (+ transitions) ; femmes : 2:20 · 4:20 · 3:45 · 5:20 · 3:10 · 2:10 · 9:20.
-    stationShare: [0.069, 0.166, 0.135, 0.172, 0.105, 0.076, 0.277],
-    stationShareF: [0.071, 0.144, 0.127, 0.175, 0.109, 0.078, 0.296],
+    // Hommes : 9:30 · 11:30 · 5:30 · 7:30 · 8:20 (+ 4 transitions de 25 s) ; femmes : 10:15 · 10:30 · 5:15 · 8:30 · 9:20.
+    stationShare: [0.225, 0.271, 0.135, 0.180, 0.189],
+    stationShareF: [0.234, 0.240, 0.125, 0.196, 0.205],
     flag: true,
   },
 

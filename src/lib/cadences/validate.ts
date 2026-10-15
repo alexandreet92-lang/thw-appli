@@ -135,11 +135,11 @@ console.log('\nv1.2 — Conditioning')
 if (!cfg12.tests.some((t) => t.slug === 'amrap_20min' || t.slug === 'hyrox_circuit' || t.slug === 'hyrox_continu')) console.log('  ✓ plus d’AMRAP ni d’ancien circuit dans la v1.2')
 else { console.error('  ✗ amrap_20min, hyrox_circuit ou hyrox_continu encore présent dans la v1.2'); failures++ }
 const hx = t12('conditioning')
-if (hx.pts_max === 140 && hx.attempts === 5 && hx.aggregate === 'sum' && hx.group === 'Conditioning') console.log('  ✓ conditioning : 140 pts, 5 stations, temps additionnés')
+if (hx.pts_max === 140 && hx.attempts === 7 && hx.aggregate === 'sum' && hx.group === 'Conditioning') console.log('  ✓ conditioning : 140 pts, 7 stations, temps additionnés')
 else { console.error('  ✗ conditioning : paramètres inattendus'); failures++ }
 for (const [label, sex, v, pct] of [
-  ['Conditioning homme = Réf (44 min)', 'M', 2640, 0.6], ['Conditioning homme = Max (30 min)', 'M', 1800, 1],
-  ['Conditioning femme = Réf (45 min 30)', 'F', 2730, 0.6], ['Conditioning femme = Max (30 min 45)', 'F', 1845, 1],
+  ['Conditioning homme = Réf (48 min 50)', 'M', 2930, 0.6], ['Conditioning homme = Max (33 min)', 'M', 1980, 1],
+  ['Conditioning femme = Réf (50 min 50)', 'F', 3050, 0.6], ['Conditioning femme = Max (34 min 10)', 'F', 2050, 1],
 ] as [string, 'M' | 'F', number, number][]) {
   const s = computeTest(hx, { slug: 'conditioning', value: v }, { sex, bodyWeightKg: 72, ageBand: '21-25' }, 'general', cfg12)
   if (s && near(s.pct, pct, 1e-9, label)) console.log(`  ✓ ${label} → ${(s.pct * 100).toFixed(1)} %`)
@@ -155,32 +155,32 @@ else { console.error('  ✗ max_days ou jours inattendus'); failures++ }
 // Charges du Conditioning : tranches de poids (bornes incluses côté léger) et facteur d'âge (facteur de force).
 const eq = (a: number, b: number, label: string) => { if (a === b) return true; console.error(`  ✗ ${label} : ${a} ≠ ${b}`); failures++; return false }
 let okLoads = true
-for (const [sex, w, th, lg] of [
-  ['M', 55, 20, 10], ['M', 60, 20, 10], ['M', 60.1, 30, 15], ['M', 72, 35, 17.5], ['M', 80, 35, 20], ['M', 84, 40, 22.5],
-  ['M', 88, 40, 25], ['M', 95, 45, 27.5],
-  ['F', 48, 15, 7.5], ['F', 55, 15, 7.5], ['F', 64, 20, 12.5], ['F', 68, 25, 12.5], ['F', 72, 25, 15], ['F', 78, 30, 17.5], ['F', 90, 30, 22.5],
-] as [ 'M' | 'F', number, number, number ][]) {
+for (const [sex, w, dl, th, lg] of [
+  ['M', 55, 45, 10, 10], ['M', 60, 45, 10, 10], ['M', 60.1, 50, 12.5, 15], ['M', 72, 55, 15, 17.5], ['M', 80, 65, 15, 20], ['M', 84, 75, 17.5, 22.5],
+  ['M', 88, 85, 20, 25], ['M', 95, 90, 20, 27.5],
+  ['F', 48, 25, 7.5, 7.5], ['F', 55, 35, 10, 7.5], ['F', 64, 40, 12.5, 12.5], ['F', 68, 45, 12.5, 12.5], ['F', 72, 47.5, 15, 15], ['F', 78, 50, 15, 17.5], ['F', 90, 55, 20, 22.5],
+] as [ 'M' | 'F', number, number, number, number ][]) {
   const l = conditioningLoads(sex, w)
-  okLoads = eq(l.thruster, th, `thrusters (barre) ${sex} ${w} kg`) && eq(l.lunge, lg, `fentes ${sex} ${w} kg`) && okLoads
+  okLoads = eq(l.deadlift, dl, `soulevé de terre ${sex} ${w} kg`) && eq(l.thruster, th, `thrusters ${sex} ${w} kg`) && eq(l.lunge, lg, `fentes ${sex} ${w} kg`) && okLoads
 }
 if (okLoads) console.log('  ✓ charges Conditioning par tranche de poids (H et F, bornes comprises)')
 const f65 = cfg12.age.pf['61-65'].force
 const l65 = conditioningLoads('M', 82, f65)
-if (eq(l65.thruster, 27.5, 'barre de thruster homme 82 kg à 63 ans') && eq(conditioningLoads('M', 82, cfg12.age.pf['71-75'].force).thruster, 20, 'barre de thruster homme 82 kg à 73 ans') && eq(conditioningLoads('F', 65, f65).thruster, 15, 'barre de thruster femme 65 kg à 63 ans')) console.log('  ✓ charges réduites selon l’âge (facteur de force) : barre 40 → 27,5 kg à 63 ans, 20 kg à 73 ans')
-if (eq(conditioningLoads('F', 48, 0.42).lunge, 5, 'plancher haltère 5 kg') && eq(conditioningLoads('F', 48, 0.42).thruster, 15, 'plancher barre femme 15 kg') && eq(conditioningLoads('M', 55, 0.42).thruster, 20, 'plancher barre homme 20 kg')) console.log('  ✓ planchers : haltère 5 kg, barre 20 kg (H) / 15 kg (F)')
+if (eq(l65.deadlift, 52.5, 'soulevé de terre homme 82 kg à 63 ans') && eq(conditioningLoads('M', 82, cfg12.age.pf['71-75'].force).deadlift, 40, 'soulevé de terre homme 82 kg à 73 ans') && eq(conditioningLoads('F', 65, f65).deadlift, 27.5, 'soulevé de terre femme 65 kg à 63 ans')) console.log('  ✓ charges réduites selon l’âge (facteur de force) : soulevé de terre 75 → 52,5 kg à 63 ans, 40 kg à 73 ans')
+if (eq(conditioningLoads('F', 48, 0.42).lunge, 5, 'plancher haltère 5 kg') && eq(conditioningLoads('F', 48, 0.42).deadlift, 20, 'plancher barre 20 kg')) console.log('  ✓ planchers : haltère 5 kg, barre 20 kg')
 if (eq(rowerDistanceM(0), 2000, 'rameur 0 %') && eq(rowerDistanceM(10), 2200, 'rameur +10 %') && eq(rowerDistanceM(7.5), 2150, 'rameur +7,5 %')) console.log('  ✓ rameur : 2 000 m + % de surestimation (10 % → 2 200 m)')
 const shareSum = PROTOCOLS.conditioning.stationShare!.reduce((a, b) => a + b, 0)
 const shareSumF = PROTOCOLS.conditioning.stationShareF!.reduce((a, b) => a + b, 0)
-if (Math.abs(shareSum - 1) < 1e-9 && Math.abs(shareSumF - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 5 && PROTOCOLS.conditioning.stationsF!.length === 5) console.log('  ✓ 5 stations, parts attendues = 100 % (hommes et femmes)')
+if (Math.abs(shareSum - 1) < 1e-9 && Math.abs(shareSumF - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 7 && PROTOCOLS.conditioning.stationsF!.length === 7) console.log('  ✓ 7 stations, parts attendues = 100 % (hommes et femmes)')
 else { console.error(`  ✗ stations / parts attendues incohérentes (somme H ${shareSum}, F ${shareSumF})`); failures++ }
 
 // Station du Conditioning passée : forfait = 1,5 × son temps attendu à niveau Référence ; 2 stations au maximum.
 const shares = stationShareFor('M')
 const sharesF = stationShareFor('F')
-if (eq(stationPenaltySec(hx.male.ref, shares[1]), 1073, 'forfait tractions (H)') && eq(stationPenaltySec(hx.female.ref, sharesF[0]), 958, 'forfait thrusters (F)')) console.log('  ✓ forfait d’une station passée : 1,5 × temps attendu (tractions H = 17 min 53, thrusters F = 15 min 58)')
+if (eq(stationPenaltySec(hx.male.ref, shares[1]), 1072, 'forfait tractions (H)') && eq(stationPenaltySec(hx.female.ref, sharesF[2]), 531, 'forfait thrusters (F)')) console.log('  ✓ forfait d’une station passée : 1,5 × temps attendu (tractions H = 17 min 52, thrusters F = 8 min 51)')
 if (eq(parseSkippedStations('stations_passees=3,5').join(','), '3,5', 'lecture des stations passées') && eq(parseSkippedStations('autre note').length, 0, 'notes sans marqueur') && eq(MAX_SKIPPED_STATIONS, 2, 'plafond de stations passées')) console.log('  ✓ stations passées lues dans notes, plafond de 2')
 // Une station passée alourdit le temps total : le score baisse mais le circuit reste noté (140 pts).
-const base7 = [520, 640, 300, 420, 480]
+const base7 = [400, 800, 260, 330, 180, 480, 520]
 const withSkip = base7.map((v, i) => (i === 1 ? stationPenaltySec(hx.male.ref, shares[1]) : v))
 const sNo = computeTest(hx, { slug: 'conditioning', value: base7.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)
 const sSk = computeTest(hx, { slug: 'conditioning', value: withSkip.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)

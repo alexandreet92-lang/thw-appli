@@ -1585,7 +1585,7 @@
             <div className="cad-ec-pts"><b>{t.pts_max}</b><span>pts</span></div>
           </div>
 
-          {condLd ? <div className="cad-step-note"><strong>{window.CadTr('Tes charges')} ({camp.age_at_start} {window.CadTr('ans')}, {Math.round(camp.body_weight_kg)} kg) :</strong> {window.CadTr('thrusters')} {fmtKg(condLd.thruster)} kg ({window.CadTr('barre comprise')}) · {window.CadTr('fentes')} {fmtKg(condLd.lunge)} kg {window.CadTr('par main')}{condLd.factor < 1 ? ' · ' + window.CadTr('réduites selon ton âge') : ''}</div> : null}
+          {condLd ? <div className="cad-step-note"><strong>{window.CadTr('Tes charges')} ({camp.age_at_start} {window.CadTr('ans')}, {Math.round(camp.body_weight_kg)} kg) :</strong> {window.CadTr('soulevé de terre')} {fmtKg(condLd.deadlift)} kg · {window.CadTr('fentes')} {fmtKg(condLd.lunge)} kg {window.CadTr('par main')} · thrusters {fmtKg(condLd.thruster)} kg {window.CadTr('par main')}{condLd.factor < 1 ? ' · ' + window.CadTr('réduites selon ton âge') : ''}</div> : null}
           {hyroxKg != null ? <div className="cad-step-note"><strong>Thrusters : {hyroxKg} kg</strong> · box {camp.scale_sex === 'F' ? '40' : '60'} cm · 12 burpees box jump</div> : null}
 
           {proto ? (

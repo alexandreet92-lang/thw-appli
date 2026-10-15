@@ -548,29 +548,29 @@
           </div> : null}
           {catalog.conditioningLoads && catalog.tests.some(function (t) { return t.slug === 'conditioning'; }) ? <div className="cad-card">
             <h3 className="cad-h3">Charges du circuit Conditioning</h3>
-            <p className="cad-p">Thrusters à la barre (charge totale, barre comprise) ; fentes avec des haltères, charge indiquée par main. Choisis la ligne de ton poids de corps, puis la correction selon ton âge ci-dessous.</p>
+            <p className="cad-p">Soulevé de terre à la barre (sans ceinture) ; fentes et thrusters avec des haltères, charge indiquée par main. Choisis la ligne de ton poids de corps, puis la correction selon ton âge ci-dessous.</p>
             <div className="cad-two">
               {['M', 'F'].map(function (sx) {
                 var T = catalog.conditioningLoads;
-                var lg = T.lunge[sx], th = T.thruster[sx];
-                // Tranches communes aux deux mouvements (union des bornes), affichées de la plus légère à la plus lourde.
-                var cuts = []; [lg, th].forEach(function (arr) { arr.forEach(function (b) { if (b.max != null && cuts.indexOf(b.max) === -1) cuts.push(b.max); }); });
+                var dl = T.deadlift[sx], lg = T.lunge[sx], th = T.thruster;
+                // Tranches communes aux trois mouvements (union des bornes), affichées de la plus légère à la plus lourde.
+                var cuts = []; [dl, lg, th].forEach(function (arr) { arr.forEach(function (b) { if (b.max != null && cuts.indexOf(b.max) === -1) cuts.push(b.max); }); });
                 cuts.sort(function (x, y) { return x - y; });
                 var rows = cuts.concat([null]).map(function (mx, i) {
                   var probe = mx == null ? (cuts[cuts.length - 1] + 1) : mx;
                   var pick = function (arr) { for (var k = 0; k < arr.length; k++) { if (arr[k].max == null || probe <= arr[k].max) return arr[k].kg; } return arr[arr.length - 1].kg; };
                   var lo = i === 0 ? null : cuts[i - 1];
                   var label = mx == null ? ('> ' + lo + ' kg') : (lo == null ? ('≤ ' + mx + ' kg') : (lo + '–' + mx + ' kg'));
-                  return { label: label, lg: pick(lg), th: pick(th) };
+                  return { label: label, dl: pick(dl), lg: pick(lg), th: pick(th) };
                 });
                 return (
                   <div key={sx}>
                     <div className="cad-ec-h">{sx === 'M' ? 'Hommes' : 'Femmes'}</div>
                     <table className="cad-table cad-table-sm">
-                      <thead><tr><th style={{ textAlign: 'left' }}>Poids de corps</th><th style={{ textAlign: 'right' }}>Thrusters (barre)</th><th style={{ textAlign: 'right' }}>Fentes (par main)</th></tr></thead>
+                      <thead><tr><th style={{ textAlign: 'left' }}>Poids de corps</th><th style={{ textAlign: 'right' }}>Soulevé de terre</th><th style={{ textAlign: 'right' }}>Fentes</th><th style={{ textAlign: 'right' }}>Thrusters</th></tr></thead>
                       <tbody>
                         {rows.map(function (r, i) {
-                          return <tr key={i}><td style={{ textAlign: 'left' }}>{r.label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.th).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.lg).replace('.', ',')} kg</td></tr>;
+                          return <tr key={i}><td style={{ textAlign: 'left' }}>{r.label}</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.dl).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.lg).replace('.', ',')} kg</td><td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{String(r.th).replace('.', ',')} kg</td></tr>;
                         })}
                       </tbody>
                     </table>
@@ -579,7 +579,7 @@
               })}
             </div>
             <div className="cad-ec-h" style={{ marginTop: 14 }}>Correction selon l’âge</div>
-            <p className="cad-p" style={{ margin: '4px 0 8px' }}>Les charges ci-dessus sont multipliées par le facteur de force de ta tranche d’âge, puis arrondies à 2,5 kg (barre 20 kg minimum pour les hommes, 15 kg pour les femmes ; haltère 5 kg minimum).</p>
+            <p className="cad-p" style={{ margin: '4px 0 8px' }}>Les charges ci-dessus sont multipliées par le facteur de force de ta tranche d’âge, puis arrondies à 2,5 kg (barre 20 kg minimum, haltère 5 kg minimum).</p>
             <table className="cad-table cad-table-sm"><tbody>
               <tr>{(catalog.age.bands || []).map(function (b) { return <th key={b} style={{ textAlign: 'center' }}>{b}</th>; })}</tr>
               <tr>{(catalog.age.bands || []).map(function (b) { var f = catalog.age.pf[b] && catalog.age.pf[b].force; return <td key={b} style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text)' }}>× {String(f).replace('.', ',')}</td>; })}</tr>

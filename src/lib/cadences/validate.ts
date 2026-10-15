@@ -8,7 +8,7 @@ import config from './cadences.config.json'
 import v12 from './configs/decaform_v1_2.config.json'
 import cases from './reference-cases.json'
 import { computeCampaign, computeTest } from './engine'
-import { conditioningLoads, rowerDistanceM, PROTOCOLS, stationPenaltySec, parseSkippedStations, MAX_SKIPPED_STATIONS } from './protocols'
+import { conditioningLoads, rowerDistanceM, PROTOCOLS, stationPenaltySec, stationShareFor, parseSkippedStations, MAX_SKIPPED_STATIONS } from './protocols'
 import { buildCatalogView, legacyTestsOf } from './catalogView'
 import { deadlineReminder, testDayNumber } from './deadline'
 import type { CadencesConfig, Profile, TestInput, QualityKey } from './types'
@@ -138,8 +138,8 @@ const hx = t12('conditioning')
 if (hx.pts_max === 140 && hx.attempts === 7 && hx.aggregate === 'sum' && hx.group === 'Conditioning') console.log('  ✓ conditioning : 140 pts, 7 stations, temps additionnés')
 else { console.error('  ✗ conditioning : paramètres inattendus'); failures++ }
 for (const [label, sex, v, pct] of [
-  ['Conditioning homme = Réf (48 min 20)', 'M', 2900, 0.6], ['Conditioning homme = Max (34 min 10)', 'M', 2050, 1],
-  ['Conditioning femme = Réf (51 min 40)', 'F', 3100, 0.6], ['Conditioning femme = Max (36 min 40)', 'F', 2200, 1],
+  ['Conditioning homme = Réf (31 min 35)', 'M', 1895, 0.6], ['Conditioning homme = Max (21 min 45)', 'M', 1305, 1],
+  ['Conditioning femme = Réf (32 min 55)', 'F', 1975, 0.6], ['Conditioning femme = Max (22 min 30)', 'F', 1350, 1],
 ] as [string, 'M' | 'F', number, number][]) {
   const s = computeTest(hx, { slug: 'conditioning', value: v }, { sex, bodyWeightKg: 72, ageBand: '21-25' }, 'general', cfg12)
   if (s && near(s.pct, pct, 1e-9, label)) console.log(`  ✓ ${label} → ${(s.pct * 100).toFixed(1)} %`)
@@ -170,15 +170,17 @@ if (eq(l65.deadlift, 60, 'soulevé de terre homme 82 kg à 63 ans') && eq(condit
 if (eq(conditioningLoads('F', 48, 0.42).lunge, 5, 'plancher haltère 5 kg') && eq(conditioningLoads('F', 48, 0.42).deadlift, 20, 'plancher barre 20 kg')) console.log('  ✓ planchers : haltère 5 kg, barre 20 kg')
 if (eq(rowerDistanceM(0), 2000, 'rameur 0 %') && eq(rowerDistanceM(10), 2200, 'rameur +10 %') && eq(rowerDistanceM(7.5), 2150, 'rameur +7,5 %')) console.log('  ✓ rameur : 2 000 m + % de surestimation (10 % → 2 200 m)')
 const shareSum = PROTOCOLS.conditioning.stationShare!.reduce((a, b) => a + b, 0)
-if (Math.abs(shareSum - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 7 && PROTOCOLS.conditioning.stationsF!.length === 7) console.log('  ✓ 7 stations, parts attendues = 100 %')
-else { console.error(`  ✗ stations / parts attendues incohérentes (somme ${shareSum})`); failures++ }
+const shareSumF = PROTOCOLS.conditioning.stationShareF!.reduce((a, b) => a + b, 0)
+if (Math.abs(shareSum - 1) < 1e-9 && Math.abs(shareSumF - 1) < 1e-9 && PROTOCOLS.conditioning.stations!.length === 7 && PROTOCOLS.conditioning.stationsF!.length === 7) console.log('  ✓ 7 stations, parts attendues = 100 % (hommes et femmes)')
+else { console.error(`  ✗ stations / parts attendues incohérentes (somme H ${shareSum}, F ${shareSumF})`); failures++ }
 
 // Station du Conditioning passée : forfait = 1,5 × son temps attendu à niveau Référence ; 2 stations au maximum.
-const shares = PROTOCOLS.conditioning.stationShare!
-if (eq(stationPenaltySec(hx.male.ref, shares[1]), 879, 'forfait tractions (H)') && eq(stationPenaltySec(hx.female.ref, shares[0]), 312, 'forfait burpees (F)')) console.log('  ✓ forfait d’une station passée : 1,5 × temps attendu (tractions H = 14 min 39, burpees F = 5 min 12)')
+const shares = stationShareFor('M')
+const sharesF = stationShareFor('F')
+if (eq(stationPenaltySec(hx.male.ref, shares[1]), 472, 'forfait tractions (H)') && eq(stationPenaltySec(hx.female.ref, sharesF[0]), 210, 'forfait burpees (F)')) console.log('  ✓ forfait d’une station passée : 1,5 × temps attendu (tractions H = 7 min 52, burpees F = 3 min 30)')
 if (eq(parseSkippedStations('stations_passees=3,5').join(','), '3,5', 'lecture des stations passées') && eq(parseSkippedStations('autre note').length, 0, 'notes sans marqueur') && eq(MAX_SKIPPED_STATIONS, 2, 'plafond de stations passées')) console.log('  ✓ stations passées lues dans notes, plafond de 2')
 // Une station passée alourdit le temps total : le score baisse mais le circuit reste noté (140 pts).
-const base7 = [190, 560, 430, 500, 310, 220, 560]
+const base7 = [130, 290, 230, 300, 175, 120, 500]
 const withSkip = base7.map((v, i) => (i === 1 ? stationPenaltySec(hx.male.ref, shares[1]) : v))
 const sNo = computeTest(hx, { slug: 'conditioning', value: base7.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)
 const sSk = computeTest(hx, { slug: 'conditioning', value: withSkip.reduce((a, b) => a + b, 0) }, P20, 'general', cfg12)

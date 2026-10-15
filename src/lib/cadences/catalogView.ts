@@ -31,7 +31,8 @@ export function buildTestsMeta(config: CadencesConfig) {
     partCount: t.slug === 'amrap_20min' ? 1 : (t.attempts && t.attempts > 1 ? t.attempts : 1),
     partLabels: PROTOCOLS[t.slug]?.stations ?? null,        // libellés des parts (stations du Conditioning)
     partLabelsF: PROTOCOLS[t.slug]?.stationsF ?? null,      // libellés pour les femmes (australiennes, pompes sur les genoux)
-    partShare: PROTOCOLS[t.slug]?.stationShare ?? null,     // part du temps attendue par station (niveau Référence)
+    partShare: PROTOCOLS[t.slug]?.stationShare ?? null,     // part du temps attendue par station (niveau Référence, hommes)
+    partShareF: PROTOCOLS[t.slug]?.stationShareF ?? null,   // idem pour les femmes
     equipmentField: t.equipment?.field ?? null,     // 'chaussures' | 'ceinture' | 'regression' | null
     rmChoice: t.rm_choice === true,                 // 3RM ou 5RM au choix (converti en équivalent 3RM)
     hasTiming: TRACK.has(t.slug),

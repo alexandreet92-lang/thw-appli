@@ -1084,12 +1084,12 @@
       "kind": "abs",
       "pts_max": 140,
       "male": {
-        "ref": 2900,
-        "max": 2050
+        "ref": 1895,
+        "max": 1305
       },
       "female": {
-        "ref": 3100,
-        "max": 2200
+        "ref": 1975,
+        "max": 1350
       },
       "weights": {
         "vitesse": 0,

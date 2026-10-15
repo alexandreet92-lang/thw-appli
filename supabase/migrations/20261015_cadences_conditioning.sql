@@ -9,7 +9,7 @@
 -- 2) Met à jour la ligne ACTIVE decaform v1.2 par petites requêtes :
 --      · retire amrap_20min (60 pts) et hyrox_circuit (80 pts) ;
 --      · ajoute conditioning (140 pts, jour 12, 7 stations additionnées,
---        H Réf 2900 s / Max 2050 s · F Réf 3100 s / Max 2200 s — ESTIMATIONS à caler) ;
+--        H Réf 1895 s / Max 1305 s · F Réf 1975 s / Max 1350 s — ESTIMATIONS à caler) ;
 --      · le jour 8 devient un jour de repos ; max_days = 15 (durée maximale conseillée).
 -- Total toujours 1000 pts ; endurance musculaire inchangée (57,4 pts).
 -- Aucune campagne n'est épinglée à v1.2 : sans effet sur des résultats existants.
@@ -46,7 +46,7 @@ update public.cadences_scale_versions
 
 -- 2b) Ajout du circuit Conditioning (en fin de liste, une seule fois).
 update public.cadences_scale_versions
-   set config = jsonb_set(config, '{tests}', (config->'tests') || $t$[{"slug":"conditioning","group":"Conditioning","name":"Circuit Conditioning (7 stations, temps total)","unit":"s","direction":"lower_is_better","kind":"abs","pts_max":140,"male":{"ref":2900,"max":2050},"female":{"ref":3100,"max":2200},"weights":{"vitesse":0,"force":0.15,"puissance":0.05,"explosivite":0,"endurance":0.15,"endurance_musculaire":0.35,"vo2max":0.25,"coordination":0.05},"day":12,"order_in_day":1,"equipment":{"field":"regression","applies_when":"regression","pct":0.05,"rule":"result_x_(1+pct)"},"age_time_exponent":1,"attempts":7,"aggregate":"sum"}]$t$::jsonb)
+   set config = jsonb_set(config, '{tests}', (config->'tests') || $t$[{"slug":"conditioning","group":"Conditioning","name":"Circuit Conditioning (7 stations, temps total)","unit":"s","direction":"lower_is_better","kind":"abs","pts_max":140,"male":{"ref":1895,"max":1305},"female":{"ref":1975,"max":1350},"weights":{"vitesse":0,"force":0.15,"puissance":0.05,"explosivite":0,"endurance":0.15,"endurance_musculaire":0.35,"vo2max":0.25,"coordination":0.05},"day":12,"order_in_day":1,"equipment":{"field":"regression","applies_when":"regression","pct":0.05,"rule":"result_x_(1+pct)"},"age_time_exponent":1,"attempts":7,"aggregate":"sum"}]$t$::jsonb)
  where test_key = 'decaform' and label = 'v1.2'
    and not exists (select 1 from jsonb_array_elements(config->'tests') t where t->>'slug' = 'conditioning');
 

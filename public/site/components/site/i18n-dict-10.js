@@ -1614,6 +1614,7 @@
     "barème": "scale",
     "Bilan informatif : un test de condition physique n’est ni un examen médical ni une prescription. Il ne remplace pas l’avis d’un médecin ou d’un coach.": "For information only: a fitness test is neither a medical examination nor a prescription. It does not replace the advice of a doctor or a coach.",
 
+    "Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 25 à 40 min selon le niveau).": "Muscular endurance and hybrid strength-endurance capacity: 7 stations back to back, a single clock (about 25 to 40 min depending on level).",
   });
 
   Object.assign(D.es, {
@@ -3221,6 +3222,7 @@
     "barème": "baremo",
     "Bilan informatif : un test de condition physique n’est ni un examen médical ni une prescription. Il ne remplace pas l’avis d’un médecin ou d’un coach.": "Balance informativo: un test de condición física no es un examen médico ni una prescripción. No sustituye el consejo de un médico o de un entrenador.",
 
+    "Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 25 à 40 min selon le niveau).": "Resistencia muscular y capacidad híbrida fuerza-resistencia: 7 estaciones encadenadas, un solo cronómetro (unos 25 a 40 min según el nivel).",
   });
 
 

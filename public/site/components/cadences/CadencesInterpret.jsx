@@ -115,7 +115,7 @@
     var labels = (sex === 'F' && t.partLabelsF) ? t.partLabelsF : t.partLabels;
     var skipped = F_().skippedStations ? F_().skippedStations(r.notes) : [];
     var rows = labels.map(function (lab, i) {
-      var share = vals[i] / tot, exp = t.partShare[i];
+      var share = vals[i] / tot, exp = (sex === 'F' && t.partShareF ? t.partShareF : t.partShare)[i];
       return { label: lab, sec: vals[i], share: share, exp: exp, diff: (share - exp) * 100, ratio: share / exp, skipped: skipped.indexOf(i + 1) !== -1 };
     });
     // Une station passée (forfait) n'est pas une performance : exclue du « plus lent / plus à l'aise ».

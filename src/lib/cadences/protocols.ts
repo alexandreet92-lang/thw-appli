@@ -18,7 +18,8 @@ export interface Protocol {
   box?: string                     // hauteur de box (Hyrox)
   stations?: string[]              // épreuve en plusieurs stations chronométrées une à une (Conditioning)
   stationsF?: string[]             // libellés des stations pour les femmes (variantes : australiennes, pompes sur les genoux)
-  stationShare?: number[]          // part du temps total attendue par station à niveau Référence (somme = 1)
+  stationShare?: number[]          // part du temps total attendue par station à niveau Référence, hommes (somme = 1)
+  stationShareF?: number[]         // idem pour les femmes (rameur +12 %, régressions)
   diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
 }
@@ -148,6 +149,12 @@ export function conditioningLoads(sex: 'M' | 'F', weightKg: number, ageFactor = 
 
 /** Nombre maximum de stations du Conditioning qu'on peut « passer » (au-delà, le circuit entier est non passé). */
 export const MAX_SKIPPED_STATIONS = 2
+
+/** Parts attendues par station selon le sexe (repli sur la répartition des hommes). */
+export function stationShareFor(sex: 'M' | 'F' | undefined): number[] {
+  const p = PROTOCOLS.conditioning
+  return (sex === 'F' ? p?.stationShareF : p?.stationShare) ?? p?.stationShare ?? []
+}
 
 /** Temps forfaitaire (s) d'une station non faite : 1,5 × son temps attendu à niveau Référence (part attendue × Réf du barème). */
 export function stationPenaltySec(refTotalSec: number, share: number): number {
@@ -443,7 +450,7 @@ export const PROTOCOLS: Record<string, Protocol> = {
 
   // ── J12 · Conditioning (remplace l'AMRAP et le circuit en 5 tours dans Decaform v1.2) ──
   conditioning: {
-    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 45 à 60 min).',
+    objectif: 'Endurance musculaire et capacité hybride force-endurance : 7 stations enchaînées, un seul chrono (environ 25 à 40 min selon le niveau).',
     materiel: ['Barre olympique + disques (soulevé de terre, burpees to the bar)', 'Barre de traction (ou barre basse / anneaux pour les tractions australiennes)', 'Haltères (fentes, thrusters)', 'Rameur (Concept2 de préférence)', 'Chrono avec tours (lap)'],
     etapes: [
       '1. Burpees to the bar : 25. La barre du soulevé de terre est posée au sol : à chaque répétition, saute par-dessus la barre (les deux pieds au-dessus) et touche-la des deux mains en bas.',
@@ -461,8 +468,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     echauffementSpecifique: '5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis une série de chaque mouvement à vide ou en charge légère.',
     stations: ['Burpees to the bar', 'Tractions', 'Pompes', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
     stationsF: ['Burpees to the bar', 'Tractions australiennes', 'Pompes sur les genoux', 'Soulevé de terre', 'Fentes', 'Thrusters', 'Rameur 2 000 m'],
-    // Temps attendu à niveau Référence (≈ 3:00 · 9:00 · 7:00 · 8:00 · 5:00 · 3:30 · 9:00) ramené en parts du total.
-    stationShare: [0.067, 0.202, 0.157, 0.180, 0.112, 0.079, 0.203],
+    // Temps de tour attendu à niveau Référence (transition incluse), ramené en parts du total.
+    // Hommes : 2:10 · 4:50 · 3:50 · 5:00 · 2:55 · 2:00 · 8:20 (+ transitions) ; femmes : 2:20 · 4:20 · 3:45 · 5:20 · 3:10 · 2:10 · 9:20.
+    stationShare: [0.069, 0.166, 0.135, 0.172, 0.105, 0.076, 0.277],
+    stationShareF: [0.071, 0.144, 0.127, 0.175, 0.109, 0.078, 0.296],
     flag: true,
   },
 

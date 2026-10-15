@@ -6,7 +6,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { testBySlug, getConfig } from '@/lib/cadences/catalog'
-import { PROTOCOLS, MAX_SKIPPED_STATIONS, parseSkippedStations, stationPenaltySec } from '@/lib/cadences/protocols'
+import { MAX_SKIPPED_STATIONS, parseSkippedStations, stationPenaltySec, stationShareFor } from '@/lib/cadences/protocols'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -49,7 +49,7 @@ export async function PUT(request: Request): Promise<NextResponse> {
   // Conditioning : stations « passées » (forfait). Au plus 2, et le temps enregistré doit être le forfait calculé.
   const skippedStations = test.slug === 'conditioning' ? parseSkippedStations(b?.notes) : []
   if (skippedStations.length && statut === 'validated') {
-    const share = PROTOCOLS.conditioning?.stationShare ?? []
+    const share = stationShareFor(camp?.scale_sex === 'F' ? 'F' : 'M')
     const parts = Array.isArray(b?.rawParts) ? (b.rawParts as unknown[]).map(Number) : []
     const ref = camp?.scale_sex === 'F' ? test.female.ref : test.male.ref
     if (skippedStations.length > MAX_SKIPPED_STATIONS || skippedStations.some((i) => i > share.length)) {

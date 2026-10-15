@@ -132,8 +132,9 @@
      Même calcul que stationPenaltySec() dans src/lib/cadences/protocols.ts. */
   function stationPenaltySec(test, sex, i) {
     var base = sex === 'F' ? test.female : test.male;
-    if (!test.partShare || !base) return null;
-    return Math.round(1.5 * test.partShare[i] * base.ref);
+    var share = sex === 'F' && test.partShareF ? test.partShareF : test.partShare;
+    if (!share || !base) return null;
+    return Math.round(1.5 * share[i] * base.ref);
   }
   /* Stations passées lues dans notes (« stations_passees=3,5 » → [3, 5], à partir de 1). */
   function skippedStations(notes) {

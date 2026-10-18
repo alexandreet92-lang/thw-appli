@@ -8,7 +8,6 @@ var APP_URL = 'https://thw-appli.vercel.app';
 /* Menu déroulant partagé — toutes les pages du site, visible depuis chacune d'elles. */
 var MENU_ITEMS = [
   { label: 'Accueil',                     href: 'index.html' },
-  { label: 'Découvrir les piliers',        href: 'decouvrir.html' },
   { label: 'Le test Decaform',             href: 'cadences.html' },
   { label: 'Tous les tests',              href: 'tests.html' },
   { label: 'Mon historique',              href: 'historique.html' },
@@ -21,6 +20,9 @@ var MENU_ITEMS = [
   { label: "Conditions d'utilisation",     href: 'conditions-utilisation.html', group: 'legal' },
   { label: 'Exporter mes données',        href: 'exporter-mes-donnees.html', group: 'legal' },
 ];
+
+/* Langues du site : FR est la source, les autres sont traduites au runtime (i18n.js). */
+var SITE_LANGS = [['fr', 'Français', 'FR'], ['en', 'English', 'EN'], ['es', 'Español', 'ES'], ['it', 'Italiano', 'IT'], ['de', 'Deutsch', 'DE']];
 
 /* Dropdown « Menu » pour le header partagé (desktop).
    Toujours monté : l'ouverture est une vraie animation de déroulé. */
@@ -76,7 +78,7 @@ function HeaderMenu() {
 
 /* Sélecteur de langue — menu déroulant animé, partagé par les pages traduites. */
 function LangSelect(props) {
-  var LANGS = [['fr', 'Français', 'FR'], ['en', 'English', 'EN'], ['es', 'Español', 'ES']];
+  var LANGS = SITE_LANGS;
   var lang = props.lang || 'fr';
   var setLang = props.setLang || function () {};
   var [open, setOpen] = React.useState(false);
@@ -134,6 +136,308 @@ function LangSelect(props) {
   );
 }
 
+
+/* ════════════════════════════════════════════════════════════════
+   Connexion + compte, partagés par toutes les pages du site.
+   • AuthForm      : Google / Apple / e-mail + mot de passe / mot de passe oublié.
+   • Modal         : fenêtre au-dessus de la page (Échap, clic dehors, focus).
+   • LoginModal    : « Se connecter » sur ordinateur (sur mobile : page compte.html).
+   • PasswordModal : changer son mot de passe quand on est connecté.
+   • AccountMenu   : la bulle de compte (remplace « Se connecter » une fois connecté).
+   Les textes sont en français (source) : i18n.js les traduit dans le DOM.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Page d'où part la connexion : on y revient après Google/Apple/déconnexion. */
+function authNext() {
+  try { return window.location.pathname + (window.location.search || ''); } catch (e) { return '/'; }
+}
+
+function AuthStyles() {
+  return (
+    <style>{`
+      .thw-ov { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(5,8,12,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: thwOvIn .18s ease; }
+      @keyframes thwOvIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes thwModalIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+      .thw-modal { position: relative; width: 100%; max-width: 420px; max-height: calc(100vh - 40px); overflow-y: auto; background: var(--bg-card, #fff); color: var(--text); border: 1px solid var(--border-mid); border-radius: 20px; padding: 30px 28px 26px; box-shadow: 0 24px 70px rgba(0,0,0,.35); animation: thwModalIn .22s cubic-bezier(.22,1,.36,1); text-align: center; }
+      .thw-modal h2 { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 14px 0 0; color: var(--text); }
+      .thw-modal .thw-lead { margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-mid); }
+      .thw-modal-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 9px; background: transparent; color: var(--text-dim); cursor: pointer; transition: background .16s, color .16s; }
+      .thw-modal-x:hover { background: var(--bg-hover); color: var(--text); }
+      .thw-au-oauth { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+      .thw-au-oauth a { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; border-radius: 10px; background: var(--bg-card); box-shadow: inset 0 0 0 1px var(--border-mid); color: var(--text); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: box-shadow .16s, background .16s; }
+      .thw-au-oauth a:hover { box-shadow: inset 0 0 0 1px var(--text-dim); background: var(--bg-hover); color: var(--text); }
+      .thw-au-sep { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+      .thw-au-sep::before, .thw-au-sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+      .thw-au-form { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+      .thw-au-label { font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+      .thw-au-input { width: 100%; min-height: 46px; padding: 0 14px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text); font-family: var(--font-body); font-size: 14.5px; box-sizing: border-box; }
+      .thw-au-input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+      .thw-au-pass { position: relative; display: block; }
+      .thw-au-pass .thw-au-input { padding-right: 48px; }
+      .thw-au-eye { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: none; border-radius: 9px; background: transparent; color: var(--text-dim); cursor: pointer; }
+      .thw-au-eye:hover { color: var(--text); background: var(--bg-hover); }
+      .thw-au-submit { min-height: 46px; margin-top: 6px; border: none; border-radius: 10px; cursor: pointer; background: var(--brand-gradient); color: #fff; font-family: var(--font-body); font-size: 14.5px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,200,224,.32); transition: filter .16s; }
+      .thw-au-submit:hover { filter: brightness(1.07); }
+      .thw-au-submit:disabled { opacity: .6; cursor: default; }
+      .thw-au-link { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; color: var(--brand); text-align: left; }
+      .thw-au-link:hover { text-decoration: underline; }
+      .thw-au-err { margin: 4px 0 0; font-size: 12.5px; color: #ef4444; text-align: center; }
+      .thw-au-ok { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-mid); text-align: center; }
+      .thw-au-hint { margin-top: 16px; font-size: 12.5px; color: var(--text-dim); text-align: center; }
+      .thw-au-hint a { color: var(--brand); text-decoration: none; }
+      .thw-acc-btn { display: inline-flex; align-items: center; gap: 9px; padding: 4px 14px 4px 4px; border-radius: 999px; cursor: pointer; border: 1px solid var(--border-mid); background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-card); font-family: var(--font-body); font-size: 13.5px; font-weight: 600; transition: border-color .16s; }
+      .thw-acc-btn:hover, .thw-acc-btn[aria-expanded="true"] { border-color: var(--brand); }
+      .thw-acc-av { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--brand-gradient); color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+      .thw-acc-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 300px; max-width: calc(100vw - 24px); z-index: 200; background: var(--nav-bg); border: 1px solid var(--border-mid); border-radius: 16px; padding: 8px; box-shadow: var(--shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+      .thw-acc-head { display: flex; align-items: center; gap: 12px; padding: 10px 10px 12px; }
+      .thw-acc-head .thw-acc-av { width: 40px; height: 40px; font-size: 16px; }
+      .thw-acc-name { font-weight: 600; font-size: 14.5px; color: var(--text); line-height: 1.2; }
+      .thw-acc-mail { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+      .thw-acc-sep { height: 1px; background: var(--border); margin: 6px 6px; }
+      .thw-acc-label { padding: 8px 10px 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+      .thw-acc-row { padding: 0 8px 6px; }
+      .thw-acc-item { display: block; width: 100%; box-sizing: border-box; padding: 10px 10px; border-radius: 9px; border: none; background: transparent; text-align: left; cursor: pointer; font-family: var(--font-body); font-size: 13.5px; font-weight: 500; color: var(--text-mid); text-decoration: none; transition: background .14s, color .14s; }
+      .thw-acc-item:hover { background: var(--bg-hover); color: var(--text); }
+      .thw-acc-langs { display: flex; flex-wrap: wrap; gap: 6px; }
+      .thw-acc-lang { padding: 7px 11px; border-radius: 999px; border: 1px solid var(--border-mid); background: var(--bg-card); color: var(--text-mid); cursor: pointer; font-family: var(--font-body); font-size: 12.5px; font-weight: 600; }
+      .thw-acc-lang[aria-pressed="true"] { color: #fff; background: var(--brand-gradient); border-color: transparent; }
+      @media (max-width: 480px) { .thw-modal { padding: 26px 20px 22px; border-radius: 18px; } .thw-acc-btn .thw-acc-name-lbl { display: none; } .thw-acc-btn { padding-right: 4px; } }
+    `}</style>
+  );
+}
+
+function EyeIcon(props) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>
+      {props.off && <path d="M4 20 20 4"/>}
+    </svg>
+  );
+}
+
+/* Formulaire de connexion partagé (fenêtre + page compte.html). */
+function AuthForm(props) {
+  var next = props.next || authNext();
+  var [mode, setMode] = React.useState('login');   // 'login' | 'forgot'
+  var [email, setEmail] = React.useState('');
+  var [password, setPassword] = React.useState('');
+  var [showPass, setShowPass] = React.useState(false);
+  var [loading, setLoading] = React.useState(false);
+  var [err, setErr] = React.useState(null);
+  var [info, setInfo] = React.useState(null);
+  var oauth = function (p) { return '/api/auth/site-oauth?provider=' + p + '&next=' + encodeURIComponent(next); };
+
+  var login = function (e) {
+    e.preventDefault();
+    if (!email || !password || loading) return;
+    setLoading(true); setErr(null);
+    fetch('/api/auth/site-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ email: email, password: password }),
+    }).then(function (r) { return r.json().catch(function () { return null; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j || !res.j.success) { setErr((res.j && res.j.error) || 'Connexion impossible'); setLoading(false); return; }
+        try { if (window.THWAccount) window.THWAccount.refresh(); } catch (x) {}
+        window.location.reload();
+      })
+      .catch(function () { setErr('Connexion impossible. Réessaie.'); setLoading(false); });
+  };
+
+  var forgot = function (e) {
+    e.preventDefault();
+    if (!email || loading) return;
+    setLoading(true); setErr(null); setInfo(null);
+    fetch('/api/auth/site-reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email }),
+    }).then(function (r) { return r.json().catch(function () { return null; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        setLoading(false);
+        if (!res.ok) { setErr((res.j && res.j.error) || 'Envoi impossible. Réessaie.'); return; }
+        setInfo('Si un compte existe avec cette adresse, un e-mail vient de partir. Clique sur le lien pour choisir un nouveau mot de passe.');
+      })
+      .catch(function () { setLoading(false); setErr('Envoi impossible. Réessaie.'); });
+  };
+
+  if (mode === 'forgot') {
+    return (
+      <div>
+        <p className="thw-lead" style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-mid)' }}>
+          Entre l’e-mail de ton compte : on t’envoie un lien pour choisir un nouveau mot de passe.
+        </p>
+        <form className="thw-au-form" onSubmit={forgot}>
+          <label className="thw-au-label" htmlFor="thw-au-email">Email du compte Hybrid</label>
+          <input className="thw-au-input" id="thw-au-email" type="email" required placeholder="ton@email.fr" value={email} onChange={function (e) { setEmail(e.target.value); }} autoComplete="email"/>
+          {err && <p className="thw-au-err">{err}</p>}
+          {info && <p className="thw-au-ok">{info}</p>}
+          <button className="thw-au-submit" type="submit" disabled={loading || !!info}>{loading ? 'Envoi…' : 'Envoyer le lien'}</button>
+          <button type="button" className="thw-au-link" style={{ textAlign: 'center' }} onClick={function () { setMode('login'); setErr(null); setInfo(null); }}>← Retour à la connexion</button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="thw-au-oauth">
+        <a href={oauth('google')}><UIIcon name="google" size={18}/> Continuer avec Google</a>
+        <a href={oauth('apple')}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
+      </div>
+      <div className="thw-au-sep">ou par email</div>
+      <form className="thw-au-form" onSubmit={login}>
+        <label className="thw-au-label" htmlFor="thw-au-email">Email du compte Hybrid</label>
+        <input className="thw-au-input" id="thw-au-email" type="email" required placeholder="ton@email.fr" value={email} onChange={function (e) { setEmail(e.target.value); }} autoComplete="email"/>
+        <label className="thw-au-label" htmlFor="thw-au-pass" style={{ marginTop: 4 }}>Mot de passe</label>
+        <div className="thw-au-pass">
+          <input className="thw-au-input" id="thw-au-pass" type={showPass ? 'text' : 'password'} required placeholder="••••••••" value={password} onChange={function (e) { setPassword(e.target.value); }} autoComplete="current-password"/>
+          <button type="button" className="thw-au-eye" onClick={function () { setShowPass(function (v) { return !v; }); }} aria-pressed={showPass}
+            aria-label={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}><EyeIcon off={showPass}/></button>
+        </div>
+        <button type="button" className="thw-au-link" onClick={function () { setMode('forgot'); setErr(null); }}>Mot de passe oublié ?</button>
+        {err && <p className="thw-au-err">{err}</p>}
+        <button className="thw-au-submit" type="submit" disabled={loading}>{loading ? 'Connexion…' : 'Se connecter'}</button>
+      </form>
+    </div>
+  );
+}
+
+/* Fenêtre générique : Échap, clic sur le fond, défilement de la page bloqué. */
+function Modal(props) {
+  React.useEffect(function () {
+    var onKey = function (e) { if (e.key === 'Escape') props.onClose(); };
+    document.addEventListener('keydown', onKey);
+    var prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return function () { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, []);
+  return ReactDOM.createPortal(
+    <div className="thw-ov" onMouseDown={function (e) { if (e.target === e.currentTarget) props.onClose(); }}>
+      <AuthStyles/>
+      <div className="thw-modal" role="dialog" aria-modal="true" aria-labelledby="thw-modal-title">
+        <button type="button" className="thw-modal-x" aria-label="Fermer" onClick={props.onClose}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <span className="eyebrow" style={{ justifyContent: 'center' }}>{props.eyebrow}</span>
+        <h2 id="thw-modal-title">{props.title}</h2>
+        {props.children}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function LoginModal(props) {
+  return (
+    <Modal onClose={props.onClose} eyebrow="Espace personnel" title="Se connecter">
+      <p className="thw-lead">Connecte-toi pour retrouver ton abonnement, tes tokens et toutes tes factures.</p>
+      <AuthForm/>
+      <p className="thw-au-hint">Pas encore de compte ? <a href={'/auth?redirect=' + encodeURIComponent(authNext())}>Crée-le en 1 minute</a> — 14 jours d’essai, sans carte bancaire.</p>
+    </Modal>
+  );
+}
+
+function PasswordModal(props) {
+  var [pw, setPw] = React.useState('');
+  var [pw2, setPw2] = React.useState('');
+  var [show, setShow] = React.useState(false);
+  var [loading, setLoading] = React.useState(false);
+  var [err, setErr] = React.useState(null);
+  var [done, setDone] = React.useState(false);
+  var submit = function (e) {
+    e.preventDefault();
+    if (loading) return;
+    if (pw.length < 8) { setErr('Le mot de passe doit faire au moins 8 caractères.'); return; }
+    if (pw !== pw2) { setErr('Les deux mots de passe ne sont pas identiques.'); return; }
+    setLoading(true); setErr(null);
+    fetch('/api/auth/site-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ password: pw }),
+    }).then(function (r) { return r.json().catch(function () { return null; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        setLoading(false);
+        if (!res.ok || !res.j || !res.j.success) { setErr((res.j && res.j.error) || 'Impossible de changer le mot de passe. Réessaie.'); return; }
+        setDone(true);
+      })
+      .catch(function () { setLoading(false); setErr('Impossible de changer le mot de passe. Réessaie.'); });
+  };
+  return (
+    <Modal onClose={props.onClose} eyebrow="Sécurité" title="Changer le mot de passe">
+      {done ? (
+        <div>
+          <p className="thw-lead">C’est fait : ton mot de passe est à jour.</p>
+          <button type="button" className="thw-au-submit" style={{ width: '100%', marginTop: 18 }} onClick={props.onClose}>Fermer</button>
+        </div>
+      ) : (
+        <form className="thw-au-form" style={{ marginTop: 18 }} onSubmit={submit}>
+          <label className="thw-au-label" htmlFor="thw-pw1">Nouveau mot de passe</label>
+          <div className="thw-au-pass">
+            <input className="thw-au-input" id="thw-pw1" type={show ? 'text' : 'password'} required minLength={8} placeholder="8 caractères minimum" value={pw} onChange={function (e) { setPw(e.target.value); }} autoComplete="new-password"/>
+            <button type="button" className="thw-au-eye" onClick={function () { setShow(function (v) { return !v; }); }} aria-pressed={show}
+              aria-label={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}><EyeIcon off={show}/></button>
+          </div>
+          <label className="thw-au-label" htmlFor="thw-pw2" style={{ marginTop: 4 }}>Confirmer</label>
+          <input className="thw-au-input" id="thw-pw2" type={show ? 'text' : 'password'} required placeholder="••••••••" value={pw2} onChange={function (e) { setPw2(e.target.value); }} autoComplete="new-password"/>
+          {err && <p className="thw-au-err">{err}</p>}
+          <button className="thw-au-submit" type="submit" disabled={loading}>{loading ? 'Enregistrement…' : 'Enregistrer'}</button>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
+/* La bulle de compte : réglages de base (apparence, langue, mot de passe, déconnexion). */
+function AccountMenu(props) {
+  var account = props.account;
+  var [open, setOpen] = React.useState(false);
+  var ref = React.useRef(null);
+  React.useEffect(function () {
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return function () { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, []);
+  var name = account.firstName || 'Mon compte';
+  var initial = (account.firstName || account.email || 'T').trim().charAt(0).toUpperCase();
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <AuthStyles/>
+      <button type="button" className="thw-acc-btn" aria-haspopup="true" aria-expanded={open} title={account.email || ''}
+        onClick={function () { setOpen(function (o) { return !o; }); }}>
+        <span className="thw-acc-av" aria-hidden="true">{initial}</span>
+        <span className="thw-acc-name-lbl">{name}</span>
+      </button>
+      <div role="menu" aria-hidden={!open} className={'thw-acc-panel dd-panel' + (open ? ' dd-open' : '')}>
+        <div className="thw-acc-head">
+          <span className="thw-acc-av" aria-hidden="true">{initial}</span>
+          <div style={{ minWidth: 0 }}>
+            <div className="thw-acc-name">{name}{account.tierLabel ? ' · ' + account.tierLabel : ''}</div>
+            <div className="thw-acc-mail">{account.email}</div>
+          </div>
+        </div>
+        <a role="menuitem" className="thw-acc-item" href="compte.html" tabIndex={open ? 0 : -1}>Mon compte</a>
+        <div className="thw-acc-sep"/>
+        <div className="thw-acc-label">Apparence</div>
+        <div className="thw-acc-row"><ThemeToggle/></div>
+        <div className="thw-acc-label">Langue</div>
+        <div className="thw-acc-row">
+          <div className="thw-acc-langs" data-no-i18n="1">
+            {SITE_LANGS.map(function (l) {
+              return <button key={l[0]} type="button" className="thw-acc-lang" aria-pressed={l[0] === props.lang} aria-label={l[1]} tabIndex={open ? 0 : -1}
+                onClick={function () { props.setLang(l[0]); }}>{l[2]}</button>;
+            })}
+          </div>
+        </div>
+        <div className="thw-acc-sep"/>
+        <button type="button" role="menuitem" className="thw-acc-item" tabIndex={open ? 0 : -1}
+          onClick={function () { setOpen(false); props.onPassword(); }}>Changer le mot de passe</button>
+        <a role="menuitem" className="thw-acc-item" tabIndex={open ? 0 : -1}
+          href={'/api/auth/signout?next=' + encodeURIComponent(authNext())}>Se déconnecter</a>
+      </div>
+    </div>
+  );
+}
+
 /* #rrggbb → "r,g,b" for rgba() with the active accent. Shared. */
 function hexToRgb(hex) {
   var c = (hex || '#00c8e0').replace('#', '');
@@ -166,15 +470,23 @@ function SiteHeader(props) {
   // Compte partagé : un seul fetch par page, et le cache évite que le header
   // repasse sur « Se connecter » à chaque navigation.
   var account = window.THWAccount.useAccount();
+  // Barre du haut : Accueil et Decaform seulement. « Découvrir » (même page que
+  // l'accueil), « Plans » (tarifs : dans le pied de page et le menu) et « Connexion »
+  // (même destination que le bouton « Se connecter ») ont été retirés.
   var navLinks = [
     { label: 'Accueil', href: 'index.html', key: 'home' },
-    { label: 'Découvrir', href: 'decouvrir.html', key: 'discover' },
     { label: 'Decaform', href: 'cadences.html', key: 'cadences' },
-    { label: 'Plans', href: 'theme.html#abonnements', key: 'plans' },
-    { label: 'Connexion', href: 'compte.html', key: 'login' },
   ];
   // Une fois connecté : accès direct à l'historique des tests (page dédiée).
-  if (account) navLinks.splice(3, 0, { label: 'Mon historique', href: 'historique.html', key: 'history' });
+  if (account) navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' });
+  // Fenêtres de connexion / mot de passe (ordinateur). Sur mobile, « Se connecter »
+  // reste un lien vers la page compte.html.
+  var [loginOpen, setLoginOpen] = React.useState(false);
+  var [pwOpen, setPwOpen] = React.useState(false);
+  var openLogin = function (e) {
+    var desktop = window.matchMedia ? window.matchMedia('(min-width: 821px)').matches : true;
+    if (desktop) { e.preventDefault(); setLoginOpen(true); }
+  };
   // App Store 3.1.1 : quand une page du site est ouverte DEPUIS l'app (navigateur
   // in-app, ?app=1 → sessionStorage thw_app_noprice), on masque toute la
   // navigation du site (nav + CTA compte + burger). Sinon on pourrait, depuis
@@ -208,19 +520,19 @@ function SiteHeader(props) {
         )}
 
         <div className="header-right">
-          {props && props.extra ? props.extra
-            : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>}
-          <ThemeToggle/>
-          {!IN_APP && (
-            <a className="btn btn-cyan mag" href="compte.html" title={account ? (account.email || '') : ''}>
+          {/* Connecté : langue et thème passent dans la bulle de compte. */}
+          {!account && (props && props.extra ? props.extra
+            : <div data-thw-lang-select="1" data-no-i18n="1"><LangSelect lang={lang} setLang={setLang}/></div>)}
+          {!account && <ThemeToggle/>}
+          {/* Le moteur i18n a besoin d'un sélecteur « data-thw-lang-select » pour ne pas en injecter un second. */}
+          {account && <span data-thw-lang-select="1" style={{ display: 'none' }}/>}
+          {!IN_APP && !account && (
+            <a className="btn btn-cyan mag" href="compte.html" onClick={openLogin}>
               <UIIcon name="user" size={15}/>
-              <span className="header-cta-label">
-                {account
-                  ? ((account.firstName || 'Mon compte') + (account.tierLabel ? ' · ' + account.tierLabel : ''))
-                  : 'Se connecter'}
-              </span>
+              <span className="header-cta-label">Se connecter</span>
             </a>
           )}
+          {!IN_APP && account && <AccountMenu account={account} lang={lang} setLang={setLang} onPassword={function () { setPwOpen(true); }}/>}
           {!IN_APP && (
             <button type="button" className="btn btn-ghost header-burger"
                     aria-label="Menu" onClick={function () { setOpen(!open); }}
@@ -230,6 +542,9 @@ function SiteHeader(props) {
           )}
         </div>
       </div>
+
+      {loginOpen && !account && <LoginModal onClose={function () { setLoginOpen(false); }}/>}
+      {pwOpen && account && <PasswordModal onClose={function () { setPwOpen(false); }}/>}
 
       <div className={'header-mobile-menu' + (open ? ' hmm-open' : '')} aria-hidden={!open}>
         <div className="hmm-inner">
@@ -320,7 +635,7 @@ function SiteFooter() {
             </a>
             <p>Ton entraînement hybride — endurance + force — piloté par une IA qui te connaît.</p>
           </div>
-          {!IN_APP && col('Découvrir', [['Tous les piliers', 'decouvrir.html'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
+          {!IN_APP && col('Découvrir', [['Tous les piliers', 'index.html#grille'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
           {!IN_APP && col('Produit', [['Plans & tarifs', 'theme.html#abonnements'], ['Abonnement coach', 'abonnement-coach.html'], ['Système de tokens', 'theme.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
           {col('Support & légal', [['Mentions légales', 'mentions-legales.html'], ['Conditions d\'utilisation', 'conditions-utilisation.html'], ['Confidentialité', 'confidentialite.html'], ['Exporter mes données', 'exporter-mes-donnees.html']])}
         </div>
@@ -381,4 +696,4 @@ function useReveal() {
   }, []);
 }
 
-Object.assign(window, { SiteHeader: SiteHeader, SiteFooter: SiteFooter, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });
+Object.assign(window, { SiteHeader: SiteHeader, SiteFooter: SiteFooter, AuthForm: AuthForm, authNext: authNext, AuthStyles: AuthStyles, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });

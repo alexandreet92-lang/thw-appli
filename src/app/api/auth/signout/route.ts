@@ -12,6 +12,9 @@ export async function GET(req: Request) {
     const supabase = await createClient()
     await supabase.auth.signOut()
   } catch { /* on redirige quand même */ }
-  const base = new URL(req.url).origin
-  return NextResponse.redirect(`${base}/site/compte.html`, { status: 303 })
+  const { origin: base, searchParams } = new URL(req.url)
+  // `next` : page du site d'où part la déconnexion (chemin interne uniquement).
+  const nextRaw = searchParams.get('next') || '/site/compte.html'
+  const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/site/compte.html'
+  return NextResponse.redirect(`${base}${next}`, { status: 303 })
 }

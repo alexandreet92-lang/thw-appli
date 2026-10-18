@@ -40,7 +40,7 @@
   function MiniRadar(props) {
     var items = props.items || [];
     var n = items.length || 7;
-    var size = 132, cx = size / 2, cy = size / 2, R = size / 2 - 8;
+    var size = props.size || 132, cx = size / 2, cy = size / 2, R = size / 2 - 8;
     var max = Math.max.apply(null, items.map(function (q) { return q.share; }).concat([0.01]));
     function pt(i, f) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + R * f * Math.cos(a), cy + R * f * Math.sin(a)]; }
     var poly = items.map(function (q, i) { var p = pt(i, Math.max(0.12, q.share / max)); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
@@ -105,6 +105,71 @@
     );
   }
 
+
+  /* Groupes d'affichage hors Decaform : adultes puis jeunes (du plus jeune au plus âgé). */
+  var GROUPS = [
+    { id: 'adultes', title: 'Adultes et seniors', sub: 'Une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['start', 'senior'] },
+    { id: 'jeunes', title: 'Enfants et ados', sub: 'Des épreuves adaptées à chaque âge, sans danger.', keys: ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17'] },
+  ];
+
+  /* Decaform : le test de référence, en grand. */
+  function FeaturedTest(props) {
+    var c = props.p;
+    var top = c.qualityShare.slice().sort(function (a, b) { return b.share - a.share; }).slice(0, 3);
+    return (
+      <div className="cad-feat tilt" data-tilt="2">
+        <div className="cad-feat-main">
+          <div className="eyebrow">Le test de référence</div>
+          <h3 className="cad-feat-title">{c.title}</h3>
+          <p className="cad-feat-text">
+            24 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test exigeant, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
+          </p>
+          <div className="cad-feat-stats">
+            <Stat v={c.totalTests} l="épreuves"/>
+            <Stat v={c.testDays} l="jours de test"/>
+            <Stat v={c.totalPoints} l="points"/>
+          </div>
+          <p className="cad-feat-top">Surtout : {top.map(function (q) { return q.label.toLowerCase(); }).join(', ')}</p>
+          <div className="cad-feat-cta">
+            <a className="btn btn-cyan btn-lg mag" href="cadences.html">Faire le test</a>
+            <a className="cad-feat-more" href={'cadences.html?test=' + encodeURIComponent(c.testKey)}>Voir le détail · {agesOf(c)} →</a>
+          </div>
+        </div>
+        <div className="cad-feat-radar"><MiniRadar items={c.qualityShare} size={190}/></div>
+      </div>
+    );
+  }
+
+  /* Decaform en vedette, puis les autres tests rangés par public. */
+  function GroupedTests(props) {
+    var list = props.list || [];
+    var byKey = {}; list.forEach(function (p) { byKey[p.testKey] = p; });
+    var feat = byKey.decaform;
+    var used = { decaform: true };
+    var blocks = GROUPS.map(function (g) {
+      var items = g.keys.map(function (k) { used[k] = true; return byKey[k]; }).filter(Boolean);
+      return { g: g, items: items };
+    }).filter(function (b) { return b.items.length; });
+    var rest = list.filter(function (p) { return !used[p.testKey]; });
+    return (
+      <div className="cad-groups">
+        {feat && <FeaturedTest p={feat}/>}
+        {blocks.map(function (b) {
+          return (
+            <section key={b.g.id} className="cad-group">
+              <div className="cad-group-head">
+                <h3 className="cad-group-title">{b.g.title}</h3>
+                <p className="cad-group-sub">{b.g.sub}</p>
+              </div>
+              <CardsGrid list={b.items}/>
+            </section>
+          );
+        })}
+        {rest.length > 0 && <CardsGrid list={rest}/>}
+      </div>
+    );
+  }
+
   function Loading(props) {
     if (props.err) {
       return (
@@ -120,6 +185,22 @@
   function TestsStyle() {
     return (
       <style>{`
+        .cad-groups { display: grid; gap: 44px; }
+        .cad-feat { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px; background: var(--bg-card); border: 1px solid var(--border-mid); border-left: 4px solid var(--gold, var(--brand)); border-radius: var(--radius-lg); padding: 30px 32px; box-shadow: var(--shadow-card); }
+        .cad-feat-main { flex: 1 1 360px; min-width: 0; display: grid; gap: 12px; }
+        .cad-feat-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: clamp(32px, 4.4vw, 46px); line-height: 1.05; color: var(--text); }
+        .cad-feat-text { margin: 0; max-width: 560px; font-family: var(--font-body); font-size: 15.5px; line-height: 1.65; color: var(--text-mid); }
+        .cad-feat-text strong { color: var(--text); }
+        .cad-feat-stats { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 4px; }
+        .cad-feat-top { margin: 0; font-family: var(--font-body); font-size: 13px; color: var(--text-dim); }
+        .cad-feat-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 6px; }
+        .cad-feat-more { font-family: var(--font-body); font-size: 13.5px; font-weight: 600; color: var(--brand); text-decoration: none; }
+        .cad-feat-more:hover { text-decoration: underline; }
+        .cad-feat-radar { flex: 0 0 auto; margin: 0 auto; }
+        .cad-group-head { margin-bottom: 16px; }
+        .cad-group-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--text); }
+        .cad-group-sub { margin: 4px 0 0; font-family: var(--font-body); font-size: 14px; color: var(--text-mid); }
+        @media (max-width: 640px) { .cad-feat { padding: 22px 20px; } }
         .cad-testgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; }
         .cad-testcard { display: grid; gap: 12px; align-content: start; text-decoration: none; color: var(--text); background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-lg); padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 28px rgba(8,20,40,.07); transition: border-color .18s, box-shadow .18s, transform .18s; }
         html.dark .cad-testcard { box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.25); }
@@ -163,14 +244,14 @@
               return <button key={a.key} type="button" aria-pressed={filter === a.key} onClick={function () { setFilter(a.key); }}>{a.label}</button>;
             })}
           </div>
-          {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : <CardsGrid list={list}/>}
+          {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : (filter === 'all' ? <GroupedTests list={list}/> : <CardsGrid list={list}/>)}
         </main>
         <SiteFooter/>
       </div>
     );
   }
 
-  /* Encart pour la page Découvrir : quelques cartes + bouton vers la liste complète. */
+  /* Encart de la page d'accueil : Decaform en vedette, puis les autres tests par public. */
   function CadTestsSection() {
     var pr = useProducts();
     return (
@@ -181,7 +262,7 @@
           <h2 className="st-h2">Un test pour chaque âge.</h2>
           <p className="st-lede" style={{ margin: '0 auto' }}>Enfants, ados, adultes, seniors : la même méthode, des épreuves adaptées.</p>
         </div>
-        {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : <CardsGrid list={pr.data}/>}
+        {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : <GroupedTests list={pr.data}/>}
         <div style={{ textAlign: 'center', marginTop: 26 }}>
           <a className="btn btn-cyan btn-lg mag" href="tests.html">Voir tous les tests</a>
         </div>

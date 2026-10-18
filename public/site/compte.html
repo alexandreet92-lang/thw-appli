@@ -263,55 +263,16 @@
     );
 
     function LoginView() {
-      const [email, setEmail] = useState('');
-      const [password, setPassword] = useState('');
-      const [showPass, setShowPass] = useState(false);
-      const [loading, setLoading] = useState(false);
-      const [err, setErr] = useState(null);
-      const nextParam = APP_NOPRICE ? '/site/compte.html?app=1' : '/site/compte.html';
-      const oauth = (p) => '/api/auth/site-oauth?provider=' + p + '&next=' + encodeURIComponent(nextParam);
-      const submit = async (e) => {
-        e.preventDefault();
-        if (!email || !password || loading) return;
-        setLoading(true); setErr(null);
-        try {
-          const r = await fetch('/api/auth/site-login', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ email: email, password: password }),
-          });
-          const j = await r.json().catch(() => null);
-          if (!r.ok || !j || !j.success) { setErr((j && j.error) || 'Connexion impossible'); setLoading(false); return; }
-          window.location.reload();
-        } catch (e) { setErr('Connexion impossible. Réessaie.'); setLoading(false); }
-      };
+      // Formulaire partagé avec la fenêtre de connexion du site (SiteChrome.jsx) :
+      // Google / Apple / e-mail + mot de passe / mot de passe oublié.
+      const nextParam = window.location.pathname + (APP_NOPRICE ? '?app=1' : '');
       return (
         <div className="ac-login">
+          <AuthStyles/>
           <span className="eyebrow" style={{ justifyContent: 'center' }}>Espace personnel</span>
           <h1>Se connecter</h1>
           <p className="lead">Connecte-toi pour retrouver ton abonnement, tes tokens et toutes tes factures.</p>
-          <div className="ac-oauth">
-            <a href={oauth('google')}><UIIcon name="google" size={18}/> Continuer avec Google</a>
-            <a href={oauth('apple')}><UIIcon name="apple" size={17}/> Continuer avec Apple</a>
-          </div>
-          <div className="ac-sep">ou par email</div>
-          <form className="ac-form" style={{ marginTop: 18 }} onSubmit={submit}>
-            <label className="ac-label" htmlFor="ac-email">Email du compte Hybrid</label>
-            <input className="ac-input" id="ac-email" type="email" required placeholder="ton@email.fr"
-              value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"/>
-            <label className="ac-label" htmlFor="ac-pass" style={{ marginTop: 6 }}>Mot de passe</label>
-            <div className="ac-pass-wrap">
-              <input className="ac-input ac-input-pass" id="ac-pass" type={showPass ? 'text' : 'password'} required placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"/>
-              <button type="button" className="ac-pass-eye" onClick={() => setShowPass(v => !v)}
-                aria-pressed={showPass} aria-controls="ac-pass"
-                aria-label={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                title={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
-                <IcEye off={showPass}/>
-              </button>
-            </div>
-            {err && <p style={{ color: '#ef4444', fontSize: 12.5, margin: '10px 0 0', textAlign: 'center' }}>{err}</p>}
-            <button className="ac-submit" type="submit" disabled={loading} style={{ opacity: loading ? 0.6 : 1 }}>{loading ? 'Connexion…' : 'Se connecter'}</button>
-          </form>
+          <AuthForm next={nextParam}/>
           <p className="ac-hint">Pas encore de compte ? <a href={'/auth?redirect=' + encodeURIComponent(nextParam)}>Crée-le en 1 minute</a> — 14 jours d'essai, sans carte bancaire.</p>
         </div>
       );
@@ -352,7 +313,7 @@
               <h1>Bonjour {a.name}</h1>
               <p className="ac-mail">{a.email}</p>
             </div>
-            <a className="ac-logout" href="/api/auth/signout" onClick={onLogout}>Se déconnecter</a>
+            <a className="ac-logout" href={'/api/auth/signout?next=' + encodeURIComponent(window.location.pathname)} onClick={onLogout}>Se déconnecter</a>
           </div>
 
           <div className="ac-cards">
@@ -486,6 +447,7 @@
   <script src="components/site/i18n-dict-7.js"></script>
   <script src="components/site/i18n-dict-8.js"></script>
   <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

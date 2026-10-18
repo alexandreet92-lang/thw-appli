@@ -280,7 +280,7 @@ function LegalPage(props) {
       <main className="legal-main">
         <div className="legal-wrap">
           <nav className="legal-breadcrumb" aria-label="Fil d'ariane">
-            <a href="decouvrir.html">Accueil</a>
+            <a href="index.html">Accueil</a>
             <span aria-hidden="true">/</span>
             <span className="legal-crumb-current">{meta.title}</span>
           </nav>

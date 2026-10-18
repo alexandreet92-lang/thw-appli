@@ -79,9 +79,15 @@ function Discover() {
   useReveal();
   var themes = window.THW_THEMES;
   var vw = React.useState('shelf'), view = vw[0], setView = vw[1];
+  // Les cartes de la vue « Liste » sont montées APRÈS le premier rendu : useReveal ne les
+  // voit pas et elles restaient à opacity 0 (liste « vide »). On les révèle à chaque bascule.
+  React.useEffect(function () {
+    var els = document.querySelectorAll('.bubbles .reveal:not(.in)');
+    for (var i = 0; i < els.length; i++) els[i].classList.add('in');
+  }, [view]);
   return (
     <React.Fragment>
-      <SiteHeader active="discover" />
+      <SiteHeader active="home" />
       <main>
         {/* ─── Héros : bandeau de nuit + l'app en direct ─── */}
         <section className="st-night st-hero" data-spot="1">
@@ -117,29 +123,8 @@ function Discover() {
             <Scoreboard items={DISC_COVER} />
           </section>
 
-          {/* ─── Decaform ─── */}
-          <section className="section" style={{ paddingTop: 22 }}>
-            <div className="st-reveal tilt" data-tilt="3" style={{
-              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 22, justifyContent: 'space-between',
-              background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '4px solid var(--gold)',
-              borderRadius: 'var(--radius-lg)', padding: '24px 26px', boxShadow: 'var(--shadow-card)',
-            }}>
-              <div style={{ minWidth: 240, flex: '1 1 320px' }}>
-                <div className="eyebrow">Nouveau · Test de condition générale</div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 'clamp(24px,3.2vw,32px)', margin: '4px 0 8px', color: 'var(--text)' }}>Decaform</div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', margin: 0, maxWidth: 560 }}>
-                  24 épreuves sur 12 jours, un score sur 1000 et un niveau par qualité. Un test <strong style={{ color: 'var(--text)' }}>exigeant</strong>, conçu pour des pratiquants ayant déjà un certain niveau — pas pour débuter.
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
-                <Seal size={78} center="1000" centerSize={19} ring="DECAFORM · SCORE · " />
-                <a className="btn btn-cyan btn-lg mag" href="cadences.html"><UIIcon name="spark" size={16} /> Faire le test</a>
-              </div>
-            </div>
-          </section>
-
           {/* ─── Les tests : une batterie par âge ─── */}
-          <section id="tests" className="section" style={{ paddingTop: 54, paddingBottom: 10 }}>
+          <section id="tests" className="section" style={{ paddingTop: 40, paddingBottom: 10 }}>
             <div className="st-reveal">
               {window.CadTestsSection ? <window.CadTestsSection /> : null}
             </div>

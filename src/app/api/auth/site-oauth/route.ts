@@ -14,7 +14,8 @@ export async function GET(req: Request) {
   const provider = searchParams.get('provider')
   const nextRaw = searchParams.get('next') || '/site/compte.html'
   const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/site/compte.html'
-  const backToLogin = () => NextResponse.redirect(`${origin}/site/compte.html`)
+  // En cas d'échec, on revient sur la page d'où la personne est partie (`next`).
+  const backToLogin = () => NextResponse.redirect(`${origin}${next}`)
 
   if (provider !== 'google' && provider !== 'apple') return backToLogin()
 

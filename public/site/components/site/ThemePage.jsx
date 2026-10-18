@@ -88,14 +88,14 @@ function ComingSoon(props) {
     <main>
       <div className="wrap">
         <div className="breadcrumb">
-          <a href="decouvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
+          <a href="index.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
         </div>
         <section className="soon-wrap">
           <div className="soon-ico"><ThemeIcon name={t.icon} size={42}/></div>
           <div className="soon-pill">Bientôt disponible</div>
           <h1>{t.title}</h1>
           <p>{t.intro}</p>
-          <a className="btn btn-cyan btn-lg" href="decouvrir.html"><UIIcon name="grid" size={16}/> Explorer les autres thèmes</a>
+          <a className="btn btn-cyan btn-lg" href="index.html"><UIIcon name="grid" size={16}/> Explorer les autres thèmes</a>
         </section>
       </div>
       <SiteFooter/>
@@ -130,7 +130,7 @@ function ThemeView(props) {
       <main>
         <div className="wrap">
           <div className="breadcrumb">
-            <a href="decouvrir.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
+            <a href="index.html">Découvrir</a><span className="sep">/</span><span>{t.title}</span>
           </div>
 
           {/* Hero */}
@@ -150,7 +150,7 @@ function ThemeView(props) {
               {t.audience && <div className="th-audience reveal"><b>Pour qui ?</b> {t.audience}</div>}
               <div className="reveal" style={{ marginTop: 26, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <a className="btn btn-accent btn-lg" href={APP_URL}><UIIcon name="spark" size={15}/> {t.cta}</a>
-                <a className="btn btn-ghost btn-lg" href="decouvrir.html">Tous les thèmes</a>
+                <a className="btn btn-ghost btn-lg" href="index.html">Tous les thèmes</a>
               </div>
             </div>
             <div className="th-hero-media reveal" style={{ transitionDelay: '120ms' }}>
@@ -236,7 +236,7 @@ function ThemePage() {
     return function () { window.removeEventListener('hashchange', onHash); };
   }, []);
   React.useEffect(function () {
-    if (RETIRED_SLUGS.indexOf(slug) >= 0) window.location.replace('decouvrir.html');
+    if (RETIRED_SLUGS.indexOf(slug) >= 0) window.location.replace('index.html');
   }, [slug]);
   var t = themeBySlug(slug) || (window.THW_THEMES || [])[0];
   return <ThemeView key={slug} theme={t}/>;

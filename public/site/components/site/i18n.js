@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   THW — Runtime i18n engine + FR/EN/ES switcher.
+   THW — Runtime i18n engine + FR/EN/ES/IT/DE switcher.
    ────────────────────────────────────────────────────────────────
    • French is the SOURCE language (what's authored in the components).
    • Translation happens on the rendered DOM, keyed on the French text,
@@ -18,10 +18,18 @@
   // sur la langue du compte : 'fr' par défaut est indiscernable d'un choix.
   var PICKED_KEY = 'thw-lang-picked';
   var DEFAULT = 'fr';
-  var LANGS = ['fr', 'en', 'es'];
-  var LABEL = { fr: 'FR', en: 'EN', es: 'ES' };
+  var LANGS = ['fr', 'en', 'es', 'it', 'de'];
+  var LABEL = { fr: 'FR', en: 'EN', es: 'ES', it: 'IT', de: 'DE' };
 
   var DICT = window.THW_I18N_DICT || { en: {}, es: {} };
+
+  // Dossier de ce script : sert à charger À LA DEMANDE les dictionnaires italien et
+  // allemand (≈ 400 Ko chacun) — inutile de les télécharger pour quelqu'un qui lit en français.
+  var BASE = (function () {
+    var cs = document.currentScript;
+    return cs && cs.src ? cs.src.replace(/[^\/]*$/, '') : 'components/site/';
+  })();
+  var LAZY = { it: 'i18n-it.js', de: 'i18n-de.js' };
 
   // Normalise whitespace for stable keys.
   function norm(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
@@ -31,11 +39,33 @@
   // sont écrites en ANGLAIS dans la source, parce que c'est ce que Googlebot
   // lit (il ne voit pas la traduction faite au runtime). Le corps des pages,
   // lui, reste rédigé en français et se traduit dans l'autre sens.
-  var MAP = { en: {}, es: {}, fr: {} };
-  ['en', 'es', 'fr'].forEach(function (lg) {
-    var src = DICT[lg] || {};
+  var MAP = { en: {}, es: {}, fr: {}, it: {}, de: {} };
+  function buildMap(lg) {
+    var src = (window.THW_I18N_DICT || DICT)[lg] || {};
+    MAP[lg] = {};
     for (var k in src) { if (src.hasOwnProperty(k)) MAP[lg][norm(k)] = src[k]; }
-  });
+  }
+  ['en', 'es', 'fr'].forEach(buildMap);
+
+  // Charge le dictionnaire d'une langue « à la demande » (it, de), puis appelle cb.
+  var lazyState = {}, lazyWaiters = {};
+  function ensureDict(lg, cb) {
+    if (!LAZY[lg] || lazyState[lg] === 'done') { cb(); return; }
+    (lazyWaiters[lg] = lazyWaiters[lg] || []).push(cb);
+    if (lazyState[lg] === 'loading') return;
+    lazyState[lg] = 'loading';
+    var sc = document.createElement('script');
+    sc.src = BASE + LAZY[lg];
+    var finish = function () {
+      lazyState[lg] = 'done';
+      buildMap(lg);
+      var w = lazyWaiters[lg] || []; lazyWaiters[lg] = [];
+      w.forEach(function (f) { try { f(); } catch (e) {} });
+    };
+    sc.onload = finish;
+    sc.onerror = finish;   // hors ligne : on reste en français plutôt que de bloquer
+    document.head.appendChild(sc);
+  }
 
   var origText = new WeakMap(); // textNode -> original FR string
   var origAttr = new WeakMap(); // element  -> { attrName: originalFR }
@@ -49,14 +79,14 @@
   // langue du compte, et pour toujours sur cet appareil.
   function setLang(l) {
     try { localStorage.setItem(KEY, l); localStorage.setItem(PICKED_KEY, '1'); } catch (e) {}
-    apply(l);
+    ensureDict(l, function () { apply(l); });
   }
   // Alignement AUTOMATIQUE (langue du compte) : on mémorise la langue mais pas
   // le drapeau de choix, pour continuer à suivre le compte s'il change.
   function adoptLang(l) {
     if (LANGS.indexOf(l) < 0 || l === current) return;
     try { localStorage.setItem(KEY, l); } catch (e) {}
-    apply(l);
+    ensureDict(l, function () { apply(l); });
   }
 
   // ── Text nodes ──────────────────────────────────────────────────
@@ -284,6 +314,7 @@
     if (!document.body) { document.addEventListener('DOMContentLoaded', boot); return; }
     observer = new MutationObserver(schedule);
     apply(current);
+    ensureDict(current, function () { apply(current); });
     // React content mounts asynchronously (Babel transform) — re-apply a few times.
     var tries = 0;
     var iv = setInterval(function () { apply(current); if (++tries >= 14) clearInterval(iv); }, 350);

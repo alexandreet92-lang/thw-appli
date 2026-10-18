@@ -92,7 +92,7 @@
         .cad-hv-spark .pulse { animation: cadHvPulse 2.4s 2s ease-out infinite; }
 
         /* ── Grand tableau ── */
-        .cad-night-band section { padding: 0 !important; }
+        .cad-night-band section:not(.cad-card) { padding: 0 !important; }
         .cad-hm-top { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; justify-content: space-between; margin-bottom: 14px; }
         .cad-hm-top h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 3vw, 34px); margin: 4px 0 0; color: var(--text); letter-spacing: -.015em; }
         .cad-hm-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

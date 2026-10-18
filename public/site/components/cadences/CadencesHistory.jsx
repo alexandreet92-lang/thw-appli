@@ -296,7 +296,6 @@
         <HistStyle />
         {window.CadHistoryStyle ? <window.CadHistoryStyle /> : null}
         {window.CadHistoryHero ? <window.CadHistoryHero catalog={cat} history={hist} onStart={props.onStart} onBack={props.onBack} onExport={exportCsv} /> : null}
-        {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
 
         {delTarget && window.CadDeleteDialog ? (
           <window.CadDeleteDialog summary={delSummary(delTarget)}
@@ -306,6 +305,7 @@
 
         {/* ⓪ Explorateur : courbe interactive (mesure, période, objectif, projection, poids, événements) */}
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
+        {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
 
         {/* ②bis Épreuve par épreuve, année après année */}
         <section className="cad-card" style={{ marginTop: 18 }}>

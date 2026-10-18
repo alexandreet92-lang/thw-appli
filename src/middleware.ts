@@ -29,6 +29,10 @@ export async function middleware(request: NextRequest) {
   // ── Sorties rapides SANS accès DB (jamais de 504 sur ces routes) ──
   // Racine : la page gère elle-même la session/redirect.
   if (path === '/') return response
+  // Domaine vitrine (the-hybridway.com) : pages statiques publiques servies par
+  // rewrite depuis /site → pas de gating (seuls /api et /auth gardent leur logique).
+  const host = request.headers.get('host') ?? ''
+  if (/(^|\.)the-hybridway\.com$/i.test(host.split(':')[0]) && !path.startsWith('/api')) return response
   // Banc de captures design (npm run design:shots) : UNIQUEMENT en développement local et
   // si THW_DEV_BYPASS=1. Jamais actif en production (NODE_ENV === 'production' sur Vercel).
   if (process.env.NODE_ENV !== 'production' && process.env.THW_DEV_BYPASS === '1') return response

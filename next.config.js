@@ -31,6 +31,17 @@ const nextConfig = {
   // fichier dans le dossier, pour que les liens relatifs inter-pages
   // (theme.html#...) et les ancres résolvent bien sous /decouvrir/.
   ...(CAP ? {} : {
+    // Domaine du site vitrine : the-hybridway.com sert public/site/ à la RACINE
+    // (/ → index.html, /compte.html, /components/…), tout en gardant /api et /auth
+    // du même projet → la session Supabase reste sur le même domaine.
+    async rewrites() {
+      const has = [{ type: 'host', value: '(www\\.)?the-hybridway\\.com' }]
+      return {
+        beforeFiles: [{ source: '/', has, destination: '/site/index.html' }],
+        afterFiles: [{ source: '/:path*', has, destination: '/site/:path*' }],
+        fallback: [],
+      }
+    },
     async redirects() {
       return [
         { source: '/decouvrir', destination: '/decouvrir/decouvrir.html', permanent: false },

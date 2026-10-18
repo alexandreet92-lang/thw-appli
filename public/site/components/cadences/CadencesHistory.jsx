@@ -294,6 +294,7 @@
     return (
       <div className="cad-run">
         <HistStyle />
+        <style>{`.cad-more { margin-top: 26px; } .cad-more > summary { cursor: pointer; list-style: none; font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--text); padding: 16px 20px; border-radius: 14px; border: 1px solid var(--border-mid); background: rgba(238,243,248,.05); } .cad-more > summary::-webkit-details-marker { display: none; } .cad-more > summary::after { content: ' +'; color: var(--gold-ink); } .cad-more[open] > summary::after { content: ' −'; } .cad-more > summary:hover { border-color: var(--brand); }`}</style>
         {window.CadHistoryStyle ? <window.CadHistoryStyle /> : null}
         {window.CadHistoryHero ? <window.CadHistoryHero catalog={cat} history={hist} onStart={props.onStart} onBack={props.onBack} onExport={exportCsv} /> : null}
 
@@ -307,6 +308,7 @@
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
         {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
 
+        <details className="cad-more"><summary>Plus de détails : épreuve par épreuve, qualités, records, conseils</summary>
         {/* ②bis Épreuve par épreuve, année après année */}
         <section className="cad-card" style={{ marginTop: 18 }}>
           <h3 className="cad-h3">Épreuve par épreuve, année après année</h3>
@@ -438,6 +440,7 @@
           <h3 className="cad-h3">Lire ses résultats avec prudence</h3>
           <p className="cad-p" style={{ marginBottom: 0 }}>Un score plus bas ne veut pas forcément dire que tu as régressé. Pour comparer juste : <strong>même période de l'année, en bonne forme, ni blessé ni malade, et une température proche</strong>. Les tests réalisés dans des conditions assez différentes sont signalés par un ⚠.</p>
         </section>
+        </details>
       </div>
     );
   }

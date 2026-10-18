@@ -131,6 +131,11 @@
     var mkS = React.useState({ available: false, marks: [] }); var marks = mkS[0], setMarks = mkS[1];
     var onS = React.useState(false); var drawn = onS[0], setDrawn = onS[1];
     React.useEffect(function () {
+      function onMode(ev) { var m = ev && ev.detail && ev.detail.mode; if (m) setMode(m); }
+      window.addEventListener('cad-set-mode', onMode);
+      return function () { window.removeEventListener('cad-set-mode', onMode); };
+    }, []);
+    React.useEffect(function () {
       function on(ev) {
         var m = ev && ev.detail && ev.detail.metric; if (!m) return;
         setMetric(m); setSel(null);

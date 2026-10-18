@@ -65,11 +65,20 @@
         @keyframes cadHvPulse { 0% { r: 7; opacity: .7; } 100% { r: 20; opacity: 0; } }
 
         /* ── Bandeau d'entrée ── */
-          .cad-hv-hero { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; padding: 0 0 34px; }
+          .cad-hv-hero { padding: 0 0 26px; }
+        .cad-hv-top { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+        .cad-hv-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; animation: cadHvRise .8s .2s both; }
+        .cad-hv-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+        @media (max-width: 900px) { .cad-hv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .cad-hv-kpi { border-radius: 16px; padding: 18px 20px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid var(--border); box-shadow: 0 10px 28px rgba(0,0,0,.3); animation: cadHvRise .7s both; transition: transform .25s, border-color .25s; }
+        .cad-hv-kpi:hover { transform: translateY(-4px); border-color: var(--gold-ink); }
+        .cad-hv-kpi small { display: block; font-family: var(--font-body); font-size: 13px; color: var(--text-dim); }
+        .cad-hv-kpi b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 1.15; margin: 6px 0 4px; color: var(--text); font-variant-numeric: tabular-nums; }
+        .cad-hv-kpi > span { font-family: var(--font-body); font-size: 13px; color: var(--text-mid); }
         
         .cad-hv-eye { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-ink); display: inline-flex; align-items: center; gap: 10px; animation: cadHvRise .7s both; }
         .cad-hv-eye::before { content: ''; width: 26px; height: 1px; background: var(--gold-ink); }
-        .cad-hv-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 3.6vw, 42px); line-height: 1.05; letter-spacing: -.02em; margin: 8px 0 6px; color: var(--text); animation: cadHvRise .8s .08s both; }
+        .cad-hv-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(30px, 4vw, 50px); line-height: 1.05; letter-spacing: -.02em; margin: 8px 0 6px; color: var(--text); animation: cadHvRise .8s .08s both; }
         .cad-hv-h1 em { font-style: normal; background: linear-gradient(110deg, #00c8e0 10%, #7b8cff 55%, #e0b766 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cadHvShine 7s linear infinite; }
         .cad-hv-lead { font-family: var(--font-body); font-size: 14.5px; color: var(--text-mid); margin: 0; animation: cadHvRise .8s .16s both; }
         .cad-hv-cta { display: flex; flex-wrap: wrap; gap: 10px; animation: cadHvRise .8s .24s both; }
@@ -134,9 +143,11 @@
         .cad-hm-rec { display: inline-block; margin-left: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #e0b766; border: 1px solid rgba(224,183,102,.55); background: rgba(224,183,102,.12); border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
         .cad-hm-lab { cursor: pointer; }
         .cad-hm-lab small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+        .cad-hm-ev { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 120px !important; background: rgba(238,243,248,.03); }
+        .cad-hm-evh { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
         .cad-hm-foot { font-family: var(--font-body); font-size: 12.5px; color: var(--text-dim); margin: 10px 4px 0; }
         @media (max-width: 760px) { .cad-hm-t { font-size: 15px; } .cad-hm-t th:first-child, .cad-hm-t td:first-child { min-width: 130px; } .cad-hm-nav.l { left: 110px; } }
-        @media (prefers-reduced-motion: reduce) { .cad-hv-eye, .cad-hv-h1, .cad-hv-lead, .cad-hv-cta, .cad-hv-card, .cad-hm-t tbody tr { animation: none !important; } .cad-hv-h1 em { animation: none; } .cad-hv-spark .ln { animation: none; stroke-dashoffset: 0; } .cad-rv { opacity: 1; transform: none; transition: none; } .cad-hm-t thead .is-last { animation: none; } }
+        @media (prefers-reduced-motion: reduce) { .cad-hv-eye, .cad-hv-h1, .cad-hv-lead, .cad-hv-ctl, .cad-hv-kpi, .cad-hm-t tbody tr { animation: none !important; } .cad-hv-h1 em { animation: none; } .cad-hv-spark .ln { animation: none; stroke-dashoffset: 0; } .cad-rv { opacity: 1; transform: none; transition: none; } .cad-hm-t thead .is-last { animation: none; } }
         @media print { .cad-night-band { background: #fff !important; } }
       `}</style>
     );
@@ -157,38 +168,57 @@
   // ── Bandeau d'entrée ───────────────────────────────────────────────────────
   function CadHistoryHero(props) {
     var cat = props.catalog || {}, hist = props.history || [];
-    var s = stats(cat, hist, 'general');
-    var W = 300, H = 56, P = 8;
-    var vals = hist.map(function (e) { return e.score; });
-    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
-    var span = Math.max(mx - mn, 40);
-    var ts = hist.map(function (e) { return dOf(e.date); });
-    var t0 = ts[0], t1 = Math.max(ts[ts.length - 1], t0 + 30 * DAY);
-    function X(t) { return P + (W - 2 * P) * (t - t0) / (t1 - t0); }
-    function Y(v) { return H - P - (H - 2 * P) * (v - (mn - span * 0.15)) / (span * 1.3); }
-    var pts = hist.map(function (e, i) { return X(ts[i]) + ',' + Y(e.score); }).join(' ');
-    var lastX = X(ts[ts.length - 1]), lastY = Y(vals[vals.length - 1]);
-    var col = lvColor(cat, s.level);
-    var months = Math.max(1, Math.round((ts[ts.length - 1] - ts[0]) / (30.4 * DAY)));
+    var mS = React.useState('general'); var mode = mS[0], setMode = mS[1];
+    function setM(m) { setMode(m); try { window.dispatchEvent(new CustomEvent('cad-set-mode', { detail: { mode: m } })); } catch (e) {} }
+    function jump(id) { try { var el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+    var s = stats(cat, hist, mode);
+    var ts0 = dOf(hist[0].date), ts1 = dOf(hist[hist.length - 1].date);
+    var months = Math.max(1, Math.round((ts1 - ts0) / (30.4 * DAY)));
+    var qs = function (e) { return (mode === 'age' && e.qualitiesA) ? e.qualitiesA : e.qualities; };
+    var best = null, up = null;
+    (cat.qualities || []).forEach(function (q) {
+      var l = (qs(s.last) || {})[q.key], f = (qs(s.first) || {})[q.key];
+      if (!l) return;
+      var now = l.pct * 100;
+      if (!best || now > best.now) best = { label: q.label, now: now, d: f ? now - f.pct * 100 : null };
+      if (f && hist.length > 1) { var d = now - f.pct * 100; if (!up || d > up.d) up = { label: q.label, d: d, from: f.pct * 100, to: now }; }
+    });
+    var kpis = [
+      { k: 'Score actuel', v: <CountUp value={s.now}/>, sub: hist.length > 1 ? signed(s.delta) + ' ' + tr('depuis le 1er test') : tr('Premier test'), cls: s.delta >= 0 ? 'cad-hv-up' : 'cad-hv-dn', arrow: hist.length > 1 ? (s.delta >= 0 ? '▲ ' : '▼ ') : '' },
+      { k: 'Meilleure qualité', v: best ? tr(best.label) : '—', sub: best ? Math.round(best.now) + '/100' + (best.d != null && hist.length > 1 ? ' · ' + signed(best.d) + ' pts' : '') : '' },
+      { k: 'Plus grosse progression', v: up && up.d > 0.5 ? tr(up.label) + ' ' + signed(up.d) : '—', sub: up && up.d > 0.5 ? Math.round(up.from) + ' → ' + Math.round(up.to) + ' ' + tr('en') + ' ' + months + ' ' + tr('mois') : tr('Il faut un 2e test'), cls: 'cad-hv-up' },
+      { k: 'Prochain test conseillé', v: fmtDate(s.nextTs, { month: 'long', year: 'numeric' }), sub: tr('tous les 6 mois idéalement') }
+    ];
     return (
       <section className="cad-hv-hero" aria-label={tr('Mon historique')}>
-        <div className="cad-hv-l">
-          <div className="cad-hv-eye">{tr('Mon historique')}{props.onBack ? <button type="button" className="cad-link" style={{ marginLeft: 14, color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }} onClick={props.onBack}>← {tr('Accueil')}</button> : null}</div>
-          <h1 className="cad-hv-h1">{tr('Tous tes tests,')} <em>{tr('au même endroit.')}</em></h1>
-          <p className="cad-hv-lead">{s.n} {s.n > 1 ? tr('tests') : tr('test')} {tr('depuis le')} {fmtDate(ts[0])}</p>
+        <div className="cad-hv-top">
+          <div>
+            <div className="cad-hv-eye">{tr('Mon historique')}{props.onBack ? <button type="button" className="cad-link" style={{ marginLeft: 14, color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }} onClick={props.onBack}>← {tr('Accueil')}</button> : null}</div>
+            <h1 className="cad-hv-h1">{s.n} {s.n > 1 ? tr('tests') : tr('test')} · <em>{months} {tr('mois de progression')}</em></h1>
+            <p className="cad-hv-lead">Decaform · {tr('du')} {fmtDate(ts0)} {tr('au')} {fmtDate(ts1)}</p>
+          </div>
+          <div className="cad-hv-ctl">
+            <div className="cad-hm-seg" role="group" aria-label={tr('Notation')}>
+              <button type="button" aria-pressed={mode === 'general'} onClick={function () { setM('general'); }}>{tr('Général')}</button>
+              <button type="button" aria-pressed={mode === 'age'} onClick={function () { setM('age'); }}>{tr('Ajusté à l’âge')}</button>
+            </div>
+            <div className="cad-hm-seg" role="group" aria-label={tr('Aller à')}>
+              <button type="button" aria-pressed="true" onClick={function () { jump('cad-tableau'); }}>{tr('Tableau')}</button>
+              <button type="button" aria-pressed="false" onClick={function () { jump('cad-courbe'); }}>{tr('Courbes')}</button>
+            </div>
+            {props.onStart ? <button type="button" className="cad-hv-btn is-main" onClick={props.onStart}>{tr('Nouveau test')}</button> : null}
+          </div>
         </div>
-        <div className="cad-hv-card">
-          <div className="cad-hv-now"><b><CountUp value={s.now}/></b><small>/ {cat.totalPoints || 1000}</small>{s.n > 1 ? <span className={s.delta >= 0 ? 'cad-hv-up' : 'cad-hv-dn'} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16 }}>{s.delta >= 0 ? '▲' : '▼'} {signed(s.delta)}</span> : null}<span className="cad-hv-lvl" style={{ color: col }}>{tr(s.level)}</span></div>
-          <svg className="cad-hv-spark" viewBox={'0 0 ' + W + ' ' + H} preserveAspectRatio="none" aria-hidden="true">
-            <defs><linearGradient id="cadhvg" x1="0" x2="1"><stop offset="0%" stopColor="#00c8e0"/><stop offset="100%" stopColor="#e0b766"/></linearGradient></defs>
-            {hist.length > 1 ? <polyline className="ln" pathLength="1" points={pts} fill="none" stroke="url(#cadhvg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/> : null}
-            {hist.map(function (e, i) { return <circle key={e.id} cx={X(ts[i])} cy={Y(e.score)} r="3.6" fill="#0b1626" stroke="#e0b766" strokeWidth="2.2"/>; })}
-            <circle className="pulse" cx={lastX} cy={lastY} r="7" fill="none" stroke="#e0b766" strokeWidth="2"/>
-          </svg>
-        </div>
-        <div className="cad-hv-cta">
-          {props.onStart ? <button type="button" className="cad-hv-btn is-main" onClick={props.onStart}>{tr('Nouveau test')}</button> : null}
-          {props.onExport ? <button type="button" className="cad-hv-btn" onClick={props.onExport}>{tr('Exporter')}</button> : null}
+        <div className="cad-hv-kpis">
+          {kpis.map(function (k, i) {
+            return (
+              <div key={k.k} className="cad-hv-kpi" style={{ animationDelay: (200 + i * 90) + 'ms' }}>
+                <small>{tr(k.k)}</small>
+                <b>{k.v}</b>
+                <span className={k.cls || ''}>{k.arrow || ''}{k.sub}</span>
+              </div>
+            );
+          })}
         </div>
       </section>
     );
@@ -206,6 +236,7 @@
     var navS = React.useState({ l: false, r: false }); var nav = navS[0], setNav = navS[1];
     var scRef = React.useRef(null);
     var age = mode === 'age';
+    React.useEffect(function () { function on(ev) { var m = ev && ev.detail && ev.detail.mode; if (m) setMode(m); } window.addEventListener('cad-set-mode', on); return function () { window.removeEventListener('cad-set-mode', on); }; }, []);
     var F = window.CadencesFormat;
 
     function mp(e, kind) { return age ? (e[kind + 'A'] || e[kind]) : e[kind]; }
@@ -252,6 +283,12 @@
       groups[gIdx[g]].items.push(t);
     });
 
+    function evCell(d, mode2) {
+      if (d == null) return <td className="cad-hm-ev">—</td>;
+      var up = d > 0.04, dn = d < -0.04, cl = up ? 'cad-hv-up' : dn ? 'cad-hv-dn' : '';
+      var txt = mode2 === 'word' ? (up ? tr('amélioré') : dn ? tr('en recul') : tr('stable')) : (up ? '+' : dn ? '−' : '±') + Math.abs(Math.round(d));
+      return <td className={'cad-hm-ev ' + cl}>{up ? '▲ ' : dn ? '▼ ' : ''}{txt}</td>;
+    }
     function cellStyle(color) { return { background: color + '24', color: color, border: '1px solid ' + color + '55' }; }
 
     var head = (
@@ -272,6 +309,7 @@
             </th>
           );
         })}
+        <th className="cad-hm-evh">{tr('Évolution')}</th>
       </tr></thead>
     );
 
@@ -284,11 +322,12 @@
           var prev = i > 0 ? (age && hist[i - 1].scoreA != null ? hist[i - 1].scoreA : hist[i - 1].score) : null;
           return <td key={e.id} className={i === last ? 'is-last' : ''}><span className="cad-hm-cell" style={cellStyle(c)}>{sc}<i>{tr(lv)}{prev != null ? ' · ' + (sc - prev >= 0 ? '▲ ' : '▼ ') + Math.abs(sc - prev) : ''}</i></span></td>;
         })}
+        {evCell(hist.length > 1 ? (function () { var f = hist[0], l = hist[last]; return (age && l.scoreA != null ? l.scoreA : l.score) - (age && f.scoreA != null ? f.scoreA : f.score); })() : null, '')}
       </tr>
     );
 
     if (showQ) {
-      rows.push(<tr key="gq" className="cad-hm-grp" style={delay()}><td colSpan={hist.length + 1}>{tr('Qualités')} · {tr('sur 100')}</td></tr>);
+      rows.push(<tr key="gq" className="cad-hm-grp" style={delay()}><td colSpan={hist.length + 2}>{tr('Qualités')} · {tr('sur 100')}</td></tr>);
       qualities.forEach(function (q) {
         rows.push(
           <tr key={'q' + q.key} style={delay()}>
@@ -299,6 +338,7 @@
               var pv = i > 0 ? qv(hist[i - 1], q.key) : null, c = lvColor(cat, x.level);
               return <td key={e.id} className={i === last ? 'is-last' : ''}><span className="cad-hm-cell" style={cellStyle(c)}>{Math.round(v)}<i>{pv != null ? (v - pv >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(v - pv)) : '—'}</i></span></td>;
             })}
+            {evCell((function () { var f = qv(hist[0], q.key), l = qv(hist[last], q.key); return f != null && l != null && hist.length > 1 ? l - f : null; })(), '')}
           </tr>
         );
       });
@@ -306,7 +346,7 @@
 
     if (showT) {
       groups.forEach(function (g) {
-        rows.push(<tr key={'g' + g.name} className="cad-hm-grp" style={delay()}><td colSpan={hist.length + 1}>{tr(g.name)}</td></tr>);
+        rows.push(<tr key={'g' + g.name} className="cad-hm-grp" style={delay()}><td colSpan={hist.length + 2}>{tr(g.name)}</td></tr>);
         g.items.forEach(function (t) {
           rows.push(
             <tr key={'t' + t.slug} style={delay()}>
@@ -314,17 +354,18 @@
               {hist.map(function (e, i) {
                 var r = tv(e, t.slug);
                 if (!r) return <td key={e.id} className={i === last ? 'is-last' : ''}>—</td>;
-                var isRec = passes[t.slug] > 1 && r.points === bestPts[t.slug];
+                var isRec = passes[t.slug] > 1 && r.points === bestPts[t.slug] && (r.value != null || r.valueUsed != null);
                 var pr = null; for (var k = i - 1; k >= 0; k--) { var q = tv(hist[k], t.slug); if (q) { pr = q; break; } }
                 var d = pr ? r.points - pr.points : null;
                 return (
                   <td key={e.id} className={i === last ? 'is-last' : ''}>
                     {view === 'raw'
-                      ? <span className="cad-hm-raw">{fmtVal(t, r)}{isRec ? <span className="cad-hm-rec">{tr('record')}</span> : null}<i>{Math.round(r.points * 10) / 10} / {r.max != null ? r.max : t.pts_max} pts{d != null ? ' · ' + (d >= 0 ? '▲' : '▼') : ''}</i></span>
+                      ? <span className="cad-hm-raw">{fmtVal(t, r)}{isRec ? <span className="cad-hm-rec">{tr('record')}</span> : null}</span>
                       : <span className="cad-hm-cell" style={cellStyle(lvColor(cat, r.level))}>{num(r.points, 1)}<i>/ {r.max != null ? r.max : t.pts_max}{isRec ? ' · ' + tr('record') : ''}</i></span>}
                   </td>
                 );
               })}
+              {evCell((function () { var a = null, b = null; hist.forEach(function (e) { var r = tv(e, t.slug); if (r) { if (!a) a = r; b = r; } }); return a && b && a !== b ? b.points - a.points : null; })(), 'word')}
             </tr>
           );
         });
@@ -339,21 +380,11 @@
             <h2 id="cad-hm-h">{tr('Tout ton historique, test après test')}</h2>
           </div>
           <div className="cad-hm-ctl">
-            <div className="cad-hm-seg" role="group" aria-label={tr('Notation')}>
-              <button type="button" aria-pressed={!age} onClick={function () { setMode('general'); }}>{tr('Général')}</button>
-              <button type="button" aria-pressed={age} onClick={function () { setMode('age'); }}>{tr('Ajusté à l’âge')}</button>
-            </div>
-            <div className="cad-hm-seg" role="group" aria-label={tr('Affichage des épreuves')}>
-              <button type="button" aria-pressed={view === 'raw'} onClick={function () { setView('raw'); }}>{tr('Résultat brut')}</button>
-              <button type="button" aria-pressed={view === 'pts'} onClick={function () { setView('pts'); }}>{tr('Points')}</button>
-            </div>
+            {[['all', 'Tout'], ['q', 'Qualités'], ['t', 'Épreuves'], ['rec', 'Records seulement']].map(function (o) {
+              return <button key={o[0]} type="button" className="cad-hm-pill" aria-pressed={filter === o[0]} onClick={function () { setFilter(o[0]); }}>{tr(o[1])}</button>;
+            })}
+            {props.onExport ? <button type="button" className="cad-hm-pill" onClick={props.onExport}>{tr('Exporter')}</button> : null}
           </div>
-        </div>
-        <div className="cad-hm-ctl" style={{ marginBottom: 12 }}>
-          {[['all', 'Tout'], ['q', 'Qualités'], ['t', 'Épreuves'], ['rec', 'Records seulement']].map(function (o) {
-            return <button key={o[0]} type="button" className="cad-hm-pill" aria-pressed={filter === o[0]} onClick={function () { setFilter(o[0]); }}>{tr(o[1])}</button>;
-          })}
-          {props.onExport ? <button type="button" className="cad-hm-pill" onClick={props.onExport}>{tr('Exporter en CSV')}</button> : null}
         </div>
         <div className="cad-hm-wrap">
           <button type="button" className="cad-hm-nav l" aria-label={tr('Tests précédents')} disabled={!nav.l} onClick={function () { go(-1); }}>‹</button>

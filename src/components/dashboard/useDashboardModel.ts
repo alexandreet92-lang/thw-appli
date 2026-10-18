@@ -1,7 +1,7 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
 // Préférence de modèle de Dashboard. Persistance localStorage
-// (thw:dashboard-model). ⚠ multi-appareils → migration user_settings
+// (thw:dashboard-model). multi-appareils → migration user_settings
 // plus tard (cf. PROMPT_DASHBOARD_MODELES.md).
 // ══════════════════════════════════════════════════════════════
 

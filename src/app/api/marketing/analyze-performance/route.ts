@@ -229,7 +229,7 @@ Réponds UNIQUEMENT avec ce JSON (max 3 items par tableau, 1-2 phrases par champ
     });
 
   } catch (err) {
-    console.error("[analyze-performance] ❌ ERREUR:", err);
+    console.error("[analyze-performance] ERREUR:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erreur inconnue" },
       { status: 500 }

@@ -405,7 +405,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                             <>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  📍 {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
+                                  {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
                                 </span>
                                 <button onClick={() => clearDayParcours(d)} aria-label={t('calendar.removeRoute')} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
                               </div>

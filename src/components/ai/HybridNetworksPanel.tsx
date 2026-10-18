@@ -495,7 +495,7 @@ export default function HybridNetworksPanel({
         const errMsg = err instanceof Error ? err.message : t('ai.unknownError')
         onConvsChange(prev => prev.map(c =>
           c.id === convId
-            ? { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: `❌ ${errMsg}`, ts: Date.now() }], updatedAt: Date.now() }
+            ? { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: `${errMsg}`, ts: Date.now() }], updatedAt: Date.now() }
             : c
         ))
       }
@@ -657,8 +657,8 @@ export default function HybridNetworksPanel({
                       {post.caption_excerpt || t('ai.noCaption')}
                     </p>
                     <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ai-dim)' }}>
-                      <span>♥ {post.likes.toLocaleString(currentLocale())}</span>
-                      <span>⬇ {post.saves.toLocaleString(currentLocale())}</span>
+                      <span>{post.likes.toLocaleString(currentLocale())} likes</span>
+                      <span>{post.saves.toLocaleString(currentLocale())} saves</span>
                       <span>◎ {post.reach.toLocaleString(currentLocale())}</span>
                       {post.comments != null && <span>✦ {post.comments}</span>}
                     </div>

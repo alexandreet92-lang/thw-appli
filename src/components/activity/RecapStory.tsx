@@ -176,7 +176,7 @@ function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
     <div style={{ padding: '64px 22px 24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{t('lo.records')} · {title}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginTop: 4 }}>{t('lo.yourPerfs', { period: periodLabel })}</div>
-      {prCount > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: accent, marginTop: 2, marginBottom: 10 }}>🏆 {t(prCount > 1 ? 'lo.recordsBeatenPlural' : 'lo.recordsBeatenSingular', { n: prCount })}</div>}
+      {prCount > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: accent, marginTop: 2, marginBottom: 10 }}>{t(prCount > 1 ? 'lo.recordsBeatenPlural' : 'lo.recordsBeatenSingular', { n: prCount })}</div>}
       {entries.length === 0 ? (
         <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{t('lo.noDetailedPerf', { period: periodLabel })}</div>
@@ -185,7 +185,7 @@ function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
       ) : (
         <div onPointerDown={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginTop: prCount > 0 ? 0 : 10 }}>
           {entries.map((e, i) => {
-            const rec = e.pr === 'all-time' ? { txt: `🏆 ${t('lo.recordLabel')}`, col: '#fbbf24' } : e.pr === 'year' ? { txt: `🥇 ${t('lo.yearLabel')}`, col: '#a3e635' } : null
+            const rec = e.pr === 'all-time' ? { txt: `${t('lo.recordLabel')}`, col: '#fbbf24' } : e.pr === 'year' ? { txt: `${t('lo.yearLabel')}`, col: '#a3e635' } : null
             const beat = e.pr ? null : (e.allTimeValue != null ? t('lo.recordValue', { v: fmtVal(e.allTimeValue) }) : null)
             return (
               <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: e.pr ? `${rec!.col}1f` : 'rgba(255,255,255,0.08)', border: e.pr ? `1px solid ${rec!.col}66` : '1px solid transparent', borderRadius: 'var(--r-sm)', padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
@@ -516,7 +516,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
     if (cur.bySport.some(s => s.key === 'bike') || powerRec.length > 0) {
       list.push({
         id: 'rec-power', bg: grad('#0f766e'), accent: '#14b8a6',
-        share: { title: t('lo.recordsPower'), subtitle: `${t('lo.bike')} · ${perLabel}`, stats: powerRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' 🏆' : ''}`, value: `${e.periodValue} W` })) },
+        share: { title: t('lo.recordsPower'), subtitle: `${t('lo.bike')} · ${perLabel}`, stats: powerRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' PR' : ''}`, value: `${e.periodValue} W` })) },
         render: (active) => <RecordsList title={t('lo.power')} entries={powerRec} accent="#5eead4" fmtVal={v => `${v} W`} active={active} periodLabel={perLabel} />,
       })
     }
@@ -524,7 +524,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
     if (cur.bySport.some(s => s.key === 'run') || paceRec.length > 0) {
       list.push({
         id: 'rec-pace', bg: grad('#6d28d9'), accent: '#a78bfa',
-        share: { title: t('lo.recordsRun'), subtitle: `${t('lo.pace')} · ${perLabel}`, stats: paceRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' 🏆' : ''}`, value: fmtRecordTime(e.periodValue) })) },
+        share: { title: t('lo.recordsRun'), subtitle: `${t('lo.pace')} · ${perLabel}`, stats: paceRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' PR' : ''}`, value: fmtRecordTime(e.periodValue) })) },
         render: (active) => <RecordsList title={t('lo.runningTitle')} entries={paceRec} accent="#c4b5fd" fmtVal={fmtRecordTime} active={active} periodLabel={perLabel} />,
       })
     }

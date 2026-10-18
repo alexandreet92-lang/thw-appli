@@ -217,7 +217,7 @@ RÈGLE CRITIQUE — CHOIX DU BON TOOL :
 ${methodsIndexText()}
 Choisis/propose selon le sport, l'objectif, le temps disponible et le profil. Si une MÉTHODE RETENUE est précisée plus bas, applique-la.
 - MODIFIER un plan existant (add_session / add_week / update_plan_periodisation / move / delete) → uniquement si un training_plan_id ou session_id RÉEL figure dans le contexte. S'il n'y en a pas, ne tente pas de modifier : crée un plan (create_training_plan) ou réponds en texte.
-- Si une semaine est marquée "⚠️ AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week pour créer cette semaine.
+- Si une semaine est marquée "AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week pour créer cette semaine.
 - Si une séance a déjà un id: → utilise update_session pour la modifier ou move_session pour la déplacer.
 - Ne jamais appeler update_session sur une séance qui n'existe pas (pas d'id). Ce serait une erreur.
 
@@ -299,6 +299,7 @@ export async function POST(req: NextRequest) {
   const LANG_NAMES: Record<string, string> = { fr: 'français', en: 'English', es: 'español' }
   const userLang = (typeof body.lang === 'string' && ['fr', 'en', 'es'].includes(body.lang)) ? body.lang : 'fr'
   const langName = LANG_NAMES[userLang]
+  const NO_EMOJI_DIRECTIVE = `\n\nN'utilise JAMAIS d'emoji ni de pictogramme dans tes réponses (texte brut, titres et listes uniquement).`
   const LANG_DIRECTIVE = userLang === 'fr'
     ? ''
     : `\n\n═══════════ LANGUE DE RÉPONSE — CONSIGNE PRIORITAIRE ═══════════\nRéponds EXCLUSIVEMENT en ${langName}. TOUT ton texte visible (analyse, titres, listes, commentaires, et tout champ texte destiné à l'utilisateur dans un JSON) doit être en ${langName}. Ignore toute consigne précédente demandant de répondre en français. N'utilise le français QUE si l'utilisateur écrit lui-même en français.`
@@ -407,7 +408,7 @@ export async function POST(req: NextRequest) {
         // (séance/plan/nutrition) — rend la troncature quasi impossible en pratique.
         max_tokens: 16000,
         stream: true,
-        system: systemPrompt + LANG_DIRECTIVE,
+        system: systemPrompt + LANG_DIRECTIVE + NO_EMOJI_DIRECTIVE,
         messages: [{ role: 'user', content: fullMessage }],
       }),
     })
@@ -1220,7 +1221,7 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         // On N'EXPOSE PAS le message d'erreur brut à l'utilisateur (fuite d'infos
         // internes : IDs modèle, erreurs API…). Message générique côté chat, détail
         // en logs serveur uniquement.
-        send('text', JSON.stringify('\n\n⚠️ Une erreur est survenue pendant l\'analyse. Réessaie dans un instant.'))
+        send('text', JSON.stringify('\n\nUne erreur est survenue pendant l\'analyse. Réessaie dans un instant.'))
         runErrored = true
         if (runId) {
           try { await sbForTools.from('coach_runs').update({ status: 'error', content: fullText, error: msg, updated_at: new Date().toISOString() }).eq('id', runId) } catch { /* best-effort */ }

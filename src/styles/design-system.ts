@@ -143,14 +143,6 @@ export function sportBadgeStyle(sport: keyof typeof color.sport): React.CSSPrope
   }
 }
 
-// ─── Icônes sport (SVG inline) ────────────────────────────────────
-export const sportIcon: Record<string, string> = {
-  running:  '🏃',
-  cycling:  '🚴',
-  hyrox:    '🏋️',
-  gym:      '💪',
-}
-
 // ─── Couleur sport depuis string ──────────────────────────────────
 export function sportColor(sport: string): string {
   return color.sport[sport as keyof typeof color.sport] ?? color.brand

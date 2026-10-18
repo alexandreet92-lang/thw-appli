@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
     const sport = body.sport && (SPORTS as string[]).includes(body.sport) ? (body.sport as CommunitySport) : null
     // Branding : icône personnalisée seulement si le tier y a droit.
-    const iconEmoji = ent.canBrand && body.iconEmoji ? body.iconEmoji.slice(0, 8) : '👥'
+    const iconEmoji = ent.canBrand && body.iconEmoji ? body.iconEmoji.slice(0, 8) : ''
     const description = (body.description ?? '').toString().slice(0, 400) || null
     // Logo uploadé : accepté seulement s'il pointe vers notre stockage Supabase
     // (l'upload passe par /api/community/upload → bucket public). Anti-URL arbitraire.

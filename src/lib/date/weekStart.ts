@@ -1,6 +1,6 @@
 // Clé `week_start` du planning — TOUJOURS calculée sur les composants LOCAUX.
 //
-// ⚠️ Bug historique : plusieurs chemins calculaient le lundi puis le
+// Bug historique : plusieurs chemins calculaient le lundi puis le
 // sérialisaient via `toISOString()` (UTC). Dans un fuseau positif (ex.
 // Europe/Paris UTC+2), le lundi local minuit devient le DIMANCHE en UTC → la
 // chaîne enregistrée (« week_start ») ne correspondait plus à celle que la

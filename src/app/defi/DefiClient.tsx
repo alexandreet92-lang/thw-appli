@@ -102,7 +102,7 @@ export function DefiClient({ code, table }: { code: string | null; table: number
               </button>
             </>
           ) : (
-            <p style={sMerci}>Merci, c’est noté. 🙌</p>
+            <p style={sMerci}>Merci, c’est noté.</p>
           )}
         </section>
 

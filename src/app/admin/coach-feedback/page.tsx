@@ -2,7 +2,7 @@
 
 // ══════════════════════════════════════════════════════════════
 // Page admin — Curation des retours coach (phase 1 de l'apprentissage)
-// Lit les 👍/👎 des athlètes pour repérer ce qui marche / ce qui rate.
+// Lit les/des athlètes pour repérer ce qui marche / ce qui rate.
 // Accès réservé (NEXT_PUBLIC_ADMIN_EMAIL) ; la donnée vient de
 // GET /api/coach/feedback (gardé côté serveur par compte créateur).
 // ══════════════════════════════════════════════════════════════
@@ -140,7 +140,7 @@ export default function CoachFeedbackAdminPage() {
             borderRadius: 'var(--r-md)', padding: "14px 16px", background: "#fff",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-              <span style={{ fontSize: 16 }}>{r.rating === 1 ? "👍" : "👎"}</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>{r.rating === 1 ? "Positif" : "Négatif"}</span>
               {r.sport && <span style={tag()}>{r.sport}</span>}
               {r.model && <span style={tag("#EEF2FF", "#4338CA")}>{r.model}</span>}
               <span style={{ marginLeft: "auto", fontSize: 12, color: "#9CA3AF" }}>

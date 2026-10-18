@@ -572,7 +572,7 @@ export function EventSheet({ event, draft, calendars, onClose, onSaved }: {
                         <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
                         <button type="button" onClick={() => { openCustomModal(); setRecOpen(false) }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', background: 'transparent', color: 'var(--text-mid)', fontWeight: 600 }}>
-                          <span style={{ width: 16, flexShrink: 0 }}>⚙</span>Personnaliser…
+                          Personnaliser…
                         </button>
                       </div>
                     </>

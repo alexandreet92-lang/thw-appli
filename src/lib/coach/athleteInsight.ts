@@ -95,7 +95,7 @@ Course : ${raceLine}
 
 CHARGE D'ENTRAÎNEMENT (PMC) :
 ${load
-  ? `CTL (forme) ${load.ctl} · ATL (fatigue) ${load.atl} · TSB (fraîcheur) ${load.tsb} → « ${load.verdict} »${load.overload ? ' ⚠️ SURCHARGE' : ''} · tendance TSB ${load.trend}, forme ${load.ctlTrend}`
+  ? `CTL (forme) ${load.ctl} · ATL (fatigue) ${load.atl} · TSB (fraîcheur) ${load.tsb} → « ${load.verdict} »${load.overload ? ' SURCHARGE' : ''} · tendance TSB ${load.trend}, forme ${load.ctlTrend}`
   : 'non disponible'}
 
 DERNIÈRE LECTURE IA DE SÉANCE :

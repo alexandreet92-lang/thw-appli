@@ -525,7 +525,7 @@ export function formatTrainingPlanContext(ctx: Record<string, unknown>): string 
         lines.push(`\nSEMAINE ${weekNum} (${week.week_start}) :`)
 
         if (week.empty || week.sessions.length === 0) {
-          lines.push('  ⚠️ AUCUNE SÉANCE — semaine vide')
+          lines.push('  AUCUNE SÉANCE — semaine vide')
         } else {
           // Grouper par jour pour affichage lisible
           const byDay: Record<number, Record<string, any>[]> = {}

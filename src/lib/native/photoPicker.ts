@@ -7,7 +7,7 @@
 // ouvrir DIRECTEMENT la photothèque (ou l'appareil photo), on passe par le
 // plugin @capacitor/camera.
 //
-// ⚠️ Info.plist (côté Xcode, non versionné dans ce repo) DOIT contenir :
+// Info.plist (côté Xcode, non versionné dans ce repo) DOIT contenir :
 //   • NSPhotoLibraryUsageDescription  (accès photothèque)
 //   • NSCameraUsageDescription        (accès appareil photo)
 // Sans ces clés, iOS TUE l'app au moment de l'accès. La fonction ci-dessous

@@ -2,7 +2,7 @@
 // ══════════════════════════════════════════════════════════════════
 // useHeartRate — connexion à un capteur de fréquence cardiaque BLE via Web
 // Bluetooth (service standard Heart Rate 0x180D, mesure 0x2A37).
-// ⚠️ Web Bluetooth n'existe PAS sur iOS/Safari → `supported` sera false ;
+// Web Bluetooth n'existe PAS sur iOS/Safari → `supported` sera false ;
 // fonctionne sur Android/Chrome ; app native → BLE natif via le magasin partagé.
 // Expose : bpm instant, min, max, moyenne, et un historique (courbe).
 // ══════════════════════════════════════════════════════════════════

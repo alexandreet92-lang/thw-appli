@@ -34,7 +34,7 @@ export function loadBlocs(): TrainingBlocData[] {
   // syncBlocsFromCloud), jamais le localStorage du coach.
   if (isCoachScoped()) return _coachBlocs
   const list = read<TrainingBlocData[]>(BLOCS_KEY, [])
-  // ⚠ BUG 2 — Training Blocs : stockage localStorage = données locales à l'appareil.
+  // BUG 2 — Training Blocs : stockage localStorage = données locales à l'appareil.
   // Symptôme reporté : "blocs créés sur Windows n'apparaissent pas sur iPhone/Mac".
   // CAUSE RÉELLE : pas une question de week_start ni de filtre Supabase — il n'y a
   // simplement AUCUNE table Supabase pour les Training Blocs. Solution permanente :

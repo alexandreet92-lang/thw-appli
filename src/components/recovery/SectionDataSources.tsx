@@ -126,7 +126,7 @@ export default function SectionDataSources({ sourcesRef }: Props) {
                       <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>
                         {s.provider
                           ? <>↗ <a href="/connections" style={{ color:'var(--primary)',textDecoration:'none',fontWeight:600 }}>{t('recovery.sources.connect')}</a></>
-                          : <>🔜 {t('recovery.sources.soonAvailable')}</>}
+                          : <>{t('recovery.sources.soonAvailable')}</>}
                       </p>
                     </div>
                   )}

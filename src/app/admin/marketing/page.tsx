@@ -265,7 +265,7 @@ export default function MarketingAdminPage() {
             gap: 8,
           }}
         >
-          <span style={{ fontSize: 17 }}>📸</span>
+          
           {instaApiSyncing ? t("admin.marketing.instaConnecting") : t("admin.marketing.instaSync")}
         </button>
 
@@ -280,7 +280,7 @@ export default function MarketingAdminPage() {
 
         {instaApiError && (
           <span style={{ fontSize: 12, color: "var(--danger)", maxWidth: 300 }}>
-            ⚠ {instaApiError}
+            {instaApiError}
           </span>
         )}
 
@@ -397,10 +397,10 @@ export default function MarketingAdminPage() {
                           {p.caption_excerpt || t("admin.marketing.noCaption")}
                         </div>
                         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
-                          <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
-                          <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
-                          <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
-                          {p.comments != null && <span>💬 {p.comments}</span>}
+                          <span>{p.likes.toLocaleString(currentLocale())} likes</span>
+                          <span>{p.saves.toLocaleString(currentLocale())} saves</span>
+                          <span>{p.reach.toLocaleString(currentLocale())} portée</span>
+                          {p.comments != null && <span>{p.comments}</span>}
                         </div>
                       </div>
                     </div>
@@ -733,7 +733,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
       </div>
 
       <div style={{ fontSize: 12, color: "#888", fontStyle: "italic", borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
-        💡 {idea.why_it_works}
+        {idea.why_it_works}
       </div>
 
       {/* ── Copy button ───────────────────────────────────────── */}
@@ -854,10 +854,10 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
                       {p.caption_excerpt}
                     </div>
                     <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
-                      <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
-                      <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
-                      <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
-                      {p.comments != null && <span>💬 {p.comments}</span>}
+                      <span>{p.likes.toLocaleString(currentLocale())} likes</span>
+                      <span>{p.saves.toLocaleString(currentLocale())} saves</span>
+                      <span>{p.reach.toLocaleString(currentLocale())} portée</span>
+                      {p.comments != null && <span>{p.comments}</span>}
                     </div>
                   </div>
                 </div>

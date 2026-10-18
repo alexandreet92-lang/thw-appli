@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // Maquettes A3 / A4 / A5 :
 //  • en-tête = ‹ rond + barre de progression + « n / m » (+ « Plus tard ») ;
 //  • petit libellé de section cyan, grand titre 28 px, aide grise ;
-//  • choix unique = cartes blanches (emoji, titre, description, radio) qui
+//  • choix unique = cartes blanches (titre, description, radio) qui
 //    avancent seules ~250 ms après la sélection ; choix multiple = pilules
 //    (choisie = pilule sombre) + « Continuer · N sports » ;
 //  • glissement iOS entre étapes (transform seul) + retour par glissement
@@ -40,26 +40,6 @@ const MERGED_INTO: Record<string, string> = { a_mainGoal: 'a_goalType' }
 // Délai avant l'avance automatique d'un choix unique.
 const AUTO_ADVANCE_MS = 250
 
-const SPORT_EMOJI: Record<string, string> = {
-  running: '🏃', velo: '🚴', natation: '🏊', trail: '⛰️', triathlon: '🔱', aviron: '🚣',
-  boxe: '🥊', hyrox: '⚡', force: '🏋️', crossfit: '🔥',
-}
-// Pictogrammes de présentation (aucune incidence sur les données).
-const EMOJI: Record<string, Record<string, string>> = {
-  profile: { athlete: '🏃', both: '🤝', coach: '📋' },
-  version: { full: '✨', express: '⚡' },
-  a_sports: SPORT_EMOJI,
-  c_sports: SPORT_EMOJI,
-  a_goalType: { forme: '💪', performance: '🏁', perte_poids: '⚖️', sante: '🌱', mixte: '🏅' },
-  a_level: { debutant: '🌱', intermediaire: '📈', confirme: '🎯', elite: '🏆' },
-  a_equipment: { montre_gps: '⌚', capteur_puissance: '⚡', home_trainer: '🚲', tapis: '🏃', salle: '🏋️' },
-  a_job: { sedentaire: '🪑', mixte: '🚶', physique: '🛠️' },
-  a_nutrition: { suivie: '🥗', parfois: '🍽️', non: '🤷' },
-  a_env: { indoor: '🏠', outdoor: '🌳', mixte: '🔁' },
-  c_fulltime: { plein_temps: '💼', a_cote: '⏱️' },
-  c_method: { endurance: '🫀', force: '🏋️', hybride: '⚡' },
-  c_format: { en_ligne: '💻', presentiel: '🤝', mixte: '🔁' },
-}
 // Libellé de section (petit texte cyan au-dessus du titre).
 const SECTION: Record<string, string> = {
   profile: 'au.ob.secProfile', version: 'au.ob.secProfile',
@@ -282,7 +262,7 @@ export default function BienvenuePage() {
       <Step section={t(SECTION.profile)} title={t('ob.profile.q')}>
         <CardList>
           {(['athlete', 'both', 'coach'] as ObProfile[]).map(o => (
-            <ChoiceCard key={o} emoji={EMOJI.profile[o]} title={t('ob.profile.' + o)} desc={t('ob.profile.' + o + 'D')} selected={profile === o}
+            <ChoiceCard key={o} title={t('ob.profile.' + o)} desc={t('ob.profile.' + o + 'D')} selected={profile === o}
               onClick={() => { setProfile(o); scheduleAdvance() }} />
           ))}
         </CardList>
@@ -292,9 +272,9 @@ export default function BienvenuePage() {
     body = (
       <Step section={t(SECTION.version)} title={t('ob.version.q')} hint={t('ob.version.hint')}>
         <CardList>
-          <ChoiceCard emoji={EMOJI.version.full} title={t('ob.version.full')} badge={t('ob.version.recommended')} desc={t('ob.version.fullD')}
+          <ChoiceCard title={t('ob.version.full')} badge={t('ob.version.recommended')} desc={t('ob.version.fullD')}
             selected={version === 'full'} onClick={() => { setVersion('full'); scheduleAdvance() }} />
-          <ChoiceCard emoji={EMOJI.version.express} title={t('ob.version.express')} desc={t('ob.version.expressD')}
+          <ChoiceCard title={t('ob.version.express')} desc={t('ob.version.expressD')}
             selected={version === 'express'} onClick={() => { setVersion('express'); scheduleAdvance() }} />
         </CardList>
       </Step>
@@ -384,14 +364,13 @@ function CardList({ children }: { children: ReactNode }) {
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
 }
 
-// ── Carte de choix unique (emoji · titre · description · radio) ────
-function ChoiceCard({ emoji, title, desc, badge, selected, onClick }: {
-  emoji?: string; title: string; desc?: string; badge?: string; selected: boolean; onClick: () => void
+// ── Carte de choix unique (titre · description · radio) ────
+function ChoiceCard({ title, desc, badge, selected, onClick }: {
+  title: string; desc?: string; badge?: string; selected: boolean; onClick: () => void
 }) {
   return (
     <button type="button" role="radio" aria-checked={selected} onClick={onClick} className="ob-card"
       style={{ boxShadow: selected ? 'inset 0 0 0 2px var(--primary)' : SHEET_CARD_SHADOW }}>
-      {emoji && <span aria-hidden style={{ fontSize: 26, lineHeight: 1, width: 34, textAlign: 'center', flexShrink: 0 }}>{emoji}</span>}
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>{title}</span>
@@ -409,13 +388,12 @@ function ChoiceCard({ emoji, title, desc, badge, selected, onClick }: {
 }
 
 // ── Pilule de choix multiple (choisie = pilule sombre) ──────────────
-function ChoicePill({ emoji, label, selected, onClick, muted }: { emoji?: string; label: string; selected: boolean; onClick: () => void; muted?: boolean }) {
+function ChoicePill({ label, selected, onClick, muted }: { label: string; selected: boolean; onClick: () => void; muted?: boolean }) {
   const style: CSSProperties = selected
     ? { background: 'var(--text)', color: 'var(--surface-page)' }
     : { background: 'var(--surface-card)', color: muted ? 'var(--text-mid)' : 'var(--text)', boxShadow: SHEET_CARD_SHADOW }
   return (
     <button type="button" role="checkbox" aria-checked={selected} onClick={onClick} className="ob-pill" style={style}>
-      {emoji && <span aria-hidden>{emoji}</span>}
       {label}
     </button>
   )
@@ -437,7 +415,6 @@ interface QBProps {
 
 function QuestionBody(p: QBProps) {
   const { q, t } = p
-  const emo = EMOJI[q.id] ?? {}
   const [otherOpen, setOtherOpen] = useState(() => p.getStr(`${q.id}__other`).length > 0)
   const enter = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && p.onEnter) { e.preventDefault(); p.onEnter() } }
 
@@ -446,7 +423,7 @@ function QuestionBody(p: QBProps) {
       <>
         <CardList>
           {q.options!.map(o => (
-            <ChoiceCard key={o.value} emoji={emo[o.value]} title={t(`ob.${q.id}.${o.value}`)}
+            <ChoiceCard key={o.value} title={t(`ob.${q.id}.${o.value}`)}
               desc={o.hasDesc ? t(`ob.${q.id}.${o.value}D`) : undefined} selected={p.getStr(q.id) === o.value}
               onClick={() => { p.setStr(q.id, o.value); p.onPicked?.() }} />
           ))}
@@ -465,7 +442,7 @@ function QuestionBody(p: QBProps) {
       <>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {q.options!.map(o => (
-            <ChoicePill key={o.value} emoji={emo[o.value]} label={t(`ob.${q.id}.${o.value}`)} selected={p.getArr(q.id).includes(o.value)}
+            <ChoicePill key={o.value} label={t(`ob.${q.id}.${o.value}`)} selected={p.getArr(q.id).includes(o.value)}
               onClick={() => p.toggleArr(q.id, o.value)} />
           ))}
           {q.other && (
@@ -518,7 +495,6 @@ function QuestionBody(p: QBProps) {
       {p.sportsSelected.map(s => (
         <div key={s} style={{ background: 'var(--surface-card)', borderRadius: 'var(--r-lg)', padding: 16, boxShadow: SHEET_CARD_SHADOW }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>
-            {SPORT_EMOJI[s] && <span aria-hidden style={{ fontSize: 22 }}>{SPORT_EMOJI[s]}</span>}
             {tOpt(t, 'a_sports', s)}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

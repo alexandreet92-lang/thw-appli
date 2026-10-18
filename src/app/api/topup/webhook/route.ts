@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
       // Notification : pack de tokens crédité.
       void notifyUser(userId, 'tokens.pack_credite', {
-        title: 'Tokens ajoutés ✅',
+        title: 'Tokens ajoutés',
         body: `${tokensAmount.toLocaleString('fr-FR')} tokens ont été crédités sur ton compte.`,
         url: '/settings/subscription',
         dedupKey: `pack-${purchaseId}`,

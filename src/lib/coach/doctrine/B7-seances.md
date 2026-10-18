@@ -74,7 +74,7 @@
 - **Hypoxique / contrôle respiratoire :** séries à respiration espacée (ex. respirer tous les 3-5-7 cycles), travail d'apnée légère et d'efficience respiratoire. [SM moyen]
 - **Spécifique eau libre / triathlon :** sighting (relever la tête), départs groupés, nage en combinaison, drafting. [variable]
 
-> ⚠️ **SÉCURITÉ HYPOXIE :** `SI travail à respiration réduite/apnée → ALORS JAMAIS jusqu'au malaise ; risque de syncope hypoxique en eau (« shallow water blackout »), potentiellement mortelle. Toujours surveillé, jamais en apnée maximale répétée. En cas de vertige/picotements → stopper immédiatement.`
+> **SÉCURITÉ HYPOXIE :** `SI travail à respiration réduite/apnée → ALORS JAMAIS jusqu'au malaise ; risque de syncope hypoxique en eau (« shallow water blackout »), potentiellement mortelle. Toujours surveillé, jamais en apnée maximale répétée. En cas de vertige/picotements → stopper immédiatement.`
 > `SI statut épaule B2 ≥ orange → ALORS retirer plaquettes/pull-buoy avec gros volume et le sprint ; recentrer sur la technique indolore.`
 > `SI nageur faible (B3) → ALORS la technique prime massivement sur le volume/intensité : 60-70 % du temps sur l'efficience avant de chercher le moteur.`
 

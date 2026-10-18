@@ -60,12 +60,12 @@ const CHAT_FONTS: { id: ChatFontId; label: string; family: string; preview: stri
 ]
 
 const RULE_CATEGORIES = [
-  { id: 'response_style', label: 'Style',          color: '#5b6fff', icon: '💬', placeholder: 'Ex : Réponds de manière concise et directe' },
-  { id: 'training',       label: 'Entraînement',   color: '#22c55e', icon: '🏋️', placeholder: 'Ex : Pas de squats avec charge lourde' },
-  { id: 'health',         label: 'Santé',           color: '#ef4444', icon: '🩺', placeholder: 'Ex : Tendinite rotulienne genou droit, éviter les impacts' },
-  { id: 'nutrition',      label: 'Nutrition',       color: '#f97316', icon: '🥗', placeholder: 'Ex : Végétarien, intolérant au lactose' },
-  { id: 'schedule',       label: 'Organisation',    color: '#8b5cf6', icon: '📅', placeholder: 'Ex : Disponible uniquement le matin avant 7h30' },
-  { id: 'other',          label: 'Autre',            color: '#6b7280', icon: '📌', placeholder: 'Ex : Toujours proposer des alternatives quand tu suggères un exercice' },
+  { id: 'response_style', label: 'Style',          color: '#5b6fff', placeholder: 'Ex : Réponds de manière concise et directe' },
+  { id: 'training',       label: 'Entraînement',   color: '#22c55e', placeholder: 'Ex : Pas de squats avec charge lourde' },
+  { id: 'health',         label: 'Santé',           color: '#ef4444', placeholder: 'Ex : Tendinite rotulienne genou droit, éviter les impacts' },
+  { id: 'nutrition',      label: 'Nutrition',       color: '#f97316', placeholder: 'Ex : Végétarien, intolérant au lactose' },
+  { id: 'schedule',       label: 'Organisation',    color: '#8b5cf6', placeholder: 'Ex : Disponible uniquement le matin avant 7h30' },
+  { id: 'other',          label: 'Autre',            color: '#6b7280', placeholder: 'Ex : Toujours proposer des alternatives quand tu suggères un exercice' },
 ] as const
 
 function categoryIcon(id: string, color = 'currentColor', size = 14): React.ReactNode {

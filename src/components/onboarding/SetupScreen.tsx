@@ -111,7 +111,7 @@ export default function SetupScreen({ onComplete }: Props) {
 
       <div style={{ padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),24px)' }}>
         <button onClick={handleStart} disabled={saving} style={{ width: '100%', height: 54, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 17, fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--font-body)', boxShadow: '0 4px 24px rgba(6,182,212,0.35)' }}>
-          {saving ? t('onboarding.saving') : t('onboarding.startAdventure') + ' 🚀'}
+          {saving ? t('onboarding.saving') : t('onboarding.startAdventure')}
         </button>
       </div>
     </div>

@@ -191,7 +191,7 @@ export async function processPaceActivityRecords(
       const best = allTimeBeaten[0]
       const extra = allTimeBeaten.length > 1 ? ` (+${allTimeBeaten.length - 1})` : ''
       void notifyUser(userId, 'performance.progression', {
-        title: 'Nouveau record 💥',
+        title: 'Nouveau record',
         body: `${best.label} en ${best.time} — nouveau record${extra} !`,
         url: '/performance', dedupKey: `pr-${activityId}`, once: true,
       })

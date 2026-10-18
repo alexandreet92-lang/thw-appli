@@ -9,7 +9,7 @@
 // suite en gris), synchronisé sur la lecture audio.
 //
 // PAS d'orbe, PAS de bouton central. Fond clair + halo ambiant qui change de
-// teinte selon l'état. Barre du bas : ⚙️ Réglages · 🎤 Micro · ✕ Fermer.
+// teinte selon l'état. Barre du bas : Réglages · Micro · ✕ Fermer.
 // Réglages = bottom sheet opaque : Voix · Langue · Vitesse · Mode.
 // ══════════════════════════════════════════════════════════════
 
@@ -665,7 +665,7 @@ export function VoiceConversation({ onTurn, onClose }: {
         )}
       </div>
 
-      {/* ── Barre de contrôle : ⚙️ … 🎤 ✕ ── */}
+      {/* ── Barre de contrôle : … ✕ ── */}
       <div style={{
         position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '8px 22px calc(20px + env(safe-area-inset-bottom,0px))',

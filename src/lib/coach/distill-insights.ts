@@ -2,7 +2,7 @@
 // Distillation des insights — couche d'apprentissage du coach (phase 3).
 //
 // Rend la boucle AUTONOME :
-//  1) distillNewInsights() : un « professeur » IA lit les retours 👍/👎
+//  1) distillNewInsights() : un « professeur » IA lit les retours/
 //     non encore traités, en extrait des enseignements généralisables et
 //     anonymes, et les insère en 'candidate' (source 'mined'). Tu les
 //     valides ensuite à la main (cohérent avec la curation manuelle).
@@ -70,11 +70,11 @@ export async function distillNewInsights(): Promise<{ created: number; processed
   }).join('\n\n')
 
   const systemPrompt =
-    `Tu es un coach sportif expert. On te donne des retours réels (👍/👎) d'athlètes sur des réponses d'un coach IA. ` +
+    `Tu es un coach sportif expert. On te donne des retours réels (/) d'athlètes sur des réponses d'un coach IA. ` +
     `Distille-en des ENSEIGNEMENTS généralisables, anonymes et actionnables, réutilisables pour d'autres athlètes. ` +
     `Règles STRICTES :\n` +
     `- Aucune donnée personnelle (pas de nom, chiffre perso isolé, date) — uniquement des patterns.\n` +
-    `- Un retour 👍 → enseignement de ce qu'il faut FAIRE ; un 👎 → ce qu'il faut ÉVITER.\n` +
+    `- Un retour → enseignement de ce qu'il faut FAIRE ; un → ce qu'il faut ÉVITER.\n` +
     `- N'invente rien : si les retours ne dégagent pas de pattern clair, renvoie peu (ou zéro) enseignement.\n` +
     `- "sport" ∈ {running, cycling, hyrox, gym} si l'enseignement est spécifique, sinon null.\n` +
     `- "topic" = 2 à 5 mots-clés de ciblage (ex: "pma 30/30 vo2max").\n` +

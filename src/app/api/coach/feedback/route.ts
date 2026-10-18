@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 // API — /api/coach/feedback
 //
-// POST : enregistre (ou bascule) le retour 👍/👎 de l'athlète sur une
+// POST : enregistre (ou bascule) le retour/de l'athlète sur une
 //        réponse du coach. Contexte capté en plus (question, réponse,
 //        sport, modèle) pour alimenter la future distillation d'insights.
 // GET  : lecture admin (page de curation) — gardée par compte créateur.

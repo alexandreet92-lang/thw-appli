@@ -23,12 +23,6 @@ const CATS: Record<string, { label: string; color: string }> = {
   perso:    { label: 'Personnel',     color: '#AF52DE' }, // violet
 }
 
-const SPORT_EMOJI: Record<string, string> = {
-  running: '🏃', run: '🏃', trail: '⛰️', cycling: '🚴', bike: '🚴', velo: '🚴',
-  swim: '🏊', natation: '🏊', gym: '🏋️', muscu: '🏋️', hyrox: '🔥', yoga: '🧘',
-  row: '🚣', rowing: '🚣', triathlon: '🔺',
-}
-
 // ── Helpers ICS ─────────────────────────────────────────────────────
 function esc(s: string): string {
   return (s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
@@ -141,8 +135,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
 
     for (const s of sessionsRes.data ?? []) {
       const date = sessionYmd(s.week_start as string, s.day_index as number)
-      const emoji = SPORT_EMOJI[(s.sport || '').toLowerCase()] ?? '🏋️'
-      const summary = `${emoji} ${s.title || s.sport || 'Séance'}`
+      const summary = `${s.title || s.sport || 'Séance'}`
       const desc = [
         s.duration_min ? `Durée : ${s.duration_min} min` : null,
         s.intensity ? `Intensité : ${s.intensity}` : null,
@@ -164,16 +157,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
         r.goal || null, r.notes || null,
       ].filter(Boolean).join('\n')
       events.push(vevent({
-        uid: `race-${r.id}`, summary: `🏁 ${r.name || 'Course'}`, description: desc || undefined,
+        uid: `race-${r.id}`, summary: `${r.name || 'Course'}`, description: desc || undefined,
         allDay: { start: date, endExclusive: shiftYmd(r.date as string, 1) },
       }, stamp))
     }
 
     for (const e of eventsRes.data ?? []) {
       const date = ymd(e.date as string)
-      const icon = e.category === 'race' ? '🏁' : e.category === 'pro' ? '💼' : '🎯'
       events.push(vevent({
-        uid: `event-${e.id}`, summary: `${icon} ${e.title || 'Événement'}`, description: (e.description as string) || undefined,
+        uid: `event-${e.id}`, summary: `${e.title || 'Événement'}`, description: (e.description as string) || undefined,
         allDay: { start: date, endExclusive: shiftYmd(e.date as string, 1) },
       }, stamp))
     }

@@ -177,7 +177,7 @@ function SwipeDelete() {
     <div style={{ padding: '20px 16px', width: '100%', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
       <div style={{ width: '100%', position: 'relative' }}>
         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 70, background: 'var(--danger)', borderRadius: '0 10px 10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 20 }}>🗑</span>
+          
         </div>
         <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--r-sm)', padding: '12px 14px', marginRight: 50, position: 'relative', animation: 'count-up 500ms ease forwards', opacity: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -266,7 +266,7 @@ function StravaSyncFlow() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', background: 'rgba(252,76,2,0.15)', border: '1.5px solid rgba(252,76,2,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 0ms both' }}>
-            <span style={{ fontSize: 22 }}>🟠</span>
+            
           </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>Strava</span>
         </div>
@@ -282,7 +282,7 @@ function StravaSyncFlow() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 52, height: 52, borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.15)', border: '1.5px solid rgba(6,182,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'stagger-in 400ms 200ms both' }}>
-            <span style={{ fontSize: 22 }}>⚡</span>
+            
           </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>THW</span>
         </div>

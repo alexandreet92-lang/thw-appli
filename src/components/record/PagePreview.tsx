@@ -59,7 +59,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: theme.dim, fontSize: 12,
         }}>
-          🗺  {t('record.pagePreviewMap')}
+           {t('record.pagePreviewMap')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${theme.separator}` }}>
           {page.fields.slice(0, 2).map((id, i, arr) => (

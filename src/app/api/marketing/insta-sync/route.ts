@@ -161,7 +161,7 @@ export async function POST() {
       return NextResponse.json({ error: saveError.message }, { status: 500 });
     }
 
-    console.log(`[insta-sync] ✅ Snapshot sauvegardé — id=${saved?.id}`);
+    console.log(`[insta-sync] Snapshot sauvegardé — id=${saved?.id}`);
 
     return NextResponse.json({
       snapshot: saved,
@@ -176,7 +176,7 @@ export async function POST() {
     });
 
   } catch (err) {
-    console.error("[insta-sync] ❌ ERREUR:", err);
+    console.error("[insta-sync] ERREUR:", err);
     if (err instanceof Error) {
       console.error("[insta-sync] Message:", err.message);
       console.error("[insta-sync] Stack:", err.stack);
@@ -215,7 +215,7 @@ export async function GET() {
     return NextResponse.json({ snapshot: data ?? null });
 
   } catch (err) {
-    console.error("[insta-sync] ❌ GET ERREUR:", err);
+    console.error("[insta-sync] GET ERREUR:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erreur inconnue" },
       { status: 500 }

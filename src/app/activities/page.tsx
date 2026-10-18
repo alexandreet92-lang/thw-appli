@@ -892,7 +892,7 @@ function getPowerZone(watts: number, ftp: number | null): typeof MMP_POWER_ZONES
   return MMP_POWER_ZONES.find(z => ratio < z.max) ?? MMP_POWER_ZONES[MMP_POWER_ZONES.length - 1]
 }
 
-// Petit trophée SVG (remplace l'émoji 🏆) — couleur = doré (all-time) / cyan (année).
+// Petit trophée SVG (remplace l'émoji) — couleur = doré (all-time) / cyan (année).
 function TrophyMark({ color, size = 13 }: { color: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
@@ -1033,7 +1033,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
     return new Date(iso).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
-  // Trophées : 🏆 par durée selon le type de record battu
+  // Trophées : par durée selon le type de record battu
   const trophies = useMemo((): { i: number; kind: 'allTime' | 'year' }[] => {
     const result: { i: number; kind: 'allTime' | 'year' }[] = []
     for (let i = 0; i < DURATIONS.length; i++) {

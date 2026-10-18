@@ -77,7 +77,7 @@ export async function POST(req: Request) {
             </td></tr></table>
         </td></tr>
         <tr><td align="center" style="padding:8px 32px 6px;"><p style="margin:0;font-size:12px;color:#64748B;line-height:1.5;">Tes tokens sont crédités automatiquement sur ton compte après paiement. Les tokens de packs n'expirent pas.</p></td></tr>
-        <tr><td align="center" style="padding:8px 32px 32px;"><p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.5;">🔒 Lien envoyé uniquement à ton adresse enregistrée<br>Si tu n'as pas fait cette demande, ignore cet email.</p></td></tr>
+        <tr><td align="center" style="padding:8px 32px 32px;"><p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.5;">Lien envoyé uniquement à ton adresse enregistrée<br>Si tu n'as pas fait cette demande, ignore cet email.</p></td></tr>
         <tr><td align="center" style="padding:0 32px 28px;"><p style="margin:0;font-size:11px;color:#94A3B8;">© ${new Date().getFullYear()} THW · Hybrid Training</p></td></tr>
       </table>
     </td></tr>

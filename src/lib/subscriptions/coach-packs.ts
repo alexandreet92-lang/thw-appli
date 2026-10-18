@@ -7,7 +7,7 @@
 // Le pack = la capacité d'athlètes gérés ; la formule = le niveau athlète du coach.
 // Prix annuels = 2 mois offerts (≈ ×10 le mois).
 //
-// ⚠️ Les PRIX affichés ci-dessous doivent correspondre à ceux réglés dans Stripe.
+// Les PRIX affichés ci-dessous doivent correspondre à ceux réglés dans Stripe.
 //    Le webhook, lui, identifie le pack par le PRICE ID (unique) → aucun risque
 //    d'ambiguïté même si deux formules ont le même prix.
 // ══════════════════════════════════════════════════════════════════

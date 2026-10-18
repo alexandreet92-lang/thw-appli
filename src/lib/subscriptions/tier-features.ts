@@ -4,7 +4,7 @@
 // et l'animation « nouvel abonnement ». Les CHIFFRES doivent rester cohérents
 // avec src/lib/subscriptions/tier-limits.ts (le moteur de quotas).
 //
-// ⚠️ Contenu = décision produit. Ajuste librement ici, tout l'affichage suit.
+// Contenu = décision produit. Ajuste librement ici, tout l'affichage suit.
 // ══════════════════════════════════════════════════════════════════
 
 export type DisplayTier = 'premium' | 'pro' | 'expert'

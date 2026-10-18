@@ -67,7 +67,7 @@ export async function addLiveShareRecipients(id: string, recipientIds: string[])
   for (const uid of recipientIds) {
     try {
       const gid = await getOrCreateDirectThread(uid)
-      if (gid && await sendGroupMessage(gid, `📍 Je partage ma position en direct : ${link}`)) sent++
+      if (gid && await sendGroupMessage(gid, `Je partage ma position en direct : ${link}`)) sent++
     } catch { /* best-effort */ }
   }
   return sent

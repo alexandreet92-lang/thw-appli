@@ -30,10 +30,10 @@ async function handleGraphError(res: Response, context: string): Promise<null> {
 
   const code = parsed?.error?.code;
   if (code === 190) {
-    console.error(`[insta-api] 🔑 Token Instagram EXPIRÉ (code 190) — renouvelle le token longue durée. Context: ${context}`);
+    console.error(`[insta-api] Token Instagram EXPIRÉ (code 190) — renouvelle le token longue durée. Context: ${context}`);
   } else {
     console.error(
-      `[insta-api] ❌ ${context} — HTTP ${res.status}`,
+      `[insta-api] ${context} — HTTP ${res.status}`,
       parsed?.error ? JSON.stringify(parsed.error) : body.slice(0, 300)
     );
   }

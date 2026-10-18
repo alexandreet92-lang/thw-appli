@@ -107,7 +107,7 @@ export async function POST() {
 
   } catch (err) {
     // ── Logging exhaustif ──────────────────────────────────────
-    console.error("[marketing] ❌ daily-brief ERREUR:", err);
+    console.error("[marketing] daily-brief ERREUR:", err);
 
     if (err instanceof Error) {
       console.error("[marketing] Message:", err.message);
@@ -163,7 +163,7 @@ export async function GET() {
 
     return NextResponse.json({ briefs: data ?? [] });
   } catch (err) {
-    console.error("[marketing] ❌ GET /daily-brief ERREUR:", err);
+    console.error("[marketing] GET /daily-brief ERREUR:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erreur inconnue" },
       { status: 500 }

@@ -41,7 +41,7 @@ export function buildCoachDigest(roster: RosterAthlete[], mode: 'weekly' | 'dail
     .filter(a => a.race && a.race.days <= RACE_WINDOW_DAYS)
     .sort((a, b) => (a.race!.days - b.race!.days))
   const raceLine = races.length
-    ? ` · 🏁 ${races.slice(0, 2).map(a => `${a.race!.name} J-${a.race!.days} (${a.name})`).join(', ')}`
+    ? ` · ${races.slice(0, 2).map(a => `${a.race!.name} J-${a.race!.days} (${a.name})`).join(', ')}`
     : ''
 
   // Mode quotidien : on n'envoie que s'il y a des priorités (pas de spam).
@@ -51,16 +51,16 @@ export function buildCoachDigest(roster: RosterAthlete[], mode: 'weekly' | 'dail
     // Hebdo calme.
     return {
       priorityCount: 0,
-      title: 'Semaine au vert 💚',
+      title: 'Semaine au vert',
       body: `Tes ${roster.length} athlète${roster.length > 1 ? 's sont' : ' est'} au vert${raceLine || '.'}`.slice(0, 300),
     }
   }
 
   const parts: string[] = []
-  if (injured.length) parts.push(`🩹 ${names(injured)} (blessé${injured.length > 1 ? 's' : ''})`)
-  if (inactive.length) parts.push(`😴 ${names(inactive)} (inactif${inactive.length > 1 ? 's' : ''})`)
-  if (overload.length) parts.push(`🔥 ${names(overload)} (surcharge)`)
-  if (fatigued.length) parts.push(`⚠️ ${names(fatigued)} (fatigue)`)
+  if (injured.length) parts.push(`${names(injured)} (blessé${injured.length > 1 ? 's' : ''})`)
+  if (inactive.length) parts.push(`${names(inactive)} (inactif${inactive.length > 1 ? 's' : ''})`)
+  if (overload.length) parts.push(`${names(overload)} (surcharge)`)
+  if (fatigued.length) parts.push(`${names(fatigued)} (fatigue)`)
 
   const s = priority > 1 ? 's' : ''
   return {

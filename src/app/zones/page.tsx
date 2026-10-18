@@ -165,9 +165,9 @@ export default function ZonesPage() {
   const swimZones = calcSwimZones(parsePace(css || '1:28') * 100 / 100, t)
 
   const TABS = [
-    { id: 'run'  as const, emoji: '🏃', label: t('misc.sportRunning')  },
-    { id: 'bike' as const, emoji: '🚴', label: t('misc.sportCycling')  },
-    { id: 'swim' as const, emoji: '🏊', label: t('misc.sportSwimming')  },
+    { id: 'run'  as const, label: t('misc.sportRunning')  },
+    { id: 'bike' as const, label: t('misc.sportCycling')  },
+    { id: 'swim' as const, label: t('misc.sportSwimming')  },
   ]
 
   return (
@@ -187,7 +187,7 @@ export default function ZonesPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '9px 18px', borderRadius: 'var(--r-md)', border: '1px solid', borderColor: tab === t.id ? 'var(--primary)' : 'var(--border)', background: tab === t.id ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)', color: tab === t.id ? 'var(--primary)' : 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer' }}>
-            {t.emoji} {t.label}
+            {t.label}
           </button>
         ))}
       </div>
@@ -207,7 +207,7 @@ export default function ZonesPage() {
 
               {/* Records */}
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>{t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {[
                     { label: '1km', placeholder: "2:45" },
@@ -235,7 +235,7 @@ export default function ZonesPage() {
               />
               <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.6 }}>
-                  💡 {t('misc.zonesAutoDetectHint')}
+                  {t('misc.zonesAutoDetectHint')}
                 </p>
               </div>
             </div>
@@ -262,7 +262,7 @@ export default function ZonesPage() {
               </div>
 
               <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>{t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['5min', '20min', '1h', 'Sprints'].map((r) => (
                     <div key={r}>
@@ -297,7 +297,7 @@ export default function ZonesPage() {
               </div>
 
               <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>📊 {t('misc.personalRecords')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', margin: '0 0 12px' }}>{t('misc.personalRecords')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 10 }}>
                   {['100m', '200m', '400m', '1500m'].map((r) => (
                     <div key={r}>

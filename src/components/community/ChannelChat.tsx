@@ -24,6 +24,7 @@ import {
 } from '@/lib/community/messages'
 import { markChannelRead } from '@/lib/community/channels'
 import { toggleReaction, QUICK_REACTIONS } from '@/lib/community/reactions'
+import { ReactionIcon } from './ReactionIcon'
 import { getPinnedIds, getPinnedMessages, togglePin } from '@/lib/community/pins'
 import { listSpaceMembers } from '@/lib/community/spaces'
 import { usePresenceCount, usePresenceIds } from '@/lib/community/presence'
@@ -544,8 +545,8 @@ export function ChannelChat({
           const on = m.reactions.find(r => r.emoji === e)?.mine
           return (
             <button key={e} type="button" onClick={() => { close(); void react(m, e) }} aria-label={e} className="cm-btn cm-press cm-in"
-              style={{ ...stagger(i, 40, 26), width: 40, height: 40, borderRadius: '50%', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'var(--primary-dim)' : 'transparent' }}>
-              {e}
+              style={{ ...stagger(i, 40, 26), width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'var(--primary-dim)' : 'transparent' }}>
+              <ReactionIcon value={e} size={20} />
             </button>
           )
         })}
@@ -800,7 +801,7 @@ function MessageItem({ m, mine, grouped, lastOfGroup, role, me, channelId, pinne
           <button key={r.emoji} type="button" onClick={() => onReact(r.emoji)} aria-pressed={r.mine} className="cm-btn cm-press"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', borderRadius: 'var(--r-pill)', fontSize: 14,
               background: r.mine ? 'var(--primary-dim)' : 'var(--surface-card)', boxShadow: r.mine ? 'inset 0 0 0 1.5px var(--primary)' : SOFT_SHADOW }}>
-            <span key={pop?.key === k ? pop.n : 0} className={pop?.key === k ? 'cm-pop' : undefined} style={{ display: 'inline-block' }}>{r.emoji}</span>
+            <span key={pop?.key === k ? pop.n : 0} className={pop?.key === k ? 'cm-pop' : undefined} style={{ display: 'inline-flex' }}><ReactionIcon value={r.emoji} size={14} /></span>
             <span style={{ ...TNUM, fontWeight: 800, color: r.mine ? 'var(--primary)' : 'var(--text)' }}>{r.count}</span>
           </button>
         )

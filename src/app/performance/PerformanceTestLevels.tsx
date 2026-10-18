@@ -592,7 +592,7 @@ export function LevelTable({ testId, gender, currentScore, accentColor, mobile }
           </div>
         ))}
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-          ℹ️ {bench.annotation}
+          {bench.annotation}
         </p>
       </div>
     )
@@ -602,7 +602,7 @@ export function LevelTable({ testId, gender, currentScore, accentColor, mobile }
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <BenchmarkTable rows={bench.rows} gender={gender} currentLevelLabel={currentLevel?.label ?? null} accentColor={accentColor} />
       <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-        ℹ️ {bench.annotation}
+        {bench.annotation}
       </p>
     </div>
   )

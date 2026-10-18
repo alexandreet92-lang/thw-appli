@@ -26,14 +26,14 @@ if (fs.existsSync(envPath)) {
     const val = trimmed.slice(eqIdx + 1).trim()
     if (key && !process.env[key]) process.env[key] = val
   }
-  console.log('✅ .env.local chargé')
+  console.log('.env.local chargé')
 } else {
-  console.warn('⚠️  .env.local introuvable — ANTHROPIC_API_KEY doit être dans l\'env')
+  console.warn(' .env.local introuvable — ANTHROPIC_API_KEY doit être dans l\'env')
 }
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 if (!apiKey) {
-  console.error('❌ ANTHROPIC_API_KEY manquante')
+  console.error('ANTHROPIC_API_KEY manquante')
   process.exit(1)
 }
 
@@ -79,10 +79,10 @@ SEMAINE 4 (2026-05-19) :
   Vendredi: Natation courte [swim · low, 30min, id:ddd-003]
 
 SEMAINE 5 (${FAKE_WEEK5_START}) :
-  ⚠️ AUCUNE SÉANCE — semaine vide
+  AUCUNE SÉANCE — semaine vide
 
 Tu as accès à des outils pour modifier directement le plan.
-Quand une semaine est marquée "⚠️ AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week.
+Quand une semaine est marquée "AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week.
 Tu es un coach expert — TU DÉCIDES du contenu des séances.
 Pour une semaine de deload : réduis le volume de 40-50%, intensité low/moderate.
 `
@@ -90,11 +90,11 @@ Pour une semaine de deload : réduis le volume de 40-50%, intensité low/moderat
 // ── Appel Anthropic ───────────────────────────────────────────
 
 async function runTest() {
-  console.log('\n🚀 Test coach-stream — add_week non-streaming\n')
+  console.log('\nTest coach-stream — add_week non-streaming\n')
 
   const client = new Anthropic({ apiKey })
 
-  console.log('📡 Appel Anthropic (non-streaming, with tools)...')
+  console.log('Appel Anthropic (non-streaming, with tools)...')
   const t0 = Date.now()
 
   const response = await client.messages.create({
@@ -109,7 +109,7 @@ async function runTest() {
   })
 
   const elapsed = Date.now() - t0
-  console.log(`✅ Réponse reçue en ${elapsed}ms`)
+  console.log(`Réponse reçue en ${elapsed}ms`)
   console.log(`   stop_reason : ${response.stop_reason}`)
   console.log(`   blocs       : ${response.content.length}`)
   console.log(`   tokens      : input=${response.usage.input_tokens} output=${response.usage.output_tokens}`)
@@ -146,9 +146,9 @@ async function runTest() {
 
   function assert(label: string, value: boolean) {
     if (value) {
-      console.log(`  ✅ ${label}`)
+      console.log(`  ${label}`)
     } else {
-      console.error(`  ❌ ÉCHEC : ${label}`)
+      console.error(`  ÉCHEC : ${label}`)
       passed = false
     }
   }
@@ -180,14 +180,14 @@ async function runTest() {
   // ── Résultat final ────────────────────────────────────────────
   console.log('\n══════════════════════════════════════════════')
   if (passed) {
-    console.log('🎉 TOUS LES TESTS PASSENT — route non-streaming prête')
+    console.log('TOUS LES TESTS PASSENT — route non-streaming prête')
   } else {
-    console.error('💥 DES TESTS ÉCHOUENT — vérifie les assertions ci-dessus')
+    console.error('DES TESTS ÉCHOUENT — vérifie les assertions ci-dessus')
     process.exit(1)
   }
 }
 
 runTest().catch(err => {
-  console.error('💥 Erreur inattendue:', err)
+  console.error('Erreur inattendue:', err)
   process.exit(1)
 })

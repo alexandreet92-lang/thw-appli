@@ -194,7 +194,7 @@ function enduranceRows(sport: SportType, blocks: Block[]): string {
       </div>
       <div class="row-dur">${esc(blockStructure(sport, b))}</div>
       <div class="row-target">${esc(target || '—')}</div>
-      <div class="row-hr">${hr ? `♥ ${esc(hr)}` : ''}</div>
+      <div class="row-hr">${hr ? `FC ${esc(hr)}` : ''}</div>
       <span class="tick" title="Cocher au stylo quand le bloc est terminé"></span>
     </div>`
   }).join('')
@@ -249,12 +249,12 @@ function bikeStrip(blocks: Block[]): string {
     </div>`
   }).join('')
   return `<div class="strip-wrap">
-    <div class="strip-cut">✂ — — — à découper · à coller sur le tube du cadre — — —</div>
+    <div class="strip-cut">— — — à découper · à coller sur le tube du cadre — — —</div>
     <div class="strip">
       <div class="strip-head">MÉMO</div>
       ${lines}
     </div>
-    <div class="strip-cut">✂ — — — — — — — — — — — — — — — — — — — — — — —</div>
+    <div class="strip-cut">— — — — — — — — — — — — — — — — — — — — — — —</div>
   </div>`
 }
 

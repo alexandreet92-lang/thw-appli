@@ -17,7 +17,7 @@
 //   bulle d'édition (km début/fin, watts, FC, params de fractionné) + durée
 //   estimée par la physique du cyclisme (cf. src/lib/gpx/elevation.ts).
 //
-// ⚠ D+ : TOUS les cumuls sont calculés sur la série d'altitude BRUTE
+// D+ : TOUS les cumuls sont calculés sur la série d'altitude BRUTE
 // (prop `profile`, tous les points du fichier) via src/lib/gpx/elevation.ts,
 // avec le même algorithme qu'à l'import. La série rééchantillonnée + lissée
 // ci-dessous ne sert QU'AU DESSIN et à la pente locale : elle écrase les

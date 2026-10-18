@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════════
 // Tracking comportemental — DÉSACTIVÉ PAR DÉFAUT.
 //
-// ⚠️ Ne collecte STRICTEMENT RIEN tant que les DEUX conditions ne sont pas
+// Ne collecte STRICTEMENT RIEN tant que les DEUX conditions ne sont pas
 // réunies : NEXT_PUBLIC_ANALYTICS_ENABLED === 'true'  ET  consentement analytics
 // donné par l'utilisateur. Garder le flag à `false` jusqu'à la mise en ligne de
 // la politique de confidentialité + du bandeau de consentement (analytics non

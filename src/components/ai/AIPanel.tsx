@@ -3218,7 +3218,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
         {plan.warnings.length > 0 && (
           <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 14 }}>
             {plan.warnings.map((w, i) => (
-              <p key={i} style={{ fontSize: 11, color: '#f97316', margin: i > 0 ? '4px 0 0' : 0, lineHeight: 1.5 }}>⚠ {w}</p>
+              <p key={i} style={{ fontSize: 11, color: '#f97316', margin: i > 0 ? '4px 0 0' : 0, lineHeight: 1.5 }}>{w}</p>
             ))}
           </div>
         )}
@@ -3613,7 +3613,7 @@ Même structure repas par repas. Augmentation progressive des glucides.
 ## J-1 (veille)
 **Objectif glucides : 10-12g/kg/jour**${carbsJ1 ? ` → soit ${carbsJ1}g` : ''}
 Même structure. Repas du soir : CRITIQUE — détailler précisément.
-⚠ Pas de fibres, pas de graisses, pas d'aliments inconnus ou à risque digestif.
+Pas de fibres, pas de graisses, pas d'aliments inconnus ou à risque digestif.
 
 ## Jour J — Avant le départ
 **Dernier repas principal** (environ ${lastMealHour < 0 ? lastMealHour + 24 + 'h la veille' : lastMealHour + 'h00'}) :
@@ -3630,9 +3630,9 @@ ${duringSection}
 **Soirée** : dernier repas pour compléter la récupération musculaire
 
 ## Points de vigilance personnalisés${nutritionExpLabel.includes('Jamais') ? `
-⚠ IMPORTANT : l'athlète n'a JAMAIS testé la nutrition pendant l'effort.
+IMPORTANT : l'athlète n'a JAMAIS testé la nutrition pendant l'effort.
 Ne JAMAIS introduire quelque chose de nouveau le jour J. Commencer par des quantités minimales lors d'entraînements de simulation avant la course.` : ''}${np?.allergies ? `
-⚠ ALLERGIES/INTOLÉRANCES : ${np.allergies} — vérifier CHAQUE aliment recommandé.` : ''}${np?.regime ? `
+ALLERGIES/INTOLÉRANCES : ${np.allergies} — vérifier CHAQUE aliment recommandé.` : ''}${np?.regime ? `
 Régime ${np.regime} — adapter toutes les sources de glucides en conséquence.` : ''}
 
 ## Prochaines étapes
@@ -3654,7 +3654,7 @@ FORMATAGE OBLIGATOIRE :
 - Pour chaque repas, liste chaque aliment avec sa quantité et ses glucides : **Riz blanc cuit** — 200g — 58g gluc.
 - À la fin de chaque jour, une ligne récapitulative : **TOTAL : XXXg glucides · XXg protéines · XXg lipides · XXXXkcal**
 - Mets en **gras** les aliments clés et les totaux
-- Utilise > pour les alertes et points de vigilance importants (ex : > ⚠ Pas de fibres la veille)
+- Utilise > pour les alertes et points de vigilance importants (ex : > Pas de fibres la veille)
 - N'utilise AUCUN emoji dans le plan.`
   }
 
@@ -4074,7 +4074,7 @@ FORMATAGE OBLIGATOIRE :
         } else if (/^[●\-•]/.test(t)) {
           const split = doc.splitTextToSize('  • ' + t.replace(/^[●\-•]\s*/, ''), contentW - 4)
           doc.text(split, margin + 2, y); y += split.length * 4
-        } else if (t.startsWith('⚠') || t.startsWith('>')) {
+        } else if (t.startsWith('>')) {
           doc.setTextColor(239, 68, 68)
           const split = doc.splitTextToSize(t.replace(/^>\s*/, ''), contentW)
           doc.text(split, margin, y); y += split.length * 4
@@ -4434,13 +4434,13 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <span style={{ color: gateData.zonesCount > 0 ? '#22c55e' : '#f97316' }}>{gateData.zonesCount > 0 ? '✓' : '⚠'}</span>
+            <span style={{ color: gateData.zonesCount > 0 ? '#22c55e' : '#f97316' }}>{gateData.zonesCount > 0 ? '✓' : '!'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>
               {gateData.zonesCount > 0 ? t(gateData.zonesCount > 1 ? 'aip.test.zonesConfiguredN' : 'aip.test.zonesConfigured1', { n: gateData.zonesCount }) : t('aip.test.zonesNotConfigured')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <span style={{ color: gateData.profileOk ? '#22c55e' : '#f97316' }}>{gateData.profileOk ? '✓' : '⚠'}</span>
+            <span style={{ color: gateData.profileOk ? '#22c55e' : '#f97316' }}>{gateData.profileOk ? '✓' : '!'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>
               {gateData.profileOk ? t('aip.test.profileOk') : t('aip.test.profileIncomplete')}
             </span>
@@ -4678,7 +4678,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             {report.fiabilite.facteurs.map((f, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11 }}>
                 <span style={{ color: f.status === 'ok' ? '#22c55e' : f.status === 'warning' ? '#f97316' : '#ef4444', flexShrink: 0, marginTop: 1 }}>
-                  {f.status === 'ok' ? '✓' : f.status === 'warning' ? '⚠' : '✗'}
+                  {f.status === 'ok' ? '✓' : f.status === 'warning' ? '!' : '✗'}
                 </span>
                 <span style={{ color: 'var(--ai-mid)' }}><strong>{f.label}</strong> — {f.impact}</span>
               </div>
@@ -4715,7 +4715,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.zonesImpact')}</p>
             {report.impact_zones.ecart_pct != null && (
               <span style={{ fontSize: 11, fontWeight: 700, color: report.impact_zones.mise_a_jour_necessaire ? '#f97316' : '#22c55e' }}>
-                {report.impact_zones.mise_a_jour_necessaire ? `⚠ ${t('aip.test.gap')} ${report.impact_zones.ecart_pct}%` : `✓ ${t('aip.test.upToDate')}`}
+                {report.impact_zones.mise_a_jour_necessaire ? `${t('aip.test.gap')} ${report.impact_zones.ecart_pct}%` : `✓ ${t('aip.test.upToDate')}`}
               </span>
             )}
           </div>
@@ -5079,7 +5079,7 @@ Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponi
       // Blessures actives : à prendre en compte dans l'analyse (adapte les conseils).
       const injuries = (injuriesRes.data ?? []) as { zone?: string; side?: string; structure?: string; severity?: string; phase?: string; onset_date?: string }[]
       const injuriesBlock = injuries.length > 0
-        ? `\n⚠️ BLESSURES ACTIVES (${injuries.length}) — tiens-en compte dans ton analyse et tes recommandations :\n${injuries.map(i => `- ${[i.zone, i.side, i.structure].filter(Boolean).join(' ')}${i.severity ? ` (sévérité ${i.severity})` : ''}${i.phase ? ` — phase ${i.phase}` : ''}${i.onset_date ? ` — depuis ${i.onset_date}` : ''}`).join('\n')}`
+        ? `\nBLESSURES ACTIVES (${injuries.length}) — tiens-en compte dans ton analyse et tes recommandations :\n${injuries.map(i => `- ${[i.zone, i.side, i.structure].filter(Boolean).join(' ')}${i.severity ? ` (sévérité ${i.severity})` : ''}${i.phase ? ` — phase ${i.phase}` : ''}${i.onset_date ? ` — depuis ${i.onset_date}` : ''}`).join('\n')}`
         : ''
 
       const apiPrompt = `Tu es un expert en analyse de séances d'entraînement et physiologie sportive.
@@ -6723,7 +6723,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       [...data.activities]
         .sort((a, b) => (b.tss ?? 0) - (a.tss ?? 0))
         .slice(0, 20)
-        .map(a => `- ${a.title ?? a.sport_type} (${a.started_at?.slice(0, 10)}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC ${a.average_heartrate ?? 'N/A'}bpm · ${a.avg_watts ? a.avg_watts + 'W' : ''}${a.is_race ? ' 🏆 COMPÉTITION' : ''}`)
+        .map(a => `- ${a.title ?? a.sport_type} (${a.started_at?.slice(0, 10)}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC ${a.average_heartrate ?? 'N/A'}bpm · ${a.avg_watts ? a.avg_watts + 'W' : ''}${a.is_race ? ' COMPÉTITION' : ''}`)
         .join('\n')
 
     const summaryText = (data: PeriodData, label: string) => `
@@ -6837,7 +6837,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <span style={{ color: 'var(--ai-mid)' }}>{totalCount > 0 ? t(totalCount > 1 ? 'aip.at.nSyncedPlural' : 'aip.at.nSyncedSingular', { n: totalCount }) : t('aip.at.noSynced')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <span style={{ color: plannedDates.size > 0 ? '#22c55e' : '#f97316' }}>{plannedDates.size > 0 ? '✓' : '⚠'}</span>
+            <span style={{ color: plannedDates.size > 0 ? '#22c55e' : '#f97316' }}>{plannedDates.size > 0 ? '✓' : '!'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>{plannedDates.size > 0 ? t('aip.at.plannedAvailable') : t('aip.at.noPlanned')}</span>
           </div>
         </div>
@@ -9149,7 +9149,7 @@ function TrainingPlanFlow({
             La création de programme d&apos;entraînement complet nécessite <strong>Zeus</strong>, le modèle le plus puissant de THW Coach. Il analyse en profondeur ton profil, tes données historiques et tes objectifs pour générer un programme périodisé sur-mesure.
           </p>
           <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 16px', lineHeight: 1.5 }}>
-            Active Zeus depuis le sélecteur de modèle (icône ⚡ dans l&apos;en-tête), puis relance cette action.
+            Active Zeus depuis le sélecteur de modèle (icône dans l&apos;en-tête), puis relance cette action.
           </p>
           <button
             onClick={onCancel}
@@ -14898,7 +14898,7 @@ async function enrichedAnalyserSemaine(
   const latestSommeil = metrics.length > 0 ? (metrics[metrics.length - 1] as any)?.sleep_score : null
   if (latestHrv != null && latestHrv < 30) riskScore += 10
   if (latestSommeil != null && latestSommeil < 60) riskScore += 5
-  const riskLevel = riskScore > 60 ? 'ÉLEVÉ 🔴' : riskScore > 35 ? 'MODÉRÉ 🟠' : 'FAIBLE 🟢'
+  const riskLevel = riskScore > 60 ? 'ÉLEVÉ' : riskScore > 35 ? 'MODÉRÉ' : 'FAIBLE'
 
   const nextRace = upcomingRaces[0] ?? null
   const daysToRace = nextRace ? Math.round((new Date(nextRace.date).getTime() - now.getTime()) / 86400000) : null
@@ -14922,43 +14922,43 @@ Tu ne fais pas un simple résumé — tu OBSERVES, DÉTECTES, ALERTES et RECOMMA
 
 STRUCTURE OBLIGATOIRE DE TON ANALYSE :
 
-## 📊 Bilan de la semaine
-Tableau markdown : Jour | Prévu | Réalisé | Status (✅/⚠️/❌) | Commentaire
+## Bilan de la semaine
+Tableau markdown : Jour | Prévu | Réalisé | Status (//) | Commentaire
 Score de compliance : X%
 Volume total : Xkm · Xh · TSS X
 Répartition par sport
 
-## ⚡ État de forme et charge d'entraînement
+## État de forme et charge d'entraînement
 - **CTL** (forme chronique) : ${ctlFinal} — interprète ce chiffre
 - **ATL** (fatigue aiguë) : ${atlFinal} — interprète
 - **TSB** (fraîcheur) : ${tsbFinal} — ${tsbFinal > 5 ? 'positif = frais' : tsbFinal < -10 ? 'négatif = fatigué' : 'neutre'}
-- **Monotonie** : ${monotonie} — ${monotonie > 2.0 ? '⚠️ ÉLEVÉE — variation insuffisante de la charge, risque de surmenage' : 'normale'}
-- **Strain** : ${strain} — ${strain > 4000 ? '⚠️ ÉLEVÉ — charge × monotonie excessive' : 'acceptable'}
+- **Monotonie** : ${monotonie} — ${monotonie > 2.0 ? 'ÉLEVÉE — variation insuffisante de la charge, risque de surmenage' : 'normale'}
+- **Strain** : ${strain} — ${strain > 4000 ? 'ÉLEVÉ — charge × monotonie excessive' : 'acceptable'}
 
-## 🚨 Score de risque : ${riskScore}/100 (${riskLevel})
+## Score de risque : ${riskScore}/100 (${riskLevel})
 Explique POURQUOI ce score. Quels facteurs contribuent. Si > 35, ALERTE l'athlète. Si > 60, recommande fortement de réduire la charge.
 
-## 📈 Tendances (4 semaines)
+## Tendances (4 semaines)
 TSS par semaine : S-4: ${weeklyTss4w[0]} → S-3: ${weeklyTss4w[1]} → S-2: ${weeklyTss4w[2]} → cette semaine: ${weeklyTss4w[3]}
 Rampe de charge : ${rampePct !== null ? `${rampePct > 0 ? '+' : ''}${rampePct}%` : 'non calculable'}
-${rampePct !== null && rampePct > 15 ? '⚠️ Rampe > 15% — progression trop rapide. Risque de blessure.' : ''}
+${rampePct !== null && rampePct > 15 ? 'Rampe > 15% — progression trop rapide. Risque de blessure.' : ''}
 Patterns sur 4 semaines : séances sautées, type drift, raccourcissements systématiques.
 
-## 🏋️ Récupération
+## Récupération
 ${metrics.length > 0 ? 'Analyse des métriques : HRV, sommeil, fatigue subjective.' : 'Aucune donnée de récupération — recommande de configurer le suivi quotidien.'}
 L'athlète assimile-t-il bien la charge ? Signes de sur-fatigue ?
 
-${nextRace ? `## 🏁 Objectif : ${nextRace.name} dans ${daysToRace} jours
+${nextRace ? `## Objectif : ${nextRace.name} dans ${daysToRace} jours
 La charge de cette semaine est-elle cohérente avec la préparation de cette course ?
 ${(daysToRace ?? 0) < 21 ? 'Phase de tapering potentielle — adapter la charge.' : ''}
-${(daysToRace ?? 0) < 7 ? "⚠️ Course dans moins d'une semaine — affûtage prioritaire." : ''}` : ''}
+${(daysToRace ?? 0) < 7 ? "Course dans moins d'une semaine — affûtage prioritaire." : ''}` : ''}
 
-## 🔧 Adaptations recommandées
+## Adaptations recommandées
 ${remainingPlanned.length > 0 ? `Il reste ${remainingPlanned.length} séances cette semaine. Pour CHAQUE séance :
 - La maintenir telle quelle / l'adapter (précise COMMENT) / la reporter
 - Justification basée sur le TSB, le score de risque, la récupération` : 'Pas de séance restante — recommandations pour la semaine prochaine.'}
 
-## 💡 3 recommandations clés
+## 3 recommandations clés
 Ultra-concrètes, chiffrées, basées sur les données de CETTE semaine.
 
 TON : Coach direct, factuel. Si tout va bien, félicite. Si c'est critique, n'hésite pas à dire STOP.
@@ -15667,12 +15667,12 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
   }
   if (tool_name === 'update_session') {
     const changes = Object.keys(inp).filter(k => k !== 'session_id').join(', ')
-    return { borderColor: '#f97316', emoji: '✎', label: 'Modifier une séance',
+    return { borderColor: '#f97316', emoji: '~', label: 'Modifier une séance',
       description: `Séance …${String(inp.session_id ?? '').slice(-8)} · Champs : ${changes || 'aucun'}` }
   }
   if (tool_name === 'delete_session') return {
     borderColor: '#ef4444', emoji: '✕', label: 'Supprimer une séance',
-    description: `⚠ Séance …${String(inp.session_id ?? '').slice(-8)} — action irréversible`,
+    description: `Séance …${String(inp.session_id ?? '').slice(-8)} — action irréversible`,
   }
   if (tool_name === 'move_session') {
     const newDay = typeof inp.new_day_index === 'number' ? (DAY_NAMES_FR[inp.new_day_index] ?? `J${inp.new_day_index}`) : ''
@@ -15730,7 +15730,7 @@ const TOOL_TINT: Record<ToolKind, string> = {
 function toolCallRow(tc: PendingToolCall): ToolRow {
   const m = toolCallMeta(tc)
   const kind = TOOL_KIND[tc.tool_name] ?? 'other'
-  return { kind, tint: TOOL_TINT[kind], title: m.label, sub: m.description.replace(/^⚠\s*/, '') }
+  return { kind, tint: TOOL_TINT[kind], title: m.label, sub: m.description }
 }
 
 // Composant : N tool calls empilés + boutons Appliquer / Annuler partagés
@@ -17074,11 +17074,11 @@ function SleepAdviceFlow({ onCancel, onRecordConv, onFollowUp }: {
       const sysPrompt = `Tu es un expert en optimisation du sommeil pour athlètes d'endurance.
 
 Structure :
-## 🛏️ Diagnostic (bon/perfectible/problématique + chiffres)
-## 🔍 Tes 3 saboteurs identifiés (avec preuves dans les données)
+## Diagnostic (bon/perfectible/problématique + chiffres)
+## Tes 3 saboteurs identifiés (avec preuves dans les données)
 ## ⏰ Ton heure limite d'entraînement (calcul depuis les données)
-## 💡 5 recommandations PERSONNALISÉES (pas de généralités — basées sur SES données)
-## 🎯 Priorité #1 (le changement avec le plus fort impact)
+## 5 recommandations PERSONNALISÉES (pas de généralités — basées sur SES données)
+## Priorité #1 (le changement avec le plus fort impact)
 Utilise **gras** pour les chiffres. Tableaux markdown si pertinent.`
 
       const userPr = `Analyse mon sommeil.
@@ -17151,7 +17151,7 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
     )
 
     const sleepStatus = !gateData || gateData.avgDuration === null ? 'var(--ai-dim)' : gateData.avgDuration >= 7.5 ? '#22c55e' : gateData.avgDuration >= 6.5 ? '#f97316' : '#ef4444'
-    const sleepLabel = !gateData || gateData.avgDuration === null ? 'Données insuffisantes' : gateData.avgDuration >= 7.5 ? '🟢 Bon sommeil' : gateData.avgDuration >= 6.5 ? '🟠 Sommeil perfectible' : '🔴 Déficit de sommeil'
+    const sleepLabel = !gateData || gateData.avgDuration === null ? 'Données insuffisantes' : gateData.avgDuration >= 7.5 ? 'Bon sommeil' : gateData.avgDuration >= 6.5 ? 'Sommeil perfectible' : 'Déficit de sommeil'
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
@@ -17198,7 +17198,7 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
 
         {gateData && gateData.nightsCount < 5 && (
           <p style={{ fontSize: 10, color: '#f97316', margin: '0 0 10px' }}>
-            ⚠ Moins de 5 nuits enregistrées — les conseils seront généraux. Connecte un wearable (Garmin, Whoop, Oura) pour des analyses personnalisées.
+            Moins de 5 nuits enregistrées — les conseils seront généraux. Connecte un wearable (Garmin, Whoop, Oura) pour des analyses personnalisées.
           </p>
         )}
 
@@ -17579,7 +17579,7 @@ function RecoveryAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
       // ── Build prompts ──
       const sysPrompt = `Tu es un expert en récupération sportive. Diagnostic complet en 3 niveaux.
 
-NIVEAU 1 — VERDICT : 🟢/🟠/🔴 avec HRV vs baseline et TSB.
+NIVEAU 1 — VERDICT ://avec HRV vs baseline et TSB.
 NIVEAU 2 — PATTERNS 28 JOURS : délai de récupération, seuil TSS qui déclenche dépression HRV, signaux précoces de surcharge. Chiffres précis.
 NIVEAU 3 — RECOMMANDATION IMMÉDIATE : pour chaque séance des 48h, verdict (faire/adapter/reporter). CTL ${ctlFinal}, ATL ${atlFinal}, TSB ${tsbFinal}, Risque ${riskScore}/100.
 Utilise des tableaux markdown. **Gras** pour les chiffres clés.`
@@ -17650,7 +17650,7 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
     )
 
     const verdictColor = !gateData || gateData.hrvDelta === null ? 'var(--ai-dim)' : gateData.hrvDelta >= 5 ? '#22c55e' : gateData.hrvDelta >= -10 ? '#f97316' : '#ef4444'
-    const verdictLabel = !gateData || gateData.hrvDelta === null ? 'Données insuffisantes' : gateData.hrvDelta >= 5 ? '🟢 Bien récupéré' : gateData.hrvDelta >= -10 ? '🟠 Récupération partielle' : '🔴 Fatigue significative'
+    const verdictLabel = !gateData || gateData.hrvDelta === null ? 'Données insuffisantes' : gateData.hrvDelta >= 5 ? 'Bien récupéré' : gateData.hrvDelta >= -10 ? 'Récupération partielle' : 'Fatigue significative'
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
@@ -18131,43 +18131,43 @@ Tu ne fais pas un simple résumé — tu OBSERVES, DÉTECTES, ALERTES et RECOMMA
 
 STRUCTURE OBLIGATOIRE DE TON ANALYSE :
 
-## 📊 Bilan de la semaine
-Tableau markdown : Jour | Prévu | Réalisé | Status (✅/⚠️/❌) | Commentaire
+## Bilan de la semaine
+Tableau markdown : Jour | Prévu | Réalisé | Status (//) | Commentaire
 Score de compliance : X%
 Volume total : Xkm · Xh · TSS X
 Répartition par sport
 
-## ⚡ État de forme et charge d'entraînement
+## État de forme et charge d'entraînement
 - **CTL** (forme chronique) : ${ctlFinal} — interprète ce chiffre
 - **ATL** (fatigue aiguë) : ${atlFinal} — interprète
 - **TSB** (fraîcheur) : ${tsbFinal} — ${tsbFinal > 5 ? 'positif = frais' : tsbFinal < -10 ? 'négatif = fatigué' : 'neutre'}
-- **Monotonie** : ${monotonie} — ${monotonie > 2.0 ? '⚠️ ÉLEVÉE — variation insuffisante de la charge, risque de surmenage' : 'normale'}
-- **Strain** : ${strain} — ${strain > 4000 ? '⚠️ ÉLEVÉ — charge × monotonie excessive' : 'acceptable'}
+- **Monotonie** : ${monotonie} — ${monotonie > 2.0 ? 'ÉLEVÉE — variation insuffisante de la charge, risque de surmenage' : 'normale'}
+- **Strain** : ${strain} — ${strain > 4000 ? 'ÉLEVÉ — charge × monotonie excessive' : 'acceptable'}
 
-## 🚨 Score de risque : ${riskScore}/100 (${riskLevel})
+## Score de risque : ${riskScore}/100 (${riskLevel})
 Explique POURQUOI ce score. Quels facteurs contribuent. Si > 35, ALERTE l'athlète. Si > 60, recommande fortement de réduire la charge.
 
-## 📈 Tendances (4 semaines)
+## Tendances (4 semaines)
 TSS par semaine : S-4: ${weeklyTss4w[0]} → S-3: ${weeklyTss4w[1]} → S-2: ${weeklyTss4w[2]} → cette semaine: ${weeklyTss4w[3]}
 Rampe de charge : ${rampePct !== null ? `${rampePct > 0 ? '+' : ''}${rampePct}%` : 'non calculable'}
-${rampePct !== null && rampePct > 15 ? '⚠️ Rampe > 15% — progression trop rapide. Risque de blessure.' : ''}
+${rampePct !== null && rampePct > 15 ? 'Rampe > 15% — progression trop rapide. Risque de blessure.' : ''}
 Patterns sur 4 semaines : séances sautées, type drift, raccourcissements systématiques.
 
-## 🏋️ Récupération
+## Récupération
 ${metrics.length > 0 ? 'Analyse des métriques : HRV, sommeil, fatigue subjective.' : 'Aucune donnée de récupération — recommande de configurer le suivi quotidien.'}
 L'athlète assimile-t-il bien la charge ? Signes de sur-fatigue ?
 
-${nextRace ? `## 🏁 Objectif : ${nextRace.name} dans ${daysToRace} jours
+${nextRace ? `## Objectif : ${nextRace.name} dans ${daysToRace} jours
 La charge de cette semaine est-elle cohérente avec la préparation de cette course ?
 ${(daysToRace ?? 0) < 21 ? 'Phase de tapering potentielle — adapter la charge.' : ''}
-${(daysToRace ?? 0) < 7 ? "⚠️ Course dans moins d'une semaine — affûtage prioritaire." : ''}` : ''}
+${(daysToRace ?? 0) < 7 ? "Course dans moins d'une semaine — affûtage prioritaire." : ''}` : ''}
 
-## 🔧 Adaptations recommandées
+## Adaptations recommandées
 ${remainingPlanned.length > 0 ? `Il reste ${remainingPlanned.length} séances cette semaine. Pour CHAQUE séance :
 - La maintenir telle quelle / l'adapter (précise COMMENT) / la reporter
 - Justification basée sur le TSB, le score de risque, la récupération` : 'Pas de séance restante — recommandations pour la semaine prochaine.'}
 
-## 💡 3 recommandations clés
+## 3 recommandations clés
 Ultra-concrètes, chiffrées, basées sur les données de CETTE semaine.
 
 TON : Coach direct, factuel. Si tout va bien, félicite. Si c'est critique, n'hésite pas à dire STOP.`
@@ -18433,7 +18433,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
         {/* Prochaine course */}
         {kpis.nextRace && (
           <div style={{ padding: '6px 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>🏁 {kpis.nextRace.name}</span>
+            <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>{kpis.nextRace.name}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: (kpis.daysToRace ?? 99) < 14 ? '#f97316' : 'var(--ai-accent)', fontFamily: 'var(--font-body)' }}>J-{kpis.daysToRace}</span>
           </div>
         )}
@@ -18814,9 +18814,9 @@ async function generateRacePDF(
     checkNewPage(40)
     addSubtitle('Répartition triathlon')
     const triRows = [
-      triRepartition.natation ? ['🏊 Natation', triRepartition.natation.objectif, triRepartition.natation.conseil] : null,
-      triRepartition.velo ? ['🚴 Vélo', triRepartition.velo.objectif, triRepartition.velo.conseil] : null,
-      triRepartition.cap ? ['🏃 CAP', triRepartition.cap.objectif, triRepartition.cap.conseil] : null,
+      triRepartition.natation ? ['Natation', triRepartition.natation.objectif, triRepartition.natation.conseil] : null,
+      triRepartition.velo ? ['Vélo', triRepartition.velo.objectif, triRepartition.velo.conseil] : null,
+      triRepartition.cap ? ['CAP', triRepartition.cap.objectif, triRepartition.cap.conseil] : null,
     ].filter(Boolean) as string[][]
 
     autoTable(doc, {
@@ -20224,7 +20224,7 @@ FORMAT JSON STRICT :
             {/* Compétitions */}
             {athletePreview.races.length > 0 && (
               <div style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: '#f97316', fontWeight: 600 }}>🏆 {athletePreview.races.length} compétition(s)</span>
+                <span style={{ fontSize: 10, color: '#f97316', fontWeight: 600 }}>{athletePreview.races.length} compétition(s)</span>
                 <div style={{ marginTop: 3 }}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {athletePreview.races.slice(0, 5).map((r: any, i: number) => (
@@ -20297,7 +20297,7 @@ FORMAT JSON STRICT :
                 cursor: 'pointer', fontWeight: meteoScenario === m ? 700 : 400,
                 fontFamily: 'var(--font-body)',
               }}>
-                {m === 'idéal' ? '☀️ Idéal' : m === 'chaud' ? '🌡️ Chaud' : m === 'froid' ? '🥶 Froid' : m === 'vent' ? '💨 Vent' : '🌧️ Pluie'}
+                {m === 'idéal' ? 'Idéal' : m === 'chaud' ? 'Chaud' : m === 'froid' ? 'Froid' : m === 'vent' ? 'Vent' : 'Pluie'}
               </button>
             ))}
           </div>
@@ -20644,7 +20644,7 @@ FORMAT JSON STRICT :
           {(['natation', 'velo', 'cap'] as const).map(disc => {
             const d = result.triathlon_repartition![disc]
             if (!d) return null
-            const label = disc === 'natation' ? '🏊 Natation' : disc === 'velo' ? '🚴 Vélo' : '🏃 CAP'
+            const label = disc === 'natation' ? 'Natation' : disc === 'velo' ? 'Vélo' : 'CAP'
             return (
               <div key={disc} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -20717,7 +20717,7 @@ FORMAT JSON STRICT :
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
-          📄 Exporter « {(result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'conservateur' ? 'Prudent' : (result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'agressif' ? 'Agressif' : 'Optimal'} » en PDF
+          Exporter « {(result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'conservateur' ? 'Prudent' : (result.scenarios?.find(s => s.nom === activeScenario) ?? result.scenarios?.[0])?.nom === 'agressif' ? 'Agressif' : 'Optimal'} » en PDF
         </button>
         <button onClick={onCancel} style={{
           padding: '9px 16px', borderRadius: 'var(--r-sm)',
@@ -20886,7 +20886,7 @@ function RaceStrategyView({ data, bare = false }: { data: RaceStrategyData; bare
             if (!d) return null
             return (
               <div key={disc} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--ai-text)' }}>{disc === 'natation' ? '🏊 Natation' : disc === 'velo' ? '🚴 Vélo' : '🏃 CAP'}</span>
+                <span style={{ fontSize: 11, color: 'var(--ai-text)' }}>{disc === 'natation' ? 'Natation' : disc === 'velo' ? 'Vélo' : 'CAP'}</span>
                 <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--ai-accent)' }}>{d.objectif}</span>
               </div>
             )
@@ -21272,7 +21272,7 @@ export default function AIPanel({
   const [userAvatarUrl,    setUserAvatarUrl]    = useState<string | null>(null)
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
-  // Retour qualité 👍/👎 par message (couche d'apprentissage — phase 1)
+  // Retour qualité/par message (couche d'apprentissage — phase 1)
   const [feedbackByMsg,    setFeedbackByMsg]    = useState<Record<string, 1 | -1>>({})
   // Statut « le coach consulte tes données » par message en cours de streaming
   const [toolStatusByMsg,  setToolStatusByMsg]  = useState<Record<string, string>>({})
@@ -22452,7 +22452,7 @@ export default function AIPanel({
           if (ps.conseils.length) {
             lignes.push('', '**Conseils d\'adaptation :**', ...ps.conseils.map(c => `- ${c}`))
           }
-          lignes.push('', 'Les 4 premières semaines sont détaillées (blocs, intensités) ; les suivantes seront affinées à l\'approche. 👉 [Voir le plan dans Planning](/planning)')
+          lignes.push('', 'Les 4 premières semaines sont détaillées (blocs, intensités) ; les suivantes seront affinées à l\'approche. [Voir le plan dans Planning](/planning)')
           summary = lignes.join('\n')
         } else {
           summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
@@ -22889,10 +22889,10 @@ export default function AIPanel({
       setConvs(prev => prev.map(c => c.id === cid
         ? { ...c, msgs: c.msgs.map(m => m.id === msgId && m.planProposal ? { ...m, planProposal: { ...m.planProposal, status: 'validated' as const } } : m), updatedAt: Date.now() }
         : c))
-      appendMsg(`✓ **Plan ajouté à ton planning** — ${rows.length} séances enregistrées. 👉 [Voir dans Planning](/planning)`)
+      appendMsg(`✓ **Plan ajouté à ton planning** — ${rows.length} séances enregistrées. [Voir dans Planning](/planning)`)
       window.dispatchEvent(new CustomEvent('thw:sessions-changed'))
     } catch (e) {
-      appendMsg(`⚠️ L'enregistrement du plan a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessaie.`)
+      appendMsg(`L'enregistrement du plan a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessaie.`)
     }
   }, [model])
 
@@ -23140,13 +23140,13 @@ export default function AIPanel({
 
       // ── 429 Quota dépassé — message convivial dans le chat ──────
       if (res.status === 429) {
-        let quotaMsg = '⚠️ **Quota mensuel atteint.** Tu as utilisé toutes tes interactions IA ce mois-ci.\n\n👉 [Passer à un plan supérieur →](/settings/subscription)'
+        let quotaMsg = '**Quota mensuel atteint.** Tu as utilisé toutes tes interactions IA ce mois-ci.\n\n[Passer à un plan supérieur →](/settings/subscription)'
         try {
           const qd = await res.json() as { used?: number; limit?: number; tier?: string; reset_at?: string }
           const tierLabel = qd.tier === 'pro' ? 'Pro' : qd.tier === 'expert' ? 'Expert' : 'Premium'
           if (qd.reset_at) {
             const resetDate = new Date(qd.reset_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long' })
-            quotaMsg = `⚠️ **Quota mensuel atteint** — ${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés (plan ${tierLabel}).\n\nRemise à zéro le **${resetDate}**.\n\n👉 [Améliorer mon abonnement →](/settings/subscription)`
+            quotaMsg = `**Quota mensuel atteint** — ${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés (plan ${tierLabel}).\n\nRemise à zéro le **${resetDate}**.\n\n[Améliorer mon abonnement →](/settings/subscription)`
           }
         } catch { /* fallback */ }
         const quotaErrMsg: AIMsg = { id: genId(), role: 'assistant', content: quotaMsg, ts: Date.now() }
@@ -23439,7 +23439,7 @@ export default function AIPanel({
         // Erreur serveur explicite (ex. "IA: …") → on l'affiche telle quelle pour diagnostic
         else if (!/^http \d+$/i.test(e.message)) errText = e.message
       }
-      const errContent = `⚠️ ${errText}`
+      const errContent = `${errText}`
       const err: AIMsg = { id: genId(), role: 'assistant', content: errContent, ts: Date.now() }
       setConvs(prev => prev.map(c =>
         c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
@@ -25087,7 +25087,7 @@ export default function AIPanel({
 
               {/* Parcours en cours d'analyse */}
               {attachParsing && (
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '4px 12px 0', padding: 0 }}>🗺️ Analyse du parcours…</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '4px 12px 0', padding: 0 }}>Analyse du parcours…</p>
               )}
 
               {/* Attachment error */}
@@ -25098,7 +25098,7 @@ export default function AIPanel({
               {/* Quota stockage discussion atteint → chat bloqué */}
               {imgOverBudget && (
                 <div style={{ margin: '6px 12px 0', padding: '9px 12px', borderRadius: 'var(--r-sm)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: 'var(--ai-text)', lineHeight: 1.4 }}>
-                  📷 Stockage photos de cette discussion atteint ({fmtBytes(imgBudget)}). Ouvre une <strong>nouvelle discussion</strong> pour continuer à envoyer des photos.
+                  Stockage photos de cette discussion atteint ({fmtBytes(imgBudget)}). Ouvre une <strong>nouvelle discussion</strong> pour continuer à envoyer des photos.
                 </div>
               )}
               {/* Jauge de stockage discutée (affichée dès qu'on approche la limite) */}

@@ -152,7 +152,7 @@ export async function POST(req: Request) {
 
           <tr>
             <td align="center" style="padding: 8px 32px 32px;">
-              <p style="margin: 0; font-size: 12px; color: #94A3B8; line-height: 1.5;">🔒 Paiement sécurisé via Stripe<br>Lien valide pendant 24 heures</p>
+              <p style="margin: 0; font-size: 12px; color: #94A3B8; line-height: 1.5;">Paiement sécurisé via Stripe<br>Lien valide pendant 24 heures</p>
             </td>
           </tr>
 

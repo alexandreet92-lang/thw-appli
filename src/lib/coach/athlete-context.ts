@@ -245,7 +245,7 @@ export async function buildAthleteContext(
   if (activities56.length) {
     L.push(`\nCHARGE (calculée sur 8 sem.) :`)
     L.push(`  CTL (forme) ${load.ctlFinal} · ATL (fatigue) ${load.atlFinal} · TSB (fraîcheur) ${load.tsbFinal} ${load.tsbFinal > 5 ? '(frais)' : load.tsbFinal < -10 ? '(fatigué)' : '(neutre)'}`)
-    L.push(`  Monotonie ${load.monotonie}${load.monotonie > 2.0 ? ' ⚠️' : ''} · Strain ${load.strain}${load.strain > 4000 ? ' ⚠️' : ''} · TSS 7j ${load.tss7d}`)
+    L.push(`  Monotonie ${load.monotonie}${load.monotonie > 2.0 ? ' (ALERTE)' : ''} · Strain ${load.strain}${load.strain > 4000 ? ' (ALERTE)' : ''} · TSS 7j ${load.tss7d}`)
     L.push(`  TSS/sem (4 dern.) ${load.weekly.join(' → ')}${load.rampePct !== null ? ` · Rampe ${load.rampePct > 0 ? '+' : ''}${load.rampePct}%` : ''}`)
     L.push(`  Score de risque ${load.risk}/100 (${load.riskLabel})`)
   }
@@ -258,7 +258,7 @@ export async function buildAthleteContext(
       const d = a.started_at ? new Date(a.started_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit' }) : '?'
       const dur = a.moving_time_s ? `${Math.round(a.moving_time_s / 60)}min` : ''
       const dist = a.distance_m ? `${(a.distance_m / 1000).toFixed(1)}km` : ''
-      const seg = [d, a.sport_type ?? '', dur, dist, a.tss != null ? `TSS ${a.tss}` : '', a.average_heartrate ? `${a.average_heartrate}bpm` : '', a.avg_watts ? `${a.avg_watts}W` : '', a.is_race ? '🏁course' : ''].filter(Boolean)
+      const seg = [d, a.sport_type ?? '', dur, dist, a.tss != null ? `TSS ${a.tss}` : '', a.average_heartrate ? `${a.average_heartrate}bpm` : '', a.avg_watts ? `${a.avg_watts}W` : '', a.is_race ? 'course' : ''].filter(Boolean)
       L.push(`  - ${seg.join(' · ')}`)
     }
   }
@@ -287,7 +287,7 @@ export async function buildAthleteContext(
 
   // Blessures actives
   if (injuries.length) {
-    L.push(`\n⚠️ BLESSURES ACTIVES (${injuries.length}) — adapte les séances en conséquence :`)
+    L.push(`\nBLESSURES ACTIVES (${injuries.length}) — adapte les séances en conséquence :`)
     for (const inj of injuries) {
       const seg = [inj.zone ?? '', inj.side ?? '', inj.structure ?? '', inj.severity ? `sévérité ${inj.severity}` : '', inj.phase ?? '', inj.intensity_effort != null ? `douleur effort ${inj.intensity_effort}/10` : ''].filter(Boolean)
       L.push(`  - ${seg.join(' · ')}`)

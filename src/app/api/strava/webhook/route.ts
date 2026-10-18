@@ -200,7 +200,7 @@ export async function POST(req: Request) {
   if (error) {
     console.error(`[strava-webhook] Upsert error: ${error.message}`)
   } else {
-    console.log(`[strava-webhook] ✅ Activity ${activityId} upserted for user ${userId}`)
+    console.log(`[strava-webhook] Activity ${activityId} upserted for user ${userId}`)
     // Déclenchement records (non bloquant, ignoré si pas bike)
     if (upserted?.id) {
       await triggerRecordsProcessing({

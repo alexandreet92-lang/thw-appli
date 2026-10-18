@@ -348,7 +348,7 @@ export default function CoachAthletes() {
         <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 50, background: 'var(--text)', color: 'var(--bg)', borderRadius: 'var(--r-md)', padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.4)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 24px)' }}>
           <span style={{ fontWeight: 800, fontSize: 13.5 }}>{sel.size > 1 ? t('w1h.selected_plural', { n: sel.size }) : t('w1h.selected_singular', { n: sel.size })}</span>
           <button onClick={() => router.push(`/coach/studio?athletes=${[...sel].join(',')}`)} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>{t('w1h.launch_system')}</button>
-          <button onClick={() => { const g = prompt(t('w1h.prompt_group_name')); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>🗂 {t('w1h.group')}</button>
+          <button onClick={() => { const g = prompt(t('w1h.prompt_group_name')); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>{t('w1h.group')}</button>
           <button onClick={() => setSel(new Set())} style={{ ...bulkBtn, background: 'transparent' }}>{t('w1h.cancel')}</button>
         </div>
       )}

@@ -292,7 +292,7 @@ export default function CoachNutritionStrategy({ athleteName, activePlan, onSave
             <span style={{ fontSize: 11, fontWeight: 700, color: source === 'ai' ? 'var(--primary)' : 'var(--text-dim)', background: source === 'ai' ? 'var(--primary-dim)' : 'var(--bg-card2)', padding: '3px 9px', borderRadius: 'var(--r-pill)' }}>{source === 'ai' ? t('w2b.proposedByAI') : t('w2b.manualCalc')}</span>
           </div>
           {rationale && <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 14px' }}>{rationale}</p>}
-          {warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 8px', fontWeight: 600 }}>⚠ {w}</p>)}
+          {warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 8px', fontWeight: 600 }}>{w}</p>)}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22, marginTop: 8 }}>
             <MacroGauges week={currentWeek} />

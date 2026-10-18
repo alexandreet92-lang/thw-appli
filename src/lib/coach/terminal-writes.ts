@@ -4,7 +4,7 @@
 // Ici on les rend exécutables SANS écran, pour les ROUTINES / le STUDIO
 // autonomes (construire/ajuster un plan tout seul).
 //
-// ⚠️ Utilisés avec le client SERVICE (bypass RLS) → on IMPOSE le garde-fou
+// Utilisés avec le client SERVICE (bypass RLS) → on IMPOSE le garde-fou
 // user_id sur CHAQUE opération (l'IA ne peut toucher QUE l'athlète ciblé).
 // Le parcours interactif (/api/coach-stream → carte de validation) reste
 // INCHANGÉ : ce module n'est branché que dans run-headless.

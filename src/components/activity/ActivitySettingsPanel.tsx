@@ -144,7 +144,7 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
               const on = hidden.includes(c)
               return (
                 <button key={c} onClick={() => toggleHidden(c)} aria-pressed={on} style={amChip(on)}>
-                  {on ? '🔒 ' : ''}{t(`w3f.hidden_${c}`)}
+                  {t(`w3f.hidden_${c}`)}
                 </button>
               )
             })}
@@ -225,7 +225,7 @@ export function ActivitySettingsPanel({ activityId, sport }: { activityId: strin
                   border: on ? '2px solid var(--danger)' : '1px solid var(--border-mid)',
                   background: on ? 'var(--danger-soft)' : 'transparent',
                   color: on ? 'var(--danger)' : 'var(--text-mid)' }}>
-                {on ? '🔒 ' : ''}{t(`w3f.hidden_${c}`)}
+                {t(`w3f.hidden_${c}`)}
               </button>
             )
           })}

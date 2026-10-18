@@ -40,7 +40,7 @@ export async function requireAdmin(
   // ── Cas 1 : variable d'env manquante ──────────────────────────
   if (!adminEmail) {
     console.error(
-      "[marketing/auth] ❌ ADMIN_EMAIL n'est PAS défini dans les variables d'environnement Vercel.",
+      "[marketing/auth] ADMIN_EMAIL n'est PAS défini dans les variables d'environnement Vercel.",
       "→ Action requise : Settings > Environment Variables > ajouter ADMIN_EMAIL=votre@email.com",
       `(user authentifié : ${user.email ?? "inconnu"})`
     );
@@ -56,6 +56,6 @@ export async function requireAdmin(
   }
 
   // ── Accès autorisé ────────────────────────────────────────────
-  console.log(`[marketing/auth] ✅ Accès autorisé — ${user.email}`);
+  console.log(`[marketing/auth] Accès autorisé — ${user.email}`);
   return null;
 }

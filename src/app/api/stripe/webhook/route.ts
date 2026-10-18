@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════════
 // POST /api/stripe/webhook
 // Handler Stripe — vérifie la signature, gère les events.
-// ⚠️ Pas d'auth utilisateur : protégé par signature Stripe.
-// ⚠️ Body lu en raw text (req.text()) pour la vérification.
+// Pas d'auth utilisateur : protégé par signature Stripe.
+// Body lu en raw text (req.text()) pour la vérification.
 // ══════════════════════════════════════════════════════════════
 
 export const runtime = 'nodejs'

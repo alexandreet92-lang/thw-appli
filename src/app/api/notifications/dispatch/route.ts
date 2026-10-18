@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
       } else if (r.date === plus(3)) {
         await fire(uid, 'competitions.j3', { title: 'Compétition dans 3 jours', body: `${name} : derniers préparatifs.`, url: '/planning', dedupKey: `comp-j3-${r.date}-${name}`, once: true })
       } else if (r.date === plus(1)) {
-        await fire(uid, 'competitions.j1', { title: "C'est demain !", body: `${name} a lieu demain. Repos et confiance 💪`, url: '/planning', dedupKey: `comp-j1-${r.date}-${name}`, once: true })
+        await fire(uid, 'competitions.j1', { title: "C'est demain !", body: `${name} a lieu demain. Repos et confiance`, url: '/planning', dedupKey: `comp-j1-${r.date}-${name}`, once: true })
       }
       if (r.date === plus(1) || r.date === plus(2)) {
         await fire(uid, 'nutrition.recharge_glucidique', { title: 'Recharge glucidique', body: `${name} approche : pense à recharger tes réserves de glycogène.`, url: '/nutrition', dedupKey: `recharge-${r.date}-${name}`, once: true })
@@ -223,7 +223,7 @@ export async function GET(req: NextRequest) {
   for (const uid of userIds) {
     await fire(uid, 'entrainement.programme_matin', { title: 'Ton programme du jour', body: 'Ouvre ton briefing du matin pour voir le plan du jour.', url: '/briefing', dedupKey: `matin-${today}` })
     await fire(uid, 'recuperation.rappel_hrv', { title: 'Mesure HRV', body: 'Pense à mesurer ta HRV au réveil pour ajuster ta charge.', url: '/recovery', dedupKey: `hrv-${today}` })
-    await fire(uid, 'nutrition.hydratation', { title: 'Hydratation', body: "Objectif du jour : bien t'hydrater 💧", url: '/nutrition', dedupKey: `hydra-${today}` })
+    await fire(uid, 'nutrition.hydratation', { title: 'Hydratation', body: "Objectif du jour : bien t'hydrater", url: '/nutrition', dedupKey: `hydra-${today}` })
     await fire(uid, 'nutrition.rappel_repas', { title: 'Repas', body: 'Pense à bien répartir tes repas et tes apports aujourd’hui.', url: '/nutrition', dedupKey: `repas-${today}` })
     await fire(uid, 'systeme.astuce', { title: 'Astuce du jour', body: TIPS[dayOfYear % TIPS.length], url: '/', dedupKey: `astuce-${today}` })
     if (isMonday) await fire(uid, 'performance.resume_hebdo', { title: 'Résumé de la semaine', body: 'Ton bilan charge & progression de la semaine est prêt.', url: '/performance', dedupKey: `hebdo-${today}`, once: true })

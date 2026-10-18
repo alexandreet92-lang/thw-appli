@@ -293,7 +293,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
         {/* Other file */}
         {!loadFile && displayFile && !isGpxName(displayFile.name) && (
           <div style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-            <span style={{ fontSize:16 }}>📄</span>
+            
             <span style={{ flex:1,fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{displayFile.name}</span>
             {!displayFile.isLocal && (
               <a href={displayFile.url} download={displayFile.name} target="_blank" rel="noopener noreferrer"

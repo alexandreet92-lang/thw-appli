@@ -1096,7 +1096,7 @@ export default function BriefingPage() {
                 display: 'flex', alignItems: 'center', gap: 7,
               }}
             >
-              <span style={{ fontSize: 16 }}>📡</span>
+              
               {instaApiSyncing ? t('briefing.syncing') : t('briefing.syncInstagram')}
             </button>
 
@@ -1110,7 +1110,7 @@ export default function BriefingPage() {
           {/* Statut / erreur Instagram */}
           <div style={{ marginBottom: 20, minHeight: 18 }}>
             {instaApiError && (
-              <span style={{ fontSize: 12, color: 'var(--danger)' }}>⚠ {instaApiError}</span>
+              <span style={{ fontSize: 12, color: 'var(--danger)' }}>{instaApiError}</span>
             )}
             {!instaApiError && instaApiSnapshot?.snapshot_date && (
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
@@ -1425,7 +1425,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
 
       {/* Why it works */}
       <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', borderTop: '1px solid var(--border, rgba(0,0,0,0.06))', paddingTop: 8 }}>
-        💡 {idea.why_it_works}
+        {idea.why_it_works}
       </div>
 
       {/* Copier */}
@@ -1553,10 +1553,10 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
                     {p.caption_excerpt}
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                    <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
-                    <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
-                    <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
-                    {p.comments != null && <span>💬 {p.comments}</span>}
+                    <span>{p.likes.toLocaleString(currentLocale())} likes</span>
+                    <span>{p.saves.toLocaleString(currentLocale())} saves</span>
+                    <span>{p.reach.toLocaleString(currentLocale())} portée</span>
+                    {p.comments != null && <span>{p.comments}</span>}
                   </div>
                 </div>
               </div>

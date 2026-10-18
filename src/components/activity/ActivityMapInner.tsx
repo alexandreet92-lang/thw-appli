@@ -10,7 +10,7 @@ import 'leaflet/dist/leaflet.css'
 // Drapeau à damier (arrivée) — petite bulle sans image externe (divIcon HTML).
 const FINISH_ICON = L.divIcon({
   className: '',
-  html: '<div style="font-size:19px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">🏁</div>',
+  html: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))"><path d="M5 21V4"/><path d="M5 4h14l-3 4.5 3 4.5H5" fill="#fff"/></svg>',
   iconSize: [20, 20],
   iconAnchor: [3, 19],
 })
@@ -141,7 +141,7 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
               radius={6}
               pathOptions={{ fillColor: '#10B981', fillOpacity: 1, color: 'white', weight: 2 }}
             />
-            {/* Arrivée — drapeau à damier 🏁 */}
+            {/* Arrivée — drapeau à damier */}
             <Marker position={positions[positions.length - 1]} icon={FINISH_ICON} />
 
             <FitBounds points={points} bottomInset={bottomInset} />

@@ -2,7 +2,7 @@
 
 > **Statut : DOCUMENT MÉTHODE (avancée, exigeante).** Choix = **B1 §3** ; zones/allures = **B4 §3-§4** ; charge = **B5** ; séances = **B7 §1** ; récup = **B8** ; profil = **B3**.
 > **Mapping charge :** allures sub-seuil (B4) → SM/SN 〔HYP B5 §1.2〕.
-> ⚠️ **Avertissement de cadrage (l'IA doit le dire) :** méthode développée pour des **coureurs d'élite à très haut volume**, fortement **dépendante de la mesure du lactate**. Mal transposée, elle vire au surmenage. À ne proposer qu'à un public adapté (§2), en version ajustée pour les amateurs.
+> **Avertissement de cadrage (l'IA doit le dire) :** méthode développée pour des **coureurs d'élite à très haut volume**, fortement **dépendante de la mesure du lactate**. Mal transposée, elle vire au surmenage. À ne proposer qu'à un public adapté (§2), en version ajustée pour les amateurs.
 
 ---
 

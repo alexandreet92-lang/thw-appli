@@ -7,16 +7,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const SPORT_EMOJI: Record<Sport, string> = {
-  running:   '🏃',
-  cycling:   '🚴',
-  swim:      '🏊',
-  triathlon: '🏅',
-  hyrox:     '🏋️',
-  rowing:    '🚣',
-  gym:       '💪',
-}
-
 export const SPORT_LABEL: Record<Sport, string> = {
   running:   'Running',
   cycling:   'Vélo',

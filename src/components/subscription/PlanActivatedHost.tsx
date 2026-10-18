@@ -165,7 +165,7 @@ export function PlanActivatedHost() {
           onClick={() => setTier(null)}
           style={{ width: '100%', marginTop: 22, height: 48, borderRadius: 'var(--r-md)', border: 'none', background: accent, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
         >
-          C'est parti 🚀
+          C'est parti
         </button>
       </div>
     </div>

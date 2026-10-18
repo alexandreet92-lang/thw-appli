@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         { user_id: userId, bonus_tokens: newBalance, updated_at: now }, { onConflict: 'user_id' },
       )
       void notifyUser(userId, 'tokens.pack_credite', {
-        title: 'Tokens ajoutés ✅',
+        title: 'Tokens ajoutés',
         body: `${product.amount.toLocaleString('fr-FR')} tokens ont été crédités sur ton compte.`,
         url: '/settings/subscription', dedupKey: `iap-${ev.id ?? product.amount}`, once: true,
       })

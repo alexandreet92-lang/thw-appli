@@ -222,7 +222,7 @@ export async function processBikeActivityRecords(
       const best = allTimeBeaten[0]
       const extra = allTimeBeaten.length > 1 ? ` (+${allTimeBeaten.length - 1} autre${allTimeBeaten.length > 2 ? 's' : ''})` : ''
       void notifyUser(userId, 'performance.progression', {
-        title: 'Nouveau record 💥',
+        title: 'Nouveau record',
         body: `${best.display} à ${best.watts} W — nouveau record all-time${extra} !`,
         url: '/performance',
         dedupKey: `pr-${activityId}`,

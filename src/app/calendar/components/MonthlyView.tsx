@@ -75,7 +75,7 @@ function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeav
 
         {fetched && fileName && !isGpx && fileUrl && (
           <div style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',borderRadius: 'var(--r-sm)',background:'var(--bg-card2)',marginBottom:8 }}>
-            <span style={{ fontSize:12 }}>📄</span>
+            
             <span style={{ fontSize:10,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{fileName}</span>
           </div>
         )}

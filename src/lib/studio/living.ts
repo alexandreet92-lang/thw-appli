@@ -61,7 +61,7 @@ export async function detectHealthFlags(sb: SupabaseClient, userId: string): Pro
 export async function readHealthGuard(sb: SupabaseClient, userId: string): Promise<string> {
   const bits = await detectHealthFlags(sb, userId)
   if (!bits.length) return ''
-  return `\n\n⚠️ GARDE-FOU SANTÉ ACTIF — ${bits.join(' ; ')}. Tu DOIS brider la charge : privilégie le repos ou une semaine d'allègement, évite toute intensité ou volume élevés, adapte ou reporte les séances dures, et explique clairement pourquoi. La sécurité de l'athlète prime sur l'objectif.`
+  return `\n\nGARDE-FOU SANTÉ ACTIF — ${bits.join(' ; ')}. Tu DOIS brider la charge : privilégie le repos ou une semaine d'allègement, évite toute intensité ou volume élevés, adapte ou reporte les séances dures, et explique clairement pourquoi. La sécurité de l'athlète prime sur l'objectif.`
 }
 
 // Bloc complet (garde-fou + mémoire) à ajouter au rôle de chaque agent.

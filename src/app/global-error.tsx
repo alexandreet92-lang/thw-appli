@@ -53,7 +53,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <html lang={lang}>
       <body style={{ margin: 0, minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0b0b0f', color: '#e8e8ea', fontFamily: 'var(--font-body)' }}>
         <div style={{ maxWidth: 440, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>⚠️</div>
+          
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>
             {isChunk ? tx.updating : tx.error}
           </h1>

@@ -242,7 +242,7 @@ TSS cumulé semaine avant cette séance : ${tssWeekBefore}pts
 
 CHARGE D'ENTRAÎNEMENT (PMC) LE JOUR DE LA SÉANCE :
 ${body.load
-  ? `CTL (forme, chronique 42j) : ${body.load.ctl} · ATL (fatigue, aiguë 7j) : ${body.load.atl} · TSB (fraîcheur = CTL−ATL) : ${body.load.tsb} → « ${body.load.verdict} »${body.load.overload ? ' ⚠️ SURCHARGE' : ''}
+  ? `CTL (forme, chronique 42j) : ${body.load.ctl} · ATL (fatigue, aiguë 7j) : ${body.load.atl} · TSB (fraîcheur = CTL−ATL) : ${body.load.tsb} → « ${body.load.verdict} »${body.load.overload ? ' SURCHARGE' : ''}
 Tendance : TSB il y a 7 jours = ${body.load.tsbPrev7 ?? 'n/a'} (TSB ${body.load.trend}) · forme (CTL) ${body.load.ctlTrend}`
   : 'non disponible (historique insuffisant)'}
 

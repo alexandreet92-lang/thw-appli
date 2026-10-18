@@ -174,7 +174,7 @@ export async function syncNutritionForDate(
     await sb.from('notifications').insert({
       user_id: userId,
       type: 'nutrition_adapt',
-      title: '⚡ Plan nutrition ajusté',
+      title: 'Plan nutrition ajusté',
       body,
       link: '/nutrition',
       dedup_key: dedupKey,

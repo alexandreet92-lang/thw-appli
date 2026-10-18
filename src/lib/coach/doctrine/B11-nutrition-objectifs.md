@@ -5,7 +5,7 @@ Module B9 (socle : fuel for the work required, disponibilité énergétique, mac
 > `SI conflit compo vs santé/disponibilité énergétique → santé gagne, sans exception`
 > `SI l'utilisateur n'a pas demandé d'objectif compo → ne pas en proposer ; ne JAMAIS proposer un déficit spontanément`
 
-⚠️ La §3 (déficit) suppose un GATE EN CODE (profil + dépistage + refus en sortie). Sans ce gate, §3 reste désactivée côté produit. Ce fichier est la défense en profondeur, pas la barrière.
+La §3 (déficit) suppose un GATE EN CODE (profil + dépistage + refus en sortie). Sans ce gate, §3 reste désactivée côté produit. Ce fichier est la défense en profondeur, pas la barrière.
 
 ## 1. OBJECTIF & RÉALISME
 | objectif | rythme réaliste |

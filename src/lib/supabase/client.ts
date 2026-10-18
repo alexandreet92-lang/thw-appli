@@ -57,7 +57,7 @@ function wrapMutationBuilder(builder: any, silent: boolean): any {
   })
 }
 
-// ⚠️ SINGLETON obligatoire. `createClient()` est appelé dans quasiment tous les
+// SINGLETON obligatoire. `createClient()` est appelé dans quasiment tous les
 // composants/pages, souvent à chaque navigation. Sans cache, CHAQUE appel créait
 // un nouveau GoTrueClient (auto-refresh du token + écouteurs + detectSessionInUrl)
 // jamais nettoyé → au fil des navigations, des dizaines de clients + timers

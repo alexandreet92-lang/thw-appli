@@ -4,13 +4,13 @@
 // autorisent la consultation (confidentialité gérée côté RPC activity_feed).
 // Mobile : vue plein écran (en-tête rond retour / recherche d'athlètes),
 // page gris chaud + cartes blanches : auteur, titre, statistiques, carte,
-// bravos (👏) et commentaires. Clic = détail LECTURE SEULE (page training).
+// bravos () et commentaires. Clic = détail LECTURE SEULE (page training).
 // Entrée en cascade, chargement continu en bas de liste, pression .97.
 // ══════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, UserPlus, GraduationCap, MessageCircle, Check, Trophy, Users } from 'lucide-react'
+import { Hand, ChevronLeft, UserPlus, GraduationCap, MessageCircle, Check, Trophy, Users } from 'lucide-react'
 import { ReadOnlyActivityDetail } from '@/components/activity/ReadOnlyActivityDetail'
 import { PeopleSearchSheet } from './PeopleSearchSheet'
 import { CommentsSheet } from './CommentsSheet'
@@ -274,12 +274,12 @@ function FeedCard({ a, index, onOpen, canFollow, isFollowing, onToggleFollow, en
         )}
       </button>
 
-      {/* Engagement : bravos 👏 + commentaires */}
+      {/* Engagement : bravos + commentaires */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px 8px' }}>
         <button type="button" onClick={() => { setPopN(n => n + 1); onKudos() }} aria-pressed={mine} className="cm-btn cm-press"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 12px', borderRadius: 'var(--r-pill)', fontFamily: FB, fontSize: 14.5, fontWeight: 750,
             background: mine ? 'var(--primary-dim)' : 'transparent', color: mine ? 'var(--primary)' : 'var(--text-mid)' }}>
-          <span key={popN} className={popN ? 'cm-pop' : undefined} style={{ display: 'inline-block', fontSize: 19, filter: mine ? 'none' : 'grayscale(1)', opacity: mine ? 1 : 0.75 }}>👏</span>
+          <span key={popN} className={popN ? 'cm-pop' : undefined} style={{ display: 'inline-block', filter: mine ? 'none' : 'grayscale(1)', opacity: mine ? 1 : 0.75, color: mine ? 'var(--primary)' : 'var(--text-mid)' }}><Hand size={19} strokeWidth={2} /></span>
           <span style={TNUM}>{eng?.kudos ?? 0}</span>
         </button>
         <button type="button" onClick={onComments} className="cm-btn cm-press"

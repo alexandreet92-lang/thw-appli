@@ -7,6 +7,8 @@
 // ══════════════════════════════════════════════════════════════════
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { ComponentType } from 'react'
+import { LayoutDashboard, CalendarDays, Footprints, TrendingUp, Apple, Moon, Users, Plug, Bandage, Newspaper, Target, BookOpen, MessageCircle, User, BarChart3, SlidersHorizontal, Dumbbell, Timer, Sparkles, Rocket, GraduationCap, Clapperboard } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { usePathname, useRouter } from 'next/navigation'
 import type { GuideStep } from './guideRegistry'
@@ -240,13 +242,13 @@ const PAD = 8
 // (fichier guide, hors périmètre enforced du check couleurs).
 const SCRIM = 'rgba(8,10,14,0.58)' // design-allow-color
 // Emoji d'en-tête par page — purement décoratif, interne au guide (aucune clé i18n).
-const PAGE_EMOJI: Record<string, string> = {
-  'Tableau de bord': '🏠', 'Planning': '🗓️', 'Calendrier': '📅', 'Training': '🏃',
-  'Performance': '📈', 'Nutrition': '🥗', 'Récupération': '🌙', 'Communauté': '👥',
-  'Connexions': '🔗', 'Blessures': '🩹', 'Fil': '📰', 'Coach': '🎯', 'Coachs': '🎯',
-  'Programmes': '📚', 'Messages': '💬', 'Profil': '👤', 'Progression': '📊',
-  'Zones': '🎚️', 'Séance': '🏋️', 'Enregistrement': '⏱️', 'Assistant IA': '✨',
-  'Démarrer': '🚀', 'Espace coach': '🧑‍🏫', 'Studio': '🎬',
+const PAGE_ICON: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
+  'Tableau de bord': LayoutDashboard, 'Planning': CalendarDays, 'Calendrier': CalendarDays, 'Training': Footprints,
+  'Performance': TrendingUp, 'Nutrition': Apple, 'Récupération': Moon, 'Communauté': Users,
+  'Connexions': Plug, 'Blessures': Bandage, 'Fil': Newspaper, 'Coach': Target, 'Coachs': Target,
+  'Programmes': BookOpen, 'Messages': MessageCircle, 'Profil': User, 'Progression': BarChart3,
+  'Zones': SlidersHorizontal, 'Séance': Dumbbell, 'Enregistrement': Timer, 'Assistant IA': Sparkles,
+  'Démarrer': Rocket, 'Espace coach': GraduationCap, 'Studio': Clapperboard,
 }
 
 // Échappe le HTML puis rend **gras** → <strong> (contenu = nos chaînes statiques).
@@ -340,7 +342,7 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
   const lastOfPage = !!pageInfo && pageInfo.posInPage >= pageInfo.pageCount
   const isClick = !!rect && step.advanceOn === 'click'
   const label = pageInfo?.label || t('w3g.guide_tour')
-  const emoji = PAGE_EMOJI[label] ?? '✨'
+  const PageIcon = PAGE_ICON[label] ?? Sparkles
   // Progression « amicale » : on compte les PAGES (groupes de sens), pas les 113
   // sous-étapes brutes. Les points représentent les pages, le repère chiffré aussi.
   const dotCount = pageInfo?.totalPages ?? total
@@ -403,7 +405,7 @@ function GuideOverlay({ step, rect, index, total, pageInfo, onNext, onPrev, onSk
           {/* CORPS — défile si trop haut, sans pousser le pied hors écran */}
           <div style={{ padding: '18px 18px 10px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <span aria-hidden style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>{emoji}</span>
+              <span aria-hidden style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, color: 'var(--text-mid)' }}><PageIcon size={20} strokeWidth={1.8} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: isClick ? 'var(--primary)' : 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {isClick ? t('w3g.guide_click_here') : label}

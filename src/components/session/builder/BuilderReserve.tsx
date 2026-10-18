@@ -335,7 +335,7 @@ export function BuilderReserve() {
               </button>
             </div>
 
-            {/* Barre de filtres : ⭐ Favoris + types de séance */}
+            {/* Barre de filtres : Favoris + types de séance */}
             {sportFavs.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
                 <button onClick={() => setStarredOnly(v => !v)}

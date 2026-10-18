@@ -75,7 +75,7 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
           <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', background: isMe ? (isDark ? 'rgba(6,182,212,0.08)' : 'rgba(6,182,212,0.05)') : 'transparent', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'}` }}>
             <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
               {medal ? (
-                <span style={{ fontSize: 18 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                <span style={{ fontSize: 18 }}>{i + 1}</span>
               ) : (
                 <span style={{ fontSize: 13, color: dim, fontWeight: 600 }}>{i + 1}</span>
               )}

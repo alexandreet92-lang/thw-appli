@@ -277,7 +277,7 @@ function BackfillRecordsButton({ onDone, mobile }: { onDone?: () => void | Promi
     case 'ok-empty':     label = t('perf2.allUpToDate'); color = '#10B981'; break
     case 'ok-no-beats':  label = `✓ ${state.processed} ${state.processed > 1 ? t('perf2.activities') : t('perf2.activity')} · 0 ${t('perf2.record')}`; color = '#06B6D4'; break
     case 'ok-beats':     label = `✓ ${state.processed} · +${state.beats} ${state.beats > 1 ? t('perf2.records') : t('perf2.record')}`; color = '#10B981'; break
-    case 'error':        label = `⚠ ${state.msg}`; color = '#EF4444'; break
+    case 'error':        label = `${state.msg}`; color = '#EF4444'; break
   }
 
   if (mobile) {
@@ -3281,7 +3281,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
         : bikeSyncStatus.kind === 'done' ? (bikeSyncStatus.beats > 0
           ? `✓ ${bikeSyncStatus.processed} ${bikeSyncStatus.processed > 1 ? t('perf2.processedPlural') : t('perf2.processedSingular')} · +${bikeSyncStatus.beats} ${bikeSyncStatus.beats > 1 ? t('perf2.records') : t('perf2.record')}`
           : `✓ ${bikeSyncStatus.processed} ${bikeSyncStatus.processed > 1 ? t('perf2.activitiesProcessedPlural') : t('perf2.activityProcessedSingular')}, ${t('perf2.noRecordBeaten')}`)
-        : bikeSyncStatus.kind === 'error' ? `⚠ ${bikeSyncStatus.msg}` : null
+        : bikeSyncStatus.kind === 'error' ? `${bikeSyncStatus.msg}` : null
       return (
         <>
           {yearChips('bike')}
@@ -3606,7 +3606,7 @@ export function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTe
                 )}
                 {bikeSyncStatus.kind === 'error' && (
                   <span style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
-                    ⚠ {bikeSyncStatus.msg}
+                    {bikeSyncStatus.msg}
                   </span>
                 )}
               </div>
@@ -5084,7 +5084,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                   options={[
                     { id: 'cmp', label: t('perf2.compare') },
                     { id: 'races', label: <><SDot color="var(--danger)" size={7} />{t('perf2.races')}</> },
-                    { id: 'inj', label: <><span aria-hidden style={{ fontSize: 13 }}>⚡</span>{t('perf2.injuries')}</> },
+                    { id: 'inj', label: t('perf2.injuries') },
                   ]}
                   isOn={id => id === 'cmp' ? c1CompareMode : id === 'races' ? c1ShowRaces : c1ShowBlessures}
                   onPick={id => {
@@ -5178,7 +5178,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                         style={{ accentColor: 'var(--danger)', cursor: 'pointer', width: 14, height: 14 }}
                       />
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text)' }}>
-                        <span style={{ fontSize: 10 }}>⚡</span>
+                        
                         {t('perf2.injuries')}
                       </span>
                     </label>
@@ -5273,7 +5273,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 {c1HoveredRace && (
                   <div style={{ marginBottom: 7, borderBottom: '1px solid var(--border)', paddingBottom: 7 }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      🏆 {t('perf2.competition')}
+                      {t('perf2.competition')}
                     </p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-word' }}>{c1HoveredRace.title ?? '—'}</p>
                     <p style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', margin: 0 }}>
@@ -5287,7 +5287,7 @@ export function YearDatasSubTab({ mobile }: { mobile?: boolean } = {}) {
                 {/* Section blessure */}
                 {c1HoveredInjury && (
                   <div style={{ marginBottom: 7, borderBottom: '1px solid var(--border)', paddingBottom: 7 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', margin: '0 0 3px' }}>⚡ {t('perf2.injury')}</p>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', margin: '0 0 3px' }}>{t('perf2.injury')}</p>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{c1HoveredInjury.nom}</p>
                     <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 2px' }}>{c1HoveredInjury.type}</p>
                     <p style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', margin: 0 }}>

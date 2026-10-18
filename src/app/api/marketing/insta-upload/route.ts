@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err) {
-    console.error("[insta-upload] ❌ ERREUR:", err);
+    console.error("[insta-upload] ERREUR:", err);
     if (err instanceof Error) {
       console.error("[insta-upload] Message:", err.message);
       console.error("[insta-upload] Stack:", err.stack);
@@ -141,7 +141,7 @@ export async function GET() {
     return NextResponse.json({ snapshots: data ?? [] });
 
   } catch (err) {
-    console.error("[insta-upload] ❌ GET ERREUR:", err);
+    console.error("[insta-upload] GET ERREUR:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erreur inconnue" },
       { status: 500 }

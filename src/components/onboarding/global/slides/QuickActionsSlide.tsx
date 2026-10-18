@@ -1,13 +1,14 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
+import { CalendarRange, Target, Apple, Compass, LineChart, Flag } from 'lucide-react'
 
 const ACTIONS = [
-  { label: 'onboarding.g.quickActions.trainingPlan',  model: 'Zeus',   icon: '📋' },
-  { label: 'onboarding.g.quickActions.weakPoints',    model: 'Athéna', icon: '🎯' },
-  { label: 'onboarding.g.quickActions.nutritionPlan', model: 'Athéna', icon: '🥗' },
-  { label: 'onboarding.g.quickActions.appGuide',      model: 'Hermès', icon: '💡' },
-  { label: 'onboarding.g.quickActions.trainingAnalysis', model: 'Athéna', icon: '📊' },
-  { label: 'onboarding.g.quickActions.raceStrategy',  model: 'Athéna', icon: '🏁' },
+  { label: 'onboarding.g.quickActions.trainingPlan',  model: 'Zeus',   icon: CalendarRange },
+  { label: 'onboarding.g.quickActions.weakPoints',    model: 'Athéna', icon: Target },
+  { label: 'onboarding.g.quickActions.nutritionPlan', model: 'Athéna', icon: Apple },
+  { label: 'onboarding.g.quickActions.appGuide',      model: 'Hermès', icon: Compass },
+  { label: 'onboarding.g.quickActions.trainingAnalysis', model: 'Athéna', icon: LineChart },
+  { label: 'onboarding.g.quickActions.raceStrategy',  model: 'Athéna', icon: Flag },
 ]
 
 export const QUICK_ACTIONS_META = {
@@ -41,7 +42,7 @@ export function QuickActionsVisual() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: 8, fontSize: 16,
           }}>
-            {a.icon}
+            <a.icon size={17} strokeWidth={1.8} color="#f97316" />
           </div>
           <p style={{ fontSize: 12, fontWeight: 600, color: 'white', margin: '0 0 3px', fontFamily: 'var(--font-body)', lineHeight: 1.3 }}>{t(a.label)}</p>
           <p style={{ fontSize: 10, color: 'rgba(249,115,22,0.7)', margin: 0, fontWeight: 600, fontFamily: 'var(--font-body)' }}>{a.model}</p>

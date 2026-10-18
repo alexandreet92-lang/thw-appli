@@ -1295,7 +1295,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
-                      {rank===1 && <span style={{ fontSize: 10, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
+                      {rank===1 && <span style={{ fontSize: 10, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>{t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2 }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(c.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>

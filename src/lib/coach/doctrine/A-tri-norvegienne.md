@@ -1,7 +1,7 @@
 # A — TRIATHLON · MÉTHODE NORVÉGIENNE
 
 > **Statut : DOCUMENT MÉTHODE (avancée, exigeante).** Choix = **B1 §3** + **B3** ; architecture multi-sport = **A-tri-periodisation-multisport** ; zones/sub-seuil = **B4** ; charge = **B5** ; séances = **B7** ; récup = **B8** ; nutrition = **B9**.
-> ⚠️ **Avertissement de cadrage (l'IA doit le dire) :** approche issue du **haut niveau** (athlètes pros, encadrement, lactatemètre, volume massif). Transposée telle quelle à un amateur, elle mène au surmenage. À réserver à un public adapté (§2), en version ajustée. Voir aussi **A-run-norvegienne-double-seuil** pour la logique de fond.
+> **Avertissement de cadrage (l'IA doit le dire) :** approche issue du **haut niveau** (athlètes pros, encadrement, lactatemètre, volume massif). Transposée telle quelle à un amateur, elle mène au surmenage. À réserver à un public adapté (§2), en version ajustée. Voir aussi **A-run-norvegienne-double-seuil** pour la logique de fond.
 
 ---
 

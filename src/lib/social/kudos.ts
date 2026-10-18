@@ -1,6 +1,6 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════
-// Couche sociale du Fil : kudos (👏) + commentaires sur les activités.
+// Couche sociale du Fil : kudos () + commentaires sur les activités.
 // ══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/auth/currentUser'

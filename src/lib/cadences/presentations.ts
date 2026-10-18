@@ -4,7 +4,7 @@
 // plus de la config : accroche, public, durée, fréquence, matériel, sécurité.
 // Les chiffres (épreuves, jours, points, âges) viennent de la config, jamais d'ici.
 //
-// ⚠ Les durées, le matériel et les consignes des batteries autres que Decaform
+// Les durées, le matériel et les consignes des batteries autres que Decaform
 // sont des PROPOSITIONS rédigées à partir des épreuves : à relire par Alexandre.
 // ══════════════════════════════════════════════════════════════════
 

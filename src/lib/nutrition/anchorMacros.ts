@@ -1,6 +1,6 @@
 // Ancrage des macros d'un ingrédient sur une référence déterministe (common-foods, valeurs
 // type-CIQUAL FR) plutôt que de laisser le modèle deviner les P/L/G.
-// ⚠️ common-foods n'est PAS le dataset CIQUAL officiel (cf. PROMPT_NUTRITION_2.md) :
+// common-foods n'est PAS le dataset CIQUAL officiel (cf. PROMPT_NUTRITION_2.md) :
 // c'est une table curée FR. À terme, importer CIQUAL dans une table dédiée.
 import { COMMON_FOODS } from '@/lib/common-foods'
 

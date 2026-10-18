@@ -36,7 +36,7 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
-import { Dumbbell, CalendarDays, LayoutDashboard, Flag, Target } from 'lucide-react'
+import { Dumbbell, CalendarDays, LayoutDashboard, Flag, Target, Settings } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
@@ -139,7 +139,7 @@ export const CIRCUIT_TYPES: Array<{ id: CircuitType; label: string; desc: string
   { id: 'circuit',  label: 'Lap',      desc: 'Enchaîner les exos, recommencer X rounds',               icon: '↻', slash: 'lap'      },
   { id: 'superset', label: 'Superset', desc: 'Alterner 2 exos sans repos entre eux',                   icon: '⇅', slash: 'superset' },
   { id: 'emom',     label: 'EMOM',     desc: '1 exo par minute, repos = temps restant',                icon: '⏱', slash: 'emom'     },
-  { id: 'tabata',   label: 'Tabata',   desc: '20s effort / 10s repos × 8 rounds',                     icon: '⚡', slash: 'tabata'   },
+  { id: 'tabata',   label: 'Tabata',   desc: '20s effort / 10s repos × 8 rounds',                     icon: '▦', slash: 'tabata'   },
 ]
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
 const RUN_KM: Record<string,number> = { '5 km':5, '10 km':10, 'Semi-marathon':21.1, 'Marathon':42.195 }
@@ -1456,7 +1456,7 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius: 'var(--r-lg)',border:'1px solid var(--border-mid)',padding:24,maxWidth:580,width:'100%',maxHeight:'90vh',overflowY:'auto' }}>
-        {tssInfo && <InfoModal title={t('plnp.tss.infoTitle')} content={<><p><strong>TSS (Training Stress Score)</strong> {t('plnp.tss.infoLine1')}</p><p>{t('plnp.tss.infoLine2')}</p><p style={{ fontFamily: 'var(--font-body)',fontSize:12,background:'var(--bg-card2)',padding:'8px 12px',borderRadius: 'var(--r-sm)' }}>{t('plnp.tss.infoFormula')}</p><p>⬛ <span style={{color:'#6b7280'}}>{t('plnp.tss.grey')}</span> — {t('plnp.tss.greyDesc')} · 🟩 <span style={{color:'#22c55e'}}>{t('plnp.tss.green')}</span> — {t('plnp.tss.greenDesc')} · 🟥 <span style={{color:'var(--danger)'}}>{t('plnp.tss.red')}</span> — {t('plnp.tss.redDesc')}</p></>} onClose={()=>setTssInfo(false)}/>}
+        {tssInfo && <InfoModal title={t('plnp.tss.infoTitle')} content={<><p><strong>TSS (Training Stress Score)</strong> {t('plnp.tss.infoLine1')}</p><p>{t('plnp.tss.infoLine2')}</p><p style={{ fontFamily: 'var(--font-body)',fontSize:12,background:'var(--bg-card2)',padding:'8px 12px',borderRadius: 'var(--r-sm)' }}>{t('plnp.tss.infoFormula')}</p><p><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#6b7280',marginRight:5}} /><span style={{color:'#6b7280'}}>{t('plnp.tss.grey')}</span> — {t('plnp.tss.greyDesc')} · <span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#22c55e',marginRight:5}} /><span style={{color:'#22c55e'}}>{t('plnp.tss.green')}</span> — {t('plnp.tss.greenDesc')} · <span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'var(--danger)',marginRight:5}} /><span style={{color:'var(--danger)'}}>{t('plnp.tss.red')}</span> — {t('plnp.tss.redDesc')}</p></>} onClose={()=>setTssInfo(false)}/>}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20 }}>
           <div>
             <h3 style={{ fontFamily: 'var(--font-body)',fontSize:17,fontWeight:700,margin:0 }}>{t('plnp.last10.title')}</h3>
@@ -1468,8 +1468,8 @@ function Last10WeeksModal({ onClose }:{ onClose:()=>void }) {
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
           <button onClick={()=>setTssInfo(true)} style={{ width:18,height:18,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center' }}>!</button>
           <span style={{ fontSize:10,color:'#6b7280' }}>⬛ {t('plnp.tss.belowNormal')}</span>
-          <span style={{ fontSize:10,color:'#22c55e' }}>🟩 {t('plnp.tss.normal')}</span>
-          <span style={{ fontSize:10,color:'var(--danger)' }}>🟥 {t('plnp.tss.overload')}</span>
+          <span style={{ fontSize:10,color:'#22c55e' }}>{t('plnp.tss.normal')}</span>
+          <span style={{ fontSize:10,color:'var(--danger)' }}>{t('plnp.tss.overload')}</span>
         </div>
         <div style={{ textAlign:'center',padding:'30px 0',color:'var(--text-dim)',fontSize:13 }}>
           {t('plnp.last10.empty')}
@@ -1942,7 +1942,7 @@ ${semaines.map((sem) => {
         bWatts ? `${bWatts}W` : (bAllure ?? null),
       ].filter(Boolean).join(' · ')
       return `<div class="bloc">
-        <span class="bloc-zone" style="background:${bZoneColor}"></span>
+        
         <span class="bloc-name">${bNom}</span>
         ${detail ? `<span class="bloc-detail">${detail}</span>` : ''}
         ${bConsigne ? `<span class="bloc-detail">— ${bConsigne}</span>` : ''}
@@ -3056,7 +3056,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             background: busy ? 'var(--bg-card3, rgba(120,120,120,0.16))' : 'var(--primary)', color: busy ? 'var(--text-mid)' : 'var(--on-primary)',
             fontSize: 9.5, fontWeight: 800, lineHeight: 1.2, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}
           title="Générer les séances de cette semaine (calibrées sur tes zones)">
-          {busy ? 'Génération…' : '✨ Détailler'}
+          {busy ? 'Génération…' : 'Détailler'}
         </button>
         {detailWeekErr?.week === dwk && <p style={{ fontSize: 8.5, color: 'var(--danger)', margin: '4px 0 0', lineHeight: 1.3 }}>{detailWeekErr.msg}</p>}
       </div>
@@ -3946,7 +3946,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
       {upcomingPlan && !aiPlan && (
         <div style={{ padding:'14px 18px',borderRadius: 'var(--r-md)',background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>
-          <span style={{ fontSize:22 }}>📅</span>
+          
           <div style={{ flex:1,minWidth:0 }}>
             <p style={{ fontFamily: 'var(--font-body)',fontSize:14,fontWeight:700,margin:'0 0 2px',color:'var(--primary)' }}>
               {upcomingPlan.name}
@@ -4765,7 +4765,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
             <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.08em',margin:0 }}>{t('plnp.dailyTasks')}</p>
             <button onClick={()=>setShowSectionEditor(true)}
-              style={{ fontSize:10,padding:'3px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}>⚙</button>
+              style={{ fontSize:10,padding:'3px 8px',borderRadius: 'var(--r-sm)',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-dim)',cursor:'pointer' }}><Settings size={12} /></button>
           </div>
           {dailyTasks.length>0&&(()=>{
             const total=dailyTasks.length
@@ -5439,7 +5439,7 @@ function RaceYearTab() {
 
       {races.length===0 && (
         <div style={{ padding:'32px 20px',textAlign:'center' as const,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius: 'var(--r-md)' }}>
-          <p style={{ fontSize:32,marginBottom:8 }}>🏁</p>
+          
           <p style={{ fontFamily: 'var(--font-body)',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('plnp.race.emptyTitle')}</p>
           <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 16px' }}>{t('plnp.race.emptySub')}</p>
           <button onClick={()=>setAddModal({month:currentMonth})} style={{ padding:'9px 20px',borderRadius: 'var(--r-sm)',background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily: 'var(--font-body)',fontWeight:700,fontSize:13,cursor:'pointer' }}>{t('plnp.race.addFull')}</button>

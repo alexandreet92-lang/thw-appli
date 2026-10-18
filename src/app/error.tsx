@@ -39,7 +39,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     // eslint-disable-next-line no-console
     console.error('[app error boundary]', error)
     if (!isChunk) return
-    // ⚠️ App native (Capacitor) : le bundle est LOCAL → aucun « vieux chunk » à
+    // App native (Capacitor) : le bundle est LOCAL → aucun « vieux chunk » à
     // rafraîchir. Et un location.reload() sur une ROUTE DYNAMIQUE
     // (ex. /coach/athlete/[id]) est catastrophique : le fichier statique de cet
     // id n'existe pas → la WebView retombe sur index.html = le DASHBOARD. C'est
@@ -73,7 +73,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg, #0b0b0f)', color: 'var(--text, #e8e8ea)', fontFamily: 'var(--font-body)' }}>
       <div style={{ maxWidth: 440, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 10 }}>⚠️</div>
+        
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>
           {isChunk ? tx.updating : tx.error}
         </h1>

@@ -2,7 +2,7 @@
 // ══════════════════════════════════════════════════════════════════
 // usePower — connexion à un capteur de puissance / home trainer BLE via Web
 // Bluetooth (service standard Cycling Power 0x1818, mesure 0x2A63).
-// ⚠️ Web Bluetooth n'existe PAS sur iOS/Safari → `supported` sera false ;
+// Web Bluetooth n'existe PAS sur iOS/Safari → `supported` sera false ;
 // fonctionne sur Android/Chrome, navigateurs iOS compatibles (Bluefy) et
 // future app native (CoreBluetooth). API identique à useHeartRate pour que les
 // écrans branchent watts et FC de la même façon (source de données abstraite).

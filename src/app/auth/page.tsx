@@ -286,7 +286,7 @@ function AuthPageInner() {
     <AuthScreen>
       <div><BackButton onClick={() => go('entry')} /></div>
       <AuthHeading
-        title={isLogin ? `${t('auth.welcomeBack')} 👋` : t('auth.createAccount')}
+        title={isLogin ? `${t('auth.welcomeBack')}` : t('auth.createAccount')}
         sub={isLogin ? t('au.loginSub') : t('au.signupSub')} />
 
       <form noValidate onSubmit={e => { e.preventDefault(); void (isLogin ? handleLogin() : handleSignup()) }}>

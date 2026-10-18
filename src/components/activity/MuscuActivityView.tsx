@@ -6,7 +6,7 @@
 // Terrain/Conditions, Courbes à toggles, donuts) qui n'a aucun sens en
 // muscu. N'affiche que des données RÉELLES.
 //
-// ⚠️ Le détail par exercice (séries, charges, 1RM, circuits, drill-down)
+// Le détail par exercice (séries, charges, 1RM, circuits, drill-down)
 // nécessite des données structurées d'exercices qui N'EXISTENT PAS dans
 // le schéma / ne sont pas fournies par la sync (cf.
 // PROMPT_MUSCU_HYROX_INTERFACE.md). Cette section affiche donc un état

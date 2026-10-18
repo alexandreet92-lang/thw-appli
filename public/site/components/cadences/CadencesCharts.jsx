@@ -15,11 +15,31 @@
     return (d && d[fr]) || fr;
   }
   window.CadTr = trc;
+  // Gabarit traduit puis {variables} remplacées : window.CadT('Ton score est de {n}', { n: 5 }).
+  window.CadT = function (fr, vars) {
+    var s = trc(fr);
+    return vars ? s.replace(/\{(\w+)\}/g, function (_, k) { return vars[k] != null ? vars[k] : ''; }) : s;
+  };
+  // Minuscule d'un nom commun, sauf en allemand (les noms y prennent une majuscule).
+  window.CadLc = function (x) {
+    var l = 'fr';
+    try { l = (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr'; } catch (e) {}
+    return l === 'de' ? String(x || '') : String(x || '').toLowerCase();
+  };
+  // Redessine le composant quand la langue change (les textes calculés en JS ne passent pas par le DOM).
+  window.CadUseLang = function () {
+    var st = React.useState(0);
+    React.useEffect(function () {
+      if (!window.THWLang || !window.THWLang.onChange) return undefined;
+      return window.THWLang.onChange(function () { st[1](function (n) { return n + 1; }); });
+    }, []);
+    return st[0];
+  };
   // Langue des dates et des nombres selon la langue du site.
   window.CadLocale = function () {
     var l = 'fr';
     try { l = (window.THWLang && window.THWLang.getLang && window.THWLang.getLang()) || 'fr'; } catch (e) {}
-    return l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR';
+    return l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : l === 'it' ? 'it-IT' : l === 'de' ? 'de-DE' : 'fr-FR';
   };
   var TRACK = 'rgba(128,140,160,0.25)';   // piste neutre, visible clair + sombre
   var GRID = 'rgba(128,140,160,0.30)';

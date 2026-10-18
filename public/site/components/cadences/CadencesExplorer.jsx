@@ -118,6 +118,7 @@
 
   // ── Composant principal ────────────────────────────────────────────────────
   function CadExplorer(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var cat = props.catalog || {}, appUrl = props.appUrl || '';
     var hist = (props.history || []).slice().sort(function (a, b) { return dOf(a.date) - dOf(b.date); });
     var qualities = cat.qualities || [];
@@ -130,6 +131,8 @@
     var selS = React.useState(null); var sel = selS[0], setSel = selS[1];
     var mkS = React.useState({ available: false, marks: [] }); var marks = mkS[0], setMarks = mkS[1];
     var onS = React.useState(false); var drawn = onS[0], setDrawn = onS[1];
+    var hvS = React.useState(null); var hov = hvS[0], setHov = hvS[1];       // survol : { id, left, top, tw }
+    var wrapRef = React.useRef(null);
     React.useEffect(function () {
       function onMode(ev) { var m = ev && ev.detail && ev.detail.mode; if (m) setMode(m); }
       window.addEventListener('cad-set-mode', onMode);
@@ -214,7 +217,8 @@
     }, [metric, period, mode]);
 
     // Géométrie du graphique.
-    var W = 900, H = 340, PL = 50, PR = 28, PT = 26, PB = 58;
+    var isG = metric === 'global';
+    var W = 900, H = isG ? 400 : 340, PL = isG ? 158 : 50, PR = 28, PT = 26, PB = 58;
     var iw = W - PL - PR, ih = H - PT - PB;
     var tMin = hasData ? pts[0].t : Date.now(), tLast = hasData ? pts[pts.length - 1].t : Date.now();
     var horizon = showProj ? Math.max(tLast + 365 * DAY, goal && reg ? (etaTo(reg, { t: tLast, v: pts[pts.length - 1].v }, goal.target) || 0) : 0) : tLast;
@@ -229,6 +233,15 @@
     var nstep = [1, 2, 5, 10].map(function (m) { return m * mag; }).filter(function (c) { return c >= rawStep; })[0] || 10 * mag;
     var yLo = Math.max(0, Math.floor((vMin - span * 0.2) / nstep) * nstep), yHi = Math.min(Math.ceil(info.max * 1.1), Math.ceil((vMax + span * 0.2) / nstep) * nstep);
     if (yHi <= yLo) yHi = yLo + nstep;
+    // Score global : axe de 0 jusqu'à 1200 au moins (le barème n'est pas un plafond : on peut le dépasser).
+    if (isG) {
+      var topSeen = Math.max.apply(null, vs.concat([1200]));
+      yLo = 0; yHi = topSeen > 1200 ? Math.ceil(topSeen * 1.04 / 200) * 200 : 1200; nstep = 200;
+    }
+    var gTotal = cat.totalPoints || 1000;
+    var bands = isG ? (cat.levels || []).map(function (l, i, arr) {
+      return { label: l.label, from: l.min_pct * gTotal, to: i + 1 < arr.length ? arr[i + 1].min_pct * gTotal : yHi };
+    }).filter(function (b) { return b.from < yHi; }).map(function (b) { return { label: b.label, from: b.from, to: Math.min(b.to, yHi) }; }) : [];
     var tPad = (tMax - tMin) * 0.05 + 6 * DAY; tMin = tMin - tPad;
     function X(t) { return PL + (tMax === tMin ? iw / 2 : iw * (t - tMin) / (tMax - tMin)); }
     function Y(v) { return PT + ih * (1 - (Math.max(yLo, Math.min(yHi, v)) - yLo) / (yHi - yLo)); }
@@ -313,6 +326,20 @@
     var canMarks = marks.available;
     var shownEvents = tg.events ? events.filter(function (x) { var t = dOf(x.on_date); return t >= tMin - 30 * DAY && t <= tMax; }) : [];
     var gradId = 'cadexg';
+    // Bulle de survol : placée du côté opposé à la courbe (au-dessus/au-dessous du point), jamais hors du cadre.
+    function showTip(p) {
+      var el = wrapRef.current; if (!el) return;
+      var r = el.getBoundingClientRect();
+      var px = X(p.t) / W * r.width, py = Y(p.v) / H * r.height;
+      var minL = PL / W * r.width + 6;                          // ne recouvre pas les noms de paliers
+      var tw = Math.min(460, r.width - minL - 4), th = 236;
+      var left = Math.max(minL, Math.min(r.width - tw - 4, px - tw / 2));
+      var top = py < r.height * 0.5 ? py + 24 : py - th - 44;
+      top = Math.max(0, Math.min(r.height - th, top));
+      setHov({ id: p.e.id, left: left, top: top, tw: tw });
+    }
+    var hovPt = hov ? pts.filter(function (q) { return q.e.id === hov.id; })[0] : null;
+    function lvlOf(v) { var out = ''; (cat.levels || []).forEach(function (l) { if (v >= l.min_pct * gTotal) out = l.label; }); return out; }
     return (
       <section id="cad-courbe" className="cad-card cad-ex" aria-label={tr('Courbe interactive')}>
         <Style/>
@@ -360,8 +387,17 @@
         {!hasData ? (
           <p className="cad-p">{tr('Aucun test sur cette période pour cette mesure.')}</p>
         ) : (
+          <div ref={wrapRef} style={{ position: 'relative' }}>
           <svg className="cad-ex-chart" viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={info.label}>
             <defs><linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand)" stopOpacity=".28"/><stop offset="100%" stopColor="var(--brand)" stopOpacity="0"/></linearGradient></defs>
+            {bands.map(function (b, i) {
+              var y1 = Y(b.to), y0 = Y(b.from);
+              return <g key={'b' + i}>
+                <rect x={PL} y={y1} width={W - PR - PL} height={Math.max(0, y0 - y1)} fill="var(--text)" opacity={i % 2 === 0 ? 0.04 : 0}/>
+                <line x1={PL - 52} x2={PL - 52} y1={y1 + 3} y2={y0 - 3} stroke="var(--border-mid)" strokeWidth="2"/>
+                <text x={PL - 58} y={(y0 + y1) / 2 + 4} textAnchor="end" fontSize="12" fontWeight="600" fill="var(--text-mid)">{tr(b.label)}</text>
+              </g>;
+            })}
             {ticks.map(function (v, i) {
               return <g key={i}><line x1={PL} x2={W - PR} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeDasharray="3 5"/><text x={PL - 8} y={Y(v) + 4} textAnchor="end" fontSize="11" fill="var(--text-dim)">{Math.round(v)}</text></g>;
             })}
@@ -382,16 +418,44 @@
             {pts.map(function (p) {
               var on = cur && cur.e.id === p.e.id;
               return (
-                <g key={p.e.id} onClick={function () { setSel(p.e.id); }} style={{ cursor: 'pointer' }}>
+                <g key={p.e.id} onClick={function () { setSel(p.e.id); showTip(p); }} onMouseEnter={function () { showTip(p); }} onMouseLeave={function () { setHov(null); }} style={{ cursor: 'pointer' }}>
                   <circle className="cad-ex-pt" cx={X(p.t)} cy={Y(p.v)} r={on ? 9 : 6.5} fill="var(--bg-card)" stroke="var(--brand)" strokeWidth="3" tabIndex="0" role="button" aria-label={fmtDate(p.t) + ' : ' + num(p.v, info.dec)}
-                    onKeyDown={function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(p.e.id); } }}/>
+                    onFocus={function () { showTip(p); }} onBlur={function () { setHov(null); }}
+                    onKeyDown={function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(p.e.id); showTip(p); } }}/>
                   <text x={X(p.t)} y={Y(p.v) - 15} textAnchor="middle" fontSize="14" fontWeight="800" fill="var(--text)">{num(p.v, info.dec)}</text>
                   <text x={X(p.t)} y={H - 26} textAnchor="middle" fontSize="11" fill="var(--text-dim)">{fmtDate(p.t, { month: 'short', year: 'numeric' })}</text>
                   <text x={X(p.t)} y={H - 11} textAnchor="middle" fontSize="10.5" fill="var(--text-dim)">{p.e.age} {tr('ans')} · {num(p.e.weight, 1)} kg</text>
                 </g>
               );
             })}
+            <line x1={PL} x2={PL} y1={PT} y2={PT + ih} stroke="var(--text-dim)" strokeWidth="1.2"/>
+            <line x1={PL} x2={W - PR} y1={PT + ih} y2={PT + ih} stroke="var(--text-dim)" strokeWidth="1.2"/>
+            {isG ? <text x={PL - 8} y={PT - 10} textAnchor="end" fontSize="11" fill="var(--text-dim)">pts</text> : null}
           </svg>
+          {hov && hovPt ? (
+            <div role="tooltip" style={{ position: 'absolute', left: hov.left, top: hov.top, width: hov.tw, background: 'var(--bg-alt, #0e1b2c)', border: '1px solid var(--border-mid)', borderRadius: 12, padding: '14px 16px', boxShadow: '0 18px 40px rgba(0,0,0,.35)', pointerEvents: 'none', zIndex: 5 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14.5, color: 'var(--text)' }}>{fmtDate(hovPt.t, { month: 'long', year: 'numeric' })} · {num(hovPt.v, info.dec)}{isG ? ' · ' + tr(lvlOf(hovPt.v)) : ''}</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 10px' }}>{tr('Part de chaque qualité (0 à 100 %). Trait doré : sous 60 %.')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 4px' }}>
+                {qualities.map(function (q) {
+                  var v = metricValue(cat, hovPt.e, 'q:' + q.key, ageMode);
+                  if (v == null) return null;
+                  var pc = Math.max(0, Math.min(100, Math.round(v))), r = 22, c = 2 * Math.PI * r;
+                  return (
+                    <div key={q.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, textAlign: 'center' }}>
+                      <svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true">
+                        <circle cx="29" cy="29" r={r} fill="none" stroke="var(--border-mid)" strokeWidth="6"/>
+                        <circle cx="29" cy="29" r={r} fill="none" stroke={pc >= 60 ? 'var(--text)' : '#c9a45c'} strokeWidth="6" strokeLinecap="round" strokeDasharray={(c * pc / 100) + ' ' + c} transform="rotate(-90 29 29)"/>
+                        <text x="29" y="33" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text)">{pc}%</text>
+                      </svg>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', lineHeight: 1.2 }}>{tr(q.label)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          </div>
         )}
 
         {cur ? (

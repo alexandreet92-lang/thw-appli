@@ -124,6 +124,7 @@
   function deltaCls(v) { return v > 0 ? 'cad-hdelta-up' : v < 0 ? 'cad-hdelta-dn' : 'cad-hdelta-eq'; }
 
   function CadHistory(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var cat = props.catalog;
     var hist = (props.history || []).slice().sort(function (a, b) { return dOf(a.date) - dOf(b.date); }); // chronologique
     var byRecent = hist.slice().reverse();

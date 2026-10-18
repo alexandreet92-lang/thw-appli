@@ -10,12 +10,13 @@
   function pc(p) { return Math.round((p || 0) * 100); }
   function signed(n) { var r = Math.round(n); return (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r); }
   function nm(t) { return t.name.replace(/\s*\(.*\)$/, ''); }
-  function lc(s) { return String(s || '').toLowerCase(); }
+  function T(fr, v) { return window.CadT ? window.CadT(fr, v) : fr; }
+  function lc(s) { return window.CadLc ? window.CadLc(s) : String(s || '').toLowerCase(); }
   var GROUPS = [
-    { key: 'aero', label: 'moteur aérobie', qs: ['endurance', 'vo2max', 'endurance_musculaire'] },
-    { key: 'force', label: 'base de force', qs: ['force', 'puissance'] },
-    { key: 'vite', label: 'vitesse et explosivité', qs: ['vitesse', 'explosivite'] },
-    { key: 'coord', label: 'coordination', qs: ['coordination'] }
+    { key: 'aero', label: 'ton moteur aérobie', qs: ['endurance', 'vo2max', 'endurance_musculaire'] },
+    { key: 'force', label: 'ta base de force', qs: ['force', 'puissance'] },
+    { key: 'vite', label: 'ta vitesse et ton explosivité', qs: ['vitesse', 'explosivite'] },
+    { key: 'coord', label: 'ta coordination', qs: ['coordination'] }
   ];
   var CONSEQ = {
     'aero|force': 'Tu tiens la distance, mais tu manques de force maximale pour exprimer cette endurance en vitesse et en puissance.',
@@ -57,8 +58,8 @@
     var gTop = gs[0], gLow = gs[gs.length - 1];
     var gSpread = gTop && gLow ? gTop.pct - gLow.pct : 0;
     var verdict = gSpread < 0.12
-      ? 'Ton profil est complet : toutes tes qualités sont proches (écart de ' + Math.round(gSpread * 100) + ' points entre la plus haute et la plus basse). Pour progresser, il faudra monter tout le profil ensemble, ce qui demande du volume global plutôt qu’un correctif ciblé.'
-      : 'Ton point d’appui est ton ' + gTop.label + ' (' + pc(gTop.pct) + ' % du repère) ; ton point limitant est ta ' + (gLow.key === 'force' ? 'base de force' : gLow.label) + ' (' + pc(gLow.pct) + ' %). ' + (CONSEQ[gTop.key + '|' + gLow.key] || 'Cet écart freine ton score global : c’est là que se trouve ta marge de progression.');
+      ? T('Ton profil est complet : toutes tes qualités sont proches (écart de {gap} points entre la plus haute et la plus basse). Pour progresser, il faudra monter tout le profil ensemble, ce qui demande du volume global plutôt qu’un correctif ciblé.', { gap: Math.round(gSpread * 100) })
+      : T('Ton point d’appui est {top} ({topPct} % du repère) ; ton point limitant est {low} ({lowPct} %).', { top: tr(gTop.label), topPct: pc(gTop.pct), low: tr(gLow.label), lowPct: pc(gLow.pct) }) + ' ' + tr(CONSEQ[gTop.key + '|' + gLow.key] || 'Cet écart freine ton score global : c’est là que se trouve ta marge de progression.');
 
     // Où se perdent les points
     var lost = qs.map(function (q) { return { q: q, lost: Math.max(0, q.ptsMax - q.points) }; });
@@ -140,9 +141,9 @@
 
     // Vigilance
     var warn = [];
-    if (balance && balance.gap >= 25 && balance.hi.key === 'endurance') warn.push('Ton endurance dépasse nettement ta force : la charge de course s’accumule sur des tissus peu préparés. Une base de force réduit le risque de blessure de surcharge, avant d’augmenter le volume.');
-    if (balance && balance.gap >= 25 && balance.hi.key === 'force') warn.push('Ta force dépasse nettement ton endurance : n’augmente pas le volume d’un coup, mais progressivement, pour laisser tendons et articulations s’adapter.');
-    if (sd >= 20) warn.push('Ton profil est irrégulier d’une épreuve à l’autre : une épreuve très faible peut venir d’une technique ou d’un matériel inhabituels autant que d’une vraie lacune. Vérifie-la avant de bâtir ton plan dessus.');
+    if (balance && balance.gap >= 25 && balance.hi.key === 'endurance') warn.push(tr('Ton endurance dépasse nettement ta force : la charge de course s’accumule sur des tissus peu préparés. Une base de force réduit le risque de blessure de surcharge, avant d’augmenter le volume.'));
+    if (balance && balance.gap >= 25 && balance.hi.key === 'force') warn.push(tr('Ta force dépasse nettement ton endurance : n’augmente pas le volume d’un coup, mais progressivement, pour laisser tendons et articulations s’adapter.'));
+    if (sd >= 20) warn.push(tr('Ton profil est irrégulier d’une épreuve à l’autre : une épreuve très faible peut venir d’une technique ou d’un matériel inhabituels autant que d’une vraie lacune. Vérifie-la avant de bâtir ton plan dessus.'));
 
     // Plan sur 12 semaines
     var ACT = (window.CAD_INTERPRET_TEXTS && window.CAD_INTERPRET_TEXTS.ACT) || {};
@@ -215,12 +216,13 @@
   }
 
   function CadDeepAnalysis(props) {
-    var d = React.useMemo(function () { return cadDeepCompute(props.catalog, props.scoreG, props.scoreA, props.campaign, props.prev, props.results); }, [props.catalog, props.scoreG, props.scoreA, props.campaign, props.prev, props.results]);
+    var lang = window.CadUseLang ? window.CadUseLang() : 0;
+    var d = React.useMemo(function () { return cadDeepCompute(props.catalog, props.scoreG, props.scoreA, props.campaign, props.prev, props.results); }, [props.catalog, props.scoreG, props.scoreA, props.campaign, props.prev, props.results, lang]);
     if (!d) return null;
     var maxLost = d.lost[0] ? d.lost[0].lost : 1;
     function dateTxt(ms) { try { return new Date(ms).toLocaleDateString(window.CadLocale ? window.CadLocale() : 'fr-FR', { month: 'long', year: 'numeric' }); } catch (e) { return ''; } }
     var reg = d.sd < 12 ? 'Régulier' : d.sd < 20 ? 'Modérément irrégulier' : 'Irrégulier';
-    var regTxt = d.sd < 12 ? 'Tes épreuves donnent des résultats proches les unes des autres.' : d.sd < 20 ? 'Quelques épreuves sont nettement au-dessus ou en dessous de ta moyenne.' : 'Tes résultats varient beaucoup d’une épreuve à l’autre.';
+    var regTxt = tr(d.sd < 12 ? 'Tes épreuves donnent des résultats proches les unes des autres.' : d.sd < 20 ? 'Quelques épreuves sont nettement au-dessus ou en dessous de ta moyenne.' : 'Tes résultats varient beaucoup d’une épreuve à l’autre.');
     return (
       <section className="cad-dp" aria-labelledby="cad-dp-h">
         <Style/>
@@ -237,11 +239,11 @@
 
         <div className="cad-dp-kpis">
           {d.balance ? (
-            <div className="cad-dp-kpi"><small>{tr('Équilibre force / endurance')}</small><b>{(Math.round(d.balance.ratio * 100) / 100 + '').replace('.', ',')}</b><span>{d.balance.gap < 10 ? 'Équilibré : les deux qualités sont proches.' : 'Ta ' + lc(tr(d.balance.hi.label)) + ' dépasse ta ' + lc(tr(d.balance.lo.label)) + ' de ' + Math.round(d.balance.gap) + ' points.'}</span></div>
+            <div className="cad-dp-kpi"><small>{tr('Équilibre force / endurance')}</small><b>{(Math.round(d.balance.ratio * 100) / 100 + '').replace('.', ',')}</b><span>{d.balance.gap < 10 ? tr('Équilibré : les deux qualités sont proches.') : T(d.balance.hi.key === 'force' ? 'Ta force dépasse ton endurance de {gap} points.' : 'Ton endurance dépasse ta force de {gap} points.', { gap: Math.round(d.balance.gap) })}</span></div>
           ) : null}
           <div className="cad-dp-kpi"><small>{tr('Régularité du profil')}</small><b>{tr(reg)}</b><span>{regTxt}</span></div>
-          <div className="cad-dp-kpi"><small>{tr('Points perdus concentrés')}</small><b>{Math.round(d.top2share * 100)} %</b><span>{'Dans ' + tr(d.lost[0].q.label) + (d.lost[1] ? ' et ' + tr(d.lost[1].q.label) : '') + '.'}</span></div>
-          <div className="cad-dp-kpi"><small>{tr('Général / ajusté à l’âge')}</small><b>{d.ageDiff === 0 ? '±0' : (d.ageDiff > 0 ? '+' : '−') + Math.abs(d.ageDiff)}</b><span>{d.ageDiff > 0 ? 'Ta notation à l’âge est plus favorable : ton âge est pris en compte dans le barème.' : d.ageDiff < 0 ? 'Ta notation à l’âge est plus sévère que la notation générale.' : 'Les deux notations donnent le même score.'}</span></div>
+          <div className="cad-dp-kpi"><small>{tr('Points perdus concentrés')}</small><b>{Math.round(d.top2share * 100)} %</b><span>{d.lost[1] ? T('Dans {a} et {b}.', { a: tr(d.lost[0].q.label), b: tr(d.lost[1].q.label) }) : T('Dans {a}.', { a: tr(d.lost[0].q.label) })}</span></div>
+          <div className="cad-dp-kpi"><small>{tr('Général / ajusté à l’âge')}</small><b>{d.ageDiff === 0 ? '±0' : (d.ageDiff > 0 ? '+' : '−') + Math.abs(d.ageDiff)}</b><span>{tr(d.ageDiff > 0 ? 'Ta notation à l’âge est plus favorable : ton âge est pris en compte dans le barème.' : d.ageDiff < 0 ? 'Ta notation à l’âge est plus sévère que la notation générale.' : 'Les deux notations donnent le même score.')}</span></div>
         </div>
 
         <div>
@@ -255,7 +257,7 @@
                     <div key={x.q.key} className="cad-dp-row">
                       <span>{tr(x.q.label)}</span>
                       <div className="cad-dp-track"><div className={'cad-dp-fill' + (i < 2 ? ' is-top' : '')} style={{ width: on ? Math.round(x.lost / maxLost * 100) + '%' : 0 }}/></div>
-                      <span className="cad-dp-num">{Math.round(x.lost)} pts · {Math.round(x.share * 100)} %</span>
+                      <span className="cad-dp-num">{Math.round(x.lost)} {tr('pts')} · {Math.round(x.share * 100)} %</span>
                     </div>
                   );
                 })}
@@ -276,7 +278,7 @@
                       <tr key={l.t.slug}>
                         <td>{tr(nm(l.t))}</td>
                         <td>{l.now || '—'}</td>
-                        <td>{l.gap ? l.gap.text + (l.gap.toRef ? ' pour atteindre le repère de référence' : ' pour le maximum') : '—'}</td>
+                        <td>{l.gap ? T(l.gap.toRef ? '{gap} pour atteindre le repère de référence' : '{gap} pour le maximum', { gap: l.gap.text }) : '—'}</td>
                         <td className="n">+{Math.round(l.lost)}</td>
                       </tr>
                     );
@@ -291,14 +293,14 @@
           {d.sim ? (
             <div className="cad-dp-box">
               <b>{tr('Simulation')}</b>
-              <p>{'Si tu relevais ta ' + lc(tr(d.sim.q.label)) + ' de ' + d.sim.from + ' % à ' + d.sim.to + ' % (le niveau médian de tes qualités), ton score passerait d’environ ' + d.total + ' à ' + d.sim.total + ' sur ' + d.max + (d.sim.level && d.sim.level !== d.level ? ', soit le niveau ' + d.sim.level + '.' : '.') + ' Estimation : elle suppose que le reste ne bouge pas.'}</p>
+              <p>{T('Si tu relevais ta qualité {q} de {from} % à {to} % (le niveau médian de tes qualités), ton score passerait d’environ {total} à {sim} sur {max}', { q: tr(d.sim.q.label), from: d.sim.from, to: d.sim.to, total: d.total, sim: d.sim.total, max: d.max }) + (d.sim.level && d.sim.level !== d.level ? T(', soit le niveau {level}.', { level: tr(d.sim.level) }) : '.') + ' ' + tr('Estimation : elle suppose que le reste ne bouge pas.')}</p>
             </div>
           ) : null}
           {d.next ? (
             <div className="cad-dp-box">
-              <b>{'Atteindre le niveau ' + d.next.label}</b>
-              <p>{'Il te manque ' + d.next.gap + ' points. ' + (d.reach && !d.reach.multi ? 'Cela revient à monter ta ' + lc(tr(d.reach.q.label)) + ' de ' + d.reach.from + ' % à ' + d.reach.to + ' % à elle seule.' : 'Une seule qualité ne suffira pas : il faudra progresser sur au moins deux d’entre elles.')}</p>
-              {d.pace ? <p>{'Rythme depuis ton test précédent : ' + signed(d.pace.delta) + ' points en ' + d.pace.months + ' mois.' + (d.pace.eta ? ' À ce rythme, niveau ' + d.next.label + ' vers ' + dateTxt(d.pace.eta) + ' (estimation, pas une promesse).' : '')}</p> : null}
+              <b>{T('Atteindre le niveau {level}', { level: tr(d.next.label) })}</b>
+              <p>{T('Il te manque {gap} points.', { gap: d.next.gap }) + ' ' + (d.reach && !d.reach.multi ? T('Cela revient à monter ta qualité {q} de {from} % à {to} % à elle seule.', { q: tr(d.reach.q.label), from: d.reach.from, to: d.reach.to }) : tr('Une seule qualité ne suffira pas : il faudra progresser sur au moins deux d’entre elles.'))}</p>
+              {d.pace ? <p>{T('Rythme depuis ton test précédent : {delta} points en {months} mois.', { delta: signed(d.pace.delta), months: d.pace.months }) + (d.pace.eta ? ' ' + T('À ce rythme, niveau {level} vers {date} (estimation, pas une promesse).', { level: tr(d.next.label), date: dateTxt(d.pace.eta) }) : '')}</p> : null}
             </div>
           ) : null}
         </div>
@@ -309,7 +311,7 @@
             <p style={{ marginBottom: 8 }}>{tr('Un écart important entre deux épreuves qui mesurent la même qualité indique souvent un problème de technique, de spécificité ou de matériel plutôt qu’un manque de capacité.')}</p>
             <div style={{ display: 'grid', gap: 8 }}>
               {d.coh.slice(0, 4).map(function (c) {
-                return <p key={c.q.key}><strong style={{ color: 'var(--text)' }}>{tr(c.q.label)}</strong>{' : ' + tr(nm(c.hi.t)) + ' à ' + pc(c.hi.pct) + ' % des points contre ' + tr(nm(c.lo.t)) + ' à ' + pc(c.lo.pct) + ' %, soit ' + Math.round(c.d * 100) + ' points d’écart.'}</p>;
+                return <p key={c.q.key}><strong style={{ color: 'var(--text)' }}>{tr(c.q.label)}</strong>{' : ' + T('{hi} à {hiPct} % des points contre {lo} à {loPct} %, soit {gap} points d’écart.', { hi: tr(nm(c.hi.t)), hiPct: pc(c.hi.pct), lo: tr(nm(c.lo.t)), loPct: pc(c.lo.pct), gap: Math.round(c.d * 100) })}</p>;
               })}
             </div>
           </div>
@@ -345,8 +347,8 @@
               );
             })}
           </div>
-          {d.keepQ ? <p style={{ marginTop: 12 }}>{'À entretenir pendant ce temps : ' + lc(tr(d.keepQ.label)) + ' (ton point fort), avec une séance d’entretien par semaine.'}</p> : null}
-          {d.retest ? <p style={{ marginTop: 8 }}>{'Retest conseillé : ' + dateTxt(d.retest) + ', dans les mêmes conditions (même période, même matériel, même forme).'}</p> : null}
+          {d.keepQ ? <p style={{ marginTop: 12 }}>{T('À entretenir pendant ce temps : la qualité {q} (ton point fort), avec une séance d’entretien par semaine.', { q: tr(d.keepQ.label) })}</p> : null}
+          {d.retest ? <p style={{ marginTop: 8 }}>{T('Retest conseillé : {date}, dans les mêmes conditions (même période, même matériel, même forme).', { date: dateTxt(d.retest) })}</p> : null}
         </div>
 
         {d.warn.length ? (

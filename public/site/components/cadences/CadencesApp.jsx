@@ -611,6 +611,7 @@
 
   // ════════════════ ORCHESTRATEUR ════════════════
   function CadencesPage() {
+    if (window.CadUseLang) window.CadUseLang();
     var account = window.THWAccount.useAccount();
     var loggedIn = !!(account && account.loggedIn !== false && (account.email || account.firstName || account.id));
     var st = React.useState('loading'); var view = st[0], setView = st[1];

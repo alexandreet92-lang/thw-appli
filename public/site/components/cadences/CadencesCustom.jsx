@@ -160,10 +160,10 @@
     var bS = React.useState(false); var busy = bS[0], setBusy = bS[1];
 
     function pickTpl(t) {
-      setTpl(t.k); setSport(t.sport); if (t.k !== 'blank' && !name) setName(t.label === 'Hyrox' ? 'Test Hyrox' : 'Test ' + t.label.toLowerCase());
+      setTpl(t.k); setSport(t.sport ? tr(t.sport) : ''); if (t.k !== 'blank' && !name) setName(t.label === 'Hyrox' ? tr('Test Hyrox') : window.CadT('Test {sport}', { sport: window.CadLc(tr(t.label)) }));
       setItems(t.items.map(function (x, i) {
         var m = MEASURES.filter(function (q) { return q.k === (x.measure || 'time'); })[0];
-        return { id: 'i' + (i + 1), name: x.name || '', measure: m.k, direction: m.dir, ref: x.ref || '', goal: x.goal || '', weight: '1' };
+        return { id: 'i' + (i + 1), name: x.name ? tr(x.name) : '', measure: m.k, direction: m.dir, ref: x.ref || '', goal: x.goal || '', weight: '1' };
       }));
     }
     function upd(i, patch) { setItems(function (l) { return l.map(function (x, k) { if (k !== i) return x; var n = Object.assign({}, x, patch); if (patch.measure) n.direction = MEASURES.filter(function (q) { return q.k === patch.measure; })[0].dir; return n; }); }); }
@@ -176,8 +176,8 @@
       for (var i = 0; i < items.length; i++) {
         var it = items[i]; if (!it.name.trim()) { setErr(tr('Chaque épreuve a besoin d’un nom.')); return; }
         var ref = parseVal(it.measure, it.ref), goal = parseVal(it.measure, it.goal);
-        if (scoring !== 'values' && (ref == null || goal == null || ref === goal)) { setErr(tr('Pour une note, « ') + it.name + tr(' » a besoin d’un repère et d’un objectif différents.')); return; }
-        if (scoring !== 'values' && ((it.direction === 'lower' && goal > ref) || (it.direction === 'higher' && goal < ref))) { setErr(tr('Pour « ') + it.name + tr(' », l’objectif doit être meilleur que le repère.')); return; }
+        if (scoring !== 'values' && (ref == null || goal == null || ref === goal)) { setErr(window.CadT('Pour une note, « {name} » a besoin d’un repère et d’un objectif différents.', { name: it.name })); return; }
+        if (scoring !== 'values' && ((it.direction === 'lower' && goal > ref) || (it.direction === 'higher' && goal < ref))) { setErr(window.CadT('Pour « {name} », l’objectif doit être meilleur que le repère.', { name: it.name })); return; }
         out.push({ id: it.id, name: it.name.trim(), measure: it.measure, direction: it.direction, ref: ref, goal: goal, weight: Number(String(it.weight).replace(',', '.')) || 1 });
       }
       setBusy(true);
@@ -211,8 +211,8 @@
                     <td><input aria-label={tr('Nom de l’épreuve')} value={it.name} maxLength={60} onChange={function (e) { upd(i, { name: e.target.value }); }}/></td>
                     <td><select aria-label={tr('Ce que tu mesures')} value={it.measure} onChange={function (e) { upd(i, { measure: e.target.value }); }}>{MEASURES.map(function (q) { return <option key={q.k} value={q.k}>{tr(q.label)}</option>; })}</select></td>
                     <td><select aria-label={tr('Meilleur résultat')} value={it.direction} onChange={function (e) { upd(i, { direction: e.target.value }); }}><option value="lower">{tr('Le plus bas')}</option><option value="higher">{tr('Le plus haut')}</option></select></td>
-                    <td><input aria-label={tr('Repère')} value={it.ref} placeholder={m.hint} onChange={function (e) { upd(i, { ref: e.target.value }); }}/></td>
-                    <td><input aria-label={tr('Objectif')} value={it.goal} placeholder={m.hint} onChange={function (e) { upd(i, { goal: e.target.value }); }}/></td>
+                    <td><input aria-label={tr('Repère')} value={it.ref} placeholder={tr(m.hint)} onChange={function (e) { upd(i, { ref: e.target.value }); }}/></td>
+                    <td><input aria-label={tr('Objectif')} value={it.goal} placeholder={tr(m.hint)} onChange={function (e) { upd(i, { goal: e.target.value }); }}/></td>
                     {scoring === 'weighted' ? <td><input aria-label={tr('Poids')} value={it.weight} onChange={function (e) { upd(i, { weight: e.target.value }); }}/></td> : null}
                     <td><button type="button" className="cc-link" onClick={function () { del(i); }} disabled={items.length < 2}>{tr('Suppr.')}</button></td>
                   </tr>
@@ -254,7 +254,7 @@
         var it = test.items[i], raw = vals[it.id];
         if (raw == null || String(raw).trim() === '') continue;
         var v = parseVal(it.measure, raw);
-        if (v == null || v < 0) { setErr(tr('Résultat invalide pour') + ' « ' + it.name + ' ».'); return; }
+        if (v == null || v < 0) { setErr(window.CadT('Résultat invalide pour « {name} ».', { name: it.name })); return; }
         out[it.id] = v; any = true;
       }
       if (!any) { setErr(tr('Saisis au moins un résultat.')); return; }
@@ -275,7 +275,7 @@
             return (
               <tr key={it.id}>
                 <td><b>{it.name}</b></td>
-                <td><input aria-label={it.name} value={vals[it.id] || ''} placeholder={MEASURES.filter(function (q) { return q.k === it.measure; })[0].hint} onChange={function (e) { var x = e.target.value; setVals(function (o) { var n = Object.assign({}, o); n[it.id] = x; return n; }); }}/></td>
+                <td><input aria-label={it.name} value={vals[it.id] || ''} placeholder={tr(MEASURES.filter(function (q) { return q.k === it.measure; })[0].hint)} onChange={function (e) { var x = e.target.value; setVals(function (o) { var n = Object.assign({}, o); n[it.id] = x; return n; }); }}/></td>
                 <td className="n">{lv != null ? fmtVal(it.measure, lv) : '—'}</td>
                 <td className={'n ' + (d == null || eq ? '' : good ? 'cc-up' : 'cc-dn')}>{d == null ? '—' : eq ? '±0' : (d > 0 ? '+' : '−') + fmtVal(it.measure, Math.abs(d)).replace(/\s?(kg|m|%)$/, '')}</td>
               </tr>
@@ -329,7 +329,7 @@
         )}
         {runs.length ? <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>{runs.map(function (r) { return <button key={r.id} type="button" className="cc-link" onClick={function () { p.onDelRun(r); }}>{tr('Supprimer le passage du')} {fmtDate(r.performed_on)}</button>; })}</div> : null}
         <div className="cc-act" style={{ justifyContent: 'space-between' }}>
-          <span className="cc-note" style={{ margin: 0 }}>{test.remind_months ? tr('Rythme conseillé') + ' : ' + tr('tous les') + ' ' + test.remind_months + ' ' + tr('mois') + '.' : ''}</span>
+          <span className="cc-note" style={{ margin: 0 }}>{test.remind_months ? window.CadT('Rythme conseillé : tous les {n} mois.', { n: test.remind_months }) : ''}</span>
           {confirm
             ? <span><span className="cc-note" style={{ marginRight: 10 }}>{tr('Supprimer ce test et tous ses passages ?')}</span><button type="button" className="cc-btn sm" onClick={function () { setConfirm(false); }}>{tr('Annuler')}</button> <button type="button" className="cc-btn sm main" onClick={function () { p.onDelTest(test); }}>{tr('Supprimer définitivement')}</button></span>
             : <button type="button" className="cc-link" onClick={function () { setConfirm(true); }}>{tr('Supprimer ce test')}</button>}
@@ -340,6 +340,7 @@
 
   // ── Composant principal ────────────────────────────────────────────────────
   function CadCustom(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var dS = React.useState(null); var data = dS[0], setData = dS[1];       // null = chargement
     var vS = React.useState({ v: 'list' }); var view = vS[0], setView = vS[1];
     var appUrl = props.appUrl || '';
@@ -384,7 +385,7 @@
                 <div key={t.id} className="cc-kp">
                   <span className="cc-tag">{t.sport || tr('Personnalisé')}</span>
                   <b>{t.name}</b>
-                  <small>{t.items.length} {tr('épreuves')} · {rs.length} {tr('passage')}{rs.length > 1 ? 's' : ''}{l ? ' · ' + tr('dernier') + ' : ' + fmtDate(l.performed_on) : ''}</small>
+                  <small>{t.items.length} {tr('épreuves')} · {rs.length} {rs.length > 1 ? tr('passages') : tr('passage')}{l ? ' · ' + tr('dernier') + ' : ' + fmtDate(l.performed_on) : ''}</small>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
                     <div><small>{t.scoring === 'values' ? tr('Valeurs seulement') : tr('Note globale')}</small><b style={{ fontSize: 30, display: 'block', marginTop: 2 }}>{g == null ? '—' : Math.round(g)}</b></div>
                     <Spark values={rs.map(function (r) { return globalScore(t, r); })}/>
@@ -408,7 +409,7 @@
       <section className="cc" id="cad-perso" aria-label={tr('Mes tests personnalisés')}>
         <Style/>
         {view.v === 'list' ? (
-          <div className="cc-top"><div><div className="cc-eye">{tr('Mes tests personnalisés')}</div><h2>{data.tests.length ? data.tests.length + ' ' + tr('test') + (data.tests.length > 1 ? 's' : '') + ' · ' + tr('visibles uniquement par toi') : tr('Crée ton premier test')}</h2></div>
+          <div className="cc-top"><div><div className="cc-eye">{tr('Mes tests personnalisés')}</div><h2>{data.tests.length ? data.tests.length + ' ' + (data.tests.length > 1 ? tr('tests') : tr('test')) + ' · ' + tr('visibles uniquement par toi') : tr('Crée ton premier test')}</h2></div>
             <button type="button" className="cc-btn main" onClick={function () { setView({ v: 'build' }); }}>{tr('Créer un test')}</button></div>
         ) : null}
         {body}

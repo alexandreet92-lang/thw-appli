@@ -9,6 +9,7 @@
   function pc(p) { return Math.round((p || 0) * 100); }
   function signed(n) { var r = Math.round(n); return (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r); }
   function nm(t) { return t.name.replace(/\s*\(.*\)$/, ''); }
+  function lc(x) { return window.CadLc ? window.CadLc(x) : String(x || '').toLowerCase(); }
   function clean(s) { return window.CadClean ? window.CadClean(s) : String(s || ''); }
   function fdate(x, o) { try { return new Date(x).toLocaleDateString(window.CadLocale ? window.CadLocale() : 'fr-FR', o || { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; } }
 
@@ -62,6 +63,7 @@
   }
 
   function CadPrintReport(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var acc = window.THWAccount && window.THWAccount.useAccount ? window.THWAccount.useAccount() : null;
     var cat = props.catalog, sG = props.scoreG, sA = props.scoreA, camp = props.campaign, results = props.results || [], prev = props.prev || null;
     var F = window.CadencesFormat || {};
@@ -96,7 +98,7 @@
     var span = rdates.length ? Math.round((Date.parse(rdates[rdates.length - 1]) - Date.parse(rdates[0])) / DAY) + 1 : null;
 
     // Synthèse
-    var synth = deep ? deep.verdict : (qs.length ? tr('Ta qualité la plus haute est') + ' ' + tr(qs[0].label).toLowerCase() + ' (' + pc(qs[0].pct) + ' %) ; ' + tr('la plus basse est') + ' ' + tr(low.label).toLowerCase() + ' (' + pc(low.pct) + ' %).' : '');
+    var synth = deep ? deep.verdict : (qs.length ? tr('Ta qualité la plus haute est') + ' ' + lc(tr(qs[0].label)) + ' (' + pc(qs[0].pct) + ' %) ; ' + tr('la plus basse est') + ' ' + lc(tr(low.label)) + ' (' + pc(low.pct) + ' %).' : '');
 
     // Forts / faibles
     function driverTxt(q, strong) {
@@ -115,7 +117,7 @@
     // Plan
     var plan = [];
     (interp && interp.plan || []).forEach(function (q, i) { if (ACT[q.key]) plan.push({ n: String(i + 1), t: ACT[q.key][0], d: ACT[q.key][1] }); });
-    if (interp && interp.keep && ACT[interp.keep.key]) plan.push({ n: String(plan.length + 1), t: tr('Garder') + ' ' + tr(interp.keep.label).toLowerCase(), d: tr('Une séance d’entretien par semaine suffit à conserver ce niveau.') });
+    if (interp && interp.keep && ACT[interp.keep.key]) plan.push({ n: String(plan.length + 1), t: tr('Garder') + ' ' + lc(tr(interp.keep.label)), d: tr('Une séance d’entretien par semaine suffit à conserver ce niveau.') });
     var retest = Date.parse(done) + 182 * DAY;
     plan.push({ n: '◆', t: tr('Retest conseillé') + ' : ' + fdate(retest, { month: 'long', year: 'numeric' }), d: tr('6 mois après ce bilan, mêmes conditions.') });
 
@@ -166,7 +168,7 @@
             </div>
 
             <h2>{tr('Synthèse')}</h2>
-            <p style={{ margin: 0 }}>{synth}{low ? <span> <b>{tr('Priorité')} : {tr(low.label).toLowerCase()}.</b></span> : null}</p>
+            <p style={{ margin: 0 }}>{synth}{low ? <span> <b>{tr('Priorité')} : {lc(tr(low.label))}.</b></span> : null}</p>
 
             <h2>{tr('Profil')} — {qs.length} {tr('qualités')} (/100)</h2>
             <table>
@@ -232,8 +234,8 @@
                 <table>
                   <thead><tr><th>{tr('Indicateur')}</th><th className="n" style={{ width: 70 }}>{tr('Valeur')}</th><th>{tr('Lecture')}</th></tr></thead>
                   <tbody>
-                    {deep.balance ? <tr><td>{tr('Équilibre force / endurance')}</td><td className="n"><b>{(Math.round(deep.balance.ratio * 100) / 100 + '').replace('.', ',')}</b></td><td>{deep.balance.gap < 10 ? tr('Équilibré.') : tr('Déséquilibré') + ' : ' + tr(deep.balance.hi.label).toLowerCase() + ' ' + tr('dépasse') + ' ' + tr(deep.balance.lo.label).toLowerCase() + ' (' + Math.round(deep.balance.gap) + ' pts).'}</td></tr> : null}
-                    <tr><td>{tr('Points perdus concentrés')}</td><td className="n"><b>{Math.round(deep.top2share * 100)} %</b></td><td>{tr('Dans')} {tr(deep.lost[0].q.label).toLowerCase()}{deep.lost[1] ? ' ' + tr('et') + ' ' + tr(deep.lost[1].q.label).toLowerCase() : ''}.</td></tr>
+                    {deep.balance ? <tr><td>{tr('Équilibre force / endurance')}</td><td className="n"><b>{(Math.round(deep.balance.ratio * 100) / 100 + '').replace('.', ',')}</b></td><td>{deep.balance.gap < 10 ? tr('Équilibré.') : tr('Déséquilibré') + ' : ' + lc(tr(deep.balance.hi.label)) + ' ' + tr('dépasse') + ' ' + lc(tr(deep.balance.lo.label)) + ' (' + Math.round(deep.balance.gap) + ' pts).'}</td></tr> : null}
+                    <tr><td>{tr('Points perdus concentrés')}</td><td className="n"><b>{Math.round(deep.top2share * 100)} %</b></td><td>{tr('Dans')} {lc(tr(deep.lost[0].q.label))}{deep.lost[1] ? ' ' + tr('et') + ' ' + lc(tr(deep.lost[1].q.label)) : ''}.</td></tr>
                     <tr><td>{tr('Régularité du profil')}</td><td className="n"><b>{Math.round(deep.sd)}</b></td><td>{deep.sd < 12 ? tr('Régulier.') : deep.sd < 20 ? tr('Modérément irrégulier.') : tr('Irrégulier : vérifie les épreuves très faibles.')}</td></tr>
                     {deep.sim ? <tr><td>{tr('Simulation')}</td><td className="n"><b>{deep.sim.total}</b></td><td>{tr(deep.sim.q.label)} {deep.sim.from} % {tr('vers')} {deep.sim.to} % (estimation).</td></tr> : null}
                     {deep.pace ? <tr><td>{tr('Rythme depuis le test précédent')}</td><td className="n"><b>{signed(deep.pace.delta)} pts</b></td><td>{deep.pace.eta && deep.next ? tr('Niveau') + ' ' + tr(deep.next.label) + ' ' + tr('estimé vers') + ' ' + fdate(deep.pace.eta, { month: 'long', year: 'numeric' }) + ' (' + tr('estimation') + ').' : tr('Estimation indisponible.')}</td></tr> : null}

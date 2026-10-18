@@ -510,9 +510,7 @@ function SiteHeader(props) {
             {navLinks.map(function (l) {
               return (
                 <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
-                   style={l.key === 'history' || l.key === 'perso'
-                     ? { whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text)', border: '1px solid var(--border-mid)', borderRadius: 999, padding: '6px 16px' }
-                     : l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
+                   style={l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
                   {l.label}
                 </a>
               );

@@ -169,6 +169,7 @@
 
   // ── Bandeau d'entrée ───────────────────────────────────────────────────────
   function CadHistoryHero(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var cat = props.catalog || {}, hist = props.history || [];
     var mS = React.useState('general'); var mode = mS[0], setMode = mS[1];
     function setM(m) { setMode(m); try { window.dispatchEvent(new CustomEvent('cad-set-mode', { detail: { mode: m } })); } catch (e) {} }
@@ -228,6 +229,7 @@
 
   // ── Grand tableau : un test par colonne ────────────────────────────────────
   function CadHistoryMatrix(props) {
+    if (window.CadUseLang) window.CadUseLang();
     var cat = props.catalog || {}, hist = (props.history || []).slice().sort(function (a, b) { return dOf(a.date) - dOf(b.date); });
     var qualities = cat.qualities || [];
     var legacy = (props.legacyTests || []).map(function (t) { return Object.assign({}, t, { legacy: true }); });
@@ -303,7 +305,7 @@
               <span className="cad-hm-d">{fmtDate(dOf(e.date), { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span className="cad-hm-a">{e.age} {tr('ans')} · {num(e.weight, 1)} kg</span>
               {cond ? <span className="cad-hm-c">{cond}</span> : null}
-              {e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hm-c" style={{ color: '#fbbf24' }}>Durée : {e.durationDays} {tr('jours')}</span> : null}
+              {e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hm-c" style={{ color: '#fbbf24' }}>{tr('Durée')} : {e.durationDays} {tr('jours')}</span> : null}
               <span className="cad-hm-open">
                 {props.onOpen ? <button type="button" onClick={function () { props.onOpen(e.id); }}>{tr('Analyse')} →</button> : null}
                 {props.onDelete ? <button type="button" aria-label={tr('Supprimer ce test')} title={tr('Supprimer ce test')} onClick={function () { props.onDelete(e); }}>{tr('Suppr.')}</button> : null}

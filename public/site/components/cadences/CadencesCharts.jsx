@@ -180,8 +180,8 @@
         </svg>
         {dual ? (
           <div style={{ display: 'flex', gap: 16, marginTop: 6, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 3, background: color, display: 'inline-block', borderRadius: 2 }}></em>Général</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 0, borderTop: '2px dashed ' + color2, display: 'inline-block' }}></em>Ajusté à l’âge</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 3, background: color, display: 'inline-block', borderRadius: 2 }}></em>{props.legend1 || 'Général'}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><em style={{ width: 14, height: 0, borderTop: '2px dashed ' + color2, display: 'inline-block' }}></em>{props.legend2 || 'Ajusté à l’âge'}</span>
           </div>
         ) : null}
       </div>

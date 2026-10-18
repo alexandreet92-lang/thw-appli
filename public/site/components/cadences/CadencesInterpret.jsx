@@ -47,6 +47,38 @@
     proofHead: 'Qualité · points · part du possible · niveau',
     proofRow: '{points} / {max} pts',
     tips: 'Ces pistes sont générales : elles ne remplacent pas un plan d’entraînement personnalisé.',
+    levelUp: 'Nouveau niveau : {level} (avant : {before})',
+    planTitle: 'Comment progresser',
+    planIntro: 'Trois pistes, classées de la plus utile à la moins urgente, d’après tes résultats.',
+    planKeep: 'Entretenir ton point fort : {name}',
+    planKeepText: 'Garde une séance par semaine sur cette qualité pour ne pas la perdre pendant que tu travailles le reste.',
+    planCta: 'Créer mon plan d’entraînement',
+    deepKicker: 'Exclusif Decaform',
+    deepTitle: 'Analyse approfondie',
+    deepIntro: 'Decaform croise tes épreuves entre elles pour repérer des déséquilibres qu’un test isolé ne montre pas.',
+    deepBalance: 'Équilibre force / endurance',
+    deepBalanceOk: 'Ces deux qualités sont proches : ton profil est équilibré entre force et endurance.',
+    deepBalanceMid: 'Ta {hi} dépasse ta {lo} de {gap} pts : l’écart est visible mais reste raisonnable.',
+    deepBalanceBad: 'Ta {hi} dépasse nettement ta {lo} (écart : {gap} pts) : c’est le déséquilibre central de ton profil.',
+    deepPairs: 'Qualités qui vont ensemble',
+    deepPairOk: '{a} et {b} sont alignées (écart : {gap} pts).',
+    deepPairGap: '{hi} est plus haute que {lo} de {gap} pts : elles progressent d’habitude ensemble, la plus basse a de la marge.',
+    deepBestTest: 'Épreuve où tu es le plus fort : {name} ({pct} % des points).',
+    deepWorstTest: 'Épreuve où tu perds le plus de points : {name} ({pct} % des points).',
+    deepPace: 'Rythme depuis ton test précédent : {delta} points en {months} mois.',
+    deepPaceEta: 'Si ce rythme se maintenait, le niveau {next} serait atteint vers {date}. C’est une estimation, pas une promesse.',
+  };
+  // Actions concrètes par qualité (titre, détail) — pistes générales, non médicales.
+  var ACT = {
+    force: ['2 séances de force lourde par semaine', 'Grands mouvements (squat, soulevé de terre, tractions lestées), 3 à 5 répétitions, charges lourdes, repos complet entre les séries.'],
+    vitesse: ['Sprints courts et vitesse maximale', 'Une à deux séances brèves par semaine : 6 à 8 sprints de 20 à 40 m, récupération complète entre chaque.'],
+    puissance: ['Sauts et mouvements explosifs', 'Sauts, lancers et mouvements rapides avec charge légère : peu de répétitions, qualité maximale.'],
+    explosivite: ['Départs arrêtés et sauts', 'Sauts, bonds et départs arrêtés, en séries courtes et fraîches.'],
+    endurance: ['Volume facile et régulier', 'Deux à trois sorties à allure facile par semaine, en augmentant la durée progressivement.'],
+    endurance_musculaire: ['Circuits et séries longues', 'Circuits, séries longues et travail sous fatigue, une à deux fois par semaine.'],
+    vo2max: ['Intervalles proches de ton maximum aérobie', 'Une séance par semaine d’intervalles de 3 à 5 minutes à intensité élevée, avec récupération active.'],
+    coordination: ['Agilité et précision du geste', 'Dix minutes d’échelle, de slalom et d’appuis avant deux séances par semaine : le gain est rapide.'],
+    souplesse: ['Mobilité régulière', 'Étirements doux et mobilité, un peu chaque jour plutôt que beaucoup une fois.'],
   };
   // Ce que veut dire une qualité forte / faible.
   var MEAN = {
@@ -60,7 +92,7 @@
     coordination: ['Tes gestes sont précis et efficaces, même sous fatigue.', 'La coordination et la précision du geste sont à travailler : parcours, appuis et gestes techniques.'],
     souplesse: ['Ta souplesse t’aide à garder ton autonomie dans les gestes du quotidien.', 'Ta souplesse limite certains gestes du quotidien : étirements doux et mobilité régulière.'],
   };
-  window.CAD_INTERPRET_TEXTS = { TPL: TPL, MEAN: MEAN };  // lu par le script de traduction
+  window.CAD_INTERPRET_TEXTS = { TPL: TPL, MEAN: MEAN, ACT: ACT };  // lu par le script de traduction
 
   // ── Traduction : gabarit → langue du site, puis {variables} ─────────────────
   function tr(fr) { return window.CadTr ? window.CadTr(fr) : fr; }
@@ -174,8 +206,40 @@
       ups.sort(function (a, b) { return b.d - a.d; }); downs.sort(function (a, b) { return a.d - b.d; });
       evo = { date: prev.date, delta: sG.total - prev.score.total, up: ups[0] || null, down: downs[0] || null };
     }
+    // Niveau précédent (pour l'annonce « nouveau niveau »).
+    var levelUp = null;
+    if (prev && prev.score && prev.score.globalLevel && prev.score.globalLevel !== sG.globalLevel) {
+      var idxOf = function (lab) { for (var k = 0; k < levels.length; k++) if (levels[k].label === lab) return k; return -1; };
+      if (idxOf(sG.globalLevel) > idxOf(prev.score.globalLevel) && idxOf(prev.score.globalLevel) >= 0) levelUp = { before: prev.score.globalLevel };
+    }
+    // Plan d'amélioration : les 3 qualités à travailler (déjà classées) + une à entretenir.
+    var plan = weak.slice(0, 3).filter(function (q) { return ACT[q.key]; });
+    var keep = strong[0] && ACT[strong[0].key] ? strong[0] : null;
+    // Analyse approfondie (Decaform) : équilibres entre qualités et épreuves, rythme.
+    var qOf = function (k) { return qs.filter(function (q) { return q.key === k; })[0] || null; };
+    var deep = null;
+    var isDeca = ((cat.testKey || cat.test_key || 'decaform') === 'decaform') && tests.length >= 20;
+    if (isDeca) {
+      var fo = qOf('force'), en = qOf('endurance');
+      var balance = fo && en ? { a: fo, b: en, ratio: Math.min(fo.pct, en.pct) / Math.max(fo.pct, en.pct || 1e-9), gap: Math.abs(fo.pct - en.pct) * 100, hi: fo.pct >= en.pct ? fo : en, lo: fo.pct >= en.pct ? en : fo } : null;
+      var pairs = [['force', 'puissance'], ['vitesse', 'explosivite'], ['endurance', 'vo2max']].map(function (pr) {
+        var a = qOf(pr[0]), b = qOf(pr[1]); if (!a || !b) return null;
+        var hi = a.pct >= b.pct ? a : b, lo = a.pct >= b.pct ? b : a;
+        return { a: a, b: b, hi: hi, lo: lo, gap: Math.abs(a.pct - b.pct) * 100 };
+      }).filter(Boolean);
+      var byTestPct = tests.map(function (t) { return { t: t, pct: sG.byTest[t.slug].pct }; }).filter(function (x) { return isFinite(x.pct); }).sort(function (a, b) { return b.pct - a.pct; });
+      var pace = null;
+      if (prev && prev.score && prev.date) {
+        var months = Math.max(1, Math.round((Date.parse(camp.completed_on || camp.started_on || prev.date) - Date.parse(prev.date)) / (30.4 * 86400000)));
+        var delta = sG.total - prev.score.total;
+        var etaMs = null;
+        if (delta > 0 && next) etaMs = Date.now() + (next.gap / (delta / months)) * 30.4 * 86400000;
+        pace = { months: months, delta: delta, eta: etaMs && etaMs - Date.now() < 15 * 365 * 86400000 ? etaMs : null };
+      }
+      deep = { balance: balance, pairs: pairs, best: byTestPct[0] || null, worst: byTestPct[byTestPct.length - 1] || null, pace: pace };
+    }
     var ageDiff = sA ? Math.round(sA.total) - tot : 0;
-    return { max: max, total: tot, pct: pc(pctTot), level: sG.globalLevel, next: next, qs: qs, byPct: byPct, top: top, low: low, spread: spread, tone: tone,
+    return { levelUp: levelUp, plan: plan, keep: keep, deep: deep, max: max, total: tot, pct: pc(pctTot), level: sG.globalLevel, next: next, qs: qs, byPct: byPct, top: top, low: low, spread: spread, tone: tone,
       strong: strong, weak: weak, drivers: drivers, gains: gains, evo: evo, ageDiff: ageDiff, ageTotal: sA ? Math.round(sA.total) : tot, ageLevel: sA ? sA.globalLevel : sG.globalLevel,
       nTests: tests.length };
   }
@@ -216,7 +280,20 @@
         .cad-int-proof th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); font-weight: 600; padding: 4px 8px 6px 0; }
         .cad-int-proof td { padding: 6px 8px 6px 0; border-top: 1px solid var(--border); color: var(--text-mid); font-variant-numeric: tabular-nums; }
         .cad-int-proof td:first-child { color: var(--text); font-weight: 600; }
-        @media (prefers-reduced-motion: reduce) { .cad-int-fill { transition: none; } }
+        .cad-int-levelup { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 8px 16px; border-radius: 999px; font-family: var(--font-display); font-weight: 800; font-size: 15px; color: #7a5617; background: linear-gradient(120deg, rgba(224,183,102,.35), rgba(224,183,102,.15)); border: 1px solid rgba(201,151,63,.55); animation: cadLvPop .7s cubic-bezier(.2,1.4,.3,1) both; }
+        html.dark .cad-int-levelup { color: #e0b766; }
+        @keyframes cadLvPop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .cad-int-act { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 12px 14px; border: 1px solid var(--border-mid); border-radius: var(--radius-md); background: var(--bg-card); }
+        .cad-int-act > i { font-style: normal; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; background: rgba(201,151,63,.16); color: #7a5617; font-family: var(--font-display); }
+        html.dark .cad-int-act > i { color: #e0b766; }
+        .cad-int-act b { display: block; font-family: var(--font-display); font-size: 15px; color: var(--text); }
+        .cad-int-deep { background: linear-gradient(160deg, rgba(91,111,255,.10), rgba(0,200,224,.06)); border: 1px solid rgba(91,111,255,.35); border-radius: var(--radius-md); padding: 18px; display: grid; gap: 14px; }
+        .cad-int-deepgrid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 760px) { .cad-int-deepgrid { grid-template-columns: minmax(0, 1fr); } }
+        .cad-int-deepc { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--bg-card); display: grid; gap: 4px; }
+        .cad-int-deepc small { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .cad-int-deepc strong { font-family: var(--font-display); font-size: 24px; color: var(--text); }
+        @media (prefers-reduced-motion: reduce) { .cad-int-fill { transition: none; } .cad-int-levelup { animation: none; } }
       `}</style>
     );
   }
@@ -281,6 +358,7 @@
         </div>
 
         <div style={{ display: 'grid', gap: 8 }}>
+          {r.levelUp ? <div className="cad-int-levelup" role="status">▲ {T('levelUp', { level: tr(r.level), before: tr(r.levelUp.before) })}</div> : null}
           <p className="cad-int-lead"><strong>{T('summary', { total: r.total, max: r.max, pct: r.pct, level: tr(r.level) })}</strong></p>
           {desc ? <p>{desc}</p> : null}
           <p>{r.next ? T('nextLevel', { gap: r.next.gap, next: tr(r.next.label), threshold: r.next.threshold }) : T('topLevel')}</p>
@@ -315,6 +393,22 @@
             <div style={{ display: 'grid', gap: 10 }}>{r.weak.map(function (q) { return <QualityCard key={q.key} q={q} strong={false} r={r} color={color}/>; })}</div>
           </div>
         </div>
+
+        {r.plan.length ? (
+          <div>
+            <h3>{T('planTitle')}</h3>
+            <p style={{ marginBottom: 10 }}>{T('planIntro')}</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {r.plan.map(function (q, i) {
+                return (
+                  <div key={q.key} className="cad-int-act"><i>{i + 1}</i><div><b>{tr(ACT[q.key][0])}</b><p>{tr(ACT[q.key][1])}</p><small style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-dim)' }}>{tr(q.label)} · {pc(q.pct)} %</small></div></div>
+                );
+              })}
+              {r.keep ? <div className="cad-int-act"><i>◆</i><div><b>{T('planKeep', { name: tr(r.keep.label) })}</b><p>{T('planKeepText')}</p></div></div> : null}
+            </div>
+            <a className="btn btn-cyan" style={{ marginTop: 14, display: 'inline-flex' }} href={((typeof window !== 'undefined' && window.APP_URL) || 'https://thw-appli.vercel.app') + '/planning'}>{T('planCta')} →</a>
+          </div>
+        ) : null}
 
         {r.gains.length ? (
           <div>
@@ -377,6 +471,44 @@
             </tbody>
           </table>
         </div>
+
+        {r.deep ? (
+          <div className="cad-int-deep">
+            <div><div className="cad-ec-h">{T('deepKicker')}</div><h2 style={{ fontSize: 22 }}>{T('deepTitle')}</h2><p style={{ marginTop: 4 }}>{T('deepIntro')}</p></div>
+            <div className="cad-int-deepgrid">
+              {r.deep.balance ? (
+                <div className="cad-int-deepc">
+                  <small>{T('deepBalance')}</small>
+                  <strong>{(Math.round(r.deep.balance.ratio * 100) / 100 + '').replace('.', ',')}</strong>
+                  <p>{r.deep.balance.gap < 10 ? T('deepBalanceOk') : T(r.deep.balance.gap < 25 ? 'deepBalanceMid' : 'deepBalanceBad', { hi: tr(r.deep.balance.hi.label).toLowerCase(), lo: tr(r.deep.balance.lo.label).toLowerCase(), gap: Math.round(r.deep.balance.gap) })}</p>
+                </div>
+              ) : null}
+              {r.deep.pace ? (
+                <div className="cad-int-deepc">
+                  <small>{tr('Rythme')}</small>
+                  <strong>{signed(r.deep.pace.delta)} {tr('pts')}</strong>
+                  <p>{T('deepPace', { delta: signed(r.deep.pace.delta), months: r.deep.pace.months })}{r.deep.pace.eta && r.next ? ' ' + T('deepPaceEta', { next: tr(r.next.label), date: new Date(r.deep.pace.eta).toLocaleDateString(window.CadLocale ? window.CadLocale() : 'fr-FR', { month: 'long', year: 'numeric' }) }) : ''}</p>
+                </div>
+              ) : null}
+            </div>
+            {r.deep.pairs.length ? (
+              <div>
+                <h3>{T('deepPairs')}</h3>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {r.deep.pairs.map(function (pr) {
+                    return <p key={pr.a.key + pr.b.key}>{pr.gap < 10 ? T('deepPairOk', { a: tr(pr.a.label), b: tr(pr.b.label), gap: Math.round(pr.gap) }) : T('deepPairGap', { hi: tr(pr.hi.label), lo: tr(pr.lo.label), gap: Math.round(pr.gap) })}</p>;
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {r.deep.best && r.deep.worst ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                <p>{T('deepBestTest', { name: tr(r.deep.best.t.name.replace(/\s*\(.*\)$/, '')), pct: pc(r.deep.best.pct) })}</p>
+                <p>{T('deepWorstTest', { name: tr(r.deep.worst.t.name.replace(/\s*\(.*\)$/, '')), pct: pc(r.deep.worst.pct) })}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>{T('tips')}</p>
       </section>

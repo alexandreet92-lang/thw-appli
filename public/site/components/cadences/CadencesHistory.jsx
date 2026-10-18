@@ -403,6 +403,9 @@
             onConfirm={function () { return props.onDelete ? props.onDelete(delTarget.id).then(function (res) { if (res && res.ok) setDelTarget(null); return res; }) : Promise.resolve({ ok: false }); }}/>
         ) : null}
 
+        {/* ⓪ Explorateur : courbe interactive (mesure, période, objectif, projection, poids, événements) */}
+        {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
+
         {/* ① Courbe du score global */}
         <section className="cad-card">
           <h3 className="cad-h3">Score global dans le temps</h3>

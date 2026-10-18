@@ -753,7 +753,7 @@
                          backLabel={historyPage ? '← Mon historique' : null}
                          onHistory={historyPage ? null : function () { if (history) { setView('history'); } else { loadHistory('history'); } }}/>;
     } else if (view === 'history') {
-      body = <CadHistory catalog={catalog} history={history || []} legacyTests={legacyTests} mode={mode}
+      body = <CadHistory catalog={catalog} history={history || []} legacyTests={legacyTests} mode={mode} apiBase={API_BASE}
                          onBack={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('intro'); } }}
                          onStart={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('start'); } }}
                          onDelete={deleteCampaign}

@@ -37,7 +37,13 @@ const nextConfig = {
     async rewrites() {
       const has = [{ type: 'host', value: '(www\\.)?the-hybridway\\.com' }]
       return {
-        beforeFiles: [{ source: '/', has, destination: '/site/index.html' }],
+        // site.css et colors_and_type.css existent aussi dans public/ (version de l'app) :
+        // sans règle prioritaire, le domaine servirait ces mauvaises versions.
+        beforeFiles: [
+          { source: '/', has, destination: '/site/index.html' },
+          { source: '/site.css', has, destination: '/site/site.css' },
+          { source: '/colors_and_type.css', has, destination: '/site/colors_and_type.css' },
+        ],
         afterFiles: [{ source: '/:path*', has, destination: '/site/:path*' }],
         fallback: [],
       }

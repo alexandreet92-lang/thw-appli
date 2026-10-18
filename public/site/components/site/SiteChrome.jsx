@@ -513,7 +513,7 @@ function SiteHeader(props) {
                    style={l.key === 'history'
                      ? { whiteSpace: 'nowrap', fontWeight: 700, color: '#241800', background: 'linear-gradient(120deg,#e0b766,#f3d58f)', borderRadius: 999, padding: '7px 16px', boxShadow: '0 4px 16px rgba(224,183,102,.35)' }
                      : l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
-                  {l.key === 'history' ? '📈 ' : ''}{l.label}
+                  {l.label}
                 </a>
               );
             })}

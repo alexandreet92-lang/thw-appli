@@ -65,21 +65,21 @@
         @keyframes cadHvPulse { 0% { r: 7; opacity: .7; } 100% { r: 20; opacity: 0; } }
 
         /* ── Bandeau d'entrée ── */
-        .cad-hv-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 36px; align-items: center; padding: 6px 0 8px; }
-        @media (max-width: 920px) { .cad-hv-hero { grid-template-columns: minmax(0, 1fr); } }
+          .cad-hv-hero { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; padding: 0 0 34px; }
+        
         .cad-hv-eye { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-ink); display: inline-flex; align-items: center; gap: 10px; animation: cadHvRise .7s both; }
         .cad-hv-eye::before { content: ''; width: 26px; height: 1px; background: var(--gold-ink); }
-        .cad-hv-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(38px, 5.4vw, 66px); line-height: 1.02; letter-spacing: -.022em; margin: 12px 0 14px; color: var(--text); animation: cadHvRise .8s .08s both; }
+        .cad-hv-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 3.6vw, 42px); line-height: 1.05; letter-spacing: -.02em; margin: 8px 0 6px; color: var(--text); animation: cadHvRise .8s .08s both; }
         .cad-hv-h1 em { font-style: normal; background: linear-gradient(110deg, #00c8e0 10%, #7b8cff 55%, #e0b766 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cadHvShine 7s linear infinite; }
-        .cad-hv-lead { font-family: var(--font-body); font-size: 16.5px; line-height: 1.6; color: var(--text-mid); max-width: 52ch; margin: 0 0 22px; animation: cadHvRise .8s .16s both; }
+        .cad-hv-lead { font-family: var(--font-body); font-size: 14.5px; color: var(--text-mid); margin: 0; animation: cadHvRise .8s .16s both; }
         .cad-hv-cta { display: flex; flex-wrap: wrap; gap: 10px; animation: cadHvRise .8s .24s both; }
         .cad-hv-btn { font-family: var(--font-body); font-weight: 700; font-size: 14px; border-radius: 12px; padding: 12px 20px; cursor: pointer; border: 1px solid var(--border-mid); background: rgba(238,243,248,.06); color: var(--text); transition: transform .2s, box-shadow .2s, background .2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
         .cad-hv-btn:hover { transform: translateY(-2px); background: rgba(238,243,248,.11); }
         .cad-hv-btn.is-main { background: linear-gradient(120deg, #00c8e0, #5b6fff); color: #04121f; border-color: transparent; box-shadow: 0 8px 26px rgba(0,200,224,.28); }
         .cad-hv-btn.is-main:hover { box-shadow: 0 12px 34px rgba(0,200,224,.42); }
-        .cad-hv-card { border-radius: 22px; padding: 22px 24px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid rgba(224,183,102,.35); box-shadow: 0 18px 50px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); animation: cadHvRise .9s .2s both, cadHvFloat 7s 1.2s ease-in-out infinite; }
+        .cad-hv-card { border-radius: 18px; padding: 12px 18px; min-width: 300px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid rgba(224,183,102,.35); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: cadHvRise .9s .2s both; }
         .cad-hv-now { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-        .cad-hv-now b { font-family: var(--font-display); font-weight: 600; font-size: 72px; line-height: 1; letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .cad-hv-now b { font-family: var(--font-display); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums; }
         .cad-hv-now small { font-size: 15px; color: var(--text-dim); }
         .cad-hv-lvl { display: inline-block; font-family: var(--font-body); font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; }
         .cad-hv-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
@@ -87,11 +87,12 @@
         .cad-hv-stat small { display: block; font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); }
         .cad-hv-stat b { display: block; font-family: var(--font-display); font-size: 20px; color: var(--text); margin-top: 2px; font-variant-numeric: tabular-nums; }
         .cad-hv-up { color: #34d399 !important; } .cad-hv-dn { color: #f87171 !important; }
-        .cad-hv-spark { width: 100%; height: 90px; display: block; margin-top: 12px; overflow: visible; }
+        .cad-hv-spark { width: 100%; height: 44px; display: block; margin-top: 12px; overflow: visible; }
         .cad-hv-spark .ln { stroke-dasharray: 1; stroke-dashoffset: 1; animation: cadHvDraw 1.6s .5s cubic-bezier(.2,.8,.2,1) forwards; }
         .cad-hv-spark .pulse { animation: cadHvPulse 2.4s 2s ease-out infinite; }
 
         /* ── Grand tableau ── */
+        .cad-night-band section { padding: 0 !important; }
         .cad-hm-top { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; justify-content: space-between; margin-bottom: 14px; }
         .cad-hm-top h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 3vw, 34px); margin: 4px 0 0; color: var(--text); letter-spacing: -.015em; }
         .cad-hm-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -157,7 +158,7 @@
   function CadHistoryHero(props) {
     var cat = props.catalog || {}, hist = props.history || [];
     var s = stats(cat, hist, 'general');
-    var W = 420, H = 90, P = 14;
+    var W = 300, H = 56, P = 8;
     var vals = hist.map(function (e) { return e.score; });
     var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
     var span = Math.max(mx - mn, 40);
@@ -171,34 +172,23 @@
     var months = Math.max(1, Math.round((ts[ts.length - 1] - ts[0]) / (30.4 * DAY)));
     return (
       <section className="cad-hv-hero" aria-label={tr('Mon historique')}>
-        <div>
+        <div className="cad-hv-l">
           <div className="cad-hv-eye">{tr('Mon historique')}{props.onBack ? <button type="button" className="cad-link" style={{ marginLeft: 14, color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }} onClick={props.onBack}>← {tr('Accueil')}</button> : null}</div>
           <h1 className="cad-hv-h1">{tr('Tous tes tests,')} <em>{tr('au même endroit.')}</em></h1>
-          <p className="cad-hv-lead">{s.n} {s.n > 1 ? tr('tests') : tr('test')} {tr('depuis le')} {fmtDate(ts[0])}. {tr('Chacun reste ici pour toujours : compare tes qualités, tes épreuves, ton poids et ton âge, année après année.')}</p>
-          <div className="cad-hv-cta">
-            {props.onStart ? <button type="button" className="cad-hv-btn is-main" onClick={props.onStart}>＋ {tr('Démarrer un nouveau test')}</button> : null}
-            <a className="cad-hv-btn" href="#cad-tableau">{tr('Voir tous mes tests')} ↓</a>
-            <a className="cad-hv-btn" href="#cad-courbe">{tr('Courbes')} ↓</a>
-            {props.onExport ? <button type="button" className="cad-hv-btn" onClick={props.onExport}>⤓ {tr('Exporter')}</button> : null}
-          </div>
+          <p className="cad-hv-lead">{s.n} {s.n > 1 ? tr('tests') : tr('test')} {tr('depuis le')} {fmtDate(ts[0])}</p>
         </div>
         <div className="cad-hv-card">
-          <div className="cad-hm-ctl" style={{ justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>{tr('Score actuel')} · {fmtDate(ts[ts.length - 1], { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-            <span className="cad-hv-lvl" style={{ color: col }}>{tr(s.level)}</span>
-          </div>
-          <div className="cad-hv-now"><b><CountUp value={s.now}/></b><small>/ {cat.totalPoints || 1000}</small>{s.n > 1 ? <span className={s.delta >= 0 ? 'cad-hv-up' : 'cad-hv-dn'} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18 }}>{s.delta >= 0 ? '▲' : '▼'} {signed(s.delta)}</span> : null}</div>
-          <svg className="cad-hv-spark" viewBox={'0 0 ' + W + ' ' + H} aria-hidden="true">
+          <div className="cad-hv-now"><b><CountUp value={s.now}/></b><small>/ {cat.totalPoints || 1000}</small>{s.n > 1 ? <span className={s.delta >= 0 ? 'cad-hv-up' : 'cad-hv-dn'} style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16 }}>{s.delta >= 0 ? '▲' : '▼'} {signed(s.delta)}</span> : null}<span className="cad-hv-lvl" style={{ color: col }}>{tr(s.level)}</span></div>
+          <svg className="cad-hv-spark" viewBox={'0 0 ' + W + ' ' + H} preserveAspectRatio="none" aria-hidden="true">
             <defs><linearGradient id="cadhvg" x1="0" x2="1"><stop offset="0%" stopColor="#00c8e0"/><stop offset="100%" stopColor="#e0b766"/></linearGradient></defs>
-            {hist.length > 1 ? <polyline className="ln" pathLength="1" points={pts} fill="none" stroke="url(#cadhvg)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/> : null}
-            {hist.map(function (e, i) { return <circle key={e.id} cx={X(ts[i])} cy={Y(e.score)} r="4.2" fill="#0b1626" stroke="#e0b766" strokeWidth="2.4"/>; })}
+            {hist.length > 1 ? <polyline className="ln" pathLength="1" points={pts} fill="none" stroke="url(#cadhvg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/> : null}
+            {hist.map(function (e, i) { return <circle key={e.id} cx={X(ts[i])} cy={Y(e.score)} r="3.6" fill="#0b1626" stroke="#e0b766" strokeWidth="2.2"/>; })}
             <circle className="pulse" cx={lastX} cy={lastY} r="7" fill="none" stroke="#e0b766" strokeWidth="2"/>
           </svg>
-          <div className="cad-hv-stats">
-            <div className="cad-hv-stat"><small>{tr('Tests passés')}</small><b><CountUp value={s.n}/></b></div>
-            <div className="cad-hv-stat"><small>{tr('Meilleure qualité')}</small><b style={{ fontSize: 16 }}>{s.best ? tr(s.best.label) : '—'}</b></div>
-            <div className="cad-hv-stat"><small>{tr('Prochain test')}</small><b style={{ fontSize: 16 }}>{fmtDate(s.nextTs, { month: 'short', year: 'numeric' })}</b></div>
-          </div>
+        </div>
+        <div className="cad-hv-cta">
+          {props.onStart ? <button type="button" className="cad-hv-btn is-main" onClick={props.onStart}>{tr('Nouveau test')}</button> : null}
+          {props.onExport ? <button type="button" className="cad-hv-btn" onClick={props.onExport}>{tr('Exporter')}</button> : null}
         </div>
       </section>
     );
@@ -274,10 +264,10 @@
               <span className="cad-hm-d">{fmtDate(dOf(e.date), { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span className="cad-hm-a">{e.age} {tr('ans')} · {num(e.weight, 1)} kg</span>
               {cond ? <span className="cad-hm-c">{cond}</span> : null}
-              {e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hm-c" style={{ color: '#fbbf24' }}>⚠ {e.durationDays} {tr('jours')}</span> : null}
+              {e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hm-c" style={{ color: '#fbbf24' }}>Durée : {e.durationDays} {tr('jours')}</span> : null}
               <span className="cad-hm-open">
                 {props.onOpen ? <button type="button" onClick={function () { props.onOpen(e.id); }}>{tr('Analyse')} →</button> : null}
-                {props.onDelete ? <button type="button" aria-label={tr('Supprimer ce test')} title={tr('Supprimer ce test')} onClick={function () { props.onDelete(e); }}>🗑</button> : null}
+                {props.onDelete ? <button type="button" aria-label={tr('Supprimer ce test')} title={tr('Supprimer ce test')} onClick={function () { props.onDelete(e); }}>{tr('Suppr.')}</button> : null}
               </span>
             </th>
           );
@@ -363,7 +353,7 @@
           {[['all', 'Tout'], ['q', 'Qualités'], ['t', 'Épreuves'], ['rec', 'Records seulement']].map(function (o) {
             return <button key={o[0]} type="button" className="cad-hm-pill" aria-pressed={filter === o[0]} onClick={function () { setFilter(o[0]); }}>{tr(o[1])}</button>;
           })}
-          {props.onExport ? <button type="button" className="cad-hm-pill" onClick={props.onExport}>⤓ {tr('Exporter en CSV')}</button> : null}
+          {props.onExport ? <button type="button" className="cad-hm-pill" onClick={props.onExport}>{tr('Exporter en CSV')}</button> : null}
         </div>
         <div className="cad-hm-wrap">
           <button type="button" className="cad-hm-nav l" aria-label={tr('Tests précédents')} disabled={!nav.l} onClick={function () { go(-1); }}>‹</button>

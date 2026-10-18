@@ -130,6 +130,15 @@
     var selS = React.useState(null); var sel = selS[0], setSel = selS[1];
     var mkS = React.useState({ available: false, marks: [] }); var marks = mkS[0], setMarks = mkS[1];
     var onS = React.useState(false); var drawn = onS[0], setDrawn = onS[1];
+    React.useEffect(function () {
+      function on(ev) {
+        var m = ev && ev.detail && ev.detail.metric; if (!m) return;
+        setMetric(m); setSel(null);
+        try { var el = document.getElementById('cad-courbe'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+      }
+      window.addEventListener('cad-pick-metric', on);
+      return function () { window.removeEventListener('cad-pick-metric', on); };
+    }, []);
     var gS = React.useState(''); var goalIn = gS[0], setGoalIn = gS[1];
     var evS = React.useState({ date: '', label: '' }); var evIn = evS[0], setEvIn = evS[1];
     var erS = React.useState(''); var err = erS[0], setErr = erS[1];
@@ -300,17 +309,10 @@
     var shownEvents = tg.events ? events.filter(function (x) { var t = dOf(x.on_date); return t >= tMin - 30 * DAY && t <= tMax; }) : [];
     var gradId = 'cadexg';
     return (
-      <section className="cad-card cad-ex" aria-label={tr('Courbe interactive')}>
+      <section id="cad-courbe" className="cad-card cad-ex" aria-label={tr('Courbe interactive')}>
         <Style/>
         <div className="cad-act-eye">{tr('Courbe interactive')}</div>
         <h3 className="cad-h3" style={{ fontSize: 20 }}>{tr('Choisis ce que tu veux suivre')}</h3>
-
-        <div className="cad-ex-kpis">
-          <div className="cad-ex-kpi"><small>{tr('Score actuel')}</small><b><CountUp value={gLast || 0}/></b><span className={gLast - gFirst >= 0 ? 'cad-ex-up' : 'cad-ex-dn'}>{hist.length > 1 ? signed(gLast - gFirst) + ' ' + tr('depuis le 1er test') : tr('Premier test')}</span></div>
-          <div className="cad-ex-kpi"><small>{tr('Meilleure qualité')}</small><b style={{ fontSize: 20 }}>{bestQ ? tr(bestQ.q.label) : '—'}</b><span>{bestQ ? num(bestQ.now) + ' / 100' : ''}</span></div>
-          <div className="cad-ex-kpi"><small>{tr('Plus grosse progression')}</small><b style={{ fontSize: 20 }}>{bigUp && bigUp.d > 0.5 ? tr(bigUp.q.label) + ' ' + signed(bigUp.d) : '—'}</b><span>{hist.length > 1 ? tr('sur') + ' ' + spanMonths + ' ' + tr('mois') : tr('Il faut un 2e test')}</span></div>
-          <div className="cad-ex-kpi"><small>{tr('Prochain test conseillé')}</small><b style={{ fontSize: 20 }}>{nextTs ? fmtMonth(nextTs) : '—'}</b><span>{daysTo == null ? '' : daysTo > 0 ? tr('dans') + ' ' + daysTo + ' ' + tr('jours') : tr('c’est le moment de te tester')}</span></div>
-        </div>
 
         <div className="cad-ex-bar" style={{ marginTop: 18 }}>
           <div className="cad-ex-grp">

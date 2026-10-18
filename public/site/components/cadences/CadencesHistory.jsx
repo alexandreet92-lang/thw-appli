@@ -294,109 +294,10 @@
     return (
       <div className="cad-run">
         <HistStyle />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <div className="cad-act-eye">Mon historique Decaform</div>
-            <h1 className="cad-act-t" style={{ fontSize: 30 }}>{hist.length} test{hist.length > 1 ? 's' : ''} · progression</h1>
-          </div>
-          <button type="button" className="cad-link" onClick={props.onBack}>← Accueil</button>
-        </div>
-        <p className="cad-p" style={{ marginTop: 6 }}>Depuis {frDate(hist[0].date)}. Compare tes résultats dans le temps — et garde en tête que les conditions comptent.</p>
+        {window.CadHistoryStyle ? <window.CadHistoryStyle /> : null}
+        {window.CadHistoryHero ? <window.CadHistoryHero catalog={cat} history={hist} onStart={props.onStart} onBack={props.onBack} onExport={exportCsv} /> : null}
+        {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
 
-        {/* Grand tableau de tous les résultats */}
-        <section className="cad-card cad-bt" aria-labelledby="cad-bt-h">
-          <h3 className="cad-h3" id="cad-bt-h">Tous tes résultats</h3>
-          <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Un test par ligne. Clique sur le titre d’une colonne pour trier (une seconde fois pour inverser), ou choisis un tri ci-dessous. La meilleure valeur de chaque colonne est soulignée. Fais défiler vers la droite pour voir toutes les qualités et toutes les épreuves.</p>
-          <div className="cad-bt-ctl">
-            <div className="cad-hsort" style={{ margin: 0 }}>
-              <label htmlFor="cad-bt-sel">Trier par</label>
-              <select id="cad-bt-sel" className="cad-hsel" value={presetVal} onChange={function (e) { onPreset(e.target.value); }}>
-                {presetVal === 'custom' ? <option value="custom">Tri par colonne (personnalisé)</option> : null}
-                <optgroup label="Chronologique">
-                  <option value="date|asc">Du plus ancien au plus récent (âge croissant)</option>
-                  <option value="date|desc">Du plus récent au plus ancien</option>
-                </optgroup>
-                <optgroup label="Du meilleur au moins bon">
-                  <option value="score|desc">Score total général</option>
-                  <option value="scoreA|desc">Score total ajusté à l’âge</option>
-                </optgroup>
-                <optgroup label="Du meilleur au moins bon — par épreuve">
-                  {tests.map(function (t) { return <option key={t.slug} value={'t:' + t.slug + '|desc'}>{t.name.replace(/\s*\(.*\)$/, '')}</option>; })}
-                </optgroup>
-                <optgroup label="Du meilleur au moins bon — par qualité">
-                  {qualities.map(function (q) { return <option key={q.key} value={'q:' + q.key + '|desc'}>{q.label}</option>; })}
-                </optgroup>
-              </select>
-            </div>
-            <div className="cad-bt-seg" role="group" aria-label="Barème des qualités et des épreuves">
-              <button type="button" aria-pressed={bmode === 'general'} onClick={function () { setBmode('general'); }}>Général</button>
-              <button type="button" aria-pressed={bmode === 'age'} onClick={function () { setBmode('age'); }}>Ajusté à l’âge</button>
-            </div>
-            <button type="button" className="cad-bt-csv" onClick={exportCsv}>Exporter en CSV</button>
-            <div className="cad-bt-seg" role="group" aria-label="Affichage des épreuves">
-              <button type="button" aria-pressed={bview === 'points'} onClick={function () { setBview('points'); }}>Points</button>
-              <button type="button" aria-pressed={bview === 'value'} onClick={function () { setBview('value'); }}>Résultat brut</button>
-            </div>
-          </div>
-          <div className="cad-bt-wrap" tabIndex={0} role="region" aria-label="Tableau de tous les résultats, défilement horizontal">
-            <table className="cad-bt-table">
-              <thead>
-                <tr className="cad-bt-grp">
-                  <th className="cad-bt-sticky" rowSpan={2}><button type="button" onClick={function () { toggleSort('date'); }}>{trw('Date')}<i aria-hidden="true">{bt.key === 'date' ? (bt.dir === 'asc' ? '▲' : '▼') : '↕'}</i></button></th>
-                  <th colSpan={4}>Test</th>
-                  <th colSpan={qualities.length}>Qualités (% du repère)</th>
-                  <th colSpan={tests.length}>Épreuves</th>
-                  <th rowSpan={2}></th>
-                </tr>
-                <tr>
-                  <Th k="age">Âge</Th>
-                  <Th k="weight">Poids</Th>
-                  <Th k="score" cls="is-score">{trw('Général') + ' /' + cat.totalPoints}</Th>
-                  <Th k="scoreA" cls="is-score">{trw('Ajusté à l’âge') + ' /' + cat.totalPoints}</Th>
-                  {qualities.map(function (q) { return <Th key={q.key} k={'q:' + q.key}>{q.label}</Th>; })}
-                  {tests.map(function (t) { return <Th key={t.slug} k={'t:' + t.slug} title={t.name + (t.legacy ? ' — ' + trw('ancienne version du barème') : '')}>{t.name.replace(/\s*\(.*\)$/, '')}{t.legacy ? ' ⌛' : ''}</Th>; })}
-                </tr>
-              </thead>
-              <tbody>
-                {bRows.map(function (e) {
-                  var qm = modeMap(e, 'qualities') || {}, tm = modeMap(e, 'tests') || {};
-                  return (
-                    <tr key={e.id} onClick={function () { props.onOpen && props.onOpen(e.id); }}>
-                      <td className="cad-bt-sticky"><b>{frDate(e.date)}</b>{flagVs(e, latest) ? <Badge warn>⚠</Badge> : null}{e.durationDays && e.maxDays && e.durationDays > e.maxDays ? <span className="cad-hbadge is-warn" title={trw('Test étalé sur plus de {max} jours : résultats moins comparables.').replace('{max}', e.maxDays)}>{trw('⏱ {n} j').replace('{n}', e.durationDays)}</span> : null}{e.stationsPassees ? <span className="cad-hbadge is-warn" title={trw('Stations du Conditioning passées (forfait) : {n}').replace('{n}', e.stationsPassees)}>{trw('⚑ {n} station(s) passée(s)').replace('{n}', e.stationsPassees)}</span> : null}</td>
-                      <td className="num">{e.age}</td>
-                      <td className="num">{frNum(e.weight)} kg</td>
-                      <td className={'num' + (e.score === bestOf('score') ? ' is-best' : '')}><span className="cad-hscore" style={{ color: colorOf(e) }}>{e.score}</span> {Lcell(e.level)}</td>
-                      <td className={'num' + ((e.scoreA != null ? e.scoreA : e.score) === bestOf('scoreA') ? ' is-best' : '')}><span className="cad-hscore" style={{ color: colorOfA(e) }}>{e.scoreA != null ? e.scoreA : e.score}</span> {Lcell(e.levelA || e.level)}</td>
-                      {qualities.map(function (q) {
-                        var o = qm[q.key];
-                        return <td key={q.key} className={'num' + (o && o.pct === bestOf('q:' + q.key) ? ' is-best' : '')} style={o ? { color: levelColor(cat, o.level) } : null}>{o ? frNum(o.pct * 100) + ' %' : '—'}</td>;
-                      })}
-                      {tests.map(function (t) {
-                        var r = tm[t.slug];
-                        if (!r) return <td key={t.slug} className="num cad-bt-na">—</td>;
-                        var best = r.points === bestOf('t:' + t.slug);
-                        var mx = r.max != null ? r.max : t.pts_max;
-                        var pts = frNum(r.points, 1) + ' / ' + mx;
-                        var val = fmtVal(t, r);
-                        return (
-                          <td key={t.slug} className={'num cad-bt-cell' + (best ? ' is-best' : '')}>
-                            <span className="cad-bt-main" style={{ color: bview === 'points' ? levelColor(cat, r.level) : null }}>{bview === 'points' ? pts : val}</span>
-                            <small>{bview === 'points' ? val : pts}</small>
-                          </td>
-                        );
-                      })}
-                      <td className="cad-bt-act" onClick={function (ev) { ev.stopPropagation(); }}>
-                        <button type="button" className="cad-bt-del" aria-label={trw('Supprimer ce test') + ' — ' + frDate(e.date)} title={trw('Supprimer ce test')} onClick={function () { setDelTarget(e); }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14M10 11v6m4-6v6"/></svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
         {delTarget && window.CadDeleteDialog ? (
           <window.CadDeleteDialog summary={delSummary(delTarget)}
             onCancel={function () { setDelTarget(null); }}
@@ -405,13 +306,6 @@
 
         {/* ⓪ Explorateur : courbe interactive (mesure, période, objectif, projection, poids, événements) */}
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
-
-        {/* ① Courbe du score global */}
-        <section className="cad-card">
-          <h3 className="cad-h3">Score global dans le temps</h3>
-          <p className="cad-p" style={{ marginTop: 0, fontSize: 12.5 }}>Survole un point pour voir le détail. ⚠ = conditions assez différentes du dernier test.</p>
-          {window.CadTrendLine ? <window.CadTrendLine points={tpoints} points2={hasA ? tpoints2 : null} max={cat.totalPoints} levels={cat.levels} palette={cat.palette} /> : null}
-        </section>
 
         {/* ②bis Épreuve par épreuve, année après année */}
         <section className="cad-card" style={{ marginTop: 18 }}>
@@ -537,42 +431,6 @@
               );
             })}
           </div>
-        </section>
-
-        {/* ⑤ Comparateur */}
-        <section className="cad-card" style={{ marginTop: 18 }}>
-          <h3 className="cad-h3">Comparer deux tests</h3>
-          <div className="cad-hcmp-head">
-            <div className="cad-hcmp-side">
-              <select className="cad-hsel" style={{ marginBottom: 8, width: '100%' }} value={cmpA} onChange={function (e) { setCmpA(e.target.value); }}>
-                {byRecent.map(function (e) { return <option key={e.id} value={e.id}>{frDate(e.date)}</option>; })}
-              </select>
-              <b style={{ color: colorOf(ea) }}>{ea.score}</b> <b style={{ color: colorOfA(ea), fontSize: 16 }}>/ {ea.scoreA != null ? ea.scoreA : ea.score}</b>
-              <em>gén. {ea.level} · âge {ea.levelA || ea.level} · {frNum(ea.weight)} kg · {condLabel(ea)}</em>
-            </div>
-            <div className="cad-hcmp-vs">vs</div>
-            <div className="cad-hcmp-side">
-              <select className="cad-hsel" style={{ marginBottom: 8, width: '100%' }} value={cmpB} onChange={function (e) { setCmpB(e.target.value); }}>
-                {byRecent.map(function (e) { return <option key={e.id} value={e.id}>{frDate(e.date)}</option>; })}
-              </select>
-              <b style={{ color: colorOf(eb) }}>{eb.score}</b> <b style={{ color: colorOfA(eb), fontSize: 16 }}>/ {eb.scoreA != null ? eb.scoreA : eb.score}</b>
-              <em>gén. {eb.level} · âge {eb.levelA || eb.level} · {frNum(eb.weight)} kg · {condLabel(eb)}</em>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
-            <span className="cad-p" style={{ margin: 0 }}>Écart total</span>
-            <b className={'cad-hq-d ' + deltaCls(ea.score - eb.score)} style={{ fontSize: 22 }}>{deltaStr(ea.score - eb.score)} <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>gén.</span></b>
-            <b className={'cad-hq-d ' + deltaCls((ea.scoreA || ea.score) - (eb.scoreA || eb.score))} style={{ fontSize: 22 }}>{deltaStr((ea.scoreA || ea.score) - (eb.scoreA || eb.score))} <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>âge</span></b>
-            {flagVs(ea, eb) ? <Badge warn>⚠ conditions différentes</Badge> : null}
-          </div>
-          <div className="cad-hcmp-q is-head"><span>Qualité</span><b>Général</b><b>Âge</b></div>
-          {qualities.map(function (q) {
-            var va = ea.qualities[q.key] ? ea.qualities[q.key].pct * 100 : 0;
-            var vb = eb.qualities[q.key] ? eb.qualities[q.key].pct * 100 : 0;
-            var aa = (ea.qualitiesA && ea.qualitiesA[q.key]) ? ea.qualitiesA[q.key].pct * 100 : va;
-            var ab = (eb.qualitiesA && eb.qualitiesA[q.key]) ? eb.qualitiesA[q.key].pct * 100 : vb;
-            return <div key={q.key} className="cad-hcmp-q"><span>{q.label}</span><b className={deltaCls(va - vb)}>{deltaStr(Math.round(va - vb))}</b><b className={deltaCls(aa - ab)}>{deltaStr(Math.round(aa - ab))}</b></div>;
-          })}
         </section>
 
         {/* ⑥ Encart prudence */}

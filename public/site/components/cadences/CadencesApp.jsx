@@ -772,10 +772,19 @@
       <div>
         <CadStyle/>
         <SiteHeader active={historyPage ? 'history' : 'cadences'}/>
-        <main className="cad-wrap">
-          {error ? <div className="cad-err" role="alert" style={{ marginBottom: 16 }}>{error}</div> : null}
-          {body}
-        </main>
+        {view === 'history' ? (
+          <div className="cad-night-band">
+            <main className="cad-wrap">
+              {error ? <div className="cad-err" role="alert" style={{ marginBottom: 16 }}>{error}</div> : null}
+              {body}
+            </main>
+          </div>
+        ) : (
+          <main className="cad-wrap">
+            {error ? <div className="cad-err" role="alert" style={{ marginBottom: 16 }}>{error}</div> : null}
+            {body}
+          </main>
+        )}
         <SiteFooter/>
       </div>
     );
@@ -839,6 +848,16 @@
             {enCours && !props.crossOrigin && props.onDelete ? <button type="button" className="cad-link" onClick={function () { setDelC(enCours); }}>Abandonner et supprimer le test en cours</button> : null}
           </div>
         </div>
+
+        {!props.crossOrigin && terminees.length ? (
+          <a href="historique.html" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginTop: 24, padding: '20px 24px', borderRadius: 18, textDecoration: 'none', color: '#eef3f8', background: 'radial-gradient(600px 200px at 0% 0%, rgba(0,200,224,.22), transparent 60%), linear-gradient(120deg,#0c1829,#13233a)', border: '1px solid rgba(224,183,102,.5)', boxShadow: '0 10px 34px rgba(0,0,0,.28)' }}>
+            <span>
+              <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11.5, letterSpacing: '.16em', textTransform: 'uppercase', color: '#e0b766' }}>Mon historique</span>
+              <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, marginTop: 4 }}>{terminees.length} test{terminees.length > 1 ? 's' : ''} · compare-les tous dans un seul tableau</span>
+            </span>
+            <span style={{ fontWeight: 800, fontSize: 14, color: '#241800', background: 'linear-gradient(120deg,#e0b766,#f3d58f)', padding: '11px 20px', borderRadius: 999 }}>Ouvrir mon historique →</span>
+          </a>
+        ) : null}
 
         {deca ? <div className="cad-scrollcue" style={{ marginTop: 28 }}>↓ Pourquoi ce test, et en quoi il consiste</div> : null}
 

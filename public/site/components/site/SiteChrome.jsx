@@ -510,8 +510,10 @@ function SiteHeader(props) {
             {navLinks.map(function (l) {
               return (
                 <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
-                   style={l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
-                  {l.label}
+                   style={l.key === 'history'
+                     ? { whiteSpace: 'nowrap', fontWeight: 700, color: '#241800', background: 'linear-gradient(120deg,#e0b766,#f3d58f)', borderRadius: 999, padding: '7px 16px', boxShadow: '0 4px 16px rgba(224,183,102,.35)' }
+                     : l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
+                  {l.key === 'history' ? '📈 ' : ''}{l.label}
                 </a>
               );
             })}

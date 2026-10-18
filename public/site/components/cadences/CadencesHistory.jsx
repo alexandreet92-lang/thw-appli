@@ -307,6 +307,7 @@
         {/* ⓪ Explorateur : courbe interactive (mesure, période, objectif, projection, poids, événements) */}
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
         {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
+        {window.CadCustom ? <window.CadCustom appUrl={props.apiBase || ''} /> : null}
 
         <details className="cad-more"><summary>Plus de détails : épreuve par épreuve, qualités, records, conseils</summary>
         {/* ②bis Épreuve par épreuve, année après année */}

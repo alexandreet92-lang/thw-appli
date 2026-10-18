@@ -352,7 +352,16 @@
       });
       return function () { alive = false; };
     }, [appUrl]);
-    if (!data || data.off) return null;     // table non activée, non connecté ou chargement : on n'affiche rien
+    if (!data) return props.standalone ? <section className="cc" aria-busy="true"><Style/><p>{tr('Chargement…')}</p></section> : null;
+    if (data.off) {
+      // Page dédiée : on explique au lieu d'afficher une page vide. Ailleurs : rien.
+      return props.standalone ? (
+        <section className="cc" id="cad-perso"><Style/>
+          <div className="cc-card"><h3>{tr('Les tests personnalisés ne sont pas encore activés')}</h3>
+            <p>{tr('La table nécessaire n’existe pas encore côté serveur, ou ta session n’est pas reconnue. Reconnecte-toi ; si le message persiste, l’activation est à faire côté administrateur.')}</p></div>
+        </section>
+      ) : null;
+    }
     var runsOf = function (id) { return data.runs.filter(function (r) { return r.test_id === id; }).sort(function (a, b) { return String(a.performed_on).localeCompare(String(b.performed_on)); }); };
     var cur = view.id ? data.tests.filter(function (t) { return t.id === view.id; })[0] : null;
     function back() { setView({ v: 'list' }); }
@@ -407,6 +416,36 @@
     );
   }
 
+  // Page dédiée « Mes tests » (tests-perso.html) : en-tête, bande sombre, pied de page.
+  function CadCustomPage() {
+    var account = window.THWAccount.useAccount();
+    var loggedIn = !!(account && account.loggedIn !== false && (account.email || account.firstName || account.id));
+    var APP_URL = (typeof window !== 'undefined' && window.APP_URL) || 'https://thw-appli.vercel.app';
+    var bS = React.useState(null); var base = bS[0], setBase = bS[1];
+    React.useEffect(function () {
+      if (account === undefined) return;
+      if (!loggedIn) { window.location.replace('compte.html?next=' + encodeURIComponent('tests-perso.html')); return; }
+      // Même origine si l'API y répond (app), sinon l'app (site statique).
+      fetch('/api/cadences/catalog').then(function (r) { setBase(r.ok ? '' : APP_URL); }).catch(function () { setBase(APP_URL); });
+    }, [account]);
+    var H = window.SiteHeader, F = window.SiteFooter;
+    return (
+      <div>
+        {window.CadHistoryStyle ? <window.CadHistoryStyle/> : null}
+        <style>{`.cad-wrap{max-width:min(1100px,94vw);margin:0 auto;padding:104px 24px 80px;color:var(--text)} .cad-night-band{position:relative} .cad-night-band .cc{margin-top:0}
+          @media (max-width:640px){.cad-wrap{padding:92px 16px 64px}}`}</style>
+        {H ? <H active="perso"/> : null}
+        <div className="cad-night-band">
+          <main className="cad-wrap" style={{ minHeight: '60vh' }}>
+            {base === null ? null : <CadCustom appUrl={base} standalone={true}/>}
+          </main>
+        </div>
+        {F ? <F/> : null}
+      </div>
+    );
+  }
+
   window.CadCustom = CadCustom;
+  window.CadCustomPage = CadCustomPage;
   window.cadCustomMath = { parseVal: parseVal, fmtVal: fmtVal, score: score, globalScore: globalScore };
 })();

@@ -478,7 +478,7 @@ function SiteHeader(props) {
     { label: 'Decaform', href: 'cadences.html', key: 'cadences' },
   ];
   // Une fois connecté : accès direct à l'historique des tests (page dédiée).
-  if (account) navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' });
+  if (account) { navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' }); navLinks.push({ label: 'Mes tests', href: 'tests-perso.html', key: 'perso' }); }
   // Fenêtres de connexion / mot de passe (ordinateur). Sur mobile, « Se connecter »
   // reste un lien vers la page compte.html.
   var [loginOpen, setLoginOpen] = React.useState(false);
@@ -510,7 +510,7 @@ function SiteHeader(props) {
             {navLinks.map(function (l) {
               return (
                 <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
-                   style={l.key === 'history'
+                   style={l.key === 'history' || l.key === 'perso'
                      ? { whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text)', border: '1px solid var(--border-mid)', borderRadius: 999, padding: '6px 16px' }
                      : l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
                   {l.label}

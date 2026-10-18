@@ -14,6 +14,7 @@
   function signed(n) { var r = Math.round(n); return (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r); }
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function lvColor(cat, lv) { return (cat && cat.palette && cat.palette[lv]) || '#9ca3af'; }
+  window.CadClean = function (s) { return String(s == null ? '' : s).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').replace(/\s+/g, ' ').trim(); };
   function cleanName(t) { return t.name.replace(/\s*\(.*\)$/, ''); }
 
   // Apparition au défilement : ajoute .in quand l'élément entre dans l'écran.
@@ -50,9 +51,10 @@
         .cad-night-band { --bg:#08121f; --bg-alt:#0c1829; --bg-card:rgba(238,243,248,.05); --bg-card-2:rgba(238,243,248,.03); --bg-hover:rgba(238,243,248,.08);
           --border:rgba(158,177,200,.18); --border-mid:rgba(158,177,200,.3); --text:#eef3f8; --text-mid:#b4c3d6; --text-dim:#8397af; --input-bg:rgba(255,255,255,.06);
           --brand:#00c8e0; --brand-deep:#0099b8; --gold-ink:#e0b766; --shadow:0 4px 24px rgba(0,0,0,.35); --shadow-card:0 2px 14px rgba(0,0,0,.3);
-          position: relative; color: var(--text); background: radial-gradient(1100px 520px at 12% -8%, rgba(0,200,224,.16), transparent 60%), radial-gradient(900px 480px at 92% 0%, rgba(91,111,255,.18), transparent 60%), #08121f; margin-top: -1px; }
+          position: relative; color: var(--text); background: radial-gradient(1000px 420px at 10% -10%, rgba(158,177,200,.10), transparent 60%), #0a1320; margin-top: -1px; }
         .cad-night-band::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5; background-image: radial-gradient(rgba(158,177,200,.10) 1px, transparent 1px); background-size: 26px 26px; -webkit-mask-image: linear-gradient(#000, transparent 60%); mask-image: linear-gradient(#000, transparent 60%); }
         .cad-night-band .cad-wrap { position: relative; max-width: 1320px; padding-top: 34px; }
+        .cad-night-band .cad-ex-pill[aria-pressed="true"], .cad-night-band .cad-ex-seg button[aria-pressed="true"] { background: rgba(238,243,248,.16) !important; color: #fff !important; border-color: rgba(238,243,248,.4) !important; }
         .cad-night-band .cad-card { background: linear-gradient(160deg, rgba(238,243,248,.065), rgba(238,243,248,.03)); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
         .cad-night-band select, .cad-night-band input { color-scheme: dark; }
         .cad-rv { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
@@ -79,13 +81,13 @@
         .cad-hv-eye { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-ink); display: inline-flex; align-items: center; gap: 10px; animation: cadHvRise .7s both; }
         .cad-hv-eye::before { content: ''; width: 26px; height: 1px; background: var(--gold-ink); }
         .cad-hv-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(30px, 4vw, 50px); line-height: 1.05; letter-spacing: -.02em; margin: 8px 0 6px; color: var(--text); animation: cadHvRise .8s .08s both; }
-        .cad-hv-h1 em { font-style: normal; background: linear-gradient(110deg, #00c8e0 10%, #7b8cff 55%, #e0b766 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cadHvShine 7s linear infinite; }
+        .cad-hv-h1 em { font-style: normal; color: var(--text-mid); }
         .cad-hv-lead { font-family: var(--font-body); font-size: 14.5px; color: var(--text-mid); margin: 0; animation: cadHvRise .8s .16s both; }
         .cad-hv-cta { display: flex; flex-wrap: wrap; gap: 10px; animation: cadHvRise .8s .24s both; }
         .cad-hv-btn { font-family: var(--font-body); font-weight: 700; font-size: 14px; border-radius: 12px; padding: 12px 20px; cursor: pointer; border: 1px solid var(--border-mid); background: rgba(238,243,248,.06); color: var(--text); transition: transform .2s, box-shadow .2s, background .2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
         .cad-hv-btn:hover { transform: translateY(-2px); background: rgba(238,243,248,.11); }
-        .cad-hv-btn.is-main { background: linear-gradient(120deg, #00c8e0, #5b6fff); color: #04121f; border-color: transparent; box-shadow: 0 8px 26px rgba(0,200,224,.28); }
-        .cad-hv-btn.is-main:hover { box-shadow: 0 12px 34px rgba(0,200,224,.42); }
+        .cad-hv-btn.is-main { background: #eef3f8; color: #0a1320; border-color: transparent; }
+        .cad-hv-btn.is-main:hover { background: #fff; }
         .cad-hv-card { border-radius: 18px; padding: 12px 18px; min-width: 300px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid rgba(224,183,102,.35); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: cadHvRise .9s .2s both; }
         .cad-hv-now { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
         .cad-hv-now b { font-family: var(--font-display); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -106,11 +108,11 @@
         .cad-hm-top h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 3vw, 34px); margin: 4px 0 0; color: var(--text); letter-spacing: -.015em; }
         .cad-hm-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .cad-hm-pill { border: 1px solid var(--border-mid); background: rgba(238,243,248,.05); color: var(--text-mid); border-radius: 999px; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 8px 15px; cursor: pointer; transition: all .2s; }
-        .cad-hm-pill:hover { color: var(--text); border-color: var(--brand); }
-        .cad-hm-pill[aria-pressed="true"] { background: rgba(0,200,224,.14); border-color: var(--brand); color: var(--text); }
+        .cad-hm-pill:hover { color: var(--text); border-color: rgba(238,243,248,.45); }
+        .cad-hm-pill[aria-pressed="true"] { background: rgba(238,243,248,.14); border-color: rgba(238,243,248,.45); color: #fff; }
         .cad-hm-seg { display: inline-flex; border: 1px solid var(--border-mid); border-radius: 999px; overflow: hidden; }
         .cad-hm-seg button { border: 0; background: transparent; color: var(--text-mid); font-family: var(--font-body); font-size: 13px; font-weight: 700; padding: 8px 15px; cursor: pointer; }
-        .cad-hm-seg button[aria-pressed="true"] { background: #e0b766; color: #241800; }
+        .cad-hm-seg button[aria-pressed="true"] { background: rgba(238,243,248,.16); color: #fff; }
         .cad-hm-wrap { position: relative; border-radius: 20px; border: 1px solid var(--border); background: linear-gradient(170deg, rgba(19,35,58,.9), rgba(10,20,35,.9)); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow: hidden; }
         .cad-hm-scroll { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth; }
         .cad-hm-scroll::-webkit-scrollbar { display: none; }
@@ -129,11 +131,11 @@
         .cad-hm-open { margin-top: 8px; display: inline-flex; gap: 6px; }
         .cad-hm-open button { border: 1px solid var(--border-mid); background: rgba(238,243,248,.05); color: var(--text-mid); border-radius: 8px; font-size: 12px; font-weight: 700; padding: 4px 9px; cursor: pointer; font-family: var(--font-body); }
         .cad-hm-open button:hover { color: var(--text); border-color: var(--brand); }
-        .cad-hm-t .is-last { background: rgba(224,183,102,.08); }
-        .cad-hm-t thead .is-last { background: linear-gradient(180deg, rgba(224,183,102,.22), rgba(224,183,102,.06)); animation: cadHvGlow 3.2s 1.4s ease-in-out infinite; }
+        .cad-hm-t .is-last { background: rgba(238,243,248,.05); }
+        .cad-hm-t thead .is-last { background: rgba(238,243,248,.08); }
         .cad-hm-t tbody tr { animation: cadHvRise .55s both; transition: background .2s; }
         .cad-hm-t tbody tr:hover td:not(:first-child) { background: rgba(0,200,224,.07); }
-        .cad-hm-t tbody tr:hover td:first-child { color: var(--brand); }
+        .cad-hm-t tbody tr:hover td:first-child { color: #fff; }
         .cad-hm-grp td { background: #0b1830 !important; color: var(--gold-ink); font-family: var(--font-mono); font-size: 11.5px !important; letter-spacing: .14em; text-transform: uppercase; text-align: left !important; padding: 10px 14px !important; font-weight: 700; }
         .cad-hm-cell { display: inline-block; min-width: 92px; padding: 8px 12px; border-radius: 12px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; transition: transform .2s; }
         .cad-hm-t td:hover .cad-hm-cell { transform: scale(1.07); }
@@ -289,13 +291,13 @@
       var txt = mode2 === 'word' ? (up ? tr('amélioré') : dn ? tr('en recul') : tr('stable')) : (up ? '+' : dn ? '−' : '±') + Math.abs(Math.round(d));
       return <td className={'cad-hm-ev ' + cl}>{up ? '▲ ' : dn ? '▼ ' : ''}{txt}</td>;
     }
-    function cellStyle(color) { return { background: color + '24', color: color, border: '1px solid ' + color + '55' }; }
+    function cellStyle(color) { return { background: color + '14', color: 'var(--text)', border: '1px solid ' + color + '40' }; }
 
     var head = (
       <thead><tr>
         <th>{tr('Mesure')}</th>
         {hist.map(function (e, i) {
-          var cond = e.tempC != null ? Math.round(e.tempC) + ' °C' + (e.weatherLabel ? ' · ' + e.weatherLabel : '') : '';
+          var cond = e.tempC != null ? Math.round(e.tempC) + ' °C' + (e.weatherLabel ? ' · ' + window.CadClean(e.weatherLabel) : '') : '';
           return (
             <th key={e.id} className={i === last ? 'is-last' : ''}>
               <span className="cad-hm-d">{fmtDate(dOf(e.date), { day: 'numeric', month: 'short', year: 'numeric' })}</span>

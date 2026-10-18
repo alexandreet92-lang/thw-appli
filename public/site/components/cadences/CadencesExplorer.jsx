@@ -322,7 +322,7 @@
         <div className="cad-ex-bar" style={{ marginTop: 18 }}>
           <div className="cad-ex-grp">
             <span className="cad-ex-lbl">{tr('Mesure')}</span>
-            <button type="button" className="cad-ex-pill" aria-pressed={metric === 'global'} onClick={function () { setMetric('global'); setSel(null); }}>★ {tr('Score global')}</button>
+            <button type="button" className="cad-ex-pill" aria-pressed={metric === 'global'} onClick={function () { setMetric('global'); setSel(null); }}>{tr('Score global')}</button>
             <select className="cad-ex-sel" aria-label={tr('Une qualité')} value={metric.indexOf('q:') === 0 ? metric : ''} onChange={function (e) { if (e.target.value) { setMetric(e.target.value); setSel(null); } }}>
               <option value="">{tr('Une qualité…')}</option>
               {qualities.map(function (q) { return <option key={q.key} value={'q:' + q.key}>{tr(q.label)}</option>; })}

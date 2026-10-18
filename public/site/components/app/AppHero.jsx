@@ -107,7 +107,7 @@ function HeroPhone() {
         <div style={{ padding: '14px 20px 20px', height: 'calc(100% - 36px)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <div>
-              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span>👋</span></div>
+              <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas</div>
               <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · S.12</div>
             </div>
             <ThwLogo size={32} radius={8} alt=""/>

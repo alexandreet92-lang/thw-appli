@@ -123,7 +123,7 @@ function AppPromo() {
               </div>
 
               <div style={{ padding: '8px 12px' }}>
-                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Bonjour, Thomas 👋</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Bonjour, Thomas </div>
 
                 {/* Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, marginBottom: 8 }}>

@@ -36,7 +36,7 @@ var MOCKS = {
   chat: function () {
     return (
       <MkFrame slug="coach-ia" title="Coach IA" bar={<React.Fragment>Coach · <span className="acc">Athéna ×3</span></React.Fragment>}>
-        <div className="mk-bubble me">Analyse ma sortie longue d'hier 🚴</div>
+        <div className="mk-bubble me">Analyse ma sortie longue d'hier </div>
         <div className="mk-bubble ai">
           Sortie maîtrisée. Ta FC reste alignée sur ta puissance jusqu'à 2h10, puis dérive de 4 %.
           <div className="mk-row" style={{ gap: 6, marginTop: 9 }}>
@@ -218,7 +218,7 @@ var MOCKS = {
           </div>
         </div>
         <div className="mk-card mk-row" style={{ gap: 9, justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>📷 Scanner un aliment</span>
+          <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>Scanner un aliment</span>
           <span className="mk-chip">+ ajouter</span>
         </div>
       </MkFrame>

@@ -472,43 +472,7 @@
           </table>
         </div>
 
-        {r.deep ? (
-          <div className="cad-int-deep">
-            <div><div className="cad-ec-h">{T('deepKicker')}</div><h2 style={{ fontSize: 22 }}>{T('deepTitle')}</h2><p style={{ marginTop: 4 }}>{T('deepIntro')}</p></div>
-            <div className="cad-int-deepgrid">
-              {r.deep.balance ? (
-                <div className="cad-int-deepc">
-                  <small>{T('deepBalance')}</small>
-                  <strong>{(Math.round(r.deep.balance.ratio * 100) / 100 + '').replace('.', ',')}</strong>
-                  <p>{r.deep.balance.gap < 10 ? T('deepBalanceOk') : T(r.deep.balance.gap < 25 ? 'deepBalanceMid' : 'deepBalanceBad', { hi: tr(r.deep.balance.hi.label).toLowerCase(), lo: tr(r.deep.balance.lo.label).toLowerCase(), gap: Math.round(r.deep.balance.gap) })}</p>
-                </div>
-              ) : null}
-              {r.deep.pace ? (
-                <div className="cad-int-deepc">
-                  <small>{tr('Rythme')}</small>
-                  <strong>{signed(r.deep.pace.delta)} {tr('pts')}</strong>
-                  <p>{T('deepPace', { delta: signed(r.deep.pace.delta), months: r.deep.pace.months })}{r.deep.pace.eta && r.next ? ' ' + T('deepPaceEta', { next: tr(r.next.label), date: new Date(r.deep.pace.eta).toLocaleDateString(window.CadLocale ? window.CadLocale() : 'fr-FR', { month: 'long', year: 'numeric' }) }) : ''}</p>
-                </div>
-              ) : null}
-            </div>
-            {r.deep.pairs.length ? (
-              <div>
-                <h3>{T('deepPairs')}</h3>
-                <div style={{ display: 'grid', gap: 6 }}>
-                  {r.deep.pairs.map(function (pr) {
-                    return <p key={pr.a.key + pr.b.key}>{pr.gap < 10 ? T('deepPairOk', { a: tr(pr.a.label), b: tr(pr.b.label), gap: Math.round(pr.gap) }) : T('deepPairGap', { hi: tr(pr.hi.label), lo: tr(pr.lo.label), gap: Math.round(pr.gap) })}</p>;
-                  })}
-                </div>
-              </div>
-            ) : null}
-            {r.deep.best && r.deep.worst ? (
-              <div style={{ display: 'grid', gap: 6 }}>
-                <p>{T('deepBestTest', { name: tr(r.deep.best.t.name.replace(/\s*\(.*\)$/, '')), pct: pc(r.deep.best.pct) })}</p>
-                <p>{T('deepWorstTest', { name: tr(r.deep.worst.t.name.replace(/\s*\(.*\)$/, '')), pct: pc(r.deep.worst.pct) })}</p>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {r.deep && window.CadDeepAnalysis ? <window.CadDeepAnalysis catalog={props.catalog} scoreG={props.scoreG} scoreA={props.scoreA} campaign={props.campaign} prev={props.prev} results={props.results}/> : null}
 
         <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>{T('tips')}</p>
       </section>

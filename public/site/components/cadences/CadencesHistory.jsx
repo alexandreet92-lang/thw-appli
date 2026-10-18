@@ -19,11 +19,11 @@
   // Conditions non renseignées (ex. test antérieur à la fonctionnalité) → « — ».
   function hasCond(e) { return e && e.tempC != null; }
   function trw(s) { return window.CadTr ? window.CadTr(s) : s; }
-  function condLabel(e) { return hasCond(e) ? (e.outdoor ? (frNum(e.tempC) + ' °C · ' + trw(e.weatherLabel || '')) : trw('Intérieur') + ' · ' + frNum(e.tempC) + ' °C') : '—'; }
+  function condLabel(e) { return hasCond(e) ? (e.outdoor ? (frNum(e.tempC) + ' °C · ' + trw(window.CadClean ? window.CadClean(e.weatherLabel || '') : (e.weatherLabel || ''))) : trw('Intérieur') + ' · ' + frNum(e.tempC) + ' °C') : '—'; }
   // Lieu + météo pour la colonne « Conditions » (la température a sa propre colonne).
-  function condVenue(e) { return hasCond(e) ? (e.outdoor ? ('Extérieur · ' + (e.weatherLabel || '')) : 'Intérieur') : '—'; }
+  function condVenue(e) { return hasCond(e) ? (e.outdoor ? ('Extérieur · ' + (window.CadClean ? window.CadClean(e.weatherLabel || '') : (e.weatherLabel || ''))) : 'Intérieur') : '—'; }
 
-  // Écart de température au-delà duquel on signale un test (⚠) : seulement un GROS
+  // Écart de température au-delà duquel on signale un test () : seulement un GROS
   // écart peut fausser la comparaison (12 vs 20 °C → non ; 15 vs 30 °C → oui).
   var TEMP_FLAG = 12;
   function flagVs(e, ref) {
@@ -438,7 +438,7 @@
         {/* ⑥ Encart prudence */}
         <section className="cad-card cad-hnote" style={{ marginTop: 18 }}>
           <h3 className="cad-h3">Lire ses résultats avec prudence</h3>
-          <p className="cad-p" style={{ marginBottom: 0 }}>Un score plus bas ne veut pas forcément dire que tu as régressé. Pour comparer juste : <strong>même période de l'année, en bonne forme, ni blessé ni malade, et une température proche</strong>. Les tests réalisés dans des conditions assez différentes sont signalés par un ⚠.</p>
+          <p className="cad-p" style={{ marginBottom: 0 }}>Un score plus bas ne veut pas forcément dire que tu as régressé. Pour comparer juste : <strong>même période de l'année, en bonne forme, ni blessé ni malade, et une température proche</strong>. Les tests réalisés dans des conditions assez différentes sont signalés par un .</p>
         </section>
         </details>
       </div>

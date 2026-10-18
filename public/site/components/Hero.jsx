@@ -148,7 +148,7 @@ function HeroVisual() {
         {/* Header inside card */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas <span style={{filter:'grayscale(0)'}}>👋</span></div>
+            <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Bonjour, Thomas</div>
             <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>Lundi 24 mars · Semaine 12</div>
           </div>
           <div style={{

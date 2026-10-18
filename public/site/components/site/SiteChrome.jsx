@@ -511,7 +511,7 @@ function SiteHeader(props) {
               return (
                 <a key={l.key} className="header-link" href={l.href} aria-current={l.key === active ? 'page' : undefined}
                    style={l.key === 'history'
-                     ? { whiteSpace: 'nowrap', fontWeight: 700, color: '#241800', background: 'linear-gradient(120deg,#e0b766,#f3d58f)', borderRadius: 999, padding: '7px 16px', boxShadow: '0 4px 16px rgba(224,183,102,.35)' }
+                     ? { whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--text)', border: '1px solid var(--border-mid)', borderRadius: 999, padding: '6px 16px' }
                      : l.key === active ? { color: 'var(--text)', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
                   {l.label}
                 </a>

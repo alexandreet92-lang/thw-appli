@@ -121,7 +121,6 @@
         /* Bilan imprimable : thème clair forcé, sans en-tête ni pied de page du site, sans boutons ni animations. */
         .cad-printhead { display: none; }
         @media print {
-          @page { margin: 14mm; }
           html, html.dark, html.light, body { background: #fff !important; color: #111 !important;
             --bg: #fff; --bg-alt: #fff; --bg-card: #fff; --bg-card-2: #f4f5f7; --bg-hover: #f4f5f7;
             --text: #111; --text-mid: #333; --text-dim: #666; --border: #d6d9de; --border-mid: #b5bac2; }
@@ -747,7 +746,7 @@
                       onHome={function () { setView('intro'); }}
                       onClosed={function () { reload().then(function () { setView('results'); }); }}/>;
     } else if (view === 'results' && report) {
-      body = <CadResults catalog={catalog} report={report} campaigns={campaigns} mode={mode} setMode={setMode}
+      body = <CadResults catalog={catalog} report={report} campaigns={campaigns} history={history} mode={mode} setMode={setMode}
                          onBack={function () { setView(historyPage ? 'history' : 'intro'); }}
                          onDelete={deleteCampaign}
                          backLabel={historyPage ? '← Mon historique' : null}
@@ -1172,7 +1171,7 @@
   function effVenue(t, d) { return t.venue === 'outdoor' ? 'outdoor' : t.venue === 'toggle' ? ((d && d.venue) || 'indoor') : 'indoor'; }
   function needsCond(t, d) { return effVenue(t, d) === 'outdoor'; }
   // Météo (le temps) proposée pour les épreuves en extérieur.
-  var WEATHER = ['☀️ sec', '⛅ nuageux', '🌧️ pluie', '🌬️ vent', '🔥 chaleur', '❄️ froid'];
+  var WEATHER = ['sec', 'nuageux', 'pluie', 'vent', 'chaleur', 'froid'];
   function emptyDraft(t) {
     return {
       parts: new Array(partCountOf(t)).fill(''), partialReps: '', skipped: new Array(partCountOf(t)).fill(false),
@@ -1945,7 +1944,7 @@
         {condSummary ? (
           <section className="cad-card" style={{ marginTop: 12, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div className="cad-ec-h" style={{ margin: 0 }}>Conditions extérieures</div>
-            <span className="cad-p" style={{ margin: 0 }}>🌡️ {condSummary.range}{condSummary.weathers.length ? ' · ' + condSummary.weathers.map(function (w) { return window.CadTr(w); }).join(', ') : ''}</span>
+            <span className="cad-p" style={{ margin: 0 }}>{condSummary.range}{condSummary.weathers.length ? ' · ' + condSummary.weathers.map(function (w) { return window.CadTr(window.CadClean ? window.CadClean(w) : w); }).join(', ') : ''}</span>
           </section>
         ) : null}
 
@@ -1961,6 +1960,8 @@
             prev={prevG && prevCamp ? { score: prevG, date: prevCamp.completed_on || prevCamp.started_on } : null}
             levelColor={function (l) { return levelColor(cat.palette, l); }} frDate={frDate}/>
         ) : null}
+        {window.CadPrintReport ? <window.CadPrintReport catalog={cat} scoreG={sG} scoreA={sA} campaign={camp} results={rep.results || []} history={props.history}
+            prev={prevG && prevCamp ? { score: prevG, date: prevCamp.completed_on || prevCamp.started_on } : null}/> : null}
         <p className="cad-printfoot">{window.CadTr('Bilan informatif : un test de condition physique n’est ni un examen médical ni une prescription. Il ne remplace pas l’avis d’un médecin ou d’un coach.')} the-hybridway.com</p>
 
         <div className="cad-grid2">

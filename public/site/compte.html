@@ -67,8 +67,8 @@
 
     .ac-wrap { max-width: 1040px; margin: 0 auto; padding: 0 32px; }
     @media (max-width: 640px) { .ac-wrap { padding: 0 20px; } }
-    .ac-main { padding: 64px 0 80px; }
-    @media (max-width: 640px) { .ac-main { padding: 40px 0 48px; } }
+    .ac-main { padding-top: 64px; padding-bottom: 80px; }
+    @media (max-width: 640px) { .ac-main { padding-top: 40px; padding-bottom: 48px; } }
 
     /* ── Écran de connexion ── */
     .ac-login { max-width: 400px; margin: 0 auto; text-align: center; }
@@ -127,7 +127,7 @@
     .ac-bar.warn span { background: var(--warning); }
     .ac-pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 5px 11px; border-radius: 999px;
       background: rgba(0,200,224,.09); color: var(--brand); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-    .ac-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 500; }
+    .ac-link { display: flex; width: fit-content; align-items: center; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 500; }
 
     /* ── Factures ── */
     .ac-section { margin-top: 64px; }
@@ -150,6 +150,133 @@
       .ac-table td { border: none; padding: 0; }
       .ac-table td:last-child { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
     }
+
+    /* ── Mon compte v2 : profil, usage, téléphone, factures ── */
+    .ac-profile { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; }
+    .ac-avatar { position: relative; width: 104px; height: 104px; border-radius: 50%; flex: none; border: 0; padding: 0; cursor: pointer;
+      background: var(--brand-gradient); color: #fff; display: grid; place-items: center; font-family: var(--font-display, inherit); font-size: 40px; font-weight: 600;
+      overflow: hidden; box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--border-mid); }
+    .ac-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ac-avatar .ov { position: absolute; inset: 0; background: rgba(8,18,31,.62); color: #fff; display: flex; flex-direction: column; gap: 4px;
+      align-items: center; justify-content: center; font-size: 11px; font-weight: 500; opacity: 0; transition: opacity .18s; }
+    .ac-avatar:hover .ov, .ac-avatar:focus-visible .ov { opacity: 1; }
+    .ac-avatar:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }
+    .ac-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    .ac-meta .t { font-size: 13px; color: var(--text-dim); }
+    .ac-pill.ok { background: rgba(34,197,94,.12); color: var(--success); margin-top: 0; }
+    .ac-meta .ac-pill { margin-top: 0; }
+    .ac-err { margin-top: 8px; font-size: 12.5px; color: #ef4444; }
+    .ac-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+    .ac-kv { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 16px 0 0; font-size: 13px; }
+    .ac-kv dt { color: var(--text-dim); } .ac-kv dd { margin: 0; text-align: right; color: var(--text-mid); }
+    .ac-between { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--text-mid); }
+    .ac-sec-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .ac-sec-head h2 { margin: 8px 0 0; }
+    .ac-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--bg-hover); }
+    .ac-seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; font: 500 13px var(--font-body); color: var(--text-mid); cursor: pointer; }
+    .ac-seg button[aria-pressed="true"] { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .ac-usage { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 860px) { .ac-usage { grid-template-columns: 1fr; } }
+    .ac-chartbox { position: relative; }
+    .ac-chartbox svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .ac-tt { position: absolute; top: 0; pointer-events: none; background: #0b1626; color: #eef3f8; border-radius: 9px; padding: 9px 11px; font-size: 12px;
+      line-height: 1.5; min-width: 150px; z-index: 3; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+    .ac-tt b { display: block; font-size: 13px; margin-bottom: 3px; }
+    .ac-tt div { display: flex; justify-content: space-between; gap: 14px; color: #9db1c8; }
+    .ac-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--text-mid); }
+    .ac-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+    .ac-senior { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; }
+    .ac-senior .ac-big { margin-top: 0; font-size: 30px; }
+    .ac-senior span { display: block; margin-top: 5px; font-size: 12px; color: var(--text-dim); }
+    .ac-tl { position: relative; list-style: none; margin-top: 20px; }
+    .ac-tl::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 10px; width: 2px; background: var(--border); }
+    .ac-tl li { position: relative; padding: 0 0 16px 26px; }
+    .ac-tl li::before { content: ''; position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--border-mid); }
+    .ac-tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 4px rgba(0,200,224,.16); }
+    .ac-tl b { display: block; font-weight: 600; color: var(--text); font-size: 14px; }
+    .ac-tl span { font-size: 12.5px; color: var(--text-dim); }
+
+    .ph-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: center; background: #0b1626; border-radius: 22px;
+      padding: 44px 40px; color: #eef3f8; overflow: hidden; position: relative; }
+    .ph-stage::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(55% 70% at 74% 50%, rgba(0,200,224,.22), transparent 70%), radial-gradient(35% 45% at 88% 12%, rgba(91,111,255,.2), transparent 70%); }
+    .ph-stage h2 { font-size: 28px; color: #eef3f8; margin: 12px 0 0; }
+    .ph-stage p.lead { color: #9db1c8; max-width: 44ch; margin-top: 14px; font-size: 14.5px; line-height: 1.6; }
+    .ph-stage .eyebrow { color: #00c8e0; }
+    .ph-screens { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; position: relative; }
+    .ph-screens button { border: 1px solid #27405f; background: transparent; color: #9db1c8; border-radius: 999px; padding: 7px 14px; font: 500 13px var(--font-body); cursor: pointer; }
+    .ph-screens button[aria-pressed="true"] { background: var(--brand-gradient); border-color: transparent; color: #fff; box-shadow: 0 4px 18px rgba(0,200,224,.35); }
+    .ph-scene { perspective: 1500px; display: grid; place-items: center; height: 600px; position: relative; }
+    .ph-rig { position: relative; width: 264px; height: 540px; transform-style: preserve-3d; transform: rotateX(var(--rx, 8deg)) rotateY(var(--ry, -20deg)); transition: transform .25s ease-out; }
+    .ph-rig.idle { animation: ph-float 7s ease-in-out infinite; }
+    @keyframes ph-float { 0%, 100% { transform: rotateX(8deg) rotateY(-20deg) translateY(0); } 50% { transform: rotateX(4deg) rotateY(-9deg) translateY(-12px); } }
+    .ph-ground { position: absolute; bottom: 10px; left: 50%; width: 220px; height: 32px; margin-left: -110px; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); filter: blur(6px); }
+    .ph-body { position: absolute; inset: 0; border-radius: 50px; padding: 3px; background: linear-gradient(145deg, #8a99b0 0%, #2a3a52 14%, #0b1424 46%, #33445f 80%, #8896ad 100%);
+      box-shadow: 0 0 0 1px #05090f, 0 50px 90px -10px rgba(0,0,0,.6), inset 0 0 6px rgba(255,255,255,.25); }
+    .ph-bezel { width: 100%; height: 100%; border-radius: 47px; background: #02050a; padding: 9px; position: relative; }
+    .ph-island { position: absolute; top: 19px; left: 50%; width: 84px; height: 24px; margin-left: -42px; background: #000; border-radius: 16px; z-index: 6; }
+    .ph-screen { width: 100%; height: 100%; border-radius: 39px; background: linear-gradient(180deg, #0a1628, #08121f 40%); overflow: hidden; position: relative; font-size: 11px; color: #eef3f8; display: flex; flex-direction: column; }
+    .ph-sheen { position: absolute; inset: 0; z-index: 7; pointer-events: none; border-radius: 39px; background: linear-gradient(var(--sa, 115deg), rgba(255,255,255,.12), rgba(255,255,255,0) 34%); }
+    .ph-sbar { display: flex; justify-content: space-between; padding: 16px 24px 0 26px; font-weight: 600; font-size: 11px; }
+    .ph-pg { flex: 1; padding: 18px 14px 6px; display: none; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; animation: ph-in .4s ease-out; }
+    .ph-pg.on { display: flex; }
+    @keyframes ph-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+    .ph-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .ph-top h4 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+    .ph-top .sub { color: #9db1c8; font-size: 10.5px; margin-top: 2px; }
+    .ph-av { width: 30px; height: 30px; border-radius: 50%; background: var(--brand-gradient); display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; overflow: hidden; }
+    .ph-tile { background: linear-gradient(180deg, rgba(238,243,248,.075), rgba(238,243,248,.035)); border: 1px solid rgba(158,177,200,.16); border-radius: 14px; padding: 11px; }
+    .ph-tile .k { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #9db1c8; }
+    .ph-tile .v { font-size: 22px; font-weight: 600; margin-top: 3px; letter-spacing: -.02em; }
+    .ph-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ph-hero { display: flex; gap: 12px; align-items: center; }
+    .ph-hero b { display: block; font-size: 22px; font-weight: 600; letter-spacing: -.02em; } .ph-hero span { color: #9db1c8; font-size: 10.5px; }
+    .ph-next { border-radius: 14px; padding: 12px; background: linear-gradient(135deg, #0099b8, #4a5bf0); display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 24px -8px rgba(0,153,184,.5); }
+    .ph-next small { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; } .ph-next b { display: block; font-size: 13px; margin-top: 2px; }
+    .ph-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .ph-week div { text-align: center; padding: 6px 0; border-radius: 10px; font-size: 9.5px; color: #9db1c8; background: rgba(238,243,248,.04); }
+    .ph-week div b { display: block; font-size: 13px; color: #eef3f8; margin-top: 2px; }
+    .ph-week div.on { background: #00c8e0; color: #06222a; } .ph-week div.on b { color: #06222a; }
+    .ph-day { display: flex; gap: 10px; align-items: center; padding: 9px 11px; border-radius: 12px; background: rgba(238,243,248,.05); border: 1px solid rgba(158,177,200,.1); }
+    .ph-day i { width: 4px; height: 28px; border-radius: 3px; flex: none; }
+    .ph-day b { display: block; font-weight: 600; font-size: 11.5px; } .ph-day span { color: #9db1c8; font-size: 10px; }
+    .ph-day em { margin-left: auto; font-size: 10px; color: #9db1c8; font-style: normal; }
+    .ph-chat { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+    .ph-msg { padding: 9px 11px; border-radius: 14px; max-width: 88%; line-height: 1.42; font-size: 10.8px; }
+    .ph-msg.u { align-self: flex-end; background: linear-gradient(135deg, #0099b8, #4a5bf0); color: #fff; border-bottom-right-radius: 4px; }
+    .ph-msg.a { background: rgba(238,243,248,.08); border: 1px solid rgba(158,177,200,.12); border-bottom-left-radius: 4px; }
+    .ph-compose { display: flex; gap: 8px; align-items: center; padding: 8px 8px 8px 12px; border-radius: 999px; background: rgba(238,243,248,.07); border: 1px solid rgba(158,177,200,.16); color: #9db1c8; font-size: 10.5px; }
+    .ph-compose span { flex: 1; } .ph-compose i { width: 24px; height: 24px; border-radius: 50%; background: #00c8e0; display: grid; place-items: center; }
+    .ph-gauge { display: grid; place-items: center; position: relative; }
+    .ph-gauge .c { position: absolute; text-align: center; } .ph-gauge .c b { display: block; font-size: 30px; font-weight: 600; letter-spacing: -.03em; } .ph-gauge .c span { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #9db1c8; }
+    .ph-q { display: grid; gap: 7px; } .ph-q .l { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 3px; color: #cfdbe8; }
+    .ph-q .t { height: 5px; border-radius: 3px; background: rgba(238,243,248,.1); } .ph-q .t i { display: block; height: 100%; border-radius: 3px; }
+    .ph-tabbar { display: flex; justify-content: space-around; padding: 9px 8px 6px; border-top: 1px solid rgba(158,177,200,.12); background: rgba(8,18,31,.92); }
+    .ph-tabbar button { display: flex; flex-direction: column; gap: 3px; align-items: center; font: 400 8.5px var(--font-body); color: #6f849c; width: 54px; background: none; border: 0; padding: 0; cursor: pointer; }
+    .ph-tabbar button.on { color: #00c8e0; }
+    .ph-home { height: 5px; width: 96px; border-radius: 3px; background: rgba(238,243,248,.55); margin: 2px auto 7px; }
+    .ph-chip { position: absolute; z-index: 8; transform: translateZ(80px); background: rgba(19,35,58,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(158,177,200,.25); border-radius: 14px; padding: 11px 13px; box-shadow: 0 18px 40px -10px rgba(0,0,0,.55); color: #eef3f8; font-size: 12px; display: flex; gap: 10px; align-items: center; }
+    .ph-chip b { display: block; font-weight: 600; } .ph-chip span { color: #9db1c8; font-size: 11px; }
+    .ph-chip.a { left: -96px; top: 96px; } .ph-chip.b { right: -86px; bottom: 122px; flex-direction: column; align-items: stretch; gap: 6px; min-width: 138px; }
+    .ph-chip .mini { height: 5px; border-radius: 3px; background: rgba(238,243,248,.14); } .ph-chip .mini i { display: block; height: 100%; width: 64%; border-radius: 3px; background: var(--brand-gradient-h); }
+    @media (max-width: 640px) { .ph-chip { display: none; } }
+    @media (max-width: 900px) { .ph-stage { grid-template-columns: 1fr; padding: 28px 20px; } .ph-scene { height: 540px; } }
+    @media (prefers-reduced-motion: reduce) { .ph-rig.idle { animation: none; } .ph-pg { animation: none; } }
+
+    .ac-sum { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 16px; color: var(--text-mid); font-size: 13px; }
+    .ac-sum b { display: block; font-size: 22px; font-weight: 600; color: var(--text); }
+    .ac-tw { overflow-x: auto; border-radius: 16px; background: var(--bg-card); }
+    .ac-tw .ac-table { min-width: 560px; }
+    .ac-table th { padding-top: 14px; }
+    .ac-table tr.yr td { background: var(--bg-hover); font-size: 12px; font-weight: 600; letter-spacing: .1em; color: var(--text-mid); padding: 8px 14px; text-align: left; }
+    .ac-tag.ok { background: rgba(34,197,94,.12); color: var(--success); }
+    .ac-tag.warn { background: rgba(245,158,11,.14); color: var(--warning); }
+    .ac-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .ac-more ul { list-style: none; margin-top: 12px; }
+    .ac-more li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-mid); }
+    .ac-more li:first-child { border-top: 0; }
+    .ac-more .danger a { color: #ef4444; }
   </style>
   <link rel="stylesheet" href="stade.css"/>
   <script src="stade.js"></script>
@@ -208,12 +335,17 @@
       const renewIso = (d && d.stripe && d.stripe.nextBillingDate) || (d && d.current_period_end) || null;
       const isTrial = (s.tier === 'trial') || (d && d.tier === 'trial');
       const trialDays = isTrial && renewIso ? daysUntil(renewIso) : null;
-      const invoices = ((d && d.invoices) || []).map(function (inv) {
+      const STATUS = { paid: 'Payée', open: 'En attente', uncollectible: 'Impayée', void: 'Annulée' };
+      const invoices = ((d && d.invoices) || []).slice().sort(function (x, y) { return new Date(y.date) - new Date(x.date); }).map(function (inv) {
         return {
-          date: fmtDate(inv.date),
-          desc: 'Abonnement ' + (s.tierLabel || ''),
-          type: 'sub',
-          amount: APP_NOPRICE ? '' : fmtEur(inv.amount, inv.currency),
+          date: new Date(inv.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+          year: new Date(inv.date).getFullYear(),
+          desc: (s.isCoach ? 'Abonnement coach ' : 'Abonnement ') + (s.tierLabel || ''),
+          cents: inv.amount || 0,
+          currency: inv.currency,
+          paid: inv.status === 'paid',
+          statusLabel: STATUS[inv.status] || inv.status,
+          amount: fmtEur(inv.amount, inv.currency),
           url: inv.url || null,
         };
       });
@@ -232,6 +364,7 @@
         chatTokens: s.chatTokens ? { balance: s.chatTokens.remaining, quota: s.chatTokens.limit } : null,
         studioTokens: s.studioTokens ? { balance: s.studioTokens.remaining, quota: s.studioTokens.monthlyLimit } : null,
         invoices: invoices,
+        paymentMethod: (d && d.paymentMethod) || null,
       };
     }
 
@@ -288,42 +421,284 @@
       );
     }
 
-    function TokenCard({ label, icon, balance, quota, note, cta }) {
-      const pct = Math.min(100, Math.round((balance / quota) * 100));
+    const UNLIMITED = 1e12; // valeur technique « illimité » des comptes créateur
+    const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    const fmtM = (n) => (n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' M';
+
+    function TokenCard({ label, icon, balance, quota, used, note, cta, unlimited }) {
+      const pct = unlimited || !quota ? 0 : Math.min(100, Math.round(((quota - balance) / quota) * 100));
       return (
         <div className="ac-card">
           <div className="ac-card-label">{icon} {label}</div>
-          <p className="ac-big num">{nf.format(balance)}<span className="ac-unit">tokens</span></p>
-          <div className="ac-bar"><span style={{ width: pct + '%' }}/></div>
-          <p className="ac-note num">{note}</p>
+          <p className="ac-big num">{unlimited ? 'Illimité' : nf.format(balance)}{!unlimited && <span className="ac-unit">restants</span>}</p>
+          {!unlimited && <div className="ac-bar"><span style={{ width: (100 - pct) + '%' }}/></div>}
+          {!unlimited && (
+            <div className="ac-between num"><span>{nf.format(used)} utilisés sur {nf.format(quota)}</span><span>{pct} %</span></div>
+          )}
+          {note && <p className="ac-note">{note}</p>}
           {cta && <a className="ac-link" href={cta[1]}>{cta[0]} <IcArrow size={13}/></a>}
         </div>
       );
     }
 
-    function Dashboard({ account, onLogout }) {
+    function ProfileHead({ a, ov, onLogout }) {
+      const [url, setUrl] = useState(null);
+      const [err, setErr] = useState('');
+      const [busy, setBusy] = useState(false);
+      const fileRef = React.useRef(null);
+      useEffect(() => { if (ov && ov.avatarUrl) setUrl(ov.avatarUrl); }, [ov]);
+      async function onFile(e) {
+        const f = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!f) return;
+        setErr(''); setBusy(true);
+        try {
+          const fd = new FormData(); fd.append('file', f);
+          const r = await fetch('/api/account/avatar', { method: 'POST', body: fd, credentials: 'include' });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d.avatarUrl) setUrl(d.avatarUrl); else setErr(d.error || 'Envoi impossible.');
+        } catch (x) { setErr('Envoi impossible. Vérifie ta connexion.'); }
+        setBusy(false);
+      }
+      const since = ov && ov.memberSince ? new Date(ov.memberSince) : null;
+      return (
+        <div className="ac-profile">
+          <button className="ac-avatar" type="button" aria-label="Changer la photo de profil" onClick={() => fileRef.current && fileRef.current.click()} disabled={busy}>
+            <span>{(a.name || '?').charAt(0).toUpperCase()}</span>
+            {url && <img src={url} alt="" onError={() => setUrl(null)}/>}
+            <span className="ov"><Icon size={20}><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></Icon>{busy ? 'Envoi…' : 'Changer la photo'}</span>
+          </button>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onFile}/>
+          <div>
+            <span className="eyebrow">Mon compte</span>
+            <h1>Bonjour {a.name}</h1>
+            <p className="ac-mail">{a.email}</p>
+            <div className="ac-meta">
+              <span className="ac-pill">{a.plan.name}</span>
+              <span className="ac-pill ok">Compte actif</span>
+              {since && <span className="t">Membre depuis {MONTHS[since.getMonth()]} {since.getFullYear()}</span>}
+            </div>
+            {err && <p className="ac-err" role="alert">{err}</p>}
+          </div>
+          <div className="ac-actions">
+            <button className="ac-logout" type="button" onClick={() => fileRef.current && fileRef.current.click()}>Modifier la photo</button>
+            <a className="ac-logout" style={{ display: 'inline-flex', alignItems: 'center' }} href={'/api/auth/signout?next=' + encodeURIComponent(window.location.pathname)} onClick={onLogout}>Se déconnecter</a>
+          </div>
+        </div>
+      );
+    }
+
+    function UsageChart({ ov, a }) {
+      const [kind, setKind] = useState('both');
+      const [span, setSpan] = useState(12);
+      const [hover, setHover] = useState(null);
+      const rows = (ov && ov.usage ? ov.usage : []).slice(-span);
+      const quota = a.chatTokens ? a.chatTokens.quota : 0;
+      const val = (r) => (kind === 'studio' ? 0 : r.chat) + (kind === 'chat' ? 0 : r.studio);
+      const peak = Math.max(quota && kind !== 'studio' ? quota : 0, ...rows.map(val), 1);
+      const step = (() => { const raw = peak / 4; const pow = Math.pow(10, Math.floor(Math.log10(raw))); const f = raw / pow; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow; })();
+      const ymax = step * Math.ceil(peak / step);
+      const W = 640, H = 300, L = 52, R = 10, T = 14, B = 30, pw = W - L - R, ph = H - T - B;
+      const bw = rows.length ? pw / rows.length : pw;
+      const y = (v) => T + ph - (v / ymax) * ph;
+      const ticks = []; for (let t = 0; t <= ymax + 1; t += step) ticks.push(t);
+      const empty = rows.every((r) => r.chat + r.studio === 0);
+      const curKey = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+      const label = (m) => MONTHS[parseInt(m.slice(5), 10) - 1];
+      return (
+        <div className="ac-card">
+          <div className="ac-sec-head" style={{ marginBottom: 6 }}>
+            <div className="ac-seg" role="group" aria-label="Type de tokens">
+              {[['both', 'Chat + Studio'], ['chat', 'Chat'], ['studio', 'Studio']].map(([k, l]) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>{l}</button>)}
+            </div>
+            <div className="ac-seg" role="group" aria-label="Période">
+              {[[6, '6 mois'], [12, '12 mois']].map(([k, l]) => <button key={k} type="button" aria-pressed={span === k} onClick={() => setSpan(k)}>{l}</button>)}
+            </div>
+          </div>
+          <div className="ac-chartbox" onMouseLeave={() => setHover(null)}>
+            <svg viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label="Tokens utilisés par mois">
+              {ticks.map((t) => (
+                <g key={t}>
+                  <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeWidth="1"/>
+                  <text x={L - 8} y={y(t) + 4} textAnchor="end" fontSize="11" fill="var(--text-dim)">{t === 0 ? '0' : fmtM(t)}</text>
+                </g>
+              ))}
+              {quota > 0 && kind !== 'studio' && <line x1={L} x2={W - R} y1={y(quota)} y2={y(quota)} stroke="var(--text-dim)" strokeWidth="1.4" strokeDasharray="5 4"/>}
+              {rows.map((r, i) => {
+                const x = L + i * bw + bw * 0.18, w = bw * 0.64;
+                const c = kind === 'studio' ? 0 : r.chat, s = kind === 'chat' ? 0 : r.studio;
+                const cur = r.month === curKey;
+                return (
+                  <g key={r.month}>
+                    {c > 0 && <rect x={x} y={y(c)} width={w} height={y(0) - y(c)} rx="3" fill="var(--brand)" opacity={cur ? 1 : 0.9}/>}
+                    {s > 0 && <rect x={x} y={y(c + s)} width={w} height={y(c) - y(c + s)} rx="3" fill="#7d8cff"/>}
+                    <text x={x + w / 2} y={H - 10} textAnchor="middle" fontSize="11" fontWeight={cur ? 600 : 400} fill={cur ? 'var(--text)' : 'var(--text-dim)'}>{label(r.month)}</text>
+                    <rect x={L + i * bw} y={T} width={bw} height={ph} fill="transparent" tabIndex="0"
+                      aria-label={label(r.month) + ' : ' + fmtM(r.chat + r.studio) + ' tokens'}
+                      onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}/>
+                  </g>
+                );
+              })}
+            </svg>
+            {hover != null && rows[hover] && (() => {
+              const r = rows[hover];
+              const pos = Math.max(0, Math.min(((L + hover * bw + bw / 2) / W) * 100, 100));
+              return (
+                <div className="ac-tt num" style={{ left: 'min(max(0px, calc(' + pos + '% - 75px)), calc(100% - 160px))' }}>
+                  <b>{label(r.month)} {r.month.slice(0, 4)}{r.month === curKey ? ' (en cours)' : ''}</b>
+                  <div><span>Chat</span><span>{fmtM(r.chat)}</span></div>
+                  <div><span>Studio</span><span>{fmtM(r.studio)}</span></div>
+                  <div><span>Total</span><span>{fmtM(r.chat + r.studio)}</span></div>
+                </div>
+              );
+            })()}
+          </div>
+          {empty && <p className="ac-note">Aucune consommation enregistrée sur cette période.</p>}
+          <div className="ac-legend">
+            <span><i style={{ background: 'var(--brand)' }}/>Chat</span>
+            <span><i style={{ background: '#7d8cff' }}/>Studio</span>
+            {quota > 0 && <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--text-dim)', height: 0, width: 16, borderRadius: 0, verticalAlign: 3 }}/>Quota mensuel du chat</span>}
+          </div>
+        </div>
+      );
+    }
+
+    function Seniority({ a, ov }) {
+      const since = ov && ov.memberSince ? new Date(ov.memberSince) : null;
+      if (!since) return null;
+      const days = Math.max(0, Math.floor((Date.now() - since.getTime()) / 86400000));
+      const months = Math.max(0, Math.floor(days / 30.44));
+      return (
+        <div className="ac-card">
+          <div className="ac-card-label"><IcClock size={15}/> Ancienneté</div>
+          <div className="ac-senior">
+            <div><p className="ac-big num">{months}</p><span>mois depuis l'inscription</span></div>
+            <div><p className="ac-big num">{nf.format(days)}</p><span>jours</span></div>
+          </div>
+          <ul className="ac-tl">
+            <li className="now"><b>{a.plan.name}</b><span>formule actuelle</span></li>
+            <li><b>Inscription</b><span>{fmtDate(ov.memberSince)}</span></li>
+          </ul>
+        </div>
+      );
+    }
+
+    function PhoneDemo({ a, avatarUrl }) {
+      const [s, setS] = useState(0);
+      const rig = React.useRef(null), scene = React.useRef(null), sheen = React.useRef(null);
+      const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const names = ['Accueil', 'Planning', 'Coach IA', 'Performance'];
+      const ini = (a.name || '?').charAt(0).toUpperCase();
+      function move(e) {
+        if (reduce || !rig.current) return;
+        const r = scene.current.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+        rig.current.classList.remove('idle'); rig.current.style.animation = 'none';
+        rig.current.style.setProperty('--ry', (nx * 46) + 'deg'); rig.current.style.setProperty('--rx', (8 - ny * 26) + 'deg');
+        if (sheen.current) sheen.current.style.setProperty('--sa', (115 + nx * 70) + 'deg');
+      }
+      function leave() {
+        if (!rig.current) return;
+        rig.current.style.removeProperty('--ry'); rig.current.style.removeProperty('--rx'); rig.current.style.animation = '';
+        if (sheen.current) sheen.current.style.removeProperty('--sa');
+        if (!reduce) rig.current.classList.add('idle');
+      }
+      const tabIcons = [
+        <path d="M3 11 12 3l9 8M5 10v10h14V10"/>,
+        <g><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>,
+        <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>,
+        <path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>,
+      ];
+      const avatar = avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : ini;
+      return (
+        <div className="ph-stage">
+          <div style={{ position: 'relative' }}>
+            <span className="eyebrow">Ton application</span>
+            <h2>Ton compte {a.plan.name}, dans ta poche</h2>
+            <p className="lead">Planning, coach IA, performance : ton compte donne accès à tout ça, sur ton téléphone. Choisis un écran pour l'aperçu.</p>
+            <div className="ph-screens" role="group" aria-label="Écrans de l'application">
+              {names.map((n, i) => <button key={n} type="button" aria-pressed={s === i} onClick={() => setS(i)}>{n}</button>)}
+            </div>
+            <a className="ac-link" style={{ marginTop: 22 }} href="app.html">Découvrir l'application <IcArrow size={13}/></a>
+          </div>
+          <div className="ph-scene" ref={scene} onMouseMove={move} onMouseLeave={leave}>
+            <div className="ph-ground"/>
+            <div className="ph-rig idle" ref={rig}>
+              <div className="ph-body"><div className="ph-bezel"><div className="ph-island"/>
+                <div className="ph-screen">
+                  <div className="ph-sbar"><span>09:41</span><span>THW</span></div>
+                  <div className={'ph-pg' + (s === 0 ? ' on' : '')}>
+                    <div className="ph-top"><div><h4>Salut {a.name}</h4><div className="sub">Aperçu de l'application</div></div><div className="ph-av">{avatar}</div></div>
+                    <div className="ph-tile ph-hero"><svg width="84" height="84" viewBox="0 0 110 110" style={{ flex: "none" }}><circle cx="55" cy="55" r="44" fill="none" stroke="rgba(238,243,248,.1)" strokeWidth="8"/><circle cx="55" cy="55" r="44" fill="none" stroke="#00c8e0" strokeWidth="8" strokeLinecap="round" strokeDasharray="215.6 276.5" transform="rotate(-90 55 55)"/></svg><div><span>Charge de la semaine</span><b>412 / 530</b><span>78 % de l'objectif</span></div></div>
+                    <div className="ph-grid2"><div className="ph-tile"><div className="k">Forme</div><div className="v">68</div></div><div className="ph-tile"><div className="k">Fraîcheur</div><div className="v" style={{ color: '#3ecf7a' }}>+7</div></div></div>
+                    <div className="ph-next"><div><small>Prochaine séance</small><b>Sortie longue, 1h40</b></div></div>
+                  </div>
+                  <div className={'ph-pg' + (s === 1 ? ' on' : '')}>
+                    <div className="ph-top"><div><h4>Planning</h4><div className="sub">Ta semaine type</div></div></div>
+                    <div className="ph-week">{[['L', 12], ['M', 13], ['M', 14], ['J', 15], ['V', 16], ['S', 17], ['D', 18]].map(([l, d], i) => <div key={i} className={i === 4 ? 'on' : ''}>{l}<b>{d}</b></div>)}</div>
+                    {[['#f97316', 'Footing facile', 'Lundi', '45 min'], ['#22c55e', 'Haut du corps + gainage', 'Mardi', '55 min'], ['#00c8e0', 'Vélo, 4 x 8 min seuil', 'Mercredi', '1h20'], ['#a855f7', 'Hyrox, circuit court', 'Vendredi', '50 min'], ['#f97316', 'Sortie longue', 'Dimanche', '1h40']].map((d, i) => (
+                      <div className="ph-day" key={i}><i style={{ background: d[0] }}/><div><b>{d[1]}</b><span>{d[2]}</span></div><em>{d[3]}</em></div>
+                    ))}
+                  </div>
+                  <div className={'ph-pg' + (s === 2 ? ' on' : '')}>
+                    <div className="ph-top"><div><h4>Coach IA</h4><div className="sub">Il connaît ton historique</div></div></div>
+                    <div className="ph-chat">
+                      <div className="ph-msg u">Ma semaine est trop chargée, je rallège quoi ?</div>
+                      <div className="ph-msg a">Ta fatigue grimpe depuis 5 jours. Je garde le seuil de mercredi et je passe le circuit Hyrox de vendredi en footing facile.</div>
+                      <div className="ph-msg u">Ok, applique le changement.</div>
+                      <div className="ph-msg a">C'est fait. Ton planning est à jour.</div>
+                    </div>
+                    <div className="ph-compose"><span>Pose ta question…</span><i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06222a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></i></div>
+                  </div>
+                  <div className={'ph-pg' + (s === 3 ? ' on' : '')}>
+                    <div className="ph-top"><div><h4>Performance</h4><div className="sub">Tes indices Decaform</div></div></div>
+                    <div className="ph-tile ph-gauge"><svg width="124" height="124" viewBox="0 0 128 128"><circle cx="64" cy="64" r="50" fill="none" stroke="rgba(238,243,248,.1)" strokeWidth="9"/><circle cx="64" cy="64" r="50" fill="none" stroke="#5b6fff" strokeWidth="9" strokeLinecap="round" strokeDasharray="223.7 314.2" transform="rotate(-90 64 64)"/></svg><div className="c"><b>712</b><span>Score global</span></div></div>
+                    <div className="ph-tile ph-q">
+                      {[['Endurance', 78, '#00c8e0'], ['Force', 64, '#5b6fff'], ['Vitesse', 57, '#a855f7'], ['Explosivité', 49, '#f97316']].map((q) => (
+                        <div key={q[0]}><div className="l"><span>{q[0]}</span><span>{q[1]}</span></div><div className="t"><i style={{ width: q[1] + '%', background: q[2] }}/></div></div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="ph-tabbar">{names.map((n, i) => (
+                    <button key={n} type="button" className={s === i ? 'on' : ''} onClick={() => setS(i)} aria-label={n}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{tabIcons[i]}</svg>{i === 3 ? 'Perf.' : n === 'Coach IA' ? 'Coach' : n}
+                    </button>
+                  ))}</div>
+                  <div className="ph-home"/>
+                  <div className="ph-sheen" ref={sheen}/>
+                </div>
+              </div></div>
+              <div className="ph-chip a"><div><b>Séance validée</b><span>Sortie longue, 1h40</span></div></div>
+              {a.chatTokens && <div className="ph-chip b"><div><b>Tokens du chat</b><span>{fmtM(a.chatTokens.balance)} restants</span></div><div className="mini"><i style={{ width: Math.min(100, Math.round((a.chatTokens.balance / (a.chatTokens.quota || 1)) * 100)) + '%' }}/></div></div>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Dashboard({ account, onLogout, ov }) {
       const a = account;
       const changeHref = a.isCoach ? 'abonnement-coach.html' : 'abonnement-athlete.html';
       const trialPct = a.trial ? Math.round((a.trial.daysLeft / a.trial.total) * 100) : 0;
+      const studioUnlimited = !!a.studioTokens && (a.studioTokens.quota >= UNLIMITED || a.studioTokens.balance >= UNLIMITED);
+      const paid = a.invoices.filter((i) => i.paid);
+      const totalPaid = paid.reduce((t, i) => t + i.cents, 0);
+      const years = [];
+      a.invoices.forEach((i) => { if (years.indexOf(i.year) < 0) years.push(i.year); });
+      const pm = a.paymentMethod;
       return (
         <React.Fragment>
-          <div className="ac-head">
-            <div>
-              <span className="eyebrow">Mon compte</span>
-              <h1>Bonjour {a.name}</h1>
-              <p className="ac-mail">{a.email}</p>
-            </div>
-            <a className="ac-logout" href={'/api/auth/signout?next=' + encodeURIComponent(window.location.pathname)} onClick={onLogout}>Se déconnecter</a>
-          </div>
+          <ProfileHead a={a} ov={ov} onLogout={onLogout}/>
 
-          <div className="ac-cards">
+          <div className="ac-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))' }}>
             <div className="ac-card">
               <div className="ac-card-label"><IcCard size={15}/> Mon abonnement</div>
               <p className="ac-big">{a.plan.name}</p>
-              <p className="ac-note">
-                {a.plan.kind}{a.plan.price ? ' · ' + a.plan.price : ''}
-                {a.plan.renews ? (<React.Fragment><br/>{a.plan.cancelAtEnd ? 'Se termine le ' : 'Prochain prélèvement le '}{a.plan.renews}</React.Fragment>) : null}
-              </p>
+              <p className="ac-note">{a.plan.kind}{a.plan.price ? ' · ' + a.plan.price : ''}</p>
+              <dl className="ac-kv">
+                {ov && ov.memberSince && (<React.Fragment><dt>Membre depuis</dt><dd>{fmtDate(ov.memberSince)}</dd></React.Fragment>)}
+                {a.plan.renews && (<React.Fragment><dt>{a.plan.cancelAtEnd ? 'Se termine le' : 'Prochain paiement'}</dt><dd className="num">{a.plan.renews}</dd></React.Fragment>)}
+                {pm && !APP_NOPRICE && (<React.Fragment><dt>Moyen de paiement</dt><dd>{pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1)} se terminant par {pm.last4}</dd></React.Fragment>)}
+              </dl>
               {!APP_NOPRICE && <a className="ac-link" href={changeHref}>Changer de formule <IcArrow size={13}/></a>}
               {!APP_NOPRICE && <a className="ac-link" href="#" onClick={(e) => { e.preventDefault(); openPortal(); }} style={{ marginTop: 6 }}>Gérer le paiement / résilier <IcArrow size={13}/></a>}
             </div>
@@ -340,44 +715,87 @@
 
             {a.chatTokens && (
               <TokenCard label="Tokens du chat" icon={<IcToken size={15}/>}
-                balance={a.chatTokens.balance} quota={a.chatTokens.quota}
-                note={`sur ${nf.format(a.chatTokens.quota)} inclus ce mois-ci`}
+                balance={a.chatTokens.balance} quota={a.chatTokens.quota} used={Math.max(0, a.chatTokens.quota - a.chatTokens.balance)}
+                note="Le quota inclus se renouvelle chaque mois."
                 cta={APP_NOPRICE ? null : ['Recharger', 'recharge-tokens.html']}/>
             )}
 
             {a.studioTokens && (
-              <TokenCard label="Tokens Studio" icon={<IcLayers size={15}/>}
-                balance={a.studioTokens.balance} quota={a.studioTokens.quota}
-                note={`quota mensuel ${nf.format(a.studioTokens.quota)} · les packs achetés n'expirent jamais`}
-                cta={APP_NOPRICE ? null : ['Recharger le Studio', 'recharge-tokens.html']}/>
+              <TokenCard label="Tokens du Studio" icon={<IcLayers size={15}/>}
+                unlimited={studioUnlimited}
+                balance={a.studioTokens.balance} quota={a.studioTokens.quota} used={Math.max(0, a.studioTokens.quota - a.studioTokens.balance)}
+                note={studioUnlimited ? 'Compte sans limite de tokens Studio.' : 'Les packs achetés n\'expirent jamais.'}
+                cta={APP_NOPRICE || studioUnlimited ? null : ['Recharger le Studio', 'recharge-tokens.html']}/>
             )}
           </div>
 
-          <section className="ac-section">
-            <h2>Mes factures</h2>
-            <p className="sub">Abonnements et recharges de tokens. Chaque facture est téléchargeable en PDF.</p>
+          <section className="ac-section" aria-labelledby="h-usage">
+            <div className="ac-sec-head"><div><span className="eyebrow">Consommation</span><h2 id="h-usage">Tokens utilisés mois par mois</h2></div></div>
+            {ov
+              ? <div className="ac-usage"><UsageChart ov={ov} a={a}/><Seniority a={a} ov={ov}/></div>
+              : <p className="ac-note">Historique de consommation indisponible pour le moment.</p>}
+          </section>
+
+          <section className="ac-section"><PhoneDemo a={a} avatarUrl={ov && ov.avatarUrl}/></section>
+
+          <section className="ac-section" aria-labelledby="h-fact">
+            <div className="ac-sec-head"><div><span className="eyebrow">Facturation</span><h2 id="h-fact">Mes factures</h2></div></div>
+            <p className="sub">De la plus récente à la plus ancienne. Chaque facture est téléchargeable.</p>
             {a.invoices.length === 0 ? (
               <p className="ac-note" style={{ marginTop: 8 }}>Aucune facture pour le moment.</p>
             ) : (
-              <table className="ac-table">
-                <thead>
-                  <tr><th>Date</th><th>Détail</th><th>Type</th><th>Montant</th><th>Facture</th></tr>
-                </thead>
-                <tbody>
-                  {a.invoices.map((inv, i) => (
-                    <tr key={i}>
-                      <td className="num">{inv.date}</td>
-                      <td className="desc">{inv.desc}</td>
-                      <td><span className={'ac-tag ' + inv.type}>{inv.type === 'sub' ? 'Abonnement' : 'Tokens'}</span></td>
-                      <td className="num">{inv.amount}</td>
-                      <td>{inv.url
-                        ? <a className="ac-dl" href={inv.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IcDown size={13}/> PDF</a>
-                        : <span className="ac-note">—</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <React.Fragment>
+                {!APP_NOPRICE && (
+                  <div className="ac-sum">
+                    <div><b className="num">{fmtEur(totalPaid, a.invoices[0].currency)}</b>payés au total</div>
+                    <div><b className="num">{a.invoices.length}</b>factures</div>
+                  </div>
+                )}
+                <div className="ac-tw">
+                  <table className="ac-table">
+                    <thead><tr><th>Date</th><th>Détail</th>{!APP_NOPRICE && <th>Montant</th>}<th>Statut</th><th>Facture</th></tr></thead>
+                    <tbody>
+                      {years.map((yr) => (
+                        <React.Fragment key={yr}>
+                          <tr className="yr"><td colSpan={APP_NOPRICE ? 4 : 5}>{yr}</td></tr>
+                          {a.invoices.filter((i) => i.year === yr).map((inv, i) => (
+                            <tr key={yr + '-' + i}>
+                              <td className="num">{inv.date}</td>
+                              <td className="desc">{inv.desc}</td>
+                              {!APP_NOPRICE && <td className="num">{inv.amount}</td>}
+                              <td><span className={'ac-tag ' + (inv.paid ? 'ok' : 'warn')}>{inv.statusLabel}</span></td>
+                              <td>{inv.url
+                                ? <a className="ac-dl" href={inv.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IcDown size={13}/> Ouvrir</a>
+                                : <span className="ac-note">—</span>}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </React.Fragment>
             )}
+          </section>
+
+          <section className="ac-section" aria-labelledby="h-more">
+            <div className="ac-sec-head"><div><span className="eyebrow">Mon espace</span><h2 id="h-more">Mes données et mon compte</h2></div></div>
+            <div className="ac-more">
+              <div className="ac-card"><div className="ac-card-label">Mes données</div>
+                <ul>
+                  <li>Exporter mes données<a href="exporter-mes-donnees.html">Exporter</a></li>
+                  <li>Politique de confidentialité<a href="confidentialite.html">Consulter</a></li>
+                  <li>Conditions d'utilisation<a href="conditions-utilisation.html">Consulter</a></li>
+                </ul>
+              </div>
+              <div className="ac-card"><div className="ac-card-label">Mon profil et mes réglages</div>
+                <ul>
+                  <li>Profil, sécurité et connexions<a href="/profile">Ouvrir dans l'app</a></li>
+                  <li>Besoin d'aide<a href="support.html">Support</a></li>
+                  <li className="danger">Supprimer mon compte<a href="/profile">Dans l'app</a></li>
+                </ul>
+              </div>
+            </div>
           </section>
         </React.Fragment>
       );
@@ -386,6 +804,7 @@
     function AccountPage() {
       const [state, setState] = useState('loading'); // loading | guest | ready
       const [account, setAccount] = useState(null);
+      const [ov, setOv] = useState(null);
 
       useEffect(() => {
         document.title = 'Mon compte — THW Coaching';
@@ -398,13 +817,13 @@
             const s = await window.THWAccount.get();
             if (!alive) return;
             if (!s || !s.loggedIn) { setState('guest'); return; }
-            let d = null;
-            try {
-              const rd = await fetch('/api/subscription/details', { credentials: 'include' });
-              if (rd.ok) d = await rd.json();
-            } catch (e) { /* détails optionnels */ }
+            const [d, o] = await Promise.all([
+              fetch('/api/subscription/details', { credentials: 'include' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+              fetch('/api/account/overview', { credentials: 'include' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+            ]);
             if (!alive) return;
             setAccount(buildAccount(s, d));
+            setOv(o && o.loggedIn && !o.error ? o : null);
             setState('ready');
           } catch (e) {
             if (alive) setState('guest');
@@ -420,7 +839,7 @@
             {state === 'loading'
               ? <LoadingView/>
               : state === 'ready'
-                ? <Dashboard account={account} onLogout={() => { /* lien /api/auth/signout gère la suite */ }}/>
+                ? <Dashboard account={account} ov={ov} onLogout={() => { /* lien /api/auth/signout gère la suite */ }}/>
                 : <LoginView/>}
           </main>
           <SiteFooter/>

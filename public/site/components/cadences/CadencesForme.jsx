@@ -346,6 +346,12 @@
     var vs = React.useState(1), vol = vs[0], setVol = vs[1];
     var ph = React.useState('idle'), phase = ph[0], setPhase = ph[1]; // idle | run | done
     var vw = React.useState({ cd: 0, lvl: 0, lap: 0, idx: 0, frac: 0 }), view = vw[0], setView = vw[1];
+    var ptRef = React.useRef(null);
+    React.useEffect(function () {
+      var box = ptRef.current; if (!box) return;
+      var el = box.children[view.lvl]; if (!el) return;
+      box.scrollTo({ left: el.offsetLeft - box.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' });
+    }, [view.lvl]);
     var au = React.useState(''), audioMsg = au[0], setAudioMsg = au[1];
     var fl = React.useState(false), flash = fl[0], setFlash = fl[1];
     var R = React.useRef({ audio: null, ev: [], t0: 0, raf: 0, running: false, last: -1, cur: null, acStart: 0, perfStart: 0 });
@@ -473,8 +479,18 @@
           </div>
           {audioMsg ? <div className="tf-audio-msg" role="status">{audioMsg}</div> : null}
         </div>
-        <div className="tf-ptable" aria-label="Paliers">
-          {LAPS.map(function (n, i) { return <div key={i} className={run && !view.cd ? (i === lvl ? 'cur' : i < lvl ? 'done' : '') : ''}><b>{i + 1}</b>{fr(speedOf(i), 1)}</div>; })}
+        <div className="tf-ptable" aria-label="Paliers" ref={ptRef}>
+          {LAPS.map(function (n, i) {
+            var live = run && !view.cd;
+            var st = live ? (i === lvl ? 'cur' : i < lvl ? 'done' : '') : '';
+            var fill = st === 'done' ? 1 : st === 'cur' ? Math.min(1, Math.max(0, (Math.max(0, view.lap - 1) + view.frac) / lapsIn)) : 0;
+            return (
+              <div key={i} className={st} role="img" aria-label={Tp('Palier {n}, {v} km/h', { n: i + 1, v: fr(speedOf(i), 1) }) + (st === 'cur' ? ', ' + Math.round(fill * 100) + ' %' : st === 'done' ? ', ' + tr('terminé') : '')}>
+                <span className="tf-pfill" style={{ height: (fill * 100) + '%' }}/>
+                <b>{i + 1}</b><em className="num">{fr(speedOf(i), 1)}</em>
+              </div>
+            );
+          })}
         </div>
         <HrPanel hr={hr} locked={run}/>
         <div className="tf-help">
@@ -933,10 +949,15 @@ html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rai
 .tf-track .tf-btn.stop,.tf-track .tf-btn.stop:hover:not(:disabled){background:#dc3b3b;border-color:#dc3b3b;color:#fff}
 .tf-vol{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--tk-mut)}.tf-vol input{accent-color:#00c8e0;width:120px}
 .tf-audio-msg{margin-top:14px;font-size:13px;color:var(--tk-ink);padding:10px 12px;border-radius:10px;background:var(--tk-chip)}
-.tf-ptable{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-.tf-ptable div{flex:0 0 auto;min-width:56px;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px 6px;background:var(--bg-card);font-size:12px;color:var(--text-dim)}
-.tf-ptable div b{display:block;font:600 15px var(--font-display);color:var(--text)}
-.tf-ptable div.cur{border-color:var(--brand);background:rgba(0,200,224,.12)}.tf-ptable div.done{opacity:.5}
+.tf-ptable{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 10px;scrollbar-width:thin}
+.tf-ptable div{position:relative;overflow:hidden;flex:0 0 auto;width:64px;height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid var(--border-mid);border-radius:14px;background:var(--bg-card);color:var(--text-dim);transition:border-color .2s,box-shadow .2s}
+.tf-ptable div b{position:relative;font:600 20px var(--font-display);color:var(--text);line-height:1}
+.tf-ptable div em{position:relative;font:500 11px var(--font-mono);font-style:normal;color:var(--text-dim)}
+.tf-pfill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(0,200,224,.34),rgba(91,111,255,.3));transition:height .25s linear}
+.tf-ptable div.done{border-color:rgba(0,200,224,.55)}.tf-ptable div.done .tf-pfill{background:linear-gradient(180deg,rgba(0,200,224,.26),rgba(91,111,255,.22))}
+.tf-ptable div.cur{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,200,224,.18),0 6px 18px rgba(0,200,224,.25)}
+.tf-ptable div.cur em{color:var(--brand)}
+@media(prefers-reduced-motion:reduce){.tf-pfill{transition:none}}
 .tf-help{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .tf-help p{margin:0;color:var(--text-mid);font-size:13px;line-height:1.55}.tf-help b{display:block;color:var(--text);margin-bottom:3px}
 @media(max-width:800px){.tf-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tf-help{grid-template-columns:1fr}.tf-track{padding:20px}}

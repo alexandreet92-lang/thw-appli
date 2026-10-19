@@ -108,7 +108,7 @@
 
   /* Groupes d'affichage hors Decaform : adultes puis jeunes (du plus jeune au plus âgé). */
   var GROUPS = [
-    { id: 'adultes', title: 'Adultes et seniors', sub: 'Un test de forme sans matériel, une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['forme', 'start', 'senior'] },
+    { id: 'adultes', title: 'Adultes et seniors', sub: 'Une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['start', 'senior'] },
     { id: 'jeunes', title: 'Enfants et ados', sub: 'Des épreuves adaptées à chaque âge, sans danger.', keys: ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17'] },
   ];
 
@@ -140,12 +140,27 @@
     );
   }
 
+  /* Test de forme : accessible tout de suite, hors du parcours Decaform. */
+  function QuickForme() {
+    return (
+      <div className="cad-quick">
+        <style>{`.cad-quick{display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:26px 28px;border-radius:18px;background:var(--bg-card);border:1px solid var(--border-mid);box-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 28px rgba(8,20,40,.07);position:relative;overflow:hidden}.cad-quick:before{content:"";position:absolute;inset:0;background:radial-gradient(50% 120% at 100% 0%,rgba(0,200,224,.12),transparent 70%);pointer-events:none}.cad-quick>*{position:relative}.cad-quick h3{font-family:var(--font-display);font-weight:600;font-size:26px;line-height:1.15;margin:8px 0 0;color:var(--text)}.cad-quick p{margin:10px 0 0;max-width:58ch;color:var(--text-mid);font-size:14.5px;line-height:1.6}`}</style>
+        <div>
+          <div className="eyebrow">Sans matériel, quand tu veux</div>
+          <h3>Teste ta forme dès maintenant</h3>
+          <p>Une course navette et un circuit au poids du corps, le même jour. Tu obtiens un score de forme sur 100, tu peux recommencer à tout moment.</p>
+        </div>
+        <a className="btn btn-cyan btn-lg mag" href="test-de-forme.html">Tester ma forme</a>
+      </div>
+    );
+  }
+
   /* Decaform en vedette, puis les autres tests rangés par public. */
   function GroupedTests(props) {
     var list = props.list || [];
     var byKey = {}; list.forEach(function (p) { byKey[p.testKey] = p; });
     var feat = byKey.decaform;
-    var used = { decaform: true };
+    var used = { decaform: true, forme: true };
     var blocks = GROUPS.map(function (g) {
       var items = g.keys.map(function (k) { used[k] = true; return byKey[k]; }).filter(Boolean);
       return { g: g, items: items };
@@ -153,6 +168,7 @@
     var rest = list.filter(function (p) { return !used[p.testKey]; });
     return (
       <div className="cad-groups">
+        <QuickForme/>
         {feat && <FeaturedTest p={feat}/>}
         {blocks.map(function (b) {
           return (

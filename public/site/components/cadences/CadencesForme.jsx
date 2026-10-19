@@ -46,6 +46,19 @@
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* mode privé */ } }
   function levelOf(total, max) { var p = total / max, l = LEVELS[0][0]; for (var i = 0; i < LEVELS.length; i++) if (p >= LEVELS[i][1]) l = LEVELS[i][0]; return l; }
   function pts(value, ref, max, ptsMax) { var pct = Math.max(0, 0.6 + 0.4 * (value - ref) / (max - ref)); return pct * ptsMax; }
+  // Vitesse « équivalente » au sens continu : palier terminé + fraction du suivant.
+  function legerEqSpeed(value) {
+    if (value >= LAPS.length) return speedOf(LAPS.length - 1);
+    return Math.max(V0 - DV, V0 + DV * (value - 1));
+  }
+  // Chaque demi-tour coûte du temps (décélération puis réaccélération) : pour tenir
+  // la cadence, le coureur court plus vite que la vitesse du palier entre les plots.
+  // VMA estimée = vitesse réelle de course = 20 m / (temps du trajet - perte au demi-tour).
+  var TURN_LOSS = 0.5; // secondes perdues par demi-tour (estimation, à calibrer)
+  function legerVma(value) {
+    var v = legerEqSpeed(value), T = LANE_M / (v / 3.6);
+    return (LANE_M / Math.max(0.5, T - TURN_LOSS)) * 3.6;
+  }
   function legerSpeed(value) { // vitesse atteinte (palier + moitié de navettes)
     var lvl = Math.min(LAPS.length - 1, Math.floor(value)), done = value - Math.floor(value);
     if (value >= LAPS.length) return speedOf(LAPS.length - 1);
@@ -111,10 +124,11 @@
       s: s,
       supported: function () { return !!(navigator.bluetooth && navigator.bluetooth.requestDevice); },
       sub: function (f) { s.subs.push(f); return function () { s.subs = s.subs.filter(function (x) { return x !== f; }); }; },
-      connect: function () {
+      connect: function (all) {
         if (!navigator.bluetooth) { s.err = 'unsupported'; emit(); return Promise.resolve(); }
         s.status = 'pairing'; s.err = ''; emit();
-        return navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }], optionalServices: ['battery_service'] })
+        var opts = all ? { acceptAllDevices: true, optionalServices: ['heart_rate', 'battery_service'] } : { filters: [{ services: ['heart_rate'] }], optionalServices: ['battery_service'] };
+        return navigator.bluetooth.requestDevice(opts)
           .then(function (d) {
             s.dev = d; s.name = d.name || 'Capteur cardio';
             d.addEventListener('gattserverdisconnected', lost);
@@ -122,7 +136,11 @@
           })
           .catch(function (e) {
             s.status = 'off';
-            s.err = (e && e.name === 'NotFoundError') ? 'cancel' : 'fail';
+            var n = e && e.name;
+            s.err = n === 'NotFoundError' ? (/chosen|user cancelled|cancel/i.test((e && e.message) || '') ? 'cancel' : 'none')
+              : n === 'SecurityError' || n === 'NotAllowedError' ? 'denied'
+              : n === 'NetworkError' ? 'gatt'
+              : n === 'NotSupportedError' ? 'service' : 'fail';
             emit();
           });
       },
@@ -201,6 +219,16 @@
     var hr = props.hr, st = React.useState(0), tick = st[1];
     React.useEffect(function () { return hr.sub(function () { tick(function (n) { return n + 1; }); }); }, [hr]);
     var s = hr.s, ok = hr.supported();
+    var ua = navigator.userAgent || '';
+    var ios = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var ERR = {
+      cancel: 'Aucun capteur choisi. Si le tien n’apparaît pas dans la liste, essaie « Mon capteur n’apparaît pas ».',
+      none: 'Aucun capteur cardio trouvé à proximité. Allume-le, rapproche-le, et active la diffusion Bluetooth de ta montre (mode « diffuser la fréquence cardiaque »).',
+      denied: 'Le Bluetooth est refusé ou désactivé. Active le Bluetooth de l’appareil et autorise-le pour ce site dans Chrome.',
+      gatt: 'Le capteur est trouvé mais la connexion échoue. Vérifie qu’il n’est pas déjà connecté à une autre application, puis réessaie.',
+      service: 'Cet appareil ne diffuse pas de fréquence cardiaque. Sur une montre, active la diffusion de la fréquence cardiaque (une Apple Watch ne le permet pas).',
+      fail: 'Connexion impossible. Vérifie que le capteur est allumé, proche, et non connecté à une autre application.'
+    };
     return (
       <div className={'tf-hr' + (props.dark ? ' dark' : '')}>
         <div className="tf-hr-top">
@@ -211,14 +239,21 @@
           {s.status === 'on' ? <div className="tf-hr-bpm num" aria-live="polite">{s.bpm || '--'}<em>bpm</em></div> : null}
           {ok ? (s.status === 'on' || s.status === 'lost'
             ? <button type="button" className="tf-btn small" onClick={function () { hr.disconnect(); }} disabled={props.locked}>Déconnecter</button>
-            : <button type="button" className="tf-btn small" onClick={function () { hr.connect(); }} disabled={s.status === 'pairing' || props.locked}>Connecter un capteur</button>) : null}
+            : <button type="button" className="tf-btn small primary" onClick={function () { hr.connect(); }} disabled={s.status === 'pairing' || props.locked}>Connecter un capteur</button>) : null}
         </div>
-        <div className={'tf-hr-note' + (ok ? '' : ' warn')}>
-          {ok
-            ? 'Le site ne peut lire ta fréquence cardiaque que dans Google Chrome (ou Edge) sur ordinateur ou Android. Ni Safari, ni iPhone. Ta montre doit diffuser sa fréquence en Bluetooth : une Apple Watch ne le fait pas.'
-            : 'Ton navigateur ne permet pas de lire la fréquence cardiaque. Ouvre cette page dans Google Chrome (ordinateur ou Android) pour connecter un capteur. Le test fonctionne très bien sans.'}
-        </div>
-        {s.err === 'fail' ? <div className="tf-hr-note warn">Connexion impossible. Vérifie que le capteur est allumé, proche, et non connecté à une autre application.</div> : null}
+        {!ok ? (
+          <div className="tf-hr-note warn">
+            {ios
+              ? 'Impossible sur iPhone : Apple bloque le Bluetooth dans tous les navigateurs. Utilise un ordinateur ou un téléphone Android, ou fais le test sans. La cardio sur iPhone arrivera dans l’application THW.'
+              : 'Ce navigateur ne permet pas de lire la fréquence cardiaque. Ouvre cette page dans Google Chrome ou Edge pour connecter un capteur. Le test fonctionne très bien sans.'}
+          </div>
+        ) : null}
+        {ok && s.err && ERR[s.err] ? (
+          <div className="tf-hr-note warn">
+            {ERR[s.err]}
+            {(s.err === 'cancel' || s.err === 'none') ? <div><button type="button" className="tf-link" onClick={function () { hr.connect(true); }} disabled={props.locked}>Mon capteur n’apparaît pas</button></div> : null}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -398,7 +433,7 @@
       var trace = buildTrace(samples, segs);
       if (trace) trace.summary.segments.forEach(function (s, i) { s.short = segs[i].short; });
       setPhase('done');
-      props.onDone({ value: Math.max(0.1, Math.round(value * 100) / 100), palier: complete ? LAPS.length : lvl + 1, laps: complete ? LAPS[LAPS.length - 1] : done, lapsIn: LAPS[Math.min(lvl, LAPS.length - 1)], vma: legerSpeed(value), trace: trace, duration: Math.max(0, c) });
+      props.onDone({ value: Math.max(0.1, Math.round(value * 100) / 100), palier: complete ? LAPS.length : lvl + 1, laps: complete ? LAPS[LAPS.length - 1] : done, lapsIn: LAPS[Math.min(lvl, LAPS.length - 1)], vma: legerVma(value), speed: legerSpeed(value), trace: trace, duration: Math.max(0, c) });
     }
 
     var run = phase === 'run';
@@ -419,11 +454,11 @@
           </div>
           <div className="tf-lane">
             <svg viewBox="0 0 800 110" role="img" aria-label="Piste de 20 mètres entre deux plots" preserveAspectRatio="xMidYMid meet">
-              <rect x="40" y="60" width="720" height="16" rx="8" fill="rgba(238,243,248,.07)"/>
-              <line x1="40" y1="68" x2="760" y2="68" stroke="rgba(238,243,248,.22)" strokeWidth="2" strokeDasharray="3 9"/>
+              <rect x="40" y="60" width="720" height="16" rx="8" fill="var(--tk-rail)"/>
+              <line x1="40" y1="68" x2="760" y2="68" stroke="var(--tk-dash)" strokeWidth="2" strokeDasharray="3 9"/>
               <g fill="#f97316"><path d="M26 82 L40 46 L54 82 Z"/><path d="M746 82 L760 46 L774 82 Z"/></g>
-              <text x="40" y="104" textAnchor="middle" fontSize="12" fill="#9db1c8" fontFamily="IBM Plex Mono">0 m</text>
-              <text x="760" y="104" textAnchor="middle" fontSize="12" fill="#9db1c8" fontFamily="IBM Plex Mono">20 m</text>
+              <text x="40" y="104" textAnchor="middle" fontSize="12" fill="var(--tk-mut)" fontFamily="IBM Plex Mono">0 m</text>
+              <text x="760" y="104" textAnchor="middle" fontSize="12" fill="var(--tk-mut)" fontFamily="IBM Plex Mono">20 m</text>
               <circle cx={x} cy="52" r="20" fill="none" stroke="#00c8e0" strokeOpacity=".35" strokeWidth="2"/>
               <circle cx={x} cy="52" r="12" fill="#00c8e0"/>
             </svg>
@@ -612,7 +647,7 @@
     var sv = React.useState({ state: 'idle', msg: '', off: null }), save = sv[0], setSave = sv[1];
     var p1 = pts(L.value, sc.nav[0], sc.nav[1], 50), p2 = pts(C.seconds, sc.cir[0], sc.cir[1], 50), tot = p1 + p2;
     var off = save.off, total = off ? off.score : tot, level = off ? off.level : levelOf(tot, 100);
-    var vo2 = 5.857 * L.vma - 19.458;
+    var vo2 = 3.5 * L.vma;
     function doSave() {
       setSave({ state: 'busy', msg: '', off: null });
       var cid = null, warn = [];
@@ -659,7 +694,7 @@
         </div>
         <div className="tf-res">
           <div className="tf-card"><div className="tf-eye">Navette de Léger</div>
-            <div className="tf-gauge"><Gauge p={navPts / 50} color="#00c8e0"/><div><div className="tf-big2 num">{fr(navPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('VMA {v} km/h, palier {p}', { v: fr(L.vma, 1), p: L.palier })}</div><div className="tf-dim num">{Tp('VO2max estimée {v} ml/kg/min', { v: fr(vo2, 1) })}</div></div></div></div>
+            <div className="tf-gauge"><Gauge p={navPts / 50} color="#00c8e0"/><div><div className="tf-big2 num">{fr(navPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('VMA {v} km/h, palier {p}', { v: fr(L.vma, 1), p: L.palier })}</div><div className="tf-dim num">{Tp('VO2max estimée {v} ml/kg/min', { v: fr(vo2, 1) })}</div><div className="tf-dim">{Tp('Vitesse du palier {v} km/h, corrigée des demi-tours.', { v: fr(L.speed != null ? L.speed : legerEqSpeed(L.value), 1) })}</div></div></div></div>
           <div className="tf-card"><div className="tf-eye">Circuit chronométré</div>
             <div className="tf-gauge"><Gauge p={cirPts / 50} color="#5b6fff"/><div><div className="tf-big2 num">{fr(cirPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('Temps {t}', { t: mmss(C.seconds) })}</div><div className="tf-dim num">{Tp('{mode} · 3 tours', { mode: tr(C.mode === 'assist' ? 'Avec partenaire' : 'Mode autonome') })}</div></div></div></div>
         </div>
@@ -768,12 +803,27 @@
 
     function restart() { lsSet(DRAFT_KEY, null); setLeger(null); setCircuit(null); setRestEnd(0); setStage('profil'); window.scrollTo(0, 0); }
     var idx = STEPS.map(function (s) { return s[0]; }).indexOf(stage);
+    var PREV = { leger: 'profil', rest: 'leger', circuit: 'leger', result: 'circuit' };
+    function back() {
+      if (running.current) return;
+      setStage(PREV[stage]); window.scrollTo(0, 0);
+    }
+    function askRestart() {
+      if (running.current) return;
+      if (window.confirm(tr('Tout recommencer ? Les résultats de ce passage non enregistrés seront perdus.'))) restart();
+    }
 
     return (
       <div>
         <nav className="tf-steps" aria-label="Étapes">
           {STEPS.map(function (s, i) { return <div key={s[0]} className={'tf-step' + (i === idx ? ' on' : '') + (i < idx ? ' done' : '')}><i>{i < idx ? '✓' : i + 1}</i><span>{s[1]}</span></div>; })}
         </nav>
+        {stage !== 'profil' ? (
+          <div className="tf-actions" style={{ marginTop: 0, marginBottom: 14 }}>
+            <button type="button" className="tf-btn small" onClick={back}>Retour</button>
+            <button type="button" className="tf-btn small ghost" onClick={askRestart}>Tout recommencer</button>
+          </div>
+        ) : null}
         {stage === 'profil' ? (
           <div>
             <header className="tf-head">
@@ -826,7 +876,7 @@
 @media(max-width:640px){.tf-wrap{padding:92px 16px 64px}}
 .tf-wrap .num{font-variant-numeric:tabular-nums}
 .tf-eye{font:500 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brand)}
-.tf-eye.light{color:#00c8e0}
+.tf-eye.light{color:var(--brand)}
 .tf-h1{font-family:var(--font-display);font-weight:600;font-size:clamp(28px,4.4vw,40px);line-height:1.1;margin:10px 0 0;letter-spacing:-.01em}
 .tf-h2{font-family:var(--font-display);font-weight:600;font-size:24px;line-height:1.2;margin:8px 0 10px;letter-spacing:-.01em}
 .tf-p{color:var(--text-mid);font-size:14.5px;line-height:1.6;margin:8px 0 16px;max-width:64ch}
@@ -840,11 +890,11 @@ html.dark .tf-card{box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.2
 .tf-steps{display:flex;gap:6px;margin:0 0 26px;overflow-x:auto;padding-bottom:4px}
 .tf-step{display:flex;align-items:center;gap:8px;flex:1 1 0;min-width:max-content;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--text-dim)}
 .tf-step i{font:600 11px var(--font-mono);font-style:normal;width:20px;height:20px;border-radius:99px;display:grid;place-items:center;border:1px solid var(--border-mid)}
-.tf-step.on{color:var(--text);border-color:var(--brand);background:rgba(0,200,224,.08)}.tf-step.on i{background:var(--brand);border-color:var(--brand);color:#04222a}
+.tf-step.on{color:var(--text);border-color:var(--brand);background:rgba(0,200,224,.08)}.tf-step.on i{background:var(--brand-gradient);border-color:transparent;color:#fff}
 .tf-step.done{color:var(--text-mid)}.tf-step.done i{border-color:var(--brand);color:var(--brand)}
 .tf-btn{font:500 14px var(--font-body);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:10px;border:1px solid var(--border-mid);background:var(--bg-card);color:var(--text);text-decoration:none;transition:filter .15s,border-color .15s}
 .tf-btn:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
-.tf-btn.primary{background:var(--brand);border-color:var(--brand);color:#04222a;font-weight:600}.tf-btn.primary:hover:not(:disabled){color:#04222a;filter:brightness(1.08)}
+.tf-btn.primary{background:var(--brand-gradient);border-color:transparent;color:#fff;font-weight:600;box-shadow:0 3px 16px rgba(0,200,224,.3),inset 0 1px 0 rgba(255,255,255,.2)}.tf-btn.primary:hover:not(:disabled){color:#fff;filter:brightness(1.08);box-shadow:0 6px 26px rgba(0,200,224,.42),inset 0 1px 0 rgba(255,255,255,.25)}
 .tf-btn.stop{background:#dc3b3b;border-color:#dc3b3b;color:#fff}.tf-btn.stop:hover:not(:disabled){color:#fff;filter:brightness(1.1)}
 .tf-btn.ghost{background:transparent}.tf-btn.lg{padding:14px 24px;font-size:15.5px}.tf-btn.small{padding:8px 12px;font-size:12.5px}
 .tf-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -858,29 +908,31 @@ html.dark .tf-card{box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.2
 @media(max-width:560px){.tf-grid2{grid-template-columns:1fr}}
 .tf-f{display:grid;gap:6px;font-size:12.5px;color:var(--text-mid)}.tf-f>span{font-weight:600}
 .tf-f input{font:500 15px var(--font-body);color:var(--text);background:var(--input-bg);border:1px solid var(--border-mid);border-radius:10px;padding:11px 12px;width:100%;min-width:0}
+.tf-grid2>*{min-width:0}.tf-f input[type=date]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;min-height:46px;box-sizing:border-box}
 .tf-f input:focus{outline:2px solid var(--brand);outline-offset:1px}
 .tf-seg{display:flex;gap:6px}.tf-seg button{flex:1;font:500 14px var(--font-body);padding:11px 12px;border-radius:10px;border:1px solid var(--border-mid);background:var(--input-bg);color:var(--text-mid);cursor:pointer}
-.tf-seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#04222a;font-weight:600}
+.tf-seg button[aria-pressed="true"]{background:var(--brand-gradient);border-color:transparent;color:#fff;font-weight:600}
 /* piste */
-.tf-track{background:#0b1626;color:#eef3f8;border-radius:20px;padding:26px;position:relative;overflow:hidden;border:1px solid #1c3150;transition:box-shadow .08s}
-.tf-track:before{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 85% 0%,rgba(0,200,224,.2),transparent 70%);pointer-events:none}
+.tf-track{--tk-ink:var(--text);--tk-mut:var(--text-dim);--tk-line:var(--border-mid);--tk-rail:rgba(11,22,38,.08);--tk-dash:rgba(11,22,38,.28);--tk-veil:rgba(255,255,255,.82);--tk-bar:rgba(11,22,38,.1);--tk-chip:rgba(11,22,38,.05);background:var(--bg-card);color:var(--tk-ink);border-radius:20px;padding:26px;position:relative;overflow:hidden;border:1px solid var(--border-mid);transition:box-shadow .08s}
+html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rail:rgba(238,243,248,.07);--tk-dash:rgba(238,243,248,.22);--tk-veil:rgba(8,18,31,.78);--tk-bar:rgba(238,243,248,.1);--tk-chip:rgba(238,243,248,.07);background:#0b1626;border-color:#1c3150}
+.tf-track:before{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 85% 0%,rgba(0,200,224,.14),transparent 70%);pointer-events:none}
 .tf-track.flash{box-shadow:inset 0 0 0 3px #00c8e0,0 0 40px rgba(0,200,224,.45)}
 .tf-track>*{position:relative}
 .tf-track-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.tf-lvl{font:500 12px var(--font-mono);letter-spacing:.08em;color:#9db1c8;text-transform:uppercase}
+.tf-lvl{font:500 12px var(--font-mono);letter-spacing:.08em;color:var(--tk-mut);text-transform:uppercase}
 .tf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
-.tf-stat small{display:block;font:500 10.5px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:#9db1c8}
+.tf-stat small{display:block;font:500 10.5px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tk-mut)}
 .tf-stat b{display:block;font:600 clamp(30px,5vw,46px)/1.05 var(--font-display);letter-spacing:-.02em;margin-top:6px}
-.tf-stat b em{font:400 13px var(--font-body);font-style:normal;color:#9db1c8;margin-left:5px;letter-spacing:0}
+.tf-stat b em{font:400 13px var(--font-body);font-style:normal;color:var(--tk-mut);margin-left:5px;letter-spacing:0}
 .tf-lane{position:relative;margin:26px 0 14px}.tf-lane svg{width:100%;height:auto;display:block}
-.tf-big{position:absolute;inset:0;display:grid;place-items:center;font:600 76px var(--font-display);color:#00c8e0;background:rgba(8,18,31,.78);border-radius:12px}
-.tf-pbar{height:6px;border-radius:99px;background:rgba(238,243,248,.1);overflow:hidden}.tf-pbar i{display:block;height:100%;background:linear-gradient(90deg,#00c8e0,#5b6fff)}
+.tf-big{position:absolute;inset:0;display:grid;place-items:center;font:600 76px var(--font-display);color:#00c8e0;background:var(--tk-veil);border-radius:12px}
+.tf-pbar{height:6px;border-radius:99px;background:var(--tk-bar);overflow:hidden}.tf-pbar i{display:block;height:100%;background:var(--brand-gradient-h)}
 .tf-ctrl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:22px}
-.tf-track .tf-btn{background:transparent;border-color:#27405f;color:#eef3f8}.tf-track .tf-btn:hover:not(:disabled){border-color:#00c8e0;color:#00c8e0}
-.tf-track .tf-btn.primary{background:#00c8e0;border-color:#00c8e0;color:#06222a}.tf-track .tf-btn.primary:hover:not(:disabled){color:#06222a}
+.tf-track .tf-btn{background:transparent;border-color:var(--tk-line);color:var(--tk-ink)}.tf-track .tf-btn:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.tf-track .tf-btn.primary,.tf-track .tf-btn.primary:hover:not(:disabled){background:var(--brand-gradient);border-color:transparent;color:#fff}
 .tf-track .tf-btn.stop,.tf-track .tf-btn.stop:hover:not(:disabled){background:#dc3b3b;border-color:#dc3b3b;color:#fff}
-.tf-vol{display:flex;gap:10px;align-items:center;font-size:12.5px;color:#9db1c8}.tf-vol input{accent-color:#00c8e0;width:120px}
-.tf-audio-msg{margin-top:14px;font-size:13px;color:#cfe3f3;padding:10px 12px;border-radius:10px;background:rgba(238,243,248,.07)}
+.tf-vol{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--tk-mut)}.tf-vol input{accent-color:#00c8e0;width:120px}
+.tf-audio-msg{margin-top:14px;font-size:13px;color:var(--tk-ink);padding:10px 12px;border-radius:10px;background:var(--tk-chip)}
 .tf-ptable{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .tf-ptable div{flex:0 0 auto;min-width:56px;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px 6px;background:var(--bg-card);font-size:12px;color:var(--text-dim)}
 .tf-ptable div b{display:block;font:600 15px var(--font-display);color:var(--text)}
@@ -925,7 +977,7 @@ html.dark .tf-card{box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.2
 .tf-score{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
 .tf-who{font:500 12.5px var(--font-mono);color:var(--text-mid);margin:10px 0 0;letter-spacing:.02em}
 .tf-bigscore{font:600 clamp(48px,8vw,68px)/1 var(--font-display);letter-spacing:-.02em;margin-top:10px}.tf-bigscore em{font:400 18px var(--font-body);font-style:normal;color:var(--text-dim);margin-left:8px}
-.tf-lv{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}.tf-lv span{font:500 11px var(--font-mono);padding:5px 8px;border-radius:7px;border:1px solid var(--border);color:var(--text-dim)}.tf-lv span.on{background:var(--brand);border-color:var(--brand);color:#04222a}
+.tf-lv{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}.tf-lv span{font:500 11px var(--font-mono);padding:5px 8px;border-radius:7px;border:1px solid var(--border);color:var(--text-dim)}.tf-lv span.on{background:var(--brand-gradient);border-color:transparent;color:#fff}
 .tf-res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}@media(max-width:700px){.tf-res{grid-template-columns:1fr}}
 .tf-gauge{display:flex;gap:18px;align-items:center;margin-top:14px}.tf-gauge svg{flex:none}
 .tf-big2{font:600 28px/1.1 var(--font-display)}.tf-mid{margin-top:8px;color:var(--text-mid);font-size:14px}.tf-dim{color:var(--text-dim);font-size:12.5px;margin-top:2px}
@@ -962,5 +1014,5 @@ html.dark .tf-card{box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.2
   }
 
   window.CadFormePage = CadFormePage;
-  window.cadFormeMath = { pts: pts, legerSpeed: legerSpeed, levelOf: levelOf, SCALE: SCALE };
+  window.cadFormeMath = { pts: pts, legerSpeed: legerSpeed, legerVma: legerVma, levelOf: levelOf, SCALE: SCALE };
 })();

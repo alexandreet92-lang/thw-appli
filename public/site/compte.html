@@ -196,6 +196,14 @@
     .ac-tl b { display: block; font-weight: 600; color: var(--text); font-size: 14px; }
     .ac-tl span { font-size: 12.5px; color: var(--text-dim); }
 
+    html.light .ph-stage { background: var(--bg-card); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-mid), 0 8px 28px rgba(8,20,40,.07); }
+    html.light .ph-stage::before { background: radial-gradient(55% 70% at 74% 50%, rgba(0,200,224,.14), transparent 70%), radial-gradient(35% 45% at 88% 12%, rgba(91,111,255,.1), transparent 70%); }
+    html.light .ph-stage h2 { color: var(--text); }
+    html.light .ph-stage p.lead { color: var(--text-mid); }
+    html.light .ph-stage .eyebrow { color: var(--brand); }
+    html.light .ph-screens button { border-color: var(--border-mid); color: var(--text-mid); }
+    html.light .ph-ground { background: radial-gradient(closest-side, rgba(11,22,38,.28), transparent); }
+    html.light .ph-stage .ac-link { color: var(--brand); }
     .ph-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: center; background: #0b1626; border-radius: 22px;
       padding: 44px 40px; color: #eef3f8; overflow: hidden; position: relative; }
     .ph-stage::before { content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -868,6 +876,7 @@
   <script src="components/site/i18n-dict-9.js"></script>
   <script src="components/site/i18n-dict-11.js"></script>
   <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
   <script src="components/site/i18n.js"></script>
 </body>
 </html>

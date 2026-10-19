@@ -401,6 +401,7 @@
               <b style={{ marginTop: 0 }}>{tr('Nouveau test')}</b><small>{tr('Partir d’un modèle ou de zéro')}</small>
             </div>
           </div>
+          <p className="cc-note" style={{ marginTop: 14 }}>{tr('Envie de mesurer ta forme sans matériel ?')} <a href="test-de-forme.html" style={{ color: 'var(--text)', fontWeight: 700 }}>{tr('Test de forme')}</a></p>
           <p className="cc-note" style={{ marginTop: 14 }}>{tr('Les tests personnalisés ne sont jamais publiés, ni comparés aux autres athlètes, ni mélangés au score Decaform. Seul Decaform alimente ton score global.')}</p>
         </div>
       );

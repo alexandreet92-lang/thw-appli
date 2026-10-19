@@ -703,7 +703,7 @@
     function loadHistory(nextView) {
       return api('/api/cadences/history')
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { var list = (j && j.tests) || []; setLegacyTests((j && j.legacyTests) || []); setHistory(list); if (nextView) setView(nextView); return list; });
+        .then(function (j) { var list = ((j && j.tests) || []).filter(function (e) { return e.test_key !== 'forme'; }); /* le test de forme (sur 100) a sa propre page : on ne le mélange pas au score sur 1000 */ setLegacyTests((j && j.legacyTests) || []); setHistory(list); if (nextView) setView(nextView); return list; });
     }
 
     // Suppression d'un test entier (campagne + résultats + instantanés). La confirmation est faite par CadDeleteDialog.

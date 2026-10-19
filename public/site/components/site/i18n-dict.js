@@ -435,3 +435,12 @@ window.THW_I18N_DICT = {
     "CGV": "Condiciones"
   }
 };
+
+/* test-de-forme-liens */
+(function () {
+  var D = window.THW_I18N_DICT = window.THW_I18N_DICT || { en: {}, es: {} };
+  function add(l, o) { D[l] = D[l] || {}; for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && D[l][k] === undefined) D[l][k] = o[k]; }
+  add('en', {"Test de forme": "Fitness test", "Envie de mesurer ta forme sans matériel ?": "Want to measure your fitness with no equipment?"});
+  add('es', {"Test de forme": "Test de forma", "Envie de mesurer ta forme sans matériel ?": "¿Quieres medir tu forma sin material?"});
+})();
+/* /test-de-forme-liens */

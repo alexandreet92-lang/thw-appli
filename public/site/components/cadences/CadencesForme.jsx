@@ -35,10 +35,13 @@
 
   /* ── Utilitaires ── */
   var speedOf = function (i) { return V0 + DV * i; };
-  var fr = function (n, d) { return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+  var tr = function (x) { return window.CadTr ? window.CadTr(x) : x; };
+  var Tp = function (x, v) { return window.CadT ? window.CadT(x, v) : x; };
+  var loc = function () { return window.CadLocale ? window.CadLocale() : 'fr-FR'; };
+  var fr = function (n, d) { return Number(n).toLocaleString(loc(), { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
   var mmss = function (t) { t = Math.max(0, Math.round(t)); return Math.floor(t / 60) + ':' + ('0' + (t % 60)).slice(-2); };
   var todayISO = function () { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); };
-  var frDate = function (iso) { try { return new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return iso; } };
+  var frDate = function (iso) { try { return new Date(iso + 'T12:00:00').toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return iso; } };
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* mode privé */ } }
   function levelOf(total, max) { var p = total / max, l = LEVELS[0][0]; for (var i = 0; i < LEVELS.length; i++) if (p >= LEVELS[i][1]) l = LEVELS[i][0]; return l; }
@@ -48,6 +51,16 @@
     if (value >= LAPS.length) return speedOf(LAPS.length - 1);
     return done >= 0.5 ? speedOf(lvl) : speedOf(Math.max(0, lvl - 1));
   }
+
+  // Les libellés d'étape sont stockés en français : on les traduit à l'affichage.
+  function trLabel(l) {
+    var m = /^Palier (\d+) · (.+) km\/h$/.exec(l || '');
+    if (m) return Tp('Palier {n} · {v} km/h', { n: m[1], v: m[2] });
+    m = /^Tour (\d+) · (.+)$/.exec(l || '');
+    if (m) return Tp('Tour {n}', { n: m[1] }) + ' · ' + tr(m[2]);
+    return tr(l || '');
+  }
+  function exLabel(e) { return Tp(e.u ? '{r} m de {n}' : '{r} {n}', { r: e.r, n: window.CadLc(tr(e.n)) }); }
 
   /* ── Statistiques cardio sur une fenêtre de temps ── */
   function segStats(samples, from, to) {
@@ -136,7 +149,7 @@
     var xt = []; var stepT = tmax > 900 ? 300 : tmax > 360 ? 120 : 60; for (var q = 0; q <= tmax; q += stepT) xt.push(q);
     var uid = 'hrg' + Math.round(Math.random() * 1e6);
     return (
-      <svg viewBox={'0 0 ' + W + ' ' + H} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={'Courbe de fréquence cardiaque, minimum ' + mn + ', maximum ' + mx + ' battements par minute'}>
+      <svg viewBox={'0 0 ' + W + ' ' + H} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={Tp('Courbe de fréquence cardiaque, minimum {mn}, maximum {mx} battements par minute', { mn: mn, mx: mx })}>
         <defs><linearGradient id={uid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={accent} stopOpacity=".28"/><stop offset="1" stopColor={accent} stopOpacity="0"/></linearGradient></defs>
         {segs.map(function (s, i) {
           var x1 = X(Math.max(tmin, s.from)), x2 = X(Math.min(tmax, s.to));
@@ -153,9 +166,9 @@
         <path d={d + ' L' + X(tmax).toFixed(1) + ' ' + (H - B) + ' L' + X(tmin).toFixed(1) + ' ' + (H - B) + ' Z'} fill={'url(#' + uid + ')'}/>
         <path d={d} fill="none" stroke={accent} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
         <circle cx={X(samples[iMax][0])} cy={Y(mx)} r="4.5" fill="#ef4444"/>
-        <text x={Math.min(W - R - 30, Math.max(L + 30, X(samples[iMax][0])))} y={Math.max(T + 10, Y(mx) - 9)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#ef4444" fontFamily="IBM Plex Mono">{'max ' + mx}</text>
+        <text x={Math.min(W - R - 30, Math.max(L + 30, X(samples[iMax][0])))} y={Math.max(T + 10, Y(mx) - 9)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#ef4444" fontFamily="IBM Plex Mono">{tr('max') + ' ' + mx}</text>
         <circle cx={X(samples[iMin][0])} cy={Y(mn)} r="4.5" fill="#22c55e"/>
-        <text x={Math.min(W - R - 30, Math.max(L + 30, X(samples[iMin][0])))} y={Math.min(H - B - 6, Y(mn) + 17)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#22c55e" fontFamily="IBM Plex Mono">{'min ' + mn}</text>
+        <text x={Math.min(W - R - 30, Math.max(L + 30, X(samples[iMin][0])))} y={Math.min(H - B - 6, Y(mn) + 17)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#22c55e" fontFamily="IBM Plex Mono">{tr('min') + ' ' + mn}</text>
       </svg>
     );
   }
@@ -175,7 +188,7 @@
           <div className="tf-tw">
             <table className="tf-tab">
               <thead><tr><th>{props.segTitle || 'Étape'}</th><th>Moyenne</th><th>Minimum</th><th>Maximum</th></tr></thead>
-              <tbody>{segs.map(function (s, i) { return (<tr key={i}><td>{s.label}</td><td className="num">{s.avg != null ? s.avg : '--'}</td><td className="num">{s.min != null ? s.min : '--'}</td><td className="num">{s.max != null ? s.max : '--'}</td></tr>); })}</tbody>
+              <tbody>{segs.map(function (s, i) { return (<tr key={i}><td>{trLabel(s.label)}</td><td className="num">{s.avg != null ? s.avg : '--'}</td><td className="num">{s.min != null ? s.min : '--'}</td><td className="num">{s.max != null ? s.max : '--'}</td></tr>); })}</tbody>
             </table>
           </div>
         ) : null}
@@ -193,7 +206,7 @@
         <div className="tf-hr-top">
           <div>
             <div className="tf-hr-t">Fréquence cardiaque <span className="tf-opt">facultatif</span></div>
-            <div className="tf-hr-s">{s.status === 'on' ? (s.name + ' connecté') : s.status === 'pairing' ? 'Recherche du capteur…' : s.status === 'lost' ? 'Signal perdu, reconnexion…' : 'Pour ceux qui ont une sangle ou une montre cardio Bluetooth.'}</div>
+            <div className="tf-hr-s">{s.status === 'on' ? Tp('{name} connecté', { name: s.name }) : s.status === 'pairing' ? 'Recherche du capteur…' : s.status === 'lost' ? 'Signal perdu, reconnexion…' : 'Pour ceux qui ont une sangle ou une montre cardio Bluetooth.'}</div>
           </div>
           {s.status === 'on' ? <div className="tf-hr-bpm num" aria-live="polite">{s.bpm || '--'}<em>bpm</em></div> : null}
           {ok ? (s.status === 'on' || s.status === 'lost'
@@ -396,7 +409,7 @@
         <div className={'tf-track' + (flash ? ' flash' : '')}>
           <div className="tf-track-top">
             <div className="tf-eye light">Test de Léger</div>
-            <div className="tf-lvl">{run ? (view.cd ? 'Préparation' : 'Palier ' + (lvl + 1) + ' sur ' + LAPS.length) : 'Navette de 20 m'}</div>
+            <div className="tf-lvl">{run ? (view.cd ? 'Préparation' : Tp('Palier {n} sur {t}', { n: lvl + 1, t: LAPS.length })) : 'Navette de 20 m'}</div>
           </div>
           <div className="tf-stats">
             <div className="tf-stat"><small>Vitesse</small><b className="num">{fr(run && !view.cd ? sp : V0, 1)}<em>km/h</em></b></div>
@@ -451,11 +464,11 @@
         <h2 className="tf-h2">{ready ? 'Tu peux passer au circuit' : 'Récupère avant le circuit'}</h2>
         <div className="tf-timer num" aria-live="off">{mmss(left)}</div>
         <div className="tf-slot"><i style={{ width: pct + '%' }}/></div>
-        <p className="tf-p">Navette terminée : palier {L.palier}, vitesse atteinte {fr(L.vma, 1)} km/h. Marche doucement, bois de l’eau, mange léger. Vingt minutes minimum entre les deux tests.</p>
+        <p className="tf-p">{Tp('Navette terminée : palier {p}, vitesse atteinte {v} km/h. Marche doucement, bois de l’eau, mange léger. Vingt minutes minimum entre les deux tests.', { p: L.palier, v: fr(L.vma, 1) })}</p>
         <div className="tf-actions center">
           <button type="button" className="tf-btn primary lg" disabled={!ready} onClick={props.onNext}>Passer au circuit</button>
         </div>
-        {!ready ? <button type="button" className="tf-link" onClick={function () { if (window.confirm('Moins de 20 minutes de récupération rendent le circuit moins comparable. Continuer quand même ?')) props.onNext(); }}>Passer la récupération</button> : null}
+        {!ready ? <button type="button" className="tf-link" onClick={function () { if (window.confirm(tr('Moins de 20 minutes de récupération rendent le circuit moins comparable. Continuer quand même ?'))) props.onNext(); }}>Passer la récupération</button> : null}
       </div>
     );
   }
@@ -540,8 +553,8 @@
         <div className="tf-card tf-timer-card">
           <div className="tf-eye">Chronomètre · {mode === 'assist' ? 'avec partenaire' : 'autonome'}</div>
           <div className="tf-timer num">{phase === 'cd' ? cdN : mmss(elapsed)}</div>
-          <div className="tf-state">{phase === 'idle' ? 'Prêt.' : phase === 'cd' ? 'Prépare-toi…' : phase === 'done' ? 'Test terminé : ' + mmss(elapsed) : mode === 'assist' ? 'Tour ' + round + ' sur ' + ROUNDS + ' · exercice ' + (idx % EX.length + 1) + ' sur ' + EX.length : 'Chrono en cours'}</div>
-          {mode === 'assist' && phase !== 'done' ? <div className="tf-now"><small>{phase === 'run' ? 'Exercice en cours' : 'Premier exercice'}</small><b>{cur.r}{cur.u} {cur.u ? 'de ' : ''}{cur.n.toLowerCase()}</b></div> : null}
+          <div className="tf-state">{phase === 'idle' ? 'Prêt.' : phase === 'cd' ? 'Prépare-toi…' : phase === 'done' ? Tp('Test terminé : {t}', { t: mmss(elapsed) }) : mode === 'assist' ? Tp('Tour {r} sur {n} · exercice {e} sur {m}', { r: round, n: ROUNDS, e: idx % EX.length + 1, m: EX.length }) : 'Chrono en cours'}</div>
+          {mode === 'assist' && phase !== 'done' ? <div className="tf-now"><small>{phase === 'run' ? 'Exercice en cours' : 'Premier exercice'}</small><b>{exLabel(cur)}</b></div> : null}
           {mode === 'assist' ? <div className="tf-slot"><i style={{ width: (idx / total * 100) + '%' }}/></div> : null}
           <div className="tf-actions">
             {phase === 'idle' ? <button type="button" className="tf-btn primary lg" onClick={begin}>Démarrer le chrono</button> : null}
@@ -624,7 +637,7 @@
         .then(function (r) { if (!r.ok) throw new Error(r.j.erreur || 'Clôture impossible.'); return api('/api/cadences/history?test_key=forme'); })
         .then(function (r) {
           var t = ((r.j && r.j.tests) || []).filter(function (x) { return x.id === cid; })[0];
-          setSave({ state: 'ok', msg: warn.length ? 'Test enregistré, mais la courbe cardio n’a pas pu l’être (' + warn.join(', ') + ').' : '', off: t ? { score: t.score, level: t.level, scoreA: t.scoreA, levelA: t.levelA, nav: t.tests && t.tests.forme_navette, cir: t.tests && t.tests.forme_circuit } : null });
+          setSave({ state: 'ok', msg: warn.length ? Tp('Test enregistré, mais la courbe cardio n’a pas pu l’être ({w}).', { w: warn.join(', ') }) : '', off: t ? { score: t.score, level: t.level, scoreA: t.scoreA, levelA: t.levelA, nav: t.tests && t.tests.forme_navette, cir: t.tests && t.tests.forme_circuit } : null });
           props.onSaved(cid);
         })
         .catch(function (e) { setSave({ state: 'err', msg: (e && e.message) || 'Erreur réseau. Réessaie : tes résultats sont conservés.', off: null }); });
@@ -646,17 +659,17 @@
         </div>
         <div className="tf-res">
           <div className="tf-card"><div className="tf-eye">Navette de Léger</div>
-            <div className="tf-gauge"><Gauge p={navPts / 50} color="#00c8e0"/><div><div className="tf-big2 num">{fr(navPts, 1)} pts</div><div className="tf-mid num">VMA {fr(L.vma, 1)} km/h, palier {L.palier}</div><div className="tf-dim num">VO2max estimée {fr(vo2, 1)} ml/kg/min</div></div></div></div>
+            <div className="tf-gauge"><Gauge p={navPts / 50} color="#00c8e0"/><div><div className="tf-big2 num">{fr(navPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('VMA {v} km/h, palier {p}', { v: fr(L.vma, 1), p: L.palier })}</div><div className="tf-dim num">{Tp('VO2max estimée {v} ml/kg/min', { v: fr(vo2, 1) })}</div></div></div></div>
           <div className="tf-card"><div className="tf-eye">Circuit chronométré</div>
-            <div className="tf-gauge"><Gauge p={cirPts / 50} color="#5b6fff"/><div><div className="tf-big2 num">{fr(cirPts, 1)} pts</div><div className="tf-mid num">Temps {mmss(C.seconds)}</div><div className="tf-dim num">{C.mode === 'assist' ? 'Avec partenaire' : 'Mode autonome'} · 3 tours</div></div></div></div>
+            <div className="tf-gauge"><Gauge p={cirPts / 50} color="#5b6fff"/><div><div className="tf-big2 num">{fr(cirPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('Temps {t}', { t: mmss(C.seconds) })}</div><div className="tf-dim num">{Tp('{mode} · 3 tours', { mode: tr(C.mode === 'assist' ? 'Avec partenaire' : 'Mode autonome') })}</div></div></div></div>
         </div>
         {C.parts ? <div className="tf-card"><div className="tf-eye">Temps par exercice</div><SplitTable parts={C.parts}/></div> : null}
         {L.trace ? <div className="tf-card"><div className="tf-eye">Fréquence cardiaque · navette de Léger</div><HrSummary trace={L.trace} segTitle="Palier" color="#00c8e0"/></div> : null}
         {C.trace ? <div className="tf-card"><div className="tf-eye">Fréquence cardiaque · circuit</div><HrSummary trace={C.trace} segTitle="Exercice" color="#5b6fff"/></div> : null}
         <div className="tf-card tf-savebar">
           {save.state === 'ok' ? (
-            <div><b>Test enregistré.</b> Il est dans ton historique{L.trace || C.trace ? ', avec tes courbes de fréquence cardiaque' : ''}.{save.msg ? <div className="tf-warn">{save.msg}</div> : null}
-              <div className="tf-actions"><a className="tf-btn primary" href="historique.html">Voir mon historique</a><a className="tf-btn" href="tests-perso.html">Mes tests</a><button type="button" className="tf-btn" onClick={props.onRestart}>Nouveau passage</button></div></div>
+            <div><b>Test enregistré.</b> Il est dans « Mes passages », plus bas{L.trace || C.trace ? ', avec tes courbes de fréquence cardiaque' : ''}.{save.msg ? <div className="tf-warn">{save.msg}</div> : null}
+              <div className="tf-actions"><a className="tf-btn primary" href="#tf-passages">Voir mes passages</a><a className="tf-btn" href="tests-perso.html">Mes tests</a><button type="button" className="tf-btn" onClick={props.onRestart}>Nouveau passage</button></div></div>
           ) : (
             <div>
               <div className="tf-actions" style={{ marginTop: 0 }}>
@@ -684,7 +697,7 @@
     }
     if (!rows || !rows.length) return null;
     return (
-      <section className="tf-card" style={{ marginTop: 22 }}>
+      <section className="tf-card" id="tf-passages" style={{ marginTop: 22 }}>
         <div className="tf-eye">Mes passages</div>
         <div className="tf-past">
           {rows.map(function (t) {
@@ -696,7 +709,7 @@
                 </button>
                 {open === t.id ? (
                   <div className="tf-past-body">
-                    <div className="tf-small">Navette : {t.tests && t.tests.forme_navette ? fr(t.tests.forme_navette.points, 1) : '--'} pts · Circuit : {t.tests && t.tests.forme_circuit ? fr(t.tests.forme_circuit.points, 1) : '--'} pts</div>
+                    <div className="tf-small">{Tp('Navette : {a} pts · Circuit : {b} pts', { a: t.tests && t.tests.forme_navette ? fr(t.tests.forme_navette.points, 1) : '--', b: t.tests && t.tests.forme_circuit ? fr(t.tests.forme_circuit.points, 1) : '--' })}</div>
                     {traces[t.id] === undefined ? <div className="tf-small">Chargement…</div> : (!tn && !tc) ? <div className="tf-small">Pas de courbe de fréquence cardiaque pour ce passage.</div> : null}
                     {tn ? <div><div className="tf-eye" style={{ margin: '14px 0 6px' }}>Cardio · navette</div><HrSummary trace={tn} segTitle="Palier" color="#00c8e0" shortOf={function (s, i) { return String(i + 1); }}/></div> : null}
                     {tc ? <div><div className="tf-eye" style={{ margin: '14px 0 6px' }}>Cardio · circuit</div><HrSummary trace={tc} segTitle="Exercice" color="#5b6fff" shortOf={function (s, i) { return String(i + 1); }}/></div> : null}
@@ -713,8 +726,9 @@
   /* ════════════ Page ════════════ */
   var STEPS = [['profil', 'Profil'], ['leger', 'Test de Léger'], ['rest', 'Récupération'], ['circuit', 'Circuit'], ['result', 'Résultat']];
 
-  function FormeApp() {
-    var account = window.THWAccount.useAccount();
+  function FormeApp(props) {
+    if (window.CadUseLang) window.CadUseLang();
+    var account = props.account;
     var hrRef = React.useRef(null); if (!hrRef.current) hrRef.current = createHr();
     var hr = hrRef.current;
     var draft = React.useMemo(function () { var d = lsGet(DRAFT_KEY); return d && d.t && Date.now() - d.t < 6 * 3600 * 1000 ? d : null; }, []);
@@ -778,7 +792,7 @@
             {leger ? (
               <div className="tf-card tf-narrow tf-center" style={{ marginTop: 18 }}>
                 <div className="tf-eye">Navette terminée</div>
-                <div className="tf-big2 num" style={{ marginTop: 8 }}>Palier {leger.palier} · VMA {fr(leger.vma, 1)} km/h</div>
+                <div className="tf-big2 num" style={{ marginTop: 8 }}>{Tp('Palier {p} · VMA {v} km/h', { p: leger.palier, v: fr(leger.vma, 1) })}</div>
                 <p className="tf-p">Enregistré pour ce passage. Tu peux refaire la navette ci-dessus, ou passer à la récupération.</p>
                 <div className="tf-actions center"><button type="button" className="tf-btn primary lg" onClick={function () { setRestEnd(Date.now() + REST_SEC * 1000); setStage('rest'); window.scrollTo(0, 0); }}>Commencer la récupération (20 min)</button></div>
               </div>
@@ -792,7 +806,7 @@
             {circuit ? (
               <div className="tf-card tf-narrow tf-center" style={{ marginTop: 18 }}>
                 <div className="tf-eye">Circuit terminé</div>
-                <div className="tf-big2 num" style={{ marginTop: 8 }}>Temps {mmss(circuit.seconds)}</div>
+                <div className="tf-big2 num" style={{ marginTop: 8 }}>{Tp('Temps {t}', { t: mmss(circuit.seconds) })}</div>
                 <div className="tf-actions center"><button type="button" className="tf-btn primary lg" onClick={function () { setStage('result'); window.scrollTo(0, 0); }}>Voir mon résultat</button></div>
               </div>
             ) : null}
@@ -925,20 +939,23 @@ html.dark .tf-card{box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.2
   }
 
   function CadFormePage() {
-    var account = window.THWAccount.useAccount();
-    var loggedIn = !!(account && account.loggedIn !== false && (account.email || account.firstName || account.id));
+    if (window.CadUseLang) window.CadUseLang();
+    var as = React.useState(null), account = as[0], setAccount = as[1];
     var bs = React.useState(null), ready = bs[0], setReady = bs[1];
+    // On attend la réponse réelle du compte (le cache peut être vide au premier rendu) avant de décider de rediriger.
     React.useEffect(function () {
-      if (account === undefined) return;
-      if (!loggedIn) { window.location.replace('compte.html?next=' + encodeURIComponent(NEXT_FILE)); return; }
-      fetch('/api/cadences/catalog').then(function (r) { API = r.ok ? '' : APP_URL; setReady(true); }).catch(function () { API = APP_URL; setReady(true); });
-    }, [account]);
+      window.THWAccount.get().then(function (a) {
+        if (!a || a.loggedIn === false) { window.location.replace('compte.html?next=' + encodeURIComponent(NEXT_FILE)); return; }
+        setAccount(a);
+        fetch('/api/cadences/catalog').then(function (r) { API = r.ok ? '' : APP_URL; setReady(true); }).catch(function () { API = APP_URL; setReady(true); });
+      });
+    }, []);
     var H = window.SiteHeader, F = window.SiteFooter;
     return (
       <div>
         <FormeStyle/>
-        {H ? <H active="perso"/> : null}
-        <main className="tf-wrap" style={{ minHeight: '60vh' }}>{ready ? <FormeApp/> : null}</main>
+        {H ? <H active="cadences"/> : null}
+        <main className="tf-wrap" style={{ minHeight: '60vh' }}>{ready ? <FormeApp account={account}/> : null}</main>
         {F ? <F/> : null}
       </div>
     );

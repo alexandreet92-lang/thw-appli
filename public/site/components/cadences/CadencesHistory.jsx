@@ -309,7 +309,7 @@
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
         {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
         <p style={{ margin: '28px 0 0', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>
-          Tu suis aussi d’autres tests (natation, course, haltérophilie…) ? <a href="tests-perso.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Ouvrir Mes tests</a>
+          Tu suis aussi d’autres tests (natation, course, haltérophilie…) ? <a href="tests-perso.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Ouvrir Mes tests</a> · <a href="test-de-forme.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Test de forme</a>
         </p>
 
         <details className="cad-more"><summary>Plus de détails : épreuve par épreuve, qualités, records, conseils</summary>

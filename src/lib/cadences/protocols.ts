@@ -494,6 +494,30 @@ export const PROTOCOLS: Record<string, Protocol> = {
     securite: 'Effort auto-régulé : on s\'arrête de soi-même. Bonnes chaussures, sol non glissant.',
     flag: true,
   },
+  // ── Test de forme (batterie « forme ») ──
+  forme_navette: {
+    objectif: 'Mesurer le moteur aérobie (VO2max) avec le test de Léger : une course navette de 20 m dont la vitesse augmente à chaque palier.',
+    materiel: ['2 plots espacés de 20 m', 'Espace plat de 25 m', 'Un appareil avec le son (bips)', 'Sangle cardio Bluetooth (facultatif)'],
+    etapes: [
+      'Échauffement de 8 minutes : footing léger, mobilité, 3 accélérations.',
+      'Au signal, courir de plot en plot : il faut toucher la ligne avant chaque bip. La vitesse démarre à 8,5 km/h et augmente de 0,5 km/h chaque minute.',
+      'Un triple bip annonce un nouveau palier. On s\'arrête quand on n\'atteint plus la ligne à temps, ou quand on ne peut plus continuer.',
+    ],
+    saisie: 'Le palier atteint et le nombre de navettes réalisées dans ce palier (l\'outil les enregistre seul).',
+    securite: 'Effort maximal : avis médical conseillé, bonnes chaussures, sol non glissant, on s\'arrête à la moindre douleur ou gêne dans la poitrine.',
+  },
+  forme_circuit: {
+    objectif: 'Mesurer l\'endurance de force : le même circuit au poids du corps, 3 fois, le plus vite possible.',
+    materiel: ['Espace de 12 m pour la marche de l\'ours', 'Chrono (intégré à l\'outil)', 'Un partenaire pour lancer chaque exercice (ou mode autonome)'],
+    etapes: [
+      'Récupération de 20 minutes minimum après la navette.',
+      'Un tour : 8 burpees, 12 pompes, 16 fentes alternées, 20 squats, 24 m de marche de l\'ours. Trois tours, le chrono ne s\'arrête pas.',
+      'Burpees : poitrine au sol et saut en fin de répétition. Pompes : poitrine à 5 cm du sol, corps gainé. Fentes : sur place, genou arrière près du sol (16 = 8 par jambe). Squats : cuisses au moins parallèles au sol. Marche de l\'ours : genoux à 5 cm du sol, 24 m en tout.',
+      'Le chrono s\'arrête à la fin du dernier exercice du troisième tour.',
+    ],
+    saisie: 'Le temps total, en secondes (l\'outil le chronomètre et enregistre aussi chaque exercice).',
+    securite: 'Pas de répétition bâclée : une répétition non conforme ne compte pas. On peut se reposer mais le chrono continue.',
+  },
   shuttle_10x5m: {
     objectif: 'Vitesse et coordination dans les changements de direction (test EUROFIT).',
     materiel: ['2 plots / lignes à 5 m', 'Chrono'],

@@ -66,6 +66,20 @@ export const PRESENTATIONS: Record<string, Presentation> = {
     ],
     safety: 'Les épreuves se règlent à votre niveau. En cas de doute, ou si vous reprenez après une longue pause, demandez l’avis d’un médecin.',
   },
+  forme: {
+    audience: 'adultes',
+    audienceLabel: 'Adultes 18–80 ans, tous niveaux',
+    tagline: 'Deux épreuves sans matériel, le même jour : une course navette de 20 m au rythme de bips, puis un circuit au poids du corps chronométré.',
+    forWho: 'Tout adulte en bonne santé, quel que soit son niveau. Aucun équipement à acheter : deux plots, un espace de 25 m et votre téléphone. Une sangle cardio Bluetooth est possible, jamais obligatoire.',
+    perDay: '35 – 60 min',
+    total: 'une seule séance, échauffement et récupération compris',
+    frequency: 'Deux à quatre fois par an, dans les mêmes conditions.',
+    gear: [
+      { k: 'Terrain', items: ['2 plots à 20 m', 'Espace plat de 25 m', 'Téléphone ou ordinateur avec le son'] },
+      { k: 'Facultatif', items: ['Sangle cardio Bluetooth (Chrome sur ordinateur ou Android)', 'Un partenaire qui lance chaque exercice'] },
+    ],
+    safety: 'Efforts intenses : avis médical conseillé avant de commencer, surtout après 40 ans ou en cas d’antécédent cardiaque. On arrête à la moindre douleur, vertige ou gêne dans la poitrine.',
+  },
   senior: {
     audience: 'seniors',
     audienceLabel: 'Seniors 65 ans et +',

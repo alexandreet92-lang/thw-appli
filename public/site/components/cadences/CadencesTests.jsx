@@ -70,7 +70,7 @@
     var c = props.p;
     var top = c.qualityShare.slice().sort(function (a, b) { return b.share - a.share; }).slice(0, 3);
     return (
-      <a className="cad-testcard tilt" data-tilt="3" href={'cadences.html?test=' + encodeURIComponent(c.testKey)}>
+      <a className="cad-testcard tilt" data-tilt="3" href={c.testKey === 'forme' ? 'test-de-forme.html' : 'cadences.html?test=' + encodeURIComponent(c.testKey)}>
         <div className="cad-testcard-top">
           <span className="cad-testcard-badge">{c.audienceLabel}</span>
           <span className="cad-testcard-go" aria-hidden="true">→</span>
@@ -108,7 +108,7 @@
 
   /* Groupes d'affichage hors Decaform : adultes puis jeunes (du plus jeune au plus âgé). */
   var GROUPS = [
-    { id: 'adultes', title: 'Adultes et seniors', sub: 'Une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['start', 'senior'] },
+    { id: 'adultes', title: 'Adultes et seniors', sub: 'Un test de forme sans matériel, une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['forme', 'start', 'senior'] },
     { id: 'jeunes', title: 'Enfants et ados', sub: 'Des épreuves adaptées à chaque âge, sans danger.', keys: ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17'] },
   ];
 

@@ -398,6 +398,12 @@ function AccountMenu(props) {
     document.addEventListener('keydown', onKey);
     return function () { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
   }, []);
+  var adm = React.useState(false), isAdmin = adm[0], setIsAdmin = adm[1];
+  React.useEffect(function () {
+    var alive = true;
+    fetch('/api/admin/me', { credentials: 'include' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (alive && j && j.admin === true) setIsAdmin(true); }).catch(function () {});
+    return function () { alive = false; };
+  }, []);
   var name = account.firstName || 'Mon compte';
   var initial = (account.firstName || account.email || 'T').trim().charAt(0).toUpperCase();
   return (
@@ -417,6 +423,7 @@ function AccountMenu(props) {
           </div>
         </div>
         <a role="menuitem" className="thw-acc-item" href="compte.html" tabIndex={open ? 0 : -1}>Mon compte</a>
+        {isAdmin ? <a role="menuitem" className="thw-acc-item" href="/admin/statistiques" tabIndex={open ? 0 : -1}>Statistiques</a> : null}
         <div className="thw-acc-sep"/>
         <div className="thw-acc-label">Apparence</div>
         <div className="thw-acc-row"><ThemeToggle/></div>

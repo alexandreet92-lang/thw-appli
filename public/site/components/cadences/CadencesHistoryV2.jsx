@@ -45,18 +45,75 @@
   }
 
   // Variables sombres (copie de :root) + styles de la page.
+
+  // ── Résultat d'une épreuve : valeur saisie (kg, temps, W) + vitesse moyenne ; survol / appui = détail de chaque répétition ──
+  function resultOf(t, r, w) {
+    var F = window.CadencesFormat;
+    if (!r) return { text: '—', sub: '', splits: null };
+    if (r.display) return { text: r.display, sub: '', splits: null };
+    return F && F.formatResult ? F.formatResult(t, r, w != null ? w : r._w) : { text: '—', sub: '', splits: null };
+  }
+  window.CadResultText = function (t, r, w) { var o = resultOf(t, r, w); return o.text + (o.sub ? ' · ' + o.sub : ''); };
+  function CadResult(props) {
+    var o = resultOf(props.t, props.r, props.w);
+    var os = React.useState(null); var pos = os[0], setPos = os[1];
+    var ref = React.useRef(null);
+    var has = !!(o.splits && o.splits.length);
+    function show() {
+      if (!has || !ref.current) return;
+      var b = ref.current.getBoundingClientRect();
+      var W = window.innerWidth, w = Math.min(300, W - 24);
+      var left = Math.max(12, Math.min(W - w - 12, b.left + b.width / 2 - w / 2));
+      var below = b.top < 230;
+      setPos({ left: left, w: w, top: below ? b.bottom + 8 : null, bottom: below ? null : window.innerHeight - b.top + 8 });
+    }
+    function hide() { setPos(null); }
+    React.useEffect(function () {
+      if (!pos) return undefined;
+      function away(ev) { if (ref.current && !ref.current.contains(ev.target)) setPos(null); }
+      function esc(ev) { if (ev.key === 'Escape') setPos(null); }
+      window.addEventListener('scroll', hide, true); document.addEventListener('pointerdown', away); document.addEventListener('keydown', esc);
+      return function () { window.removeEventListener('scroll', hide, true); document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc); };
+    }, [pos]);
+    var pop = pos ? ReactDOM.createPortal(
+      <div className="cad-res-pop" role="tooltip" style={{ left: pos.left, width: pos.w, top: pos.top != null ? pos.top : 'auto', bottom: pos.bottom != null ? pos.bottom : 'auto' }}>
+        <div className="cad-res-pop-h">{tr(props.t.name.replace(/\s*\(.*\)$/, ''))} · {tr('détail')}</div>
+        {o.splits.map(function (x, i) {
+          return <div key={i} className="cad-res-row"><span>{tr(x.label)}</span><b>{x.text}</b><em>{x.speed}</em></div>;
+        })}
+        <div className="cad-res-row is-sum"><span>{tr('Total')}</span><b>{o.text}</b><em>{o.sub}</em></div>
+      </div>, document.body) : null;
+    return (
+      <span ref={ref} className={'cad-res' + (has ? ' has-pop' : '')} tabIndex={has ? 0 : undefined}
+        onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+        onClick={has ? function (ev) { ev.stopPropagation(); if (pos) hide(); else show(); } : undefined}
+        aria-label={has ? o.text + (o.sub ? ', ' + o.sub : '') + ' — ' + tr('détail de chaque répétition') : undefined}>
+        <span className="cad-res-v">{o.text}</span>
+        {o.sub ? <small className="cad-res-s">{o.sub}</small> : null}
+        {has ? <i className="cad-res-i" aria-hidden="true">{o.splits.length}×</i> : null}
+        {pop}
+      </span>
+    );
+  }
+  window.CadResult = CadResult;
+
   function Style() {
     return (
       <style>{`
-        .cad-night-band { --bg:#08121f; --bg-alt:#0c1829; --bg-card:rgba(238,243,248,.05); --bg-card-2:rgba(238,243,248,.03); --bg-hover:rgba(238,243,248,.08);
+        .cad-night-band { --hv-card: var(--bg-card); --hv-sticky: var(--bg-alt, #f4f6f9); --hv-grp: var(--bg-card-2, #eef2f6); --hv-t1: rgba(10,20,35,.035); --hv-t2: rgba(10,20,35,.06); --hv-t3: rgba(10,20,35,.1);
+          --hv-line: rgba(10,20,35,.38); --hv-on: var(--text); --hv-shadow: 0 6px 20px rgba(15,30,50,.10); --hv-nav: #fff; --gold-ink: #8a5d00; --hv-hover: rgba(5,148,173,.08);
+          position: relative; color: var(--text); background: var(--bg); margin-top: -1px; }
+        html.dark .cad-night-band { --bg:#08121f; --bg-alt:#0c1829; --bg-card:rgba(238,243,248,.05); --bg-card-2:rgba(238,243,248,.03); --bg-hover:rgba(238,243,248,.08);
           --border:rgba(158,177,200,.18); --border-mid:rgba(158,177,200,.3); --text:#eef3f8; --text-mid:#b4c3d6; --text-dim:#8397af; --input-bg:rgba(255,255,255,.06);
           --brand:#00c8e0; --brand-deep:#0099b8; --gold-ink:#e0b766; --shadow:0 4px 24px rgba(0,0,0,.35); --shadow-card:0 2px 14px rgba(0,0,0,.3);
-          position: relative; color: var(--text); background: radial-gradient(1000px 420px at 10% -10%, rgba(158,177,200,.10), transparent 60%), #0a1320; margin-top: -1px; }
+          --hv-card: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); --hv-sticky:#0f1d31; --hv-grp:#0b1830; --hv-t1: rgba(238,243,248,.045); --hv-t2: rgba(238,243,248,.07); --hv-t3: rgba(238,243,248,.14);
+          --hv-line: rgba(238,243,248,.45); --hv-on:#fff; --hv-shadow: 0 10px 28px rgba(0,0,0,.3); --hv-nav: rgba(8,18,31,.92); --hv-hover: rgba(0,200,224,.07);
+          background: radial-gradient(1000px 420px at 10% -10%, rgba(158,177,200,.10), transparent 60%), #0a1320; }
         .cad-night-band::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5; background-image: radial-gradient(rgba(158,177,200,.10) 1px, transparent 1px); background-size: 26px 26px; -webkit-mask-image: linear-gradient(#000, transparent 60%); mask-image: linear-gradient(#000, transparent 60%); }
         .cad-night-band .cad-wrap { position: relative; max-width: 1320px; padding-top: 34px; }
-        .cad-night-band .cad-ex-pill[aria-pressed="true"], .cad-night-band .cad-ex-seg button[aria-pressed="true"] { background: rgba(238,243,248,.16) !important; color: #fff !important; border-color: rgba(238,243,248,.4) !important; }
-        .cad-night-band .cad-card { background: linear-gradient(160deg, rgba(238,243,248,.065), rgba(238,243,248,.03)); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
-        .cad-night-band select, .cad-night-band input { color-scheme: dark; }
+        .cad-night-band .cad-ex-pill[aria-pressed="true"], .cad-night-band .cad-ex-seg button[aria-pressed="true"] { background: var(--hv-t3) !important; color: var(--hv-on) !important; border-color: var(--hv-line) !important; }
+        .cad-night-band .cad-card { background: linear-gradient(160deg, var(--hv-t2), var(--hv-t1)); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+        html.dark .cad-night-band select, html.dark .cad-night-band input { color-scheme: dark; }
         .cad-rv { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
         .cad-rv.in { opacity: 1; transform: none; }
         @keyframes cadHvRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -72,7 +129,7 @@
         .cad-hv-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; animation: cadHvRise .8s .2s both; }
         .cad-hv-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
         @media (max-width: 900px) { .cad-hv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        .cad-hv-kpi { border-radius: 16px; padding: 18px 20px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid var(--border); box-shadow: 0 10px 28px rgba(0,0,0,.3); animation: cadHvRise .7s both; transition: transform .25s, border-color .25s; }
+        .cad-hv-kpi { border-radius: 16px; padding: 18px 20px; background: var(--hv-card); border: 1px solid var(--border); box-shadow: var(--hv-shadow); animation: cadHvRise .7s both; transition: transform .25s, border-color .25s; }
         .cad-hv-kpi:hover { transform: translateY(-4px); border-color: var(--gold-ink); }
         .cad-hv-kpi small { display: block; font-family: var(--font-body); font-size: 13px; color: var(--text-dim); }
         .cad-hv-kpi b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 1.15; margin: 6px 0 4px; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -84,17 +141,17 @@
         .cad-hv-h1 em { font-style: normal; color: var(--text-mid); }
         .cad-hv-lead { font-family: var(--font-body); font-size: 14.5px; color: var(--text-mid); margin: 0; animation: cadHvRise .8s .16s both; }
         .cad-hv-cta { display: flex; flex-wrap: wrap; gap: 10px; animation: cadHvRise .8s .24s both; }
-        .cad-hv-btn { font-family: var(--font-body); font-weight: 700; font-size: 14px; border-radius: 12px; padding: 12px 20px; cursor: pointer; border: 1px solid var(--border-mid); background: rgba(238,243,248,.06); color: var(--text); transition: transform .2s, box-shadow .2s, background .2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-        .cad-hv-btn:hover { transform: translateY(-2px); background: rgba(238,243,248,.11); }
-        .cad-hv-btn.is-main { background: #eef3f8; color: #0a1320; border-color: transparent; }
-        .cad-hv-btn.is-main:hover { background: #fff; }
-        .cad-hv-card { border-radius: 18px; padding: 12px 18px; min-width: 300px; background: linear-gradient(160deg, rgba(19,35,58,.92), rgba(12,24,41,.92)); border: 1px solid rgba(224,183,102,.35); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: cadHvRise .9s .2s both; }
+        .cad-hv-btn { font-family: var(--font-body); font-weight: 700; font-size: 14px; border-radius: 12px; padding: 12px 20px; cursor: pointer; border: 1px solid var(--border-mid); background: var(--hv-t2); color: var(--text); transition: transform .2s, box-shadow .2s, background .2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .cad-hv-btn:hover { transform: translateY(-2px); background: var(--hv-t3); }
+        .cad-hv-btn.is-main { background: var(--brand-gradient); color: #fff; border-color: transparent; }
+        .cad-hv-btn.is-main:hover { filter: brightness(1.08); }
+        .cad-hv-card { border-radius: 18px; padding: 12px 18px; min-width: 300px; background: var(--hv-card); border: 1px solid rgba(224,183,102,.35); box-shadow: var(--hv-shadow); animation: cadHvRise .9s .2s both; }
         .cad-hv-now { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
         .cad-hv-now b { font-family: var(--font-display); font-weight: 600; font-size: 44px; line-height: 1; letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums; }
         .cad-hv-now small { font-size: 15px; color: var(--text-dim); }
         .cad-hv-lvl { display: inline-block; font-family: var(--font-body); font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; }
         .cad-hv-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-        .cad-hv-stat { border-radius: 12px; padding: 10px 12px; background: rgba(238,243,248,.045); border: 1px solid var(--border); }
+        .cad-hv-stat { border-radius: 12px; padding: 10px 12px; background: var(--hv-t1); border: 1px solid var(--border); }
         .cad-hv-stat small { display: block; font-family: var(--font-body); font-size: 11.5px; color: var(--text-dim); }
         .cad-hv-stat b { display: block; font-family: var(--font-display); font-size: 20px; color: var(--text); margin-top: 2px; font-variant-numeric: tabular-nums; }
         .cad-hv-up { color: #34d399 !important; } .cad-hv-dn { color: #f87171 !important; }
@@ -102,53 +159,81 @@
         .cad-hv-spark .ln { stroke-dasharray: 1; stroke-dashoffset: 1; animation: cadHvDraw 1.6s .5s cubic-bezier(.2,.8,.2,1) forwards; }
         .cad-hv-spark .pulse { animation: cadHvPulse 2.4s 2s ease-out infinite; }
 
+
+        /* ── Résultat + détail au survol ── */
+        .cad-res { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2; }
+        .cad-res-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .cad-res-s { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text-mid); font-variant-numeric: tabular-nums; }
+        .cad-res.has-pop { cursor: help; outline-offset: 3px; }
+        .cad-res.has-pop .cad-res-v { border-bottom: 1px dotted var(--text-dim); }
+        .cad-res-i { font-style: normal; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--text-dim); }
+        .cad-res-pop { position: fixed; z-index: 1200; background: var(--bg-card-solid, var(--bg)); color: var(--text); border: 1px solid var(--border-mid); border-radius: var(--r-md, 12px); box-shadow: 0 16px 40px rgba(0,0,0,.28); padding: 12px 14px; font-family: var(--font-body); text-align: left; }
+        html.dark .cad-res-pop { background: #0f1d31; color: #eef3f8; border-color: rgba(158,177,200,.3); }
+        .cad-res-pop-h { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+        .cad-res-row { display: grid; grid-template-columns: 1fr auto 78px; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+        .cad-res-row span { color: var(--text-mid); } .cad-res-row b { font-variant-numeric: tabular-nums; } .cad-res-row em { font-style: normal; font-size: 12px; color: var(--text-mid); text-align: right; font-variant-numeric: tabular-nums; }
+        .cad-res-row.is-sum { border-bottom: 0; padding-top: 8px; font-weight: 800; } .cad-res-row.is-sum span { color: var(--text); }
+
         /* ── Grand tableau ── */
         .cad-night-band section:not(.cad-card) { padding: 0 !important; }
         .cad-hm-top { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; justify-content: space-between; margin-bottom: 14px; }
         .cad-hm-top h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 3vw, 34px); margin: 4px 0 0; color: var(--text); letter-spacing: -.015em; }
         .cad-hm-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        .cad-hm-pill { border: 1px solid var(--border-mid); background: rgba(238,243,248,.05); color: var(--text-mid); border-radius: 999px; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 8px 15px; cursor: pointer; transition: all .2s; }
-        .cad-hm-pill:hover { color: var(--text); border-color: rgba(238,243,248,.45); }
-        .cad-hm-pill[aria-pressed="true"] { background: rgba(238,243,248,.14); border-color: rgba(238,243,248,.45); color: #fff; }
+        .cad-hm-pill { border: 1px solid var(--border-mid); background: var(--hv-t1); color: var(--text-mid); border-radius: 999px; font-family: var(--font-body); font-size: 13px; font-weight: 600; padding: 8px 15px; cursor: pointer; transition: all .2s; }
+        .cad-hm-pill:hover { color: var(--text); border-color: var(--hv-line); }
+        .cad-hm-pill[aria-pressed="true"] { background: var(--hv-t3); border-color: var(--hv-line); color: var(--hv-on); }
         .cad-hm-seg { display: inline-flex; border: 1px solid var(--border-mid); border-radius: 999px; overflow: hidden; }
         .cad-hm-seg button { border: 0; background: transparent; color: var(--text-mid); font-family: var(--font-body); font-size: 13px; font-weight: 700; padding: 8px 15px; cursor: pointer; }
-        .cad-hm-seg button[aria-pressed="true"] { background: rgba(238,243,248,.16); color: #fff; }
-        .cad-hm-wrap { position: relative; border-radius: 20px; border: 1px solid var(--border); background: linear-gradient(170deg, rgba(19,35,58,.9), rgba(10,20,35,.9)); box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow: hidden; }
+        .cad-hm-seg button[aria-pressed="true"] { background: var(--hv-t3); color: var(--hv-on); }
+        .cad-hm-wrap { position: relative; border-radius: 20px; border: 1px solid var(--border); background: var(--hv-card); box-shadow: var(--hv-shadow); overflow: hidden; }
         .cad-hm-scroll { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth; }
         .cad-hm-scroll::-webkit-scrollbar { display: none; }
-        .cad-hm-nav { position: absolute; top: 50%; z-index: 4; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-mid); background: rgba(8,18,31,.92); color: var(--text); font-size: 18px; cursor: pointer; transform: translateY(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.5); transition: opacity .25s, transform .2s; }
+        .cad-hm-nav { position: absolute; top: 50%; z-index: 4; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-mid); background: var(--hv-nav); color: var(--text); font-size: 18px; cursor: pointer; transform: translateY(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.5); transition: opacity .25s, transform .2s; }
         .cad-hm-nav:hover { transform: translateY(-50%) scale(1.08); }
         .cad-hm-nav[disabled] { opacity: 0; pointer-events: none; }
         .cad-hm-nav.l { left: 160px; } .cad-hm-nav.r { right: 12px; }
         .cad-hm-t { border-collapse: separate; border-spacing: 0; width: 100%; font-family: var(--font-body); font-size: 17px; color: var(--text); }
         .cad-hm-t th, .cad-hm-t td { padding: 15px 14px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; min-width: 150px; }
-        .cad-hm-t th:first-child, .cad-hm-t td:first-child { position: sticky; left: 0; z-index: 3; text-align: left; min-width: 190px; background: #0f1d31; font-weight: 700; box-shadow: 8px 0 14px -8px rgba(0,0,0,.6); }
-        .cad-hm-t thead th { font-family: var(--font-body); font-weight: 700; vertical-align: bottom; padding-top: 18px; background: #0f1d31; }
+        .cad-hm-t th:first-child, .cad-hm-t td:first-child { position: sticky; left: 0; z-index: 3; text-align: left; min-width: 190px; background: var(--hv-sticky); font-weight: 700; box-shadow: 8px 0 14px -8px rgba(0,0,0,.6); }
+        .cad-hm-t thead th { font-family: var(--font-body); font-weight: 700; vertical-align: bottom; padding-top: 18px; background: var(--hv-sticky); }
         .cad-hm-t thead th:first-child { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
         .cad-hm-d { display: block; font-family: var(--font-display); font-size: 17px; color: var(--text); }
         .cad-hm-a { display: block; font-size: 14px; font-weight: 600; color: var(--text-mid); margin-top: 4px; }
         .cad-hm-c { display: block; font-size: 12px; font-weight: 500; color: var(--text-dim); margin-top: 3px; }
         .cad-hm-open { margin-top: 8px; display: inline-flex; gap: 6px; }
-        .cad-hm-open button { border: 1px solid var(--border-mid); background: rgba(238,243,248,.05); color: var(--text-mid); border-radius: 8px; font-size: 12px; font-weight: 700; padding: 4px 9px; cursor: pointer; font-family: var(--font-body); }
+        .cad-hm-open button { border: 1px solid var(--border-mid); background: var(--hv-t1); color: var(--text-mid); border-radius: 8px; font-size: 12px; font-weight: 700; padding: 4px 9px; cursor: pointer; font-family: var(--font-body); }
         .cad-hm-open button:hover { color: var(--text); border-color: var(--brand); }
-        .cad-hm-t .is-last { background: rgba(238,243,248,.05); }
-        .cad-hm-t thead .is-last { background: rgba(238,243,248,.08); }
+        .cad-hm-t .is-last { background: var(--hv-t1); }
+        .cad-hm-t thead .is-last { background: var(--hv-t2); }
         .cad-hm-t tbody tr { animation: cadHvRise .55s both; transition: background .2s; }
-        .cad-hm-t tbody tr:hover td:not(:first-child) { background: rgba(0,200,224,.07); }
-        .cad-hm-t tbody tr:hover td:first-child { color: #fff; }
-        .cad-hm-grp td { background: #0b1830 !important; color: var(--gold-ink); font-family: var(--font-mono); font-size: 11.5px !important; letter-spacing: .14em; text-transform: uppercase; text-align: left !important; padding: 10px 14px !important; font-weight: 700; }
+        .cad-hm-t tbody tr:hover td:not(:first-child) { background: var(--hv-hover); }
+        .cad-hm-t tbody tr:hover td:first-child { color: var(--hv-on); }
+        .cad-hm-grp td { background: var(--hv-grp) !important; color: var(--gold-ink); font-family: var(--font-mono); font-size: 11.5px !important; letter-spacing: .14em; text-transform: uppercase; text-align: left !important; padding: 10px 14px !important; font-weight: 700; }
         .cad-hm-cell { display: inline-block; min-width: 92px; padding: 8px 12px; border-radius: 12px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; transition: transform .2s; }
         .cad-hm-t td:hover .cad-hm-cell { transform: scale(1.07); }
         .cad-hm-cell i { display: block; font-style: normal; font-size: 12px; font-weight: 600; margin-top: 3px; }
         .cad-hm-raw { font-weight: 700; font-variant-numeric: tabular-nums; }
         .cad-hm-raw i { display: block; font-style: normal; font-size: 12px; font-weight: 600; margin-top: 3px; color: var(--text-dim); }
-        .cad-hm-rec { display: inline-block; margin-left: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #e0b766; border: 1px solid rgba(224,183,102,.55); background: rgba(224,183,102,.12); border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
+        .cad-hm-rec { display: inline-block; margin-left: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-ink); border: 1px solid rgba(224,183,102,.55); background: rgba(224,183,102,.12); border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
         .cad-hm-lab { cursor: pointer; }
         .cad-hm-lab small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-        .cad-hm-ev { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 120px !important; background: rgba(238,243,248,.03); }
+        .cad-hm-ev { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 120px !important; background: var(--hv-t1); }
         .cad-hm-evh { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
         .cad-hm-foot { font-family: var(--font-body); font-size: 12.5px; color: var(--text-dim); margin: 10px 4px 0; }
-        @media (max-width: 760px) { .cad-hm-t { font-size: 15px; } .cad-hm-t th:first-child, .cad-hm-t td:first-child { min-width: 130px; } .cad-hm-nav.l { left: 110px; } }
+        @media (max-width: 760px) {
+          .cad-hm-t { font-size: 14px; }
+          .cad-hm-t th, .cad-hm-t td { padding: 11px 8px; min-width: 112px; }
+          .cad-hm-t th:first-child, .cad-hm-t td:first-child { min-width: 0; width: 104px; max-width: 104px; white-space: normal; font-size: 13px; line-height: 1.25; box-shadow: 4px 0 8px -6px rgba(0,0,0,.35); }
+          .cad-hm-t .cad-hm-ev, .cad-hm-ev { min-width: 88px !important; }
+          .cad-hm-nav { display: none; }
+          .cad-hm-cell { min-width: 80px; padding: 6px 8px; }
+          .cad-hm-grp td { font-size: 10.5px !important; }
+          .cad-hm-rec { display: block; margin: 4px auto 0; width: max-content; }
+          .cad-hm-wrap { border-radius: 16px; }
+          .cad-hv-kpi { padding: 14px 14px; } .cad-hv-kpi b { font-size: 22px; }
+          .cad-hv-card { min-width: 0; width: 100%; box-sizing: border-box; }
+          .cad-hv-top { gap: 12px; }
+        }
         @media (prefers-reduced-motion: reduce) { .cad-hv-eye, .cad-hv-h1, .cad-hv-lead, .cad-hv-ctl, .cad-hv-kpi, .cad-hm-t tbody tr { animation: none !important; } .cad-hv-h1 em { animation: none; } .cad-hv-spark .ln { animation: none; stroke-dashoffset: 0; } .cad-rv { opacity: 1; transform: none; transition: none; } .cad-hm-t thead .is-last { animation: none; } }
         @media print { .cad-night-band { background: #fff !important; } }
       `}</style>
@@ -364,7 +449,7 @@
                 return (
                   <td key={e.id} className={i === last ? 'is-last' : ''}>
                     {view === 'raw'
-                      ? <span className="cad-hm-raw">{fmtVal(t, r)}{isRec ? <span className="cad-hm-rec">{tr('record')}</span> : null}</span>
+                      ? <span className="cad-hm-raw"><CadResult t={t} r={r} w={e.weight}/>{isRec ? <span className="cad-hm-rec">{tr('record')}</span> : null}</span>
                       : <span className="cad-hm-cell" style={cellStyle(lvColor(cat, r.level))}>{num(r.points, 1)}<i>/ {r.max != null ? r.max : t.pts_max}{isRec ? ' · ' + tr('record') : ''}</i></span>}
                   </td>
                 );

@@ -479,7 +479,7 @@ function SiteHeader(props) {
     { label: 'Decaform', href: 'cadences.html', key: 'cadences' },
   ];
   // Une fois connecté : accès direct à l'historique des tests (page dédiée).
-  if (account) { navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' }); navLinks.push({ label: 'Mes tests', href: 'tests-perso.html', key: 'perso' }); }
+  if (account) { navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' }); }
   // Fenêtres de connexion / mot de passe (ordinateur). Sur mobile, « Se connecter »
   // reste un lien vers la page compte.html.
   var [loginOpen, setLoginOpen] = React.useState(false);

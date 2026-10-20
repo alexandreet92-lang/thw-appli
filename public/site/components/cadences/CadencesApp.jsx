@@ -620,6 +620,7 @@
     var rp = React.useState(null); var report = rp[0], setReport = rp[1];
     var hs = React.useState(null); var history = hs[0], setHistory = hs[1];
     var lgS = React.useState([]); var legacyTests = lgS[0], setLegacyTests = lgS[1];
+    var fmS = React.useState([]); var formeHistory = fmS[0], setFormeHistory = fmS[1];
     var md = React.useState('general'); var mode = md[0], setMode = md[1];
     var er = React.useState(null); var error = er[0], setError = er[1];
     var coS = React.useState(false); var crossOrigin = coS[0], setCrossOrigin = coS[1];
@@ -703,7 +704,7 @@
     function loadHistory(nextView) {
       return api('/api/cadences/history')
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { var list = ((j && j.tests) || []).filter(function (e) { return e.test_key !== 'forme'; }); /* le test de forme (sur 100) a sa propre page : on ne le mélange pas au score sur 1000 */ setLegacyTests((j && j.legacyTests) || []); setHistory(list); if (nextView) setView(nextView); return list; });
+        .then(function (j) { var all = (j && j.tests) || []; var list = all.filter(function (e) { return e.test_key !== 'forme'; }); /* le test de forme (sur 100) a sa propre page : on ne le mélange pas au score sur 1000 */ setFormeHistory(all.filter(function (e) { return e.test_key === 'forme'; })); setLegacyTests((j && j.legacyTests) || []); setHistory(list); if (nextView) setView(nextView); return list; });
     }
 
     // Suppression d'un test entier (campagne + résultats + instantanés). La confirmation est faite par CadDeleteDialog.
@@ -753,7 +754,8 @@
                          backLabel={historyPage ? '← Mon historique' : null}
                          onHistory={historyPage ? null : function () { if (history) { setView('history'); } else { loadHistory('history'); } }}/>;
     } else if (view === 'history') {
-      body = <CadHistory catalog={catalog} history={history || []} legacyTests={legacyTests} mode={mode} apiBase={API_BASE}
+      var HistView = historyPage && window.CadHistoryHome ? window.CadHistoryHome : CadHistory;
+      body = <HistView catalog={catalog} history={history || []} forme={formeHistory} legacyTests={legacyTests} mode={mode} apiBase={API_BASE}
                          onBack={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('intro'); } }}
                          onStart={function () { if (historyPage) { window.location.href = 'cadences.html'; } else { setView('start'); } }}
                          onDelete={deleteCampaign}

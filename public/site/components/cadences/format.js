@@ -98,6 +98,46 @@
     return formatValue(test, ratio);
   }
 
+
+  /* Résultat affiché dans l'historique : valeur réellement saisie (charge en kg, temps, W), jamais le
+     ratio au poids de corps. Course / natation : vitesse moyenne à côté du temps. Épreuves cumulées
+     (6 × 200 m, stations) : splits = détail de chaque répétition (temps + vitesse moyenne).
+     entry = { raw, parts, variant, value (ratio moteur) } ; bodyKg sert de repli pour les anciens tests sans valeur brute. */
+  var PART_DIST = { repeat_200m_x6: 200 };
+  function speedTxt(dist, sec) { return sec > 0 ? frNum(dist / sec * 3.6, 1) + ' km/h' : ''; }
+  function formatResult(test, entry, bodyKg) {
+    var out = { text: '—', sub: '', splits: null };
+    if (!entry) return out;
+    var raw = entry.raw;
+    if (raw == null && entry.value != null) {
+      if (test.kind === 'ratio' && bodyKg > 0) raw = entry.value * bodyKg;
+      else if (test.kind !== 'ratio') raw = entry.value;
+    }
+    if (raw == null) return out;
+    if (test.unit === 'kg') {
+      out.text = frNum(raw, 1) + ' kg';
+      if (entry.variant === 'rm5') out.sub = '5RM';
+      return out;
+    }
+    if (test.unit === 'W') {
+      out.text = Math.round(raw) + ' W';
+      if (bodyKg > 0) out.sub = frNum(raw / bodyKg, 2) + ' W/kg';
+      return out;
+    }
+    out.text = formatValue(test, raw);
+    var dist = DISTANCE_M[test.slug];
+    if (dist && test.unit === 's') out.sub = speedTxt(dist, raw);
+    var parts = entry.parts;
+    if (parts && parts.length > 1 && test.unit === 's') {
+      var pd = PART_DIST[test.slug];
+      var labels = test.partLabels || [];
+      out.splits = parts.map(function (v, i) {
+        return { label: labels[i] || ((test.aggregate === 'sum' ? 'Rép. ' : 'Essai ') + (i + 1)), text: formatValue(test, v), speed: pd ? speedTxt(pd, v) : '' };
+      });
+    }
+    return out;
+  }
+
   /* Seuil (Réf / Max) ou valeur brute exprimé pour l'affichage. Le vélo est noté en W/kg :
      on met les W/kg en premier et les watts entre parenthèses. */
   function formatThreshold(test, value, bodyWeightKg) {
@@ -151,6 +191,7 @@
     conditioningLoads: conditioningLoads,
     rowerDistanceM: rowerDistanceM,
     formatRatio: formatRatio,
+    formatResult: formatResult,
     formatThreshold: formatThreshold,
     parseDuration: parseDuration,
     formatDuration: formatDuration,

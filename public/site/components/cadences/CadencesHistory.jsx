@@ -127,6 +127,8 @@
     if (window.CadUseLang) window.CadUseLang();
     var cat = props.catalog;
     var hist = (props.history || []).slice().sort(function (a, b) { return dOf(a.date) - dOf(b.date); }); // chronologique
+    // Poids de corps du jour du test : sert à retrouver la charge (kg) des anciens résultats sans valeur brute.
+    hist.forEach(function (e) { ['tests', 'testsA'].forEach(function (k) { var o = e[k] || {}; Object.keys(o).forEach(function (sl) { if (o[sl] && o[sl]._w == null) o[sl]._w = e.weight; }); }); });
     var byRecent = hist.slice().reverse();
     var latest = byRecent[0];
     var qualities = cat.qualities || [];
@@ -170,15 +172,8 @@
 
     // Affichage d'une valeur d'épreuve : fourni (maquette) ou formaté depuis la
     // valeur brute + l'unité du catalogue via le formateur du site.
-    function fmtVal(t, r) {
-      if (r.display) return r.display;
-      var v = r.value != null ? r.value : r.valueUsed;
-      if (v == null) return '—';
-      var F = window.CadencesFormat;
-      // valueUsed = valeur normalisée du moteur : ratio au poids de corps (charges) ou W/kg (vélo).
-      if (t.kind === 'ratio' && F && F.formatRatio) return F.formatRatio(t, v);
-      return F && F.formatValue ? F.formatValue(t, v) : String(v);
-    }
+    function fmtVal(t, r) { return window.CadResultText ? window.CadResultText(t, r) : '—'; }
+    function resVal(t, r, w) { return window.CadResult ? <window.CadResult t={t} r={r} w={w}/> : fmtVal(t, r); }
     // Records personnels : meilleur résultat par épreuve (plus de points).
     var prs = tests.map(function (t) {
       var best = null, bestE = null;
@@ -309,7 +304,7 @@
         {window.CadExplorer ? <window.CadExplorer catalog={cat} history={hist} appUrl={props.apiBase || ''} onOpen={props.onOpen}/> : null}
         {window.CadHistoryMatrix ? <window.CadHistoryMatrix catalog={cat} history={hist} legacyTests={props.legacyTests} onOpen={props.onOpen} onDelete={function (e) { setDelTarget(e); }} onExport={exportCsv} /> : null}
         <p style={{ margin: '28px 0 0', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>
-          Tu suis aussi d’autres tests (natation, course, haltérophilie…) ? <a href="tests-perso.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Ouvrir Mes tests</a> · <a href="test-de-forme.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Test de forme</a>
+          Tu suis aussi d’autres tests (natation, course, haltérophilie…) ? <a href="historique.html#perso:new" style={{ color: 'var(--text)', fontWeight: 700 }}>Créer un test perso</a> · <a href="test-de-forme.html" style={{ color: 'var(--text)', fontWeight: 700 }}>Test de forme</a>
         </p>
 
         <details className="cad-more"><summary>Plus de détails : épreuve par épreuve, qualités, records, conseils</summary>
@@ -360,7 +355,7 @@
                         <tr key={row.e.id} onClick={function () { props.onOpen && props.onOpen(row.e.id); }}>
                           <td className="num" style={{ fontWeight: 800 }}>{row.year}</td>
                           <td>{frDate(row.e.date)}</td>
-                          <td className="num" style={{ fontWeight: 700 }}>{fmtVal(ytTest, row.r)}</td>
+                          <td className="num" style={{ fontWeight: 700 }}>{resVal(ytTest, row.r, row.e.weight)}</td>
                           <td className="num">{frNum(row.points)} / {row.max}</td>
                           <td>{Lcell(row.r.level)}</td>
                           <td className={row.delta == null ? '' : deltaCls(row.delta)}>{row.delta == null ? '—' : deltaStr(Math.round(row.delta * 10) / 10) + ' pts'}</td>
@@ -388,7 +383,7 @@
                           <td style={{ fontWeight: 700 }}>{cleanName(t)}</td>
                           {years.map(function (y) {
                             var b = bestOfYear(t.slug, y);
-                            return <td key={y} className="num">{b ? <span>{fmtVal(t, b)}<small>{frNum(b.points)} / {b.max != null ? b.max : t.pts_max}</small></span> : '—'}</td>;
+                            return <td key={y} className="num">{b ? <span>{resVal(t, b)}<small>{frNum(b.points)} / {b.max != null ? b.max : t.pts_max}</small></span> : '—'}</td>;
                           })}
                         </tr>
                       );

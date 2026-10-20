@@ -14,6 +14,9 @@ import { legacyTestsOf } from '@/lib/cadences/catalogView'
 import { parseSkippedStations } from '@/lib/cadences/protocols'
 import type { CadencesConfig } from '@/lib/cadences/types'
 
+// Épreuves retirées du barème (remplacées par le Conditioning).
+const RETIRED = new Set(['amrap_20min', 'hyrox_circuit', 'hyrox_circuit_5', 'circuit_5_tours'])
+
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
@@ -105,18 +108,38 @@ export async function GET(request: Request): Promise<NextResponse> {
   const { data: notesRows } = await sb.from('cadences_results').select('campaign_id, notes').in('campaign_id', ids).like('notes', 'stations_passees=%')
   for (const r of notesRows ?? []) skippedByCamp.set(r.campaign_id, parseSkippedStations(r.notes).length)
 
+  // Valeurs brutes saisies (charge en kg, temps total, temps de chaque répétition) par campagne et épreuve :
+  // le snapshot ne garde que la valeur normalisée (ratio au poids de corps), insuffisante pour l'affichage.
+  type RawRes = { raw: number | null; parts: number[] | null; variant: string | null }
+  const rawByCamp = new Map<string, Map<string, RawRes>>()
+  const { data: rawRows } = await sb
+    .from('cadences_results')
+    .select('campaign_id, test_slug, raw_value, raw_parts, variant, status')
+    .in('campaign_id', ids)
+  for (const r of rawRows ?? []) {
+    if (r.status && r.status !== 'validated') continue
+    const m = rawByCamp.get(r.campaign_id) ?? new Map<string, RawRes>()
+    const parts = Array.isArray(r.raw_parts) ? (r.raw_parts as unknown[]).map(Number).filter((n) => Number.isFinite(n)) : null
+    m.set(r.test_slug, { raw: r.raw_value != null ? Number(r.raw_value) : null, parts: parts && parts.length ? parts : null, variant: r.variant ?? null })
+    rawByCamp.set(r.campaign_id, m)
+  }
+
   // Un instantané (jsonb) → { total, level, tests{slug}, qualities{key} } selon la config du produit.
-  const mapSnap = (s: Snap | undefined, config: CadencesConfig) => {
+  const mapSnap = (s: Snap | undefined, config: CadencesConfig, campId: string) => {
     if (!s) return null
     const max = config.total_points
     const ptsMax: Record<string, number> = {}
     config.tests.forEach((t) => { ptsMax[t.slug] = t.pts_max })
     const total = Number(s.total_points)
     const byTest = (s.test_scores ?? {}) as Record<string, { points?: number; level?: string; valueUsed?: number }>
-    const testsMap: Record<string, { points: number; level: string; value: number | null; max: number }> = {}
+    const testsMap: Record<string, { points: number; level: string; value: number | null; max: number; raw: number | null; parts: number[] | null; variant: string | null }> = {}
     for (const slug of Object.keys(byTest)) {
       const r = byTest[slug]
-      testsMap[slug] = { points: Number(r.points ?? 0), level: String(r.level ?? ''), value: r.valueUsed ?? null, max: ptsMax[slug] ?? 0 }
+      const rr = rawByCamp.get(campId)?.get(slug)
+      testsMap[slug] = {
+        points: Number(r.points ?? 0), level: String(r.level ?? ''), value: r.valueUsed ?? null, max: ptsMax[slug] ?? 0,
+        raw: rr?.raw ?? null, parts: rr?.parts ?? null, variant: rr?.variant ?? null,
+      }
     }
     const byQual = (s.quality_scores ?? {}) as Record<string, { pct?: number; level?: string }>
     const qualMap: Record<string, { pct: number; level: string }> = {}
@@ -129,8 +152,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   const tests = camps.flatMap((c) => {
     const config = configFor(c.scale_version_id)
     const e = byCamp.get(c.id)
-    const g = mapSnap(e?.general, config)
-    const a = mapSnap(e?.age, config) ?? g
+    const g = mapSnap(e?.general, config, c.id)
+    const a = mapSnap(e?.age, config, c.id) ?? g
     if (!g) return []
     const cond = condOf(c.id)
     return [{
@@ -143,6 +166,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       tempC: cond.tempC,
       outdoor: cond.outdoor,
       weatherLabel: cond.weatherLabel,
+      scoreMax: config.total_points,                // total du barème (1000 pour Decaform, 100 pour le test de forme…)
       version: config.version,                      // version du barème épinglée à ce test
       stationsPassees: skippedByCamp.get(c.id) ?? 0, // stations du Conditioning passées (forfait)
       durationDays: durationOf(c.id),               // jours entre la 1re et la dernière saisie
@@ -158,6 +182,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const legacy = new Map<string, ReturnType<typeof legacyTestsOf>[number]>()
   for (const c of camps) {
     for (const t of legacyTestsOf(configFor(c.scale_version_id), getConfig(c.test_key as string | undefined))) {
+      if (RETIRED.has(t.slug)) continue   // AMRAP et circuit 5 tours : remplacés par le Conditioning, plus affichés
       if (!legacy.has(t.slug)) legacy.set(t.slug, t)
     }
   }

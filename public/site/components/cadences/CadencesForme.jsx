@@ -720,7 +720,7 @@
         <div className="tf-card tf-savebar">
           {save.state === 'ok' ? (
             <div><b>Test enregistré.</b> Il est dans « Mes passages », plus bas{L.trace || C.trace ? ', avec tes courbes de fréquence cardiaque' : ''}.{save.msg ? <div className="tf-warn">{save.msg}</div> : null}
-              <div className="tf-actions"><a className="tf-btn primary" href="#tf-passages">Voir mes passages</a><a className="tf-btn" href="tests-perso.html">Mes tests</a><button type="button" className="tf-btn" onClick={props.onRestart}>Nouveau passage</button></div></div>
+              <div className="tf-actions"><a className="tf-btn primary" href="#tf-passages">Voir mes passages</a><a className="tf-btn" href="historique.html">Mon historique</a><button type="button" className="tf-btn" onClick={props.onRestart}>Nouveau passage</button></div></div>
           ) : (
             <div>
               <div className="tf-actions" style={{ marginTop: 0 }}>

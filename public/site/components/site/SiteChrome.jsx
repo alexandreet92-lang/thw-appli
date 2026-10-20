@@ -423,7 +423,7 @@ function AccountMenu(props) {
           </div>
         </div>
         <a role="menuitem" className="thw-acc-item" href="compte.html" tabIndex={open ? 0 : -1}>Mon compte</a>
-        {isAdmin ? <a role="menuitem" className="thw-acc-item" href="/admin/statistiques" tabIndex={open ? 0 : -1}>Statistiques</a> : null}
+        {isAdmin ? <a role="menuitem" className="thw-acc-item" href="statistiques.html" tabIndex={open ? 0 : -1}>Statistiques</a> : null}
         <div className="thw-acc-sep"/>
         <div className="thw-acc-label">Apparence</div>
         <div className="thw-acc-row"><ThemeToggle/></div>

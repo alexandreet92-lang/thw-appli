@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Statistiques · THW Coaching</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <meta name="description" content="Statistiques du site (administrateur)."/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script src="components/stats/stats.bundle.js"></script>
+
+  <style>
+    /* Les composants de la page Statistiques utilisent les jetons de l'app : on les relie à ceux du site. */
+    .st-page{--primary:var(--brand);--ai-accent:var(--brand-alt);--bg-card2:var(--bg-card-2);--r-sm:8px;--r-md:14px;--r-pill:999px;--charge-low:#22c55e;--charge-mid:#eab308;--charge-hard:#ef4444;position:relative}
+    .st-page .st-root{height:auto!important;overflow:visible!important;background:transparent!important;color:var(--text)}
+    .st-page .st-wrap{padding-top:40px}
+    .st-page section{padding:0!important;margin:0!important;max-width:none!important;border:0!important;background:none!important}
+    html.light .st-page{--charge-low:#1a8a4a;--charge-mid:#8a5d00}
+  </style>
+
+  <script type="text/babel">
+    function StatsPage() {
+      var st = React.useState('check'), state = st[0], setState = st[1];
+      var lg = React.useState(function () { try { return localStorage.getItem('thw-lang') || 'fr'; } catch (e) { return 'fr'; } }), lang = lg[0], setLang = lg[1];
+      var ref = React.useRef(null);
+      React.useEffect(function () {
+        var alive = true;
+        fetch('/api/admin/me', { credentials: 'include' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (!alive) return; if (j && j.admin === true) setState('ok'); else window.location.replace('compte.html'); })
+          .catch(function () { if (alive) window.location.replace('compte.html'); });
+        return function () { alive = false; };
+      }, []);
+      React.useEffect(function () {
+        var t = setInterval(function () { var l = 'fr'; try { l = localStorage.getItem('thw-lang') || 'fr'; } catch (e) {} setLang(function (o) { return o === l ? o : l; }); }, 800);
+        return function () { clearInterval(t); };
+      }, []);
+      React.useEffect(function () {
+        if (state !== 'ok' || !ref.current || !window.THWStatsMount) return;
+        return window.THWStatsMount(ref.current);
+      }, [state, lang]);
+      return (
+        <div>
+          <SiteHeader active="account"/>
+          <main className="st-page">
+            {state === 'ok' ? <div ref={ref} data-no-i18n="" key={lang}/> : null}
+          </main>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<StatsPage/>);
+  </script>
+
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

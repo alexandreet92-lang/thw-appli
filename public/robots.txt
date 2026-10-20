@@ -1,0 +1,4 @@
+# Application THW Coaching : espace connecté, rien à indexer.
+# Le site public (the-hybridway.com) sert son propre robots.txt.
+User-agent: *
+Disallow: /

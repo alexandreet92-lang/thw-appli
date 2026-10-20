@@ -13,7 +13,8 @@
     "cap:sync": "node scripts/build-cap.mjs && npx cap sync ios",
     "design:check": "node scripts/design-fix.mjs --enforce",
     "design:fix": "node scripts/design-fix.mjs --fix",
-    "design:shots": "node scripts/design-shots.mjs"
+    "design:shots": "node scripts/design-shots.mjs",
+    "seo:build": "node scripts/seo/build.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -85,6 +86,7 @@
     "@types/react-dom": "19.1.0",
     "@types/three": "^0.183.1",
     "autoprefixer": "^10.4.17",
+    "esbuild": "^0.28.2",
     "pixelmatch": "^7.2.0",
     "playwright-core": "^1.63.0",
     "pngjs": "^7.0.0",

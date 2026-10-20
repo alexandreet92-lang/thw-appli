@@ -43,6 +43,11 @@ const nextConfig = {
           { source: '/', has, destination: '/site/index.html' },
           { source: '/site.css', has, destination: '/site/site.css' },
           { source: '/colors_and_type.css', has, destination: '/site/colors_and_type.css' },
+          // Référencement : le domaine du site sert SON robots.txt / sitemap / llms.txt
+          // (public/robots.txt est celui de l'app : tout interdit).
+          { source: '/robots.txt', has, destination: '/site/robots.txt' },
+          { source: '/sitemap.xml', has, destination: '/site/sitemap.xml' },
+          { source: '/llms.txt', has, destination: '/site/llms.txt' },
         ],
         afterFiles: [{ source: '/:path*', has, destination: '/site/:path*' }],
         fallback: [],

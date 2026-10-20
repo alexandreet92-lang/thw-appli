@@ -32,7 +32,8 @@ export async function middleware(request: NextRequest) {
   // Domaine vitrine (the-hybridway.com) : pages statiques publiques servies par
   // rewrite depuis /site → pas de gating (seuls /api et /auth gardent leur logique).
   const host = request.headers.get('host') ?? ''
-  if (/(^|\.)the-hybridway\.com$/i.test(host.split(':')[0]) && !path.startsWith('/api')) return response
+  // Exactement le domaine du site (apex ou www) : app.the-hybridway.com est l'APPLICATION et garde son gating.
+  if (/^(www\.)?the-hybridway\.com$/i.test(host.split(':')[0]) && !path.startsWith('/api')) return response
   // Banc de captures design (npm run design:shots) : UNIQUEMENT en développement local et
   // si THW_DEV_BYPASS=1. Jamais actif en production (NODE_ENV === 'production' sur Vercel).
   if (process.env.NODE_ENV !== 'production' && process.env.THW_DEV_BYPASS === '1') return response

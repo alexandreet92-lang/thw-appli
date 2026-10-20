@@ -80,6 +80,7 @@ function seoHead(page, html, priv) {
   if (priv) lines.push('<meta name="robots" content="noindex, nofollow"/>')
   const canon = priv ? page.canonical : page.path
   if (canon) lines.push(`<link rel="canonical" href="${ORIGIN}${canon}"/>`)
+  if (!priv && page.path === '/') lines.push('<meta name="google-site-verification" content="k2lv5SIpO6-vmoPV9F3Xc8qtWWatTUrIoOJoiV-E-hc"/>')
   if (!priv) lines.push(jsonLd(page, html))
   lines.push('<!--SEO-END-->')
   return lines.filter(Boolean).map((l) => '  ' + l).join('\n') + '\n'

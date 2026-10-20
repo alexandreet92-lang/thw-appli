@@ -148,7 +148,7 @@
         <div>
           <div className="eyebrow">Sans matériel, quand tu veux</div>
           <h3>Teste ta forme dès maintenant</h3>
-          <p>Une course navette et un circuit au poids du corps, le même jour. Tu obtiens un score de forme sur 100, tu peux recommencer à tout moment.</p>
+          <p>Une course navette et un circuit au poids du corps, le même jour, dès 8 ans. Tu obtiens un score de forme sur 100, tu peux recommencer à tout moment.</p>
         </div>
         <a className="btn btn-cyan btn-lg mag" href="test-de-forme.html">Tester ma forme</a>
       </div>

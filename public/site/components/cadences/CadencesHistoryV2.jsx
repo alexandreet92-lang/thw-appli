@@ -54,6 +54,11 @@
     return F && F.formatResult ? F.formatResult(t, r, w != null ? w : r._w) : { text: '—', sub: '', splits: null };
   }
   window.CadResultText = function (t, r, w) { var o = resultOf(t, r, w); return o.text + (o.sub ? ' · ' + o.sub : ''); };
+  function splitLabel(l) {
+    var m = /^(Rép\.|Essai) (\d+)$/.exec(l || '');
+    if (m && window.CadT) return window.CadT(m[1] === 'Essai' ? 'Essai {n}' : 'Rép. {n}', { n: m[2] });
+    return tr(l);
+  }
   function CadResult(props) {
     var o = resultOf(props.t, props.r, props.w);
     var os = React.useState(null); var pos = os[0], setPos = os[1];
@@ -79,7 +84,7 @@
       <div className="cad-res-pop" role="tooltip" style={{ left: pos.left, width: pos.w, top: pos.top != null ? pos.top : 'auto', bottom: pos.bottom != null ? pos.bottom : 'auto' }}>
         <div className="cad-res-pop-h">{tr(props.t.name.replace(/\s*\(.*\)$/, ''))} · {tr('détail')}</div>
         {o.splits.map(function (x, i) {
-          return <div key={i} className="cad-res-row"><span>{tr(x.label)}</span><b>{x.text}</b><em>{x.speed}</em></div>;
+          return <div key={i} className="cad-res-row"><span>{splitLabel(x.label)}</span><b>{x.text}</b><em>{x.speed}</em></div>;
         })}
         <div className="cad-res-row is-sum"><span>{tr('Total')}</span><b>{o.text}</b><em>{o.sub}</em></div>
       </div>, document.body) : null;

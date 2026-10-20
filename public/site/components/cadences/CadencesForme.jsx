@@ -19,17 +19,45 @@
   /* ── Constantes du protocole ── */
   var LAPS = [7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16, 16];
   var V0 = 8.5, DV = 0.5, LANE_M = 20, COUNTDOWN = 3, REST_SEC = 20 * 60;
-  var EX = [
+  var EX_ADULT = [
     { n: 'Burpees', r: 8, u: '', sub: 'Poitrine au sol, saut en fin de répétition.' },
     { n: 'Pompes', r: 12, u: '', sub: 'Poitrine à 5 cm du sol, corps gainé.' },
     { n: 'Fentes alternées', r: 16, u: '', sub: 'Sur place, 8 par jambe, genou arrière près du sol.' },
     { n: 'Squats', r: 20, u: '', sub: 'Cuisses au moins parallèles au sol.' },
     { n: 'Marche de l’ours', r: 24, u: ' m', sub: 'Genoux à 5 cm du sol, 24 m au total.' }
   ];
+  // Enfants : circuit allégé. 8-10 ans : burpees sans aller au sol ; 11-12 ans : burpees complets + squats ; dès 13 ans : comme les adultes.
+  var EX_K8 = [
+    { n: 'Burpees sans aller au sol', r: 6, u: '', sub: 'Tu descends en position de pompes, bras tendus, sans poser la poitrine au sol, puis tu te relèves.' },
+    { n: 'Taps d’épaule', r: 12, u: '', sub: 'En position de pompes, tu touches l’épaule opposée avec une main, en alternant. 12 au total.' },
+    { n: 'Montées de genoux', r: 16, u: '', sub: 'Mains devant, à hauteur des hanches : chaque genou doit toucher une main. 16 au total.' },
+    { n: 'Marche de l’ours', r: 20, u: ' m', sub: 'Genoux à 5 cm du sol, 20 m au total.' }
+  ];
+  var EX_K11 = [
+    { n: 'Burpees', r: 6, u: '', sub: 'Poitrine au sol, saut en fin de répétition.' },
+    { n: 'Taps d’épaule', r: 12, u: '', sub: 'En position de pompes, tu touches l’épaule opposée avec une main, en alternant. 12 au total.' },
+    { n: 'Montées de genoux', r: 16, u: '', sub: 'Mains devant, à hauteur des hanches : chaque genou doit toucher une main. 16 au total.' },
+    { n: 'Squats', r: 20, u: '', sub: 'Cuisses au moins parallèles au sol.' },
+    { n: 'Marche de l’ours', r: 20, u: ' m', sub: 'Genoux à 5 cm du sol, 20 m au total.' }
+  ];
+  var AGE_GROUPS = [['k8', '8 à 10 ans', EX_K8], ['k11', '11 à 12 ans', EX_K11], ['adult', '13 ans et plus', EX_ADULT]];
+  function groupOf(age) { age = Number(age); return age >= 8 && age <= 10 ? 'k8' : age >= 11 && age <= 12 ? 'k11' : 'adult'; }
+  function exFor(age) { var g = groupOf(age); return g === 'k8' ? EX_K8 : g === 'k11' ? EX_K11 : EX_ADULT; }
   var ROUNDS = 3;
   var NEXT_FILE = 'test-de-forme.html';
   // Barème provisoire (miroir du JSON serveur) : sert à l'estimation avant enregistrement.
   var SCALE = { M: { nav: [10, 18], cir: [540, 345] }, F: { nav: [8, 16], cir: [600, 405] } };
+  var SCALE_KIDS = {
+    k8: { M: { nav: [5, 11], cir: [315, 210] }, F: { nav: [4.5, 10], cir: [345, 235] } },
+    k11: { M: { nav: [6.5, 13], cir: [390, 255] }, F: { nav: [5.5, 11.5], cir: [420, 285] } },
+    t13: { M: { nav: [8, 15], cir: [600, 400] }, F: { nav: [6.5, 13], cir: [660, 450] } },
+    t15: { M: { nav: [9, 17], cir: [570, 370] }, F: { nav: [7, 15], cir: [630, 425] } }
+  };
+  function scaleFor(age, sex) {
+    age = Number(age);
+    var k = age <= 10 ? 'k8' : age <= 12 ? 'k11' : age <= 14 ? 't13' : age <= 17 ? 't15' : null;
+    return k ? SCALE_KIDS[k][sex] : SCALE[sex];
+  }
   var LEVELS = [['Sédentaire', 0], ['Amateur', 0.2], ['Confirmé', 0.4], ['Référence', 0.6], ['Élite', 0.8], ['Phénomène', 1.0], ['Extraterrestre', 1.1]];
   var DRAFT_KEY = 'thw-forme-draft';
 
@@ -292,6 +320,63 @@
   }
 
   /* ════════════ Étape 1 : profil ════════════ */
+  /* ════════════ Étape 0 : présentation (déroulement, matériel, circuit selon l'âge) ════════════ */
+  var FLOW = [
+    ['Échauffement', '8 min', 'Footing léger, mobilité, 3 accélérations.'],
+    ['Navette de Léger', '5 à 15 min', 'Allers-retours sur 20 m au rythme des bips, de plus en plus rapides. Tu t’arrêtes quand tu ne tiens plus le rythme.'],
+    ['Récupération', '20 min', 'Tu marches, tu bois, tu t’assois. Le circuit ne démarre qu’ensuite, le même jour.'],
+    ['Circuit chronométré', '5 à 10 min', '3 tours du même circuit, le plus vite possible, au poids du corps.'],
+    ['Résultat', '1 min', 'Ton score de forme sur 100, ta VMA estimée et ton niveau. Tu peux l’enregistrer dans ton historique.']
+  ];
+  var KIT = [
+    'Un espace plat de 20 m (couloir, gymnase, piste, terrain) et deux repères pour marquer les lignes (plots, vêtements).',
+    'Un téléphone ou un ordinateur avec du son, assez fort pour entendre les bips depuis l’autre bout des 20 m.',
+    'Des chaussures de sport, une tenue adaptée et un sol propre pour le circuit (un tapis est un plus).',
+    'De l’eau pour la récupération.',
+    'Facultatif : une personne qui appuie sur « Exercice terminé » pendant le circuit (sinon, mode autonome).',
+    'Facultatif : une ceinture ou une montre cardio Bluetooth, avec Google Chrome ou Edge.'
+  ];
+  function Intro(props) {
+    var gs = React.useState(groupOf(props.age || 30)), g = gs[0], setG = gs[1];
+    var ex = exFor(g === 'k8' ? 9 : g === 'k11' ? 11 : 30);
+    return (
+      <div className="tf-stack">
+        <header className="tf-head" style={{ marginBottom: 0 }}>
+          <div className="tf-eye">Decaform · Test de forme</div>
+          <h1 className="tf-h1">Deux tests, le même jour, dès 8 ans</h1>
+          <p className="tf-p">Une course navette de Léger (endurance), puis après 20 minutes de récupération un circuit au poids du corps chronométré (endurance de force). Chacun vaut 50 points, pour un score de forme sur 100. Lis le déroulement, prépare le matériel, puis lance le test.</p>
+        </header>
+        <div className="tf-card">
+          <div className="tf-eye">Comment ça se déroule</div>
+          <ol className="tf-flow">
+            {FLOW.map(function (f, i) {
+              return (<li key={i}><i>{i + 1}</i><div><b>{f[0]}<em>{f[1]}</em></b><span>{f[2]}</span></div></li>);
+            })}
+          </ol>
+          <p className="tf-small">Compte environ une heure en tout, échauffement et récupération compris.</p>
+        </div>
+        <div className="tf-card">
+          <div className="tf-eye">Matériel à prévoir</div>
+          <ul className="tf-kit">{KIT.map(function (k, i) { return <li key={i}>{k}</li>; })}</ul>
+        </div>
+        <div className="tf-card">
+          <div className="tf-eye">Le circuit selon ton âge</div>
+          <div className="tf-seg" role="group" aria-label="Âge" style={{ marginTop: 12, maxWidth: 520 }}>
+            {AGE_GROUPS.map(function (a) { return <button type="button" key={a[0]} aria-pressed={g === a[0]} onClick={function () { setG(a[0]); }}>{a[1]}</button>; })}
+          </div>
+          <p className="tf-p" style={{ marginBottom: 0 }}>{g === 'adult' ? 'À partir de 13 ans, le circuit est le même que celui des adultes : 3 tours, le plus vite possible.' : 'Circuit allégé : 3 tours, le plus vite possible. Un adulte reste présent pendant tout le test.'}</p>
+          <div className="tf-tw"><table className="tf-tab">
+            <thead><tr><th>Exercice</th><th>Par tour</th><th>Total x3</th></tr></thead>
+            <tbody>{ex.map(function (e, k) { return (<tr key={k}><td className="ex">{e.n}<small>{e.sub}</small></td><td className="num">{e.r}{e.u}</td><td className="num">{e.r * ROUNDS}{e.u}</td></tr>); })}</tbody>
+          </table></div>
+        </div>
+        <div className="tf-card tf-narrow tf-center" style={{ width: '100%' }}>
+          <div className="tf-actions center" style={{ marginTop: 0 }}><button type="button" className="tf-btn primary lg" onClick={props.onStart}>Commencer le test</button></div>
+        </div>
+      </div>
+    );
+  }
+
   function Profile(props) {
     var p = props.profile, st = React.useState(p), f = st[0], setF = st[1];
     var er = React.useState(''), err = er[0], setErr = er[1];
@@ -305,8 +390,8 @@
       var a = Number(f.age), w = Number(String(f.weight).replace(',', '.'));
       if (!f.first.trim()) return setErr('Indique ton prénom.');
       if (!f.sex) return setErr('Choisis le barème (homme ou femme).');
-      if (!isFinite(a) || a < 18 || a > 80) return setErr('Âge requis : 18 à 80 ans. Pour les moins de 18 ans, des tests adaptés existent sur la page des tests.');
-      if (!isFinite(w) || w < 30 || w > 250) return setErr('Poids requis (30 à 250 kg).');
+      if (!isFinite(a) || a < 8 || a > 80) return setErr('Âge requis : 8 à 80 ans.');
+      if (!isFinite(w) || w < 15 || w > 250) return setErr('Poids requis (15 à 250 kg).');
       if (!f.date) return setErr('Choisis la date du test.');
       setErr(''); props.onValid({ first: f.first.trim(), last: f.last.trim(), date: f.date, age: Math.round(a), weight: Math.round(w * 10) / 10, sex: f.sex });
     }
@@ -323,7 +408,7 @@
           <label className="tf-f"><span>Poids (kg)</span><input inputMode="decimal" value={f.weight} onChange={function (e) { set('weight', e.target.value.replace(/[^0-9.,]/g, '')); }} maxLength={5} placeholder="Ex. 72"/></label>
           <div className="tf-f"><span>Barème</span>
             <div className="tf-seg" role="group" aria-label="Barème">
-              {[['M', 'Homme'], ['F', 'Femme']].map(function (o) { return <button type="button" key={o[0]} aria-pressed={f.sex === o[0]} onClick={function () { set('sex', o[0]); }}>{o[1]}</button>; })}
+              {(Number(f.age) > 0 && Number(f.age) < 18 ? [['M', 'Garçon'], ['F', 'Fille']] : [['M', 'Homme'], ['F', 'Femme']]).map(function (o) { return <button type="button" key={o[0]} aria-pressed={f.sex === o[0]} onClick={function () { set('sex', o[0]); }}>{o[1]}</button>; })}
             </div>
           </div>
         </div>
@@ -335,6 +420,7 @@
           <li>Prévois un échauffement de 8 minutes (footing léger, mobilité, 3 accélérations).</li>
           <li>Le circuit se fait au moins 20 minutes après la navette, le même jour.</li>
           <li>Ce test ne remplace pas un avis médical. Arrête-toi au moindre malaise.</li>
+          {Number(f.age) > 0 && Number(f.age) < 13 ? <li>Moins de 13 ans : un adulte reste présent pendant tout le test.</li> : null}
         </ul>
       </form>
     );
@@ -533,6 +619,7 @@
     var ms = React.useState([]), marks = ms[0], setMarks = ms[1];
     var el = React.useState(0), elapsed = el[0], setElapsed = el[1];
     var R = React.useRef({ t0: 0, timer: null, audio: null, marks: [], mode: null, hrOff: 0 });
+    var EX = props.ex || EX_ADULT;
     var total = EX.length * ROUNDS, idx = marks.length;
     React.useEffect(function () { return function () { clearInterval(R.current.timer); killAudio(R.current.audio); wl.off(); }; }, []);
     function beep(f, d, n) { var r = R.current; if (!r.audio) r.audio = makeAudio(1); var a = r.audio; if (!a) return; a.ctx.resume().then(function () { var t = a.ctx.currentTime + 0.02; for (var i = 0; i < (n || 1); i++) tone(a, t + i * 0.2, f, d, 0.7); }); }
@@ -619,7 +706,7 @@
         {mode === 'assist' && marks.length ? (
           <div className="tf-card" style={{ gridColumn: '1 / -1' }}>
             <div className="tf-eye">Temps par exercice</div>
-            <SplitTable parts={marks.map(function (m, i) { return Math.round((m - (i ? marks[i - 1] : 0)) * 10) / 10; })}/>
+            <SplitTable ex={EX} parts={marks.map(function (m, i) { return Math.round((m - (i ? marks[i - 1] : 0)) * 10) / 10; })}/>
           </div>
         ) : null}
       </div>
@@ -627,6 +714,7 @@
   }
 
   function SplitTable(props) {
+    var EX = props.ex || EX_ADULT;
     var parts = props.parts;
     var seg = function (i) { return i < parts.length ? parts[i] : null; };
     return (
@@ -659,7 +747,7 @@
   }
 
   function Result(props) {
-    var P = props.profile, L = props.leger, C = props.circuit, sc = SCALE[P.sex];
+    var P = props.profile, L = props.leger, C = props.circuit, sc = scaleFor(P.age, P.sex);
     var sv = React.useState({ state: 'idle', msg: '', off: null }), save = sv[0], setSave = sv[1];
     var p1 = pts(L.value, sc.nav[0], sc.nav[1], 50), p2 = pts(C.seconds, sc.cir[0], sc.cir[1], 50), tot = p1 + p2;
     var off = save.off, total = off ? off.score : tot, level = off ? off.level : levelOf(tot, 100);
@@ -714,7 +802,7 @@
           <div className="tf-card"><div className="tf-eye">Circuit chronométré</div>
             <div className="tf-gauge"><Gauge p={cirPts / 50} color="#5b6fff"/><div><div className="tf-big2 num">{fr(cirPts, 1)} {tr('pts')}</div><div className="tf-mid num">{Tp('Temps {t}', { t: mmss(C.seconds) })}</div><div className="tf-dim num">{Tp('{mode} · 3 tours', { mode: tr(C.mode === 'assist' ? 'Avec partenaire' : 'Mode autonome') })}</div></div></div></div>
         </div>
-        {C.parts ? <div className="tf-card"><div className="tf-eye">Temps par exercice</div><SplitTable parts={C.parts}/></div> : null}
+        {C.parts ? <div className="tf-card"><div className="tf-eye">Temps par exercice</div><SplitTable ex={exFor(P.age)} parts={C.parts}/></div> : null}
         {L.trace ? <div className="tf-card"><div className="tf-eye">Fréquence cardiaque · navette de Léger</div><HrSummary trace={L.trace} segTitle="Palier" color="#00c8e0"/></div> : null}
         {C.trace ? <div className="tf-card"><div className="tf-eye">Fréquence cardiaque · circuit</div><HrSummary trace={C.trace} segTitle="Exercice" color="#5b6fff"/></div> : null}
         <div className="tf-card tf-savebar">
@@ -775,7 +863,7 @@
   }
 
   /* ════════════ Page ════════════ */
-  var STEPS = [['profil', 'Profil'], ['leger', 'Test de Léger'], ['rest', 'Récupération'], ['circuit', 'Circuit'], ['result', 'Résultat']];
+  var STEPS = [['intro', 'Présentation'], ['profil', 'Profil'], ['leger', 'Test de Léger'], ['rest', 'Récupération'], ['circuit', 'Circuit'], ['result', 'Résultat']];
 
   function FormeApp(props) {
     if (window.CadUseLang) window.CadUseLang();
@@ -783,7 +871,7 @@
     var hrRef = React.useRef(null); if (!hrRef.current) hrRef.current = createHr();
     var hr = hrRef.current;
     var draft = React.useMemo(function () { var d = lsGet(DRAFT_KEY); return d && d.t && Date.now() - d.t < 6 * 3600 * 1000 ? d : null; }, []);
-    var sg = React.useState(draft && draft.profile ? (draft.stage || 'profil') : 'profil'), stage = sg[0], setStage = sg[1];
+    var sg = React.useState(draft && draft.profile ? (draft.stage || 'profil') : 'intro'), stage = sg[0], setStage = sg[1];
     var pf = React.useState((draft && draft.profile) || { first: '', last: '', date: todayISO(), age: '', weight: '', sex: null }), profile = pf[0], setProfile = pf[1];
     var lg = React.useState((draft && draft.leger) || null), leger = lg[0], setLeger = lg[1];
     var ci = React.useState(null), circuit = ci[0], setCircuit = ci[1];
@@ -809,7 +897,7 @@
       });
     }, [account]);
     React.useEffect(function () {
-      if (stage === 'profil' || stage === 'leger' && !leger) return;
+      if (stage === 'intro' || stage === 'profil' || stage === 'leger' && !leger) return;
       lsSet(DRAFT_KEY, { t: Date.now(), stage: stage === 'result' ? 'circuit' : stage, profile: profile, leger: leger, restEnd: restEnd });
     }, [stage, leger, restEnd]);
     React.useEffect(function () {
@@ -817,9 +905,9 @@
       window.addEventListener('beforeunload', warn); return function () { window.removeEventListener('beforeunload', warn); };
     }, []);
 
-    function restart() { lsSet(DRAFT_KEY, null); setLeger(null); setCircuit(null); setRestEnd(0); setStage('profil'); window.scrollTo(0, 0); }
+    function restart() { lsSet(DRAFT_KEY, null); setLeger(null); setCircuit(null); setRestEnd(0); setStage('intro'); window.scrollTo(0, 0); }
     var idx = STEPS.map(function (s) { return s[0]; }).indexOf(stage);
-    var PREV = { leger: 'profil', rest: 'leger', circuit: 'leger', result: 'circuit' };
+    var PREV = { profil: 'intro', leger: 'profil', rest: 'leger', circuit: 'leger', result: 'circuit' };
     function back() {
       if (running.current) return;
       setStage(PREV[stage]); window.scrollTo(0, 0);
@@ -834,18 +922,19 @@
         <nav className="tf-steps" aria-label="Étapes">
           {STEPS.map(function (s, i) { return <div key={s[0]} className={'tf-step' + (i === idx ? ' on' : '') + (i < idx ? ' done' : '')}><i>{i < idx ? '✓' : i + 1}</i><span>{s[1]}</span></div>; })}
         </nav>
-        {stage !== 'profil' ? (
+        {stage !== 'intro' ? (
           <div className="tf-actions" style={{ marginTop: 0, marginBottom: 14 }}>
             <button type="button" className="tf-btn small" onClick={back}>Retour</button>
             <button type="button" className="tf-btn small ghost" onClick={askRestart}>Tout recommencer</button>
           </div>
         ) : null}
+        {stage === 'intro' ? <Intro age={profile.age} onStart={function () { setStage('profil'); window.scrollTo(0, 0); }}/> : null}
         {stage === 'profil' ? (
           <div>
             <header className="tf-head">
               <div className="tf-eye">Decaform · Test de forme</div>
-              <h1 className="tf-h1">Deux tests, sans matériel, le même jour</h1>
-              <p className="tf-p">Une course navette de Léger (endurance) et un circuit au poids du corps chronométré (endurance de force). Chacun vaut 50 points, pour un score de forme sur 100.</p>
+              <h1 className="tf-h1">Qui passe le test ?</h1>
+              <p className="tf-p">Ces informations servent à choisir le bon barème (et le bon circuit selon l’âge) et s’affichent avec le résultat.</p>
             </header>
             <Profile profile={profile} onValid={function (p) { setProfile(p); lsSet('thw-forme-profile', { first: p.first, last: p.last }); setStage('leger'); window.scrollTo(0, 0); }}/>
           </div>
@@ -868,7 +957,7 @@
         {stage === 'rest' && leger ? <Rest leger={leger} endAt={restEnd} onNext={function () { setStage('circuit'); window.scrollTo(0, 0); }}/> : null}
         {stage === 'circuit' ? (
           <div>
-            <Circuit hr={hr} onStart={function () { running.current = true; }} onDone={function (C) { running.current = false; setCircuit(C); }}/>
+            <Circuit ex={exFor(profile.age)} hr={hr} onStart={function () { running.current = true; }} onDone={function (C) { running.current = false; setCircuit(C); }}/>
             {circuit ? (
               <div className="tf-card tf-narrow tf-center" style={{ marginTop: 18 }}>
                 <div className="tf-eye">Circuit terminé</div>
@@ -983,6 +1072,12 @@ html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rai
 .tf-tab tr.cur td{background:rgba(0,200,224,.12);color:var(--brand);font-weight:600}
 .tf-tab .ex small{display:block;color:var(--text-dim);font-size:11.5px;font-weight:400}
 /* circuit */
+.tf-flow{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:12px}
+.tf-flow li{display:flex;gap:14px;align-items:flex-start}
+.tf-flow li>i{flex:0 0 auto;font:600 12px var(--font-mono);font-style:normal;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:var(--brand-gradient);color:#fff}
+.tf-flow b{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:15px}.tf-flow b em{font:500 12px var(--font-mono);font-style:normal;color:var(--brand);letter-spacing:.04em}
+.tf-flow span{display:block;color:var(--text-mid);font-size:13.5px;line-height:1.55;margin-top:2px}
+.tf-kit{margin:12px 0 0;padding-left:18px;display:grid;gap:8px;color:var(--text-mid);font-size:14px;line-height:1.55}
 .tf-cgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
 @media(max-width:860px){.tf-cgrid{grid-template-columns:1fr}}
 .tf-choice{display:grid;gap:12px;margin-top:6px}
@@ -1035,5 +1130,5 @@ html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rai
   }
 
   window.CadFormePage = CadFormePage;
-  window.cadFormeMath = { pts: pts, legerSpeed: legerSpeed, legerVma: legerVma, levelOf: levelOf, SCALE: SCALE };
+  window.cadFormeMath = { pts: pts, legerSpeed: legerSpeed, legerVma: legerVma, levelOf: levelOf, SCALE: SCALE, scaleFor: scaleFor };
 })();

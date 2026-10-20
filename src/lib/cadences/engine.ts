@@ -36,7 +36,8 @@ export function ageFactorForTest(test: TestConfig, ageBand: string, config: Cade
 export function adjustedThresholds(
   test: TestConfig, profile: Profile, mode: Mode, config: CadencesConfig,
 ): { ref: number; max: number } {
-  const base = profile.sex === 'M' ? test.male : test.female
+  const band = test.band_refs?.[profile.ageBand]
+  const base = profile.sex === 'M' ? (band?.male ?? test.male) : (band?.female ?? test.female)
   if (mode === 'general') return { ref: base.ref, max: base.max }
   const pf = ageFactorForTest(test, profile.ageBand, config)
   if (test.direction === 'higher_is_better') {

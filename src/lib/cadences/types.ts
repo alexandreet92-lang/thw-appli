@@ -46,6 +46,8 @@ export interface TestConfig {
   /** Épreuve de force en 3RM : la personne peut saisir un 5RM (converti en équivalent 3RM × `rm5_to_3rm`). */
   rm_choice?: boolean
   age_time_exponent?: number
+  /** Seuils propres à une tranche d'âge (remplacent `male`/`female` pour cette tranche) : épreuves dont le protocole change avec l'âge (test de forme des enfants). */
+  band_refs?: Record<string, { male: Threshold; female: Threshold }>
   attempts?: number
   aggregate?: Aggregate
   /** Notation à plusieurs critères (ex. sauts : meilleur essai + total des essais).

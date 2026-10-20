@@ -1003,6 +1003,7 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { setErr((res.j && res.j.erreur) || 'Impossible de démarrer.'); setBusy(false); return; }
+          if (window.thwTrack) window.thwTrack('test_start', { t: 'decaform' });
           setStart(res.j.id, start);
           props.onCreated(res.j.id);
         }).catch(function () { setErr('Erreur réseau.'); setBusy(false); });
@@ -1369,7 +1370,7 @@
       setClosing(true); setErr(null);
       api('/api/cadences/campaign/close', { method: 'POST', body: JSON.stringify({ campaignId: camp.id }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (res) { if (!res.ok) { setErr((res.j && res.j.erreur) || 'Clôture impossible.'); setClosing(false); return; } props.onClosed(); })
+        .then(function (res) { if (!res.ok) { setErr((res.j && res.j.erreur) || 'Clôture impossible.'); setClosing(false); return; } if (window.thwTrack) window.thwTrack('test_done', { t: 'decaform' }); props.onClosed(); })
         .catch(function () { setErr('Erreur réseau.'); setClosing(false); });
     }
 

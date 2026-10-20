@@ -126,7 +126,7 @@ function BodyConfidentialite() {
 
       <section className="legal-block">
         <h2>9. Cookies</h2>
-        <p>Nous n'utilisons que des cookies strictement nécessaires au fonctionnement du service. Si des outils de mesure d'audience sont ajoutés, un consentement te sera demandé.</p>
+        <p>Nous n'utilisons que des cookies strictement nécessaires au fonctionnement du service. Nous mesurons la fréquentation du site avec un compteur anonyme que nous hébergeons nous-mêmes : il ne dépose aucun cookie, ne conserve jamais ton adresse IP et ne permet pas de te suivre d'un jour à l'autre (pages vues, provenance générale, type d'appareil). Un identifiant d'onglet, effacé à la fermeture de la page, relie les pages vues pendant une même visite. Quand tu crées un compte, cette visite peut être rattachée à ton compte pour savoir quelle source amène des utilisateurs qui restent. Tu peux refuser cette mesure avec le signal « Do Not Track » de ton navigateur.</p>
       </section>
 
       <section className="legal-block">

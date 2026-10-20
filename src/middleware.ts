@@ -101,7 +101,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Cockpit admin (/admin) : refus RÉEL (403) pour tout autre que l'admin ──
-  if (path === '/admin') {
+  if (path === '/admin' || path.startsWith('/admin/statistiques')) {
     const admin = process.env.ADMIN_EMAIL
     if (!admin || (user.email ?? '').toLowerCase() !== admin.toLowerCase()) {
       return new NextResponse('Forbidden', { status: 403 })

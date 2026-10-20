@@ -872,6 +872,7 @@
     var hr = hrRef.current;
     var draft = React.useMemo(function () { var d = lsGet(DRAFT_KEY); return d && d.t && Date.now() - d.t < 6 * 3600 * 1000 ? d : null; }, []);
     var sg = React.useState(draft && draft.profile ? (draft.stage || 'profil') : 'intro'), stage = sg[0], setStage = sg[1];
+    React.useEffect(function () { if (window.thwTrack) { window.thwTrack('test_step', { t: 'forme', s: stage }); if (stage === 'profil') window.thwTrack('test_start', { t: 'forme' }); if (stage === 'result') window.thwTrack('test_done', { t: 'forme' }); } }, [stage]);
     var pf = React.useState((draft && draft.profile) || { first: '', last: '', date: todayISO(), age: '', weight: '', sex: null }), profile = pf[0], setProfile = pf[1];
     var lg = React.useState((draft && draft.leger) || null), leger = lg[0], setLeger = lg[1];
     var ci = React.useState(null), circuit = ci[0], setCircuit = ci[1];

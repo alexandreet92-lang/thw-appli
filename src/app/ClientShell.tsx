@@ -69,6 +69,25 @@ export function ClientShell({ children }: ClientShellProps) {
     return () => stopMotion()
   }, [])
 
+  // Mesure d'audience anonyme : une fois par onglet, signale qu'un utilisateur
+  // connecté ouvre l'app (le serveur décide s'il s'agit d'une inscription).
+  // Aucun cookie : seul l'identifiant d'onglet (sessionStorage) est utilisé.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem('thw_no_track') === '1' || window.sessionStorage.getItem('thw_ao')) return
+      void getCurrentUser().then(u => {
+        if (!u) return
+        try {
+          window.sessionStorage.setItem('thw_ao', '1')
+          let sid = window.sessionStorage.getItem('thw_sid')
+          if (!sid) { sid = crypto.randomUUID(); window.sessionStorage.setItem('thw_sid', sid) }
+          const lp = JSON.parse(window.sessionStorage.getItem('thw_lp') || '{}') as { r?: string; u?: string; c?: string; q?: string }
+          void fetch('/api/t', { method: 'POST', keepalive: true, headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ e: 'app_open', sid, p: window.location.pathname, r: lp.r, u: lp.u, c: lp.c, q: lp.q }) })
+        } catch { /* ignore */ }
+      })
+    } catch { /* ignore */ }
+  }, [])
+
   // App iOS : rattache RevenueCat à l'utilisateur connecté (achats in-app).
   useEffect(() => {
     if (!isNativeApp()) return

@@ -24,6 +24,7 @@ import { openIapStore } from '@/lib/iap/store-events'
 import NativeBilling from '@/components/iap/NativeBilling'
 import { listBlockedUsers, unblockUser, type BlockedUser } from '@/lib/moderation/dm'
 import { Avatar } from '@/components/shared/Sidebar'
+import { LinkedAccounts } from '@/components/auth/LinkedAccounts'
 import { useNarrow } from '@/lib/hooks/useNarrow'
 import { LANGS } from '@/lib/i18n/dictionaries'
 import { MCard, SegTrack, PillButton, Dot, MSheet, SheetHeader, RoundBtn, TILE, MODEL_DOT, Ico, ICON } from '@/components/ai/mobile/MobileKit'
@@ -2108,6 +2109,7 @@ function ConfidentialiteBloc() {
         <ActivityVisibilitySection />
         <HiddenDataSection />
         <BlockedUsersSection />
+        <LinkedAccounts />
         <MSection label={t('profile.documents')}>
           <MGroup>
             {PRIVACY_LINKS.map((l, i) => (
@@ -2134,6 +2136,8 @@ function ConfidentialiteBloc() {
       <HiddenDataSection />
 
       <BlockedUsersSection />
+
+      <LinkedAccounts />
 
       <Section label={t('profile.documents')}>
         <Group>

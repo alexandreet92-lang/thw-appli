@@ -43,6 +43,8 @@
   var AGE_GROUPS = [['k8', '8 à 10 ans', EX_K8], ['k11', '11 à 12 ans', EX_K11], ['adult', '13 ans et plus', EX_ADULT]];
   function groupOf(age) { age = Number(age); return age >= 8 && age <= 10 ? 'k8' : age >= 11 && age <= 12 ? 'k11' : 'adult'; }
   function exFor(age) { var g = groupOf(age); return g === 'k8' ? EX_K8 : g === 'k11' ? EX_K11 : EX_ADULT; }
+  // En France, sous 15 ans l'accord d'un parent ou représentant légal est requis (RGPD, art. 8 ; loi Informatique et Libertés, art. 45).
+  var PARENTAL_AGE = 15;
   var ROUNDS = 3;
   var NEXT_FILE = 'test-de-forme.html';
   // Barème v1.2 par catégorie d'âge (miroir du JSON serveur configs/forme.config.json) : estimation avant enregistrement.
@@ -374,7 +376,8 @@
           </table></div>
         </div>
         <div className="tf-card tf-narrow tf-center" style={{ width: '100%' }}>
-          <div className="tf-actions center" style={{ marginTop: 0 }}><button type="button" className="tf-btn primary lg" onClick={props.onStart}>Commencer le test</button></div>
+          <div className="tf-actions center" style={{ marginTop: 0 }}><button type="button" className="tf-btn primary lg" onClick={props.onStart}>{props.guest ? 'Se connecter pour passer le test' : 'Commencer le test'}</button></div>
+          {props.guest ? <p className="tf-small" style={{ textAlign: 'center', marginBottom: 0 }}>Un compte est nécessaire pour passer le test et enregistrer ton résultat.</p> : null}
         </div>
       </div>
     );
@@ -396,7 +399,8 @@
       if (!isFinite(a) || a < 8 || a > 80) return setErr('Âge requis : 8 à 80 ans.');
       if (!isFinite(w) || w < 15 || w > 250) return setErr('Poids requis (15 à 250 kg).');
       if (!f.date) return setErr('Choisis la date du test.');
-      setErr(''); props.onValid({ first: f.first.trim(), last: f.last.trim(), date: f.date, age: Math.round(a), weight: Math.round(w * 10) / 10, sex: f.sex });
+      if (a < PARENTAL_AGE && !f.parental) return setErr('Un parent ou représentant légal doit cocher la case pour continuer.');
+      setErr(''); props.onValid({ parental: a < PARENTAL_AGE && !!f.parental, first: f.first.trim(), last: f.last.trim(), date: f.date, age: Math.round(a), weight: Math.round(w * 10) / 10, sex: f.sex });
     }
     return (
       <form className="tf-card tf-narrow" onSubmit={submit} noValidate>
@@ -415,6 +419,12 @@
             </div>
           </div>
         </div>
+        {Number(f.age) > 0 && Number(f.age) < PARENTAL_AGE ? (
+          <label className="tf-parental" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 14, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!f.parental} onChange={function (e) { set('parental', e.target.checked); }} style={{ marginTop: 3 }}/>
+            <span><b>Moins de 15 ans : accord d’un parent</b><br/>En France, un enfant de moins de 15 ans ne peut pas donner seul son accord pour l’enregistrement de ses données. Je suis le parent ou le représentant légal de cet enfant, j’ai plus de 18 ans, et j’autorise l’enregistrement de son âge, de son poids et de ses résultats.</span>
+          </label>
+        ) : null}
         {err ? <div className="tf-err" role="alert">{err}</div> : null}
         <div className="tf-actions">
           <button type="submit" className="tf-btn primary">Valider et passer au test de Léger</button>
@@ -758,7 +768,7 @@
     function doSave() {
       setSave({ state: 'busy', msg: '', off: null });
       var cid = null, warn = [];
-      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: 'forme', sex: P.sex, scaleSex: P.sex, age: P.age, bodyWeightKg: P.weight, shareForCalibration: false }) })
+      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: 'forme', sex: P.sex, scaleSex: P.sex, age: P.age, bodyWeightKg: P.weight, shareForCalibration: false, parentalConsent: P.age < PARENTAL_AGE ? P.parental === true : undefined }) })
         .then(function (r) {
           if (!r.ok) throw new Error(r.j.erreur || 'Impossible de créer le test.');
           cid = r.j.id;
@@ -796,7 +806,7 @@
           <div style={{ flex: '1 1 300px', minWidth: 0 }}>
             <LevelRow level={level}/>
             <p className="tf-p" style={{ margin: 0 }}>{p1 > p2 + 8 ? 'Ton moteur aérobie est en avance sur ton endurance de force : travaille le renforcement.' : p2 > p1 + 8 ? 'Ton endurance de force devance ton moteur aérobie : ajoute de la course continue.' : 'Profil équilibré entre endurance et force.'}</p>
-            <p className="tf-small">{off ? 'Score officiel calculé à l’enregistrement (barème général). Barème provisoire, en cours de calibrage.' : 'Estimation avec le barème général provisoire. Le score officiel est calculé à l’enregistrement.'}</p>
+            <p className="tf-small">{off ? 'Score officiel calculé à l’enregistrement. Barème provisoire de ta catégorie d’âge, en cours de calibrage.' : 'Estimation avec le barème provisoire de ta catégorie d’âge. Le score officiel est calculé à l’enregistrement.'}</p>
           </div>
         </div>
         <div className="tf-res">
@@ -871,10 +881,11 @@
   function FormeApp(props) {
     if (window.CadUseLang) window.CadUseLang();
     var account = props.account;
+    var guest = !account;
     var hrRef = React.useRef(null); if (!hrRef.current) hrRef.current = createHr();
     var hr = hrRef.current;
     var draft = React.useMemo(function () { var d = lsGet(DRAFT_KEY); return d && d.t && Date.now() - d.t < 6 * 3600 * 1000 ? d : null; }, []);
-    var sg = React.useState(draft && draft.profile ? (draft.stage || 'profil') : 'intro'), stage = sg[0], setStage = sg[1];
+    var sg = React.useState(!guest && draft && draft.profile ? (draft.stage || 'profil') : 'intro'), stage = sg[0], setStage = sg[1];
     React.useEffect(function () { if (window.thwTrack) { window.thwTrack('test_step', { t: 'forme', s: stage }); if (stage === 'profil') window.thwTrack('test_start', { t: 'forme' }); if (stage === 'result') window.thwTrack('test_done', { t: 'forme' }); } }, [stage]);
     var pf = React.useState((draft && draft.profile) || { first: '', last: '', date: todayISO(), age: '', weight: '', sex: null }), profile = pf[0], setProfile = pf[1];
     var lg = React.useState((draft && draft.leger) || null), leger = lg[0], setLeger = lg[1];
@@ -885,7 +896,7 @@
 
     // Préremplissage : prénom du compte + dernier profil connu (âge, poids, barème).
     React.useEffect(function () {
-      if (draft && draft.profile) return;
+      if (guest || (draft && draft.profile)) return;
       var saved = lsGet('thw-forme-profile') || {};
       api('/api/cadences/campaign').then(function (r) {
         var c = (r.ok && r.j.campagnes && r.j.campagnes[0]) || null;
@@ -932,7 +943,7 @@
             <button type="button" className="tf-btn small ghost" onClick={askRestart}>Tout recommencer</button>
           </div>
         ) : null}
-        {stage === 'intro' ? <Intro age={profile.age} onStart={function () { setStage('profil'); window.scrollTo(0, 0); }}/> : null}
+        {stage === 'intro' ? <Intro age={profile.age} guest={guest} onStart={function () { if (guest) { window.location.href = 'compte.html?next=' + encodeURIComponent(NEXT_FILE); return; } setStage('profil'); window.scrollTo(0, 0); }}/> : null}
         {stage === 'profil' ? (
           <div>
             <header className="tf-head">
@@ -1117,8 +1128,8 @@ html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rai
     // On attend la réponse réelle du compte (le cache peut être vide au premier rendu) avant de décider de rediriger.
     React.useEffect(function () {
       window.THWAccount.get().then(function (a) {
-        if (!a || a.loggedIn === false) { window.location.replace('compte.html?next=' + encodeURIComponent(NEXT_FILE)); return; }
-        setAccount(a);
+        // Page publique : on peut la lire sans compte. Un compte n'est exigé que pour PASSER le test.
+        setAccount(a && a.loggedIn !== false ? a : null);
         fetch('/api/cadences/catalog').then(function (r) { API = r.ok ? '' : APP_URL; setReady(true); }).catch(function () { API = APP_URL; setReady(true); });
       });
     }, []);

@@ -84,6 +84,7 @@ function BodyConfidentialite() {
           <li><strong>Paiement</strong> : gérées par notre prestataire <strong>Stripe</strong>. Nous ne stockons jamais ton numéro de carte.</li>
           <li><strong>Données d'usage &amp; techniques</strong> : logs, appareil, statistiques d'utilisation de l'assistant IA.</li>
         </ul>
+        <p>Données des enfants : les résultats d'un enfant de moins de 15 ans (âge, poids, résultats) ne sont enregistrés qu'avec l'accord d'un parent ou représentant légal, titulaire du compte, qui l'atteste lors de l'enregistrement du test (la date est conservée). Ce parent peut à tout moment consulter, exporter ou supprimer ces données depuis son compte, ou nous écrire à contact@the-hybridway.com.</p>
       </section>
 
       <section className="legal-block">
@@ -153,6 +154,7 @@ function BodyConditions() {
       <section className="legal-block">
         <h2>3. Compte</h2>
         <p>Tu dois avoir au moins <strong>16 ans</strong> pour utiliser le service. Tu es responsable de la confidentialité de tes identifiants et de l'exactitude des informations fournies.</p>
+        <p>Les tests Decaform pour les moins de 15 ans ne peuvent être passés qu'avec l'accord et sous la responsabilité d'un parent ou représentant légal, titulaire du compte. Ce dernier atteste son accord au moment de l'enregistrement du test.</p>
       </section>
 
       <section className="legal-block legal-callout">

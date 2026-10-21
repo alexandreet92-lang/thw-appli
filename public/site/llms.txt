@@ -3,11 +3,12 @@
 > Application de coaching sportif par IA pour athlètes hybrides (endurance et force), et Decaform, un test physique sur 1000 points qui mesure sept qualités physiques pour tous les âges.
 
 ## Pages principales
-- [THW Coaching — AI coaching for hybrid athletes](https://www.the-hybridway.com/): Endurance and strength in one app: AI coach, training plans, performance analysis, nutrition and recovery. 14-day free trial, no credit card.
+- [THW Coaching — Le coaching IA pour athlètes hybrides](https://www.the-hybridway.com/): Endurance et force dans une seule app : coach IA, plans d'entraînement, analyse de performance, nutrition et récupération. 14 jours d'essai, sans carte bancaire.
 - [Les tests Decaform](https://www.the-hybridway.com/tests.html): Tous les tests Decaform : enfants, ados, adultes et seniors. Un score sur 1000, sept qualités physiques, des épreuves adaptées à chaque âge.
 - [Decaform — le test physique](https://www.the-hybridway.com/cadences.html): Decaform : un test physique complet, un score sur 1000 et un niveau par qualité, en barème général ou ajusté à l'âge. Des batteries dédiées par âge (enfants, ados, adultes, seniors).
-- [Features](https://www.the-hybridway.com/theme.html): Explore a THW Coaching feature in detail — your hybrid training driven by an AI that knows you.
+- [Test de forme](https://www.the-hybridway.com/test-de-forme.html): Navette de Léger et circuit au poids du corps le même jour, sans matériel : un score de forme sur 100.
+- [Fonctionnalités](https://www.the-hybridway.com/theme.html): Découvre en détail une fonctionnalité de THW Coaching — ton entraînement hybride piloté par une IA qui te connaît.
 - [The THW Coaching app — AI coaching for hybrid athletes](https://www.the-hybridway.com/app.html): Discover the THW Coaching app: AI coach, training plans, performance analysis, nutrition and recovery for endurance and strength athletes.
-- [Plans and pricing](https://www.the-hybridway.com/abonnement-athlete.html): Premium, Pro or Expert: pick the plan that matches your ambition. 14-day free trial, no credit card, cancel anytime.
-- [Coach plans](https://www.the-hybridway.com/abonnement-coach.html): Coach 10 to 500 athletes. Every coaching feature is in every pack — you pay for capacity, not for features. 14-day free trial.
-- [Support — Hybrid (THW Coaching)](https://www.the-hybridway.com/support.html): Support Hybrid / THW Coaching : contact, aide et réponses aux questions fréquentes. Support Hybrid: contact, help and answers to frequent questions.
+- [Abonnements](https://www.the-hybridway.com/abonnement-athlete.html): Premium, Pro ou Expert : choisis la formule qui correspond à ton ambition. 14 jours d'essai, sans carte bancaire, résiliable à tout moment.
+- [Abonnement coach](https://www.the-hybridway.com/abonnement-coach.html): Coache de 10 à 500 athlètes. Toutes les fonctions coach sont dans chaque pack — tu paies la capacité, pas les fonctionnalités. 14 jours d'essai.
+- [Support](https://www.the-hybridway.com/support.html): Support THW Coaching : contact, aide et réponses aux questions fréquentes.

@@ -26,6 +26,9 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ campagnes: data ?? [] })
 }
 
+/** Âge de la majorité numérique en France. */
+const PARENTAL_AGE = 15
+
 export async function POST(request: Request): Promise<NextResponse> {
   const sb = await createClient()
   const { data: { user } } = await sb.auth.getUser()
@@ -47,6 +50,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   if (!Number.isFinite(bodyWeightKg) || bodyWeightKg < 12 || bodyWeightKg > 250) {
     return NextResponse.json({ erreur: 'Poids de corps requis (12–250 kg).' }, { status: 400 })
+  }
+  // Sous 15 ans (majorité numérique en France, art. 45 de la loi Informatique et Libertés) : l'accord d'un parent
+  // ou représentant légal est obligatoire pour enregistrer les données de l'enfant. Horodaté en base.
+  const needsParental = age < PARENTAL_AGE
+  if (needsParental && body?.parentalConsent !== true) {
+    return NextResponse.json({ erreur: 'Accord d’un parent ou représentant légal requis sous 15 ans.', code: 'parental_consent' }, { status: 400 })
   }
   const ageBand = ageBandFor(age, config)
   if (!ageBand) return NextResponse.json({ erreur: `Âge hors barème (${aMin}–${aMax} ans).` }, { status: 400 })
@@ -72,6 +81,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       age_band: ageBand,
       body_weight_kg: bodyWeightKg,
       share_for_calibration: body?.shareForCalibration === true,
+      // Clé ajoutée UNIQUEMENT pour les moins de 15 ans (la colonne vient de 20261022_cadences_parental_consent.sql).
+      ...(needsParental ? { parental_consent_at: new Date().toISOString() } : {}),
     })
     .select('id')
     .single()

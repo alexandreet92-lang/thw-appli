@@ -261,6 +261,7 @@
             })}
           </div>
           {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : (filter === 'all' ? <GroupedTests list={list}/> : <CardsGrid list={list}/>)}
+          <AllEpreuves/>
         </main>
         <SiteFooter/>
       </div>
@@ -283,6 +284,36 @@
           <a className="btn btn-cyan btn-lg mag" href="tests.html">Voir tous les tests</a>
         </div>
       </div>
+    );
+  }
+
+
+  /* Toutes les épreuves : un lien vers la page de chacune (protocole, matériel, barème). */
+  function AllEpreuves() {
+    var st = React.useState(null); var list = st[0], setList = st[1];
+    React.useEffect(function () {
+      var dead = false;
+      function get(base) { return fetch(base + '/api/cadences/epreuves').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }); }
+      get('').catch(function () { return get(APP_URL); }).then(function (j) { if (!dead) setList(j.epreuves || []); }).catch(function () {});
+      return function () { dead = true; };
+    }, []);
+    if (!list || !list.length) return null;
+    var groups = [], by = {};
+    list.forEach(function (e) { if (!by[e.group]) { by[e.group] = []; groups.push(e.group); } by[e.group].push(e); });
+    return (
+      <section style={{ marginTop: 56 }} aria-labelledby="cad-all-ep">
+        <style>{`.cad-ep-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px 28px}.cad-ep-g h3{font-family:var(--font-display);font-weight:600;font-size:16px;margin:0 0 8px;color:var(--text)}.cad-ep-g a{display:block;font-family:var(--font-body);font-size:14px;line-height:1.5;color:var(--brand);text-decoration:none;padding:2px 0}.cad-ep-g a:hover{text-decoration:underline}`}</style>
+        <div className="eyebrow">Les épreuves</div>
+        <h2 id="cad-all-ep" style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'clamp(24px,3.6vw,32px)', lineHeight: 1.15, margin: '6px 0 8px', color: 'var(--text)' }}>Toutes les épreuves, une par une</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, lineHeight: 1.65, color: 'var(--text-mid)', margin: '0 0 22px', maxWidth: 680 }}>Chaque épreuve a sa page : le protocole, le matériel, l’échauffement et le barème.</p>
+        <div className="cad-ep-g">
+          {groups.map(function (g) {
+            return (
+              <div key={g}><h3>{g}</h3>{by[g].map(function (e) { return <a key={e.slug} href={e.file}>{e.name}</a>; })}</div>
+            );
+          })}
+        </div>
+      </section>
     );
   }
 

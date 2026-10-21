@@ -969,6 +969,7 @@
     var gk = React.useState({}); var gear = gk[0], setGear = gk[1];
     var wk = React.useState(false); var warned = wk[0], setWarned = wk[1];
     var cs = React.useState(false); var consent = cs[0], setConsent = cs[1];
+    var pr = React.useState(false); var parental = pr[0], setParental = pr[1];
     var bz = React.useState(false); var busy = bz[0], setBusy = bz[1];
     var er = React.useState(null); var err = er[0], setErr = er[1];
     var nt = React.useState(null); var note = nt[0], setNote = nt[1];
@@ -982,6 +983,7 @@
         var a = Number(age), p = Number(poids);
         if (!isFinite(a) || a < 8 || a > 100) return setErr('Âge requis (8 à 100 ans).');
         if (!isFinite(p) || p < 12 || p > 250) return setErr('Poids de corps requis (12 à 250 kg).');
+        if (a < 15 && !parental) return setErr('Un parent ou représentant légal doit cocher la case pour continuer.');
         // Catalogue du produit correspondant à l'âge (titre, jours, épreuves).
         var tk = pickKey(a);
         setNote(props.preferredKey && tk !== props.preferredKey && (cat0.testKey || 'decaform') === props.preferredKey
@@ -999,7 +1001,7 @@
       setErr(null);
       if (!warned) return setErr('Coche la case « J’ai lu les avertissements » pour démarrer.');
       setBusy(true);
-      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: pickKey(Number(age)), sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent }) })
+      api('/api/cadences/campaign', { method: 'POST', body: JSON.stringify({ testKey: pickKey(Number(age)), sex: sex, scaleSex: sex, age: Number(age), bodyWeightKg: Number(poids), shareForCalibration: consent, parentalConsent: Number(age) < 15 ? parental : undefined }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { setErr((res.j && res.j.erreur) || 'Impossible de démarrer.'); setBusy(false); return; }
@@ -1039,6 +1041,12 @@
                 <label><div className="cad-ec-h">Âge</div><input className="cad-input" inputMode="numeric" value={age} placeholder="ex. 32" onChange={function (e) { setAge(e.target.value); }} aria-label="Âge"/></label>
                 <label><div className="cad-ec-h">Poids de corps (kg)</div><input className="cad-input" inputMode="decimal" value={poids} placeholder="ex. 78" onChange={function (e) { setPoids(e.target.value); }} aria-label="Poids de corps"/></label>
               </div>
+              {Number(age) > 0 && Number(age) < 15 ? (
+                <label className={'cad-check' + (parental ? ' on' : '')}>
+                  <input type="checkbox" checked={parental} onChange={function (e) { setParental(e.target.checked); }}/>
+                  <span><b>Moins de 15 ans : accord d’un parent</b><br/>En France, un enfant de moins de 15 ans ne peut pas donner seul son accord pour l’enregistrement de ses données. Je suis le parent ou le représentant légal de cet enfant, j’ai plus de 18 ans, et j’autorise l’enregistrement de son âge, de son poids et de ses résultats.</span>
+                </label>
+              ) : null}
             </div>
           ) : null}
 

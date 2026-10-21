@@ -38,6 +38,7 @@ function server() {
     let p = decodeURIComponent(u.pathname)
     const json = (o) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)) }
     if (p === '/api/cadences/products') return json(api.products())
+    if (p === '/api/cadences/epreuves') return json(api.epreuves())
     if (p === '/api/cadences/catalog') return json(api.catalog(u.searchParams.get('test_key')))
     if (p.startsWith('/api/')) return json({ loggedIn: false })
     if (p === '/') p = '/index.html'
@@ -55,6 +56,30 @@ function findChromium() {
   const direct = path.join(base, 'chromium')
   if (fs.existsSync(direct)) return direct
   return undefined // laisse playwright-core chercher son navigateur par défaut
+}
+
+
+// ── Une page par épreuve (epreuve-<slug>.html), générée à partir de tests.html (même chrome, mêmes dictionnaires) ──
+function genEpreuves() {
+  for (const f of fs.readdirSync(SITE)) if (/^epreuve-.*\.html$/.test(f)) fs.unlinkSync(path.join(SITE, f))
+  const base = read('tests.html').replace(SEO_RX, '').replace(/<div id="root"><!--SSR-START-->[\s\S]*?<!--SSR-END--><\/div>/, '<div id="root"></div>')
+  const out = []
+  for (const e of api.epreuveList()) {
+    const cat = api.catalog(e.key)
+    const objectif = (cat.protocols?.[e.slug]?.objectif || '').trim()
+    const title = `${e.name} : protocole, matériel et barème · THW Coaching`
+    let description = `${objectif} Protocole, matériel et barème de l'épreuve du test ${cat.title}.`.trim()
+    if (description.length > 158) description = description.slice(0, 155).replace(/\s+\S*$/, '') + '…'
+    let html = base
+      .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
+      .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(description)}"/>`)
+      .replace('components/cadences/CadencesTests.jsx', 'components/cadences/CadencesEpreuve.jsx')
+      .replace('<CadTestsPage/>', '<CadEpreuvePage/>')
+      .replace('</head>', `  <script>window.CAD_EPREUVE = ${JSON.stringify({ slug: e.slug, key: e.key })};</script>\n</head>`)
+    fs.writeFileSync(path.join(SITE, e.file), html)
+    out.push({ file: e.file, path: '/' + e.file, prio: 0.5, ld: ['crumb:' + e.name], noLlm: true })
+  }
+  return out
 }
 
 function jsonLd(page, html) {
@@ -114,6 +139,7 @@ const port = srv.address().port
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ locale: 'fr-FR', viewport: { width: 1280, height: 900 } })
 const report = []
+const ALL_PUBLIC = [...PUBLIC, ...genEpreuves()]
 // Environnement sans accès à unpkg : SEO_VENDOR=<dossier contenant node_modules avec react@18, react-dom@18, @babel/standalone>
 const VENDOR = process.env.SEO_VENDOR
 if (VENDOR) {
@@ -125,7 +151,7 @@ if (VENDOR) {
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1|unpkg\.com)/, (rt) => rt.abort())
 }
 
-for (const page of PUBLIC) {
+for (const page of ALL_PUBLIC) {
   stripSsr(page.file)
   const html0 = read(page.file)
   if (!html0.includes('<div id="root"></div>')) { apply(page.file, seoHead(page, html0, false), null, page); report.push([page.file, 'head seul']); continue }
@@ -155,7 +181,7 @@ await browser.close(); srv.close()
 
 // sitemap.xml
 const today = new Date().toISOString().slice(0, 10)
-const urls = PUBLIC.map((p) => `  <url><loc>${ORIGIN}${p.path}</loc><lastmod>${today}</lastmod><priority>${p.prio.toFixed(1)}</priority></url>`).join('\n')
+const urls = ALL_PUBLIC.map((p) => `  <url><loc>${ORIGIN}${p.path}</loc><lastmod>${today}</lastmod><priority>${p.prio.toFixed(1)}</priority></url>`).join('\n')
 fs.writeFileSync(path.join(SITE, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`)
 
 // robots.txt : tout est ouvert aux robots (y compris IA) sauf les pages privées et l'API.

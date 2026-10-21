@@ -9,7 +9,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -25,7 +24,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -40,7 +38,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -55,7 +52,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -70,7 +66,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -85,7 +80,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -100,7 +94,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -115,7 +108,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -130,7 +122,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -145,7 +136,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -160,7 +150,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 
@@ -175,7 +164,6 @@ Disallow: /questionnaire.html
 Disallow: /coach-ia.html
 Disallow: /recharge-tokens.html
 Disallow: /exporter-mes-donnees.html
-Disallow: /test-de-forme.html
 Disallow: /index-hero.html
 Disallow: /api/
 

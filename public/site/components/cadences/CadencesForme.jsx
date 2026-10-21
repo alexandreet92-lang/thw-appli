@@ -47,20 +47,21 @@
   var PARENTAL_AGE = 15;
   var ROUNDS = 3;
   var NEXT_FILE = 'test-de-forme.html';
-  // Barème v1.2 par catégorie d'âge (miroir du JSON serveur configs/forme.config.json) : estimation avant enregistrement.
+  // Barème v1.3 par catégorie d'âge (miroir du JSON serveur configs/forme.config.json) : estimation avant enregistrement.
   var SCALE_BANDS = {
     '8-10': { M: { nav: [5, 11], cir: [315, 210] }, F: { nav: [4.5, 10], cir: [345, 235] } },
     '11-12': { M: { nav: [6.5, 13], cir: [390, 255] }, F: { nav: [5.5, 11.5], cir: [420, 285] } },
     '13-15': { M: { nav: [8.5, 16], cir: [590, 390] }, F: { nav: [6.5, 14], cir: [650, 445] } },
-    '16-40': { M: { nav: [10, 18], cir: [540, 345] }, F: { nav: [8, 16], cir: [600, 405] } },
-    '41-50': { M: { nav: [8, 15.5], cir: [585, 375] }, F: { nav: [6.5, 14], cir: [650, 435] } },
-    '51-60': { M: { nav: [6.5, 13], cir: [630, 405] }, F: { nav: [4.5, 11.5], cir: [700, 475] } },
-    '61-80': { M: { nav: [4.5, 10.5], cir: [690, 440] }, F: { nav: [2.5, 9], cir: [770, 520] } }
+    '16-40': { M: { nav: [10, 20], cir: [540, 345] }, F: { nav: [8, 18], cir: [600, 405] } },
+    '41-50': { M: { nav: [7.5, 16.5], cir: [590, 375] }, F: { nav: [6, 15], cir: [655, 440] } },
+    '51-60': { M: { nav: [6, 14], cir: [645, 410] }, F: { nav: [4, 12], cir: [715, 480] } },
+    '61-70': { M: { nav: [4, 11], cir: [700, 450] }, F: { nav: [2, 9], cir: [780, 525] } },
+    '71-80': { M: { nav: [2, 7.5], cir: [810, 520] }, F: { nav: [1, 6.5], cir: [900, 610] } }
   };
   var SCALE = SCALE_BANDS['16-40'];
   function scaleFor(age, sex) {
     age = Number(age);
-    var k = age <= 10 ? '8-10' : age <= 12 ? '11-12' : age <= 15 ? '13-15' : age <= 40 ? '16-40' : age <= 50 ? '41-50' : age <= 60 ? '51-60' : '61-80';
+    var k = age <= 10 ? '8-10' : age <= 12 ? '11-12' : age <= 15 ? '13-15' : age <= 40 ? '16-40' : age <= 50 ? '41-50' : age <= 60 ? '51-60' : age <= 70 ? '61-70' : '71-80';
     return SCALE_BANDS[k][sex];
   }
   var LEVELS = [['Sédentaire', 0], ['Amateur', 0.2], ['Confirmé', 0.4], ['Référence', 0.6], ['Élite', 0.8], ['Phénomène', 1.0], ['Extraterrestre', 1.1]];

@@ -1,5 +1,5 @@
 {
- "version": "v1.2",
+ "version": "v1.3",
  "test_key": "forme",
  "title": "Test de forme",
  "population": "dès 8 ans, tous niveaux (circuit adapté de 8 à 12 ans)",
@@ -26,7 +26,8 @@
    "16-40",
    "41-50",
    "51-60",
-   "61-80"
+   "61-70",
+   "71-80"
   ],
   "pf": {
    "8-10": {
@@ -89,7 +90,17 @@
     "coordination": 1,
     "endurance_musculaire": 1
    },
-   "61-80": {
+   "61-70": {
+    "vitesse": 1,
+    "force": 1,
+    "puissance": 1,
+    "explosivite": 1,
+    "endurance": 1,
+    "vo2max": 1,
+    "coordination": 1,
+    "endurance_musculaire": 1
+   },
+   "71-80": {
     "vitesse": 1,
     "force": 1,
     "puissance": 1,
@@ -160,11 +171,11 @@
    "pts_max": 50,
    "male": {
     "ref": 10,
-    "max": 18
+    "max": 20
    },
    "female": {
     "ref": 8,
-    "max": 16
+    "max": 18
    },
    "weights": {
     "endurance": 0.2,
@@ -208,41 +219,51 @@
     "16-40": {
      "male": {
       "ref": 10,
-      "max": 18
+      "max": 20
      },
      "female": {
       "ref": 8,
-      "max": 16
+      "max": 18
      }
     },
     "41-50": {
      "male": {
-      "ref": 8,
-      "max": 15.5
+      "ref": 7.5,
+      "max": 16.5
      },
      "female": {
-      "ref": 6.5,
-      "max": 14
+      "ref": 6,
+      "max": 15
      }
     },
     "51-60": {
      "male": {
-      "ref": 6.5,
-      "max": 13
+      "ref": 6,
+      "max": 14
      },
      "female": {
-      "ref": 4.5,
-      "max": 11.5
+      "ref": 4,
+      "max": 12
      }
     },
-    "61-80": {
+    "61-70": {
      "male": {
-      "ref": 4.5,
-      "max": 10.5
+      "ref": 4,
+      "max": 11
      },
      "female": {
-      "ref": 2.5,
+      "ref": 2,
       "max": 9
+     }
+    },
+    "71-80": {
+     "male": {
+      "ref": 2,
+      "max": 7.5
+     },
+     "female": {
+      "ref": 1,
+      "max": 6.5
      }
     }
    }
@@ -315,32 +336,42 @@
     },
     "41-50": {
      "male": {
-      "ref": 585,
+      "ref": 590,
       "max": 375
      },
      "female": {
-      "ref": 650,
-      "max": 435
+      "ref": 655,
+      "max": 440
      }
     },
     "51-60": {
      "male": {
-      "ref": 630,
-      "max": 405
+      "ref": 645,
+      "max": 410
      },
      "female": {
-      "ref": 700,
-      "max": 475
+      "ref": 715,
+      "max": 480
      }
     },
-    "61-80": {
+    "61-70": {
      "male": {
-      "ref": 690,
-      "max": 440
+      "ref": 700,
+      "max": 450
      },
      "female": {
-      "ref": 770,
+      "ref": 780,
+      "max": 525
+     }
+    },
+    "71-80": {
+     "male": {
+      "ref": 810,
       "max": 520
+     },
+     "female": {
+      "ref": 900,
+      "max": 610
      }
     }
    }

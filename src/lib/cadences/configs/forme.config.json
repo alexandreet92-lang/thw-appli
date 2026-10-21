@@ -170,11 +170,11 @@
    "kind": "abs",
    "pts_max": 50,
    "male": {
-    "ref": 10,
+    "ref": 12,
     "max": 20
    },
    "female": {
-    "ref": 8,
+    "ref": 10,
     "max": 18
    },
    "weights": {
@@ -218,51 +218,51 @@
     },
     "16-40": {
      "male": {
-      "ref": 10,
+      "ref": 12,
       "max": 20
      },
      "female": {
-      "ref": 8,
+      "ref": 10,
       "max": 18
      }
     },
     "41-50": {
      "male": {
-      "ref": 7.5,
+      "ref": 9.5,
       "max": 16.5
      },
      "female": {
-      "ref": 6,
+      "ref": 8,
       "max": 15
      }
     },
     "51-60": {
      "male": {
-      "ref": 6,
+      "ref": 7.5,
       "max": 14
      },
      "female": {
-      "ref": 4,
+      "ref": 5.5,
       "max": 12
      }
     },
     "61-70": {
      "male": {
-      "ref": 4,
+      "ref": 5.5,
       "max": 11
      },
      "female": {
-      "ref": 2,
+      "ref": 3.5,
       "max": 9
      }
     },
     "71-80": {
      "male": {
-      "ref": 2,
+      "ref": 3,
       "max": 7.5
      },
      "female": {
-      "ref": 1,
+      "ref": 2,
       "max": 6.5
      }
     }

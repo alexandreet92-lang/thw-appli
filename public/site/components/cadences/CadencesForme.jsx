@@ -45,18 +45,21 @@
   function exFor(age) { var g = groupOf(age); return g === 'k8' ? EX_K8 : g === 'k11' ? EX_K11 : EX_ADULT; }
   var ROUNDS = 3;
   var NEXT_FILE = 'test-de-forme.html';
-  // Barème provisoire (miroir du JSON serveur) : sert à l'estimation avant enregistrement.
-  var SCALE = { M: { nav: [10, 18], cir: [540, 345] }, F: { nav: [8, 16], cir: [600, 405] } };
-  var SCALE_KIDS = {
-    k8: { M: { nav: [5, 11], cir: [315, 210] }, F: { nav: [4.5, 10], cir: [345, 235] } },
-    k11: { M: { nav: [6.5, 13], cir: [390, 255] }, F: { nav: [5.5, 11.5], cir: [420, 285] } },
-    t13: { M: { nav: [8, 15], cir: [600, 400] }, F: { nav: [6.5, 13], cir: [660, 450] } },
-    t15: { M: { nav: [9, 17], cir: [570, 370] }, F: { nav: [7, 15], cir: [630, 425] } }
+  // Barème v1.2 par catégorie d'âge (miroir du JSON serveur configs/forme.config.json) : estimation avant enregistrement.
+  var SCALE_BANDS = {
+    '8-10': { M: { nav: [5, 11], cir: [315, 210] }, F: { nav: [4.5, 10], cir: [345, 235] } },
+    '11-12': { M: { nav: [6.5, 13], cir: [390, 255] }, F: { nav: [5.5, 11.5], cir: [420, 285] } },
+    '13-15': { M: { nav: [8.5, 16], cir: [590, 390] }, F: { nav: [6.5, 14], cir: [650, 445] } },
+    '16-40': { M: { nav: [10, 18], cir: [540, 345] }, F: { nav: [8, 16], cir: [600, 405] } },
+    '41-50': { M: { nav: [8, 15.5], cir: [585, 375] }, F: { nav: [6.5, 14], cir: [650, 435] } },
+    '51-60': { M: { nav: [6.5, 13], cir: [630, 405] }, F: { nav: [4.5, 11.5], cir: [700, 475] } },
+    '61-80': { M: { nav: [4.5, 10.5], cir: [690, 440] }, F: { nav: [2.5, 9], cir: [770, 520] } }
   };
+  var SCALE = SCALE_BANDS['16-40'];
   function scaleFor(age, sex) {
     age = Number(age);
-    var k = age <= 10 ? 'k8' : age <= 12 ? 'k11' : age <= 14 ? 't13' : age <= 17 ? 't15' : null;
-    return k ? SCALE_KIDS[k][sex] : SCALE[sex];
+    var k = age <= 10 ? '8-10' : age <= 12 ? '11-12' : age <= 15 ? '13-15' : age <= 40 ? '16-40' : age <= 50 ? '41-50' : age <= 60 ? '51-60' : '61-80';
+    return SCALE_BANDS[k][sex];
   }
   var LEVELS = [['Sédentaire', 0], ['Amateur', 0.2], ['Confirmé', 0.4], ['Référence', 0.6], ['Élite', 0.8], ['Phénomène', 1.0], ['Extraterrestre', 1.1]];
   var DRAFT_KEY = 'thw-forme-draft';

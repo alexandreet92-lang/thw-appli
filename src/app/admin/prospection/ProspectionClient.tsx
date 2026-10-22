@@ -86,6 +86,23 @@ export function ProspectionClient() {
   const [list, setList] = useState('')
   const [source, setSource] = useState('')
   const [consent, setConsent] = useState('')
+  const [preview, setPreview] = useState<{ subject: string; html: string; from: string } | null>(null)
+
+  useEffect(() => {
+    if (!data) return
+    const id = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch('/api/admin/prospection/preview', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, body, from_name: fromName, from_email: fromEmail, postal_address: postal }),
+          })
+          if (res.ok) setPreview((await res.json()) as { subject: string; html: string; from: string })
+        } catch { /* aperçu indisponible : le reste de l'écran fonctionne */ }
+      })()
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [data, subject, body, fromName, fromEmail, postal])
 
   const load = useCallback(async () => {
     try {
@@ -182,7 +199,16 @@ export function ProspectionClient() {
               {d.settings.enabled ? t('s_on') : t('s_off')}
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FB, fontSize: 14 }}><span>{t('s_hour')}</span><span style={{ fontWeight: 500 }}>{t('s_hour_v')}</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: FB, fontSize: 14 }}>
+              <label htmlFor="pr-hour">{t('s_hour')}</label>
+              <select id="pr-hour" value={d.settings.send_hour} onChange={e => void patch({ send_hour: Number(e.target.value) })}
+                style={{ ...field, width: 'auto', padding: '6px 10px', fontVariantNumeric: 'tabular-nums' }}>
+                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{t('s_hour_fmt', { h })}</option>)}
+              </select>
+            </div>
+            <p style={hint}>{t('s_hour_h')}</p>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FB, fontSize: 14 }}><span>{t('s_queue')}</span><span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{d.queue}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FB, fontSize: 14 }}><span>{t('s_total')}</span><span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{d.total}</span></div>
         </div>
@@ -227,6 +253,19 @@ export function ProspectionClient() {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 style={h3}>{t('p_title')}</h3>
+        <p style={hint}>{t('p_hint')}</p>
+        {preview && (
+          <>
+            <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('p_from')} : <span style={{ color: 'var(--text)' }}>{preview.from}</span></div>
+            <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('p_subject')} : <span style={{ color: 'var(--text)', fontWeight: 500 }}>{preview.subject}</span></div>
+            <iframe title={t('p_title')} sandbox="" srcDoc={preview.html}
+              style={{ width: '100%', height: 560, border: 'none', borderRadius: 'var(--r-md)', background: 'var(--bg-card)' }} />
+          </>
         )}
       </div>
 

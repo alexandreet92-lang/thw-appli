@@ -1,13 +1,13 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { parisDay, rampInfo } from './config'
+import { parisDay, parisHour, rampInfo } from './config'
 import { renderEmail } from './template'
 import { sendProspectEmail, sesConfigured } from './ses'
 import type {
   DayPoint, ProspectContact, ProspectionOverview, ProspectSettings, SendRow,
 } from './types'
 
-const SETTINGS_COLS = 'enabled, daily_target, ramp_start, subject, body, from_name, from_email, postal_address'
+const SETTINGS_COLS = 'enabled, daily_target, send_hour, ramp_start, subject, body, from_name, from_email, postal_address'
 
 export async function loadSettings(sb: SupabaseClient): Promise<ProspectSettings> {
   const { data, error } = await sb.from('prospect_settings').select(SETTINGS_COLS).eq('id', 1).single()
@@ -46,6 +46,8 @@ export interface RunResult { ok: boolean; sent: number; failed: number; skipped?
 export async function runDailySend(sb: SupabaseClient): Promise<RunResult> {
   const s = await loadSettings(sb)
   if (!s.enabled) return { ok: true, sent: 0, failed: 0, skipped: 'envoi désactivé' }
+  // Le cron tourne chaque heure : l'envoi n'a lieu qu'à l'heure réglée (heure de Paris).
+  if (parisHour(new Date()) !== s.send_hour) return { ok: true, sent: 0, failed: 0, skipped: 'hors heure d’envoi' }
   if (!sesConfigured()) return { ok: false, sent: 0, failed: 0, skipped: 'SES non configuré' }
   if (!s.from_email.trim()) return { ok: false, sent: 0, failed: 0, skipped: 'adresse expéditeur manquante' }
 

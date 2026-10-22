@@ -22,6 +22,7 @@ export async function GET(): Promise<NextResponse> {
 interface Patch {
   enabled?: boolean
   daily_target?: number
+  send_hour?: number
   subject?: string
   body?: string
   from_name?: string
@@ -50,6 +51,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       return NextResponse.json({ erreur: 'Objectif entre 1 et 200.' }, { status: 400 })
     }
     upd.daily_target = p.daily_target
+  }
+  if (typeof p.send_hour === 'number') {
+    if (!Number.isInteger(p.send_hour) || p.send_hour < 0 || p.send_hour > 23) {
+      return NextResponse.json({ erreur: 'Heure entre 0 et 23.' }, { status: 400 })
+    }
+    upd.send_hour = p.send_hour
   }
   for (const k of ['subject', 'body', 'from_name', 'from_email', 'postal_address'] as const) {
     const v = p[k]

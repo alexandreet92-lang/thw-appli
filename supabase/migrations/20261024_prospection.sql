@@ -45,6 +45,7 @@ create table if not exists public.prospect_settings (
   id              int primary key default 1 check (id = 1),
   enabled         boolean not null default false,
   daily_target    int not null default 100 check (daily_target between 1 and 200),
+  send_hour       int not null default 10 check (send_hour between 0 and 23),
   ramp_start      date,
   subject         text not null default 'Un test de forme gratuit, de 8 à 80 ans',
   body            text not null default E'Bonjour {prenom},\n\nJe suis Alexandre, fondateur de THW (The Hybrid Way). Nous avons créé un test de forme gratuit, de 8 à 80 ans, avec un barème par âge : navette 20 m et circuit au poids du corps. Il se fait en 20 minutes.\n\nTu peux le découvrir ici : {lien}\n\nBonne journée,\nAlexandre\nTHW Coaching\n\n{desinscription}',

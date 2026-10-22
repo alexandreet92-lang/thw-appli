@@ -7,6 +7,7 @@ export type DeliveryStatus = 'delivered' | 'bounced' | 'complained'
 export interface ProspectSettings {
   enabled: boolean
   daily_target: number
+  send_hour: number
   ramp_start: string | null
   subject: string
   body: string

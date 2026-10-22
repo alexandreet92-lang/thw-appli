@@ -142,7 +142,7 @@ const fr: Dict = {
   'nav.messages': 'Messages',
   'nav.community': 'Communauté',
   'nav.connections': 'Connexions',
-  'nav.myProfile': 'Mon profil', 'nav.athlete': 'Athlète', 'nav.cockpit': 'Cockpit', 'nav.feedback': 'Envoyer un message',
+  'nav.myProfile': 'Mon profil', 'nav.athlete': 'Athlète', 'nav.cockpit': 'Cockpit', 'nav.prospection': 'Prospection', 'nav.feedback': 'Envoyer un message',
   'nav.applications': 'Candidatures', 'nav.dailyBriefing': 'Briefing du jour', 'nav.aiAssistant': 'Assistant IA',
   'nav.themeDark': 'Mode Nuit', 'nav.themeLight': 'Mode Jour',
   // Mobile tab bar
@@ -7986,7 +7986,7 @@ const en: Dict = {
   'nav.messages': 'Messages',
   'nav.community': 'Community',
   'nav.connections': 'Connections',
-  'nav.myProfile': 'My profile', 'nav.athlete': 'Athlete', 'nav.cockpit': 'Cockpit', 'nav.feedback': 'Send a message',
+  'nav.myProfile': 'My profile', 'nav.athlete': 'Athlete', 'nav.cockpit': 'Cockpit', 'nav.prospection': 'Outreach', 'nav.feedback': 'Send a message',
   'nav.applications': 'Applications', 'nav.dailyBriefing': 'Daily briefing', 'nav.aiAssistant': 'AI Assistant',
   'nav.themeDark': 'Night mode', 'nav.themeLight': 'Day mode',
   // Mobile tab bar
@@ -15656,7 +15656,7 @@ const es: Dict = {
   'nav.messages': 'Mensajes',
   'nav.community': 'Comunidad',
   'nav.connections': 'Conexiones',
-  'nav.myProfile': 'Mi perfil', 'nav.athlete': 'Atleta', 'nav.cockpit': 'Cockpit', 'nav.feedback': 'Enviar un mensaje',
+  'nav.myProfile': 'Mi perfil', 'nav.athlete': 'Atleta', 'nav.cockpit': 'Cockpit', 'nav.prospection': 'Prospección', 'nav.feedback': 'Enviar un mensaje',
   'nav.applications': 'Solicitudes', 'nav.dailyBriefing': 'Resumen del día', 'nav.aiAssistant': 'Asistente IA',
   'nav.themeDark': 'Modo Noche', 'nav.themeLight': 'Modo Día',
   // Mobile tab bar

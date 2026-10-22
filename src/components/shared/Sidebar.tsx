@@ -391,6 +391,22 @@ export function SidebarContent({ onClose, headerSlot, expanded = true }: { onClo
             expanded={expanded}
           />
         )}
+        {/* Prospection — admin uniquement */}
+        {isAdmin && (
+          <NavItem
+            href="/admin/prospection"
+            label={t('nav.prospection')}
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <path d="M3 7l9 6 9-6"/>
+              </svg>
+            }
+            active={pathname === '/admin/prospection'}
+            onClick={onClose}
+            expanded={expanded}
+          />
+        )}
         <button
           onClick={toggleTheme}
           className="thw-nav-item" data-active="0"

@@ -9,7 +9,8 @@
     { "path": "/api/agenda/reminders", "schedule": "*/5 * * * *" },
     { "path": "/api/agenda/google/sync", "schedule": "*/15 * * * *" },
     { "path": "/api/metrics/pmc-rebuild", "schedule": "0 4 * * *" },
-    { "path": "/api/coach/insight-rebuild", "schedule": "0 5 * * *" }
+    { "path": "/api/coach/insight-rebuild", "schedule": "0 5 * * *" },
+    { "path": "/api/prospection/cron", "schedule": "0 8 * * *" }
   ],
   "ignoreCommand": "if git log -1 --pretty=%B | grep -qF '[deploy]'; then exit 1; else exit 0; fi"
 }

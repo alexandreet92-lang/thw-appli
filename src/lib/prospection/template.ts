@@ -23,7 +23,7 @@ export function renderEmail(s: ProspectSettings, c: ProspectContact): RenderedEm
   const footer = s.postal_address.trim() ? `\n\n${s.postal_address.trim()}` : ''
 
   const fill = (tpl: string, mode: 'text' | 'html'): string => {
-    const greeted = name ? tpl : tpl.replace(/\{prenom\}/g, '').replace(/Bonjour\s*,/, 'Bonjour,')
+    const greeted = name ? tpl : tpl.replace(/^\s*\{prenom\}\s*,\s*/, '').replace(/\{prenom\}/g, '').replace(/Bonjour\s*,/, 'Bonjour,')
     return greeted
       .replace(/\{prenom\}/g, mode === 'html' ? esc(name) : name)
       .replace(/\{lien\}/g, mode === 'html' ? `<a href="${link}" style="color:#0b6fa8;font-weight:600">the-hybridway.com/test-de-forme</a>` : link)

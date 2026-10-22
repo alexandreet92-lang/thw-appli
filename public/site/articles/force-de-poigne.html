@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/"/>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>La force de poigne, un indicateur de santé — THW Coaching</title>
+  <meta name="robots" content="index,follow"/>
+  <meta name="description" content="Serrer un boîtier pendant quelques secondes paraît dérisoire. Pourtant, des études l'ont fait passer à des centaines de milliers de personnes, puis ont compté qui était encore en vie, qui marchait…"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+  <link rel="stylesheet" href="articles.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+<script src="/site/stats.js" defer></script>
+  <!--SEO-START-->
+  <link rel="canonical" href="https://www.the-hybridway.com/articles/force-de-poigne.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:title" content="La force de poigne, un indicateur de santé"/>
+  <meta property="og:description" content="Serrer un boîtier pendant quelques secondes paraît dérisoire. Pourtant, des études l'ont fait passer à des centaines de milliers de personnes, puis ont compté qui était encore en vie, qui marchait…"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/articles/force-de-poigne.html"/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="La force de poigne, un indicateur de santé"/>
+  <meta name="twitter:description" content="Serrer un boîtier pendant quelques secondes paraît dérisoire. Pourtant, des études l'ont fait passer à des centaines de milliers de personnes, puis ont compté qui était encore en vie, qui marchait…"/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"La force de poigne, un indicateur de santé","description":"Serrer un boîtier pendant quelques secondes paraît dérisoire. Pourtant, des études l'ont fait passer à des centaines de milliers de personnes, puis ont compté qui était encore en vie, qui marchait encore sans aide, qui était tombé malade. Cet article ne suppose pas que le test est utile : il le met à l'épreuve, du plus général au plus précis, puis te dit ce que tu peux en faire.","inLanguage":"fr","mainEntityOfPage":"https://www.the-hybridway.com/articles/force-de-poigne.html","url":"https://www.the-hybridway.com/articles/force-de-poigne.html","author":{"@type":"Organization","name":"THW Coaching"},"publisher":{"@type":"Organization","name":"THW Coaching"},"dateModified":"2026-10-22","articleSection":"Adultes · Force","isAccessibleForFree":false,"hasPart":{"@type":"WebPageElement","isAccessibleForFree":false,"cssSelector":".arx-reader"}}</script>
+  <!--SEO-END-->
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"><div class="arx-ssr"><style>.ax{
+  --bg:#ffffff; --fg:#0f1720; --body:#2a343d; --muted:#5b6670; --rule:#dfe5ea; --panel:#f3f6f8;
+  --accent:#0b6b7a; --hot:#b42318; --bar:#8aa0ad; --ref:#c4ccd2; --alt:#9a6a00; --strip:#0f1720; --strip-fg:#ffffff;
+  --note-bg:#fff7e0; --note-bd:#b08400; --note-fg:#4d3b00; --link:#0b6b7a; --key:#e8f2f4;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+;}html.dark .ax{
+  --bg:#0e1419; --fg:#eef2f5; --body:#c9d2d9; --muted:#97a3ad; --rule:#2b363f; --panel:#161e25;
+  --accent:#5cc0d0; --hot:#f2766b; --bar:#6f8795; --ref:#4a5963; --alt:#e0b44c; --strip:#000000; --strip-fg:#ffffff;
+  --note-bg:#2a2410; --note-bd:#b08400; --note-fg:#f0dca0; --link:#5cc0d0; --key:#14262b; color-scheme:dark;}.ax{color:var(--fg);font-family:var(--font)}
+.ax .kick{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax h1{font-size:clamp(28px,6vw,40px);line-height:1.12;margin:12px 0 16px;text-wrap:balance;color:var(--fg)}
+.ax .lede{font-size:19px;line-height:1.55;color:var(--body);margin:0 0 14px}
+.ax h2{font-size:24px;line-height:1.25;margin:48px 0 12px;text-wrap:balance;color:var(--fg)}
+.ax h3{font-size:17px;margin:22px 0 6px;color:var(--fg)}
+.ax p{font-size:17px;line-height:1.65;color:var(--body);margin:0 0 14px}
+.ax a{color:var(--link)}
+.ax sup a{text-decoration:none;font-size:.75em;padding:0 1px}
+.ax .key{background:var(--key);border-radius:10px;padding:16px 18px;margin:20px 0}
+.ax .key b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .key p{margin:0 0 10px;font-size:17px;color:var(--fg)}
+.ax .key p:last-child{margin-bottom:0}
+.ax .fig{background:var(--panel);border-radius:10px;padding:20px 20px 14px;margin:22px 0}
+.ax .fig h3{font-size:15px;margin:0 0 10px}
+.ax .sc{overflow-x:auto}
+.ax .fig svg{display:block;width:100%;min-width:500px;height:auto}
+.ax .legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--body);margin:0 0 8px}
+.ax .legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ax .cap{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.ax .steps{display:grid;gap:12px;margin:18px 0;padding:0;list-style:none;counter-reset:s}
+.ax .steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start}
+.ax .steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;grid-row:1 / span 2}
+.ax .steps b{font-size:17px;color:var(--fg)}
+.ax .steps span{font-size:16px;line-height:1.6;color:var(--body)}
+.ax .limit{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:24px 0}
+.ax .limit b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.ax .limit ul{margin:0;padding-left:18px}
+.ax .limit li{font-size:15px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .faq h3{margin-top:20px}
+.ax .src{font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px}
+.ax .src li{margin-bottom:6px;overflow-wrap:anywhere}
+.ax svg .grid{stroke:var(--rule);stroke-width:1}
+.ax svg .grid.base{stroke:var(--muted);stroke-dasharray:4 4}
+.ax svg .bar{fill:var(--bar)}
+.ax svg .hot{fill:var(--hot)}
+.ax svg .ref{fill:var(--ref)}
+.ax svg .acc{fill:var(--accent)}
+.ax svg .der{fill:var(--bar);fill-opacity:.55;stroke:var(--bar);stroke-width:1.5;stroke-dasharray:5 3}
+.ax svg .lab{font:12px var(--font);fill:var(--body)}
+.ax svg .tick{font:11px var(--font);fill:var(--muted)}
+.ax svg .val{font:600 14px var(--font);fill:var(--fg)}
+.ax svg .note-t{font:600 12px var(--font);fill:var(--accent)}
+.ax svg .ln{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.ax svg .ln.m{stroke:var(--accent)}
+.ax svg .ln.w{stroke:var(--alt)}
+.ax svg .dot.m{fill:var(--accent)}
+.ax svg .dot.w{fill:var(--alt)}
+.ax svg .gv{transform-box:fill-box;transform-origin:50% 100%}
+.ax .play svg .gv{animation:ax-gv .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .draw{stroke-dasharray:1;animation:ax-draw 1.8s ease-out both;animation-delay:var(--d,0s)}
+.ax .play svg .fade{animation:ax-fade .6s ease both;animation-delay:var(--d,1s)}
+@keyframes ax-gv{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ax-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes ax-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gv,.ax .play svg .draw,.ax .play svg .fade{animation:none}}
+.ax .stepn{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:4px}
+.ax h2.st{margin-top:56px;padding-top:28px;border-top:1px solid var(--rule)}
+.ax .q{border:2px solid var(--accent);border-radius:10px;padding:18px 20px;margin:22px 0;background:var(--bg)}
+.ax .q b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.ax .q p{font-size:20px;line-height:1.45;color:var(--fg);margin:0;font-weight:600}
+.ax .plan{margin:14px 0 6px;padding-left:22px}
+.ax .plan li{font-size:16px;line-height:1.55;color:var(--body);margin-bottom:6px}
+.ax .plan li b{color:var(--fg)}
+.ax .next{border-left:3px solid var(--accent);padding:2px 0 2px 14px;margin:20px 0 0;color:var(--muted);font-style:italic}
+.ax .next p{margin:0;color:var(--muted)}
+.ax .ans p b{color:var(--fg)}
+.ax .sub{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:28px 0 6px}
+.ax svg .gx{transform-box:fill-box;transform-origin:0 50%}
+.ax .play svg .gx{animation:ax-gx .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+@keyframes ax-gx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gx{animation:none}}
+.ax svg .band-m{fill:var(--accent);fill-opacity:.16}
+.ax svg .band-w{fill:var(--alt);fill-opacity:.2}
+.ax svg .trk{fill:var(--ref);fill-opacity:.45}
+.ax svg .seg{fill:var(--accent)}
+.ax svg .wm{fill:var(--alt)}</style><div class="arx-reader"><div class="ax"><div class="kick">Adultes · Force</div>
+<h1>La force de poigne, un indicateur de santé</h1>
+<p class="lede">Serrer un boîtier pendant quelques secondes paraît dérisoire. Pourtant, des études l'ont fait passer à des centaines de milliers de personnes, puis ont compté qui était encore en vie, qui marchait encore sans aide, qui était tombé malade. Cet article ne suppose pas que le test est utile : il le met à l'épreuve, du plus général au plus précis, puis te dit ce que tu peux en faire.</p>
+
+<h2>La question</h2>
+<p>Tu serres un dynamomètre, un boîtier à poignée muni d'une jauge, et tu lis un nombre en kilogrammes. Ce nombre est utilisé dans des recherches qui ont suivi de très grands groupes de personnes pendant des années. Des équipes l'ont mis en relation avec la durée de vie, les maladies du cœur, l'autonomie des personnes âgées. L'idée se résume vite en slogan : « ta poigne prédit ta durée de vie ».</p>
+<p>Cette idée plaît parce qu'elle est simple, mais elle demande deux précautions. Une mesure qui accompagne un risque n'est pas ce qui le provoque : un thermomètre qui monte ne cause pas la fièvre. Et la plupart de ces études portent sur des adultes d'âge moyen ou avancé, alors que toi, tu as peut-être 25 ou 35 ans.</p>
+<div class="q"><b>La question</b>
+<p>Ta force de poigne, mesurée une fois en quelques secondes, dit-elle quelque chose de fiable sur ta santé à venir ? Et si oui, que peux-tu en faire, à ton âge, pour que ce chiffre serve à autre chose qu'à t'inquiéter ?</p></div>
+<p>On se la pose parce que les deux mauvaises réponses coûtent. Ignorer le test, c'est passer à côté d'un repère qui coûte quelques secondes. Le sur-interpréter, c'est s'inquiéter d'un chiffre qui ne dit pas ce qu'on lui fait dire, ou muscler son avant-bras en croyant allonger sa vie.</p>
+
+<h2>Les enjeux</h2>
+<p>Ce qui est en jeu n'est pas la performance de salle de sport. Quatre choses dépendent de ta force musculaire, et donc de ce que ce test est censé refléter.</p>
+<p><b>Ton autonomie.</b> Te lever d'une chaise, marcher d'un bon pas, t'habiller seul : ces gestes demandent de la force, et on ne s'en aperçoit que lorsqu'elle manque.</p>
+<p><b>Ta santé et ta durée de vie.</b> De grandes cohortes relient la poigne aux décès par maladie cardiovasculaire, respiratoire et par cancer. Si ce lien tient, un test de quelques secondes est un outil de repérage presque gratuit. S'il ne tient pas, il ne doit servir ni à rassurer ni à alarmer.</p>
+<p><b>Ton capital de départ.</b> La force se construit jusqu'à la trentaine, tient quelques années, puis s'érode. Ce que tu bâtis maintenant détermine d'où tu pars pour la descente.</p>
+<p><b>Ton entraînement.</b> Si tu t'entraînes, tu veux savoir si ce chiffre mesure quelque chose d'utile ou un détail de la main, car la réponse change ce que tu travailles.</p>
+<p>Ces enjeux ne peuvent pas rester sans réponse : le test existe déjà et chacun l'interprétera de toute façon. Mieux vaut le faire avec les preuves en main. Voici le chemin.</p>
+<ol class="plan">
+<li><b>Ce que la poigne mesure.</b> Un témoin, pas la main elle-même.</li>
+<li><b>À quoi ressemble une poigne normale.</b> Une courbe de vie, avec de grands écarts.</li>
+<li><b>Le lien avec la durée de vie.</b> Sur des centaines de milliers de personnes.</li>
+<li><b>Le lien avec l'autonomie, à tout âge.</b> Au-delà de la mortalité.</li>
+<li><b>Les objections.</b> L'âge, la maladie, la force des jambes, la causalité.</li>
+<li><b>Ce qui peut changer, et ce qui reste incertain.</b> Entraînement, jeunes adultes.</li>
+</ol>
+
+</div></div></div></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script type="text/babel" src="components/site/Articles.jsx"></script>
+
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArticlesPage/>);
+  </script>
+
+  <!-- Session + compte partagés, puis i18n (chargés AVANT que Babel exécute le montage). -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-10.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
+  <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-13.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
+  <script src="components/site/i18n-dict-15.js"></script>
+  <script src="components/site/i18n-dict-16.js"></script>
+  <script src="components/site/i18n-dict-17.js"></script>
+  <script src="components/site/i18n-dict-18.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

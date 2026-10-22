@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/"/>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Être mince n'est pas être en forme — THW Coaching</title>
+  <meta name="robots" content="index,follow"/>
+  <meta name="description" content="Tu montes sur une balance, elle te donne un chiffre. Tu passes un test de forme, il t'en donne un autre. On croit souvent que le second n'est qu'une version plus fine du premier. Les études suivies…"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+  <link rel="stylesheet" href="articles.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+<script src="/site/stats.js" defer></script>
+  <!--SEO-START-->
+  <link rel="canonical" href="https://www.the-hybridway.com/articles/poids-et-forme-physique.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:title" content="Être mince n'est pas être en forme"/>
+  <meta property="og:description" content="Tu montes sur une balance, elle te donne un chiffre. Tu passes un test de forme, il t'en donne un autre. On croit souvent que le second n'est qu'une version plus fine du premier. Les études suivies…"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/articles/poids-et-forme-physique.html"/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Être mince n'est pas être en forme"/>
+  <meta name="twitter:description" content="Tu montes sur une balance, elle te donne un chiffre. Tu passes un test de forme, il t'en donne un autre. On croit souvent que le second n'est qu'une version plus fine du premier. Les études suivies…"/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Être mince n'est pas être en forme","description":"Tu montes sur une balance, elle te donne un chiffre. Tu passes un test de forme, il t'en donne un autre. On croit souvent que le second n'est qu'une version plus fine du premier. Les études suivies sur des centaines de milliers d'adultes disent autre chose : à poids égal, la condition physique sépare des trajectoires très différentes, et un poids bas ne garantit ni une bonne forme ni une bonne santé.","inLanguage":"fr","mainEntityOfPage":"https://www.the-hybridway.com/articles/poids-et-forme-physique.html","url":"https://www.the-hybridway.com/articles/poids-et-forme-physique.html","author":{"@type":"Organization","name":"THW Coaching"},"publisher":{"@type":"Organization","name":"THW Coaching"},"dateModified":"2026-10-22","articleSection":"Santé · Poids et condition physique","isAccessibleForFree":false,"hasPart":{"@type":"WebPageElement","isAccessibleForFree":false,"cssSelector":".arx-reader"}}</script>
+  <!--SEO-END-->
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"><div class="arx-ssr"><style>.ax{
+  --bg:#ffffff; --fg:#0f1720; --body:#2a343d; --muted:#5b6670; --rule:#dfe5ea; --panel:#f3f6f8;
+  --accent:#0b6b7a; --hot:#b42318; --bar:#8aa0ad; --ref:#c4ccd2; --strip:#0f1720; --strip-fg:#ffffff;
+  --note-bg:#fff7e0; --note-bd:#b08400; --note-fg:#4d3b00; --link:#0b6b7a; --key:#e8f2f4;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+;}html.dark .ax{
+  --bg:#0e1419; --fg:#eef2f5; --body:#c9d2d9; --muted:#97a3ad; --rule:#2b363f; --panel:#161e25;
+  --accent:#5cc0d0; --hot:#f2766b; --bar:#6f8795; --ref:#4a5963; --strip:#000000; --strip-fg:#ffffff;
+  --note-bg:#2a2410; --note-bd:#b08400; --note-fg:#f0dca0; --link:#5cc0d0; --key:#14262b; color-scheme:dark;}.ax{color:var(--fg);font-family:var(--font)}
+.ax .kick{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax h1{font-size:clamp(28px,6vw,40px);line-height:1.12;margin:12px 0 16px;text-wrap:balance;color:var(--fg)}
+.ax .lede{font-size:19px;line-height:1.55;color:var(--body);margin:0 0 14px}
+.ax h2{font-size:24px;line-height:1.25;margin:48px 0 12px;text-wrap:balance;color:var(--fg)}
+.ax h3{font-size:17px;margin:22px 0 6px;color:var(--fg)}
+.ax p{font-size:17px;line-height:1.65;color:var(--body);margin:0 0 14px}
+.ax a{color:var(--link)}
+.ax sup a{text-decoration:none;font-size:.75em;padding:0 1px}
+.ax .key{background:var(--key);border-radius:10px;padding:16px 18px;margin:20px 0}
+.ax .key b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .key p{margin:0;font-size:17px;color:var(--fg)}
+.ax .fig{background:var(--panel);border-radius:10px;padding:20px 20px 14px;margin:22px 0}
+.ax .fig h3{font-size:15px;margin:0 0 10px}
+.ax .fig svg{display:block;max-width:100%;height:auto}
+.ax .cap{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.ax .steps{display:grid;gap:12px;margin:18px 0;padding:0;list-style:none;counter-reset:s}
+.ax .steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start}
+.ax .steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;grid-row:1 / span 2}
+.ax .steps b{font-size:17px;color:var(--fg)}
+.ax .steps span{font-size:16px;line-height:1.6;color:var(--body)}
+.ax .limit{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:24px 0}
+.ax .limit b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.ax .limit ul{margin:0;padding-left:18px}
+.ax .limit li{font-size:15px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .faq h3{margin-top:20px}
+.ax .src{font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px}
+.ax .src li{margin-bottom:6px}
+.ax svg .grid{stroke:var(--rule);stroke-width:1}
+.ax svg .grid.base{stroke:var(--muted);stroke-dasharray:4 4}
+.ax svg .bar{fill:var(--bar)}
+.ax svg .hot{fill:var(--hot)}
+.ax svg .ref{fill:var(--ref)}
+.ax svg .acc{fill:var(--accent)}
+.ax svg .lab{font:12px var(--font);fill:var(--body)}
+.ax svg .tick{font:11px var(--font);fill:var(--muted)}
+.ax svg .val{font:600 14px var(--font);fill:var(--fg)}
+.ax svg .note-t{font:600 12px var(--font);fill:var(--accent)}
+.ax svg .arrow{stroke:var(--accent);stroke-width:2;fill:none}
+.ax svg .gv{transform-box:fill-box;transform-origin:50% 100%}
+.ax svg .gh{transform-box:fill-box;transform-origin:0 50%}
+.ax .play svg .gv{animation:ax-gv .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .gh{animation:ax-gh .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .fade{animation:ax-fade .6s ease both;animation-delay:var(--d,1s)}
+@keyframes ax-gv{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ax-gh{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes ax-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gv,.ax .play svg .gh,.ax .play svg .fade{animation:none}}
+.ax h3.step{font-size:22px;line-height:1.28;margin:6px 0 14px;text-wrap:balance}
+.ax .stage{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:44px}
+.ax .key.ask{background:var(--panel);border:1px solid var(--accent)}
+.ax svg .hd{font:600 13px var(--font);fill:var(--fg)}
+.ax svg .whisk{fill:var(--muted)}
+.ax svg .dacc{fill:var(--accent)}
+.ax svg .dhot{fill:var(--hot)}
+.ax svg .num{font-variant-numeric:tabular-nums}
+.ax .fig{overflow-x:auto}</style><div class="arx-reader"><div class="ax"><div class="kick">Santé · Poids et condition physique</div>
+<h1>Être mince n'est pas être en forme</h1>
+<p class="lede">Tu montes sur une balance, elle te donne un chiffre. Tu passes un test de forme, il t'en donne un autre. On croit souvent que le second n'est qu'une version plus fine du premier. Les études suivies sur des centaines de milliers d'adultes disent autre chose : à poids égal, la condition physique sépare des trajectoires très différentes, et un poids bas ne garantit ni une bonne forme ni une bonne santé.</p>
+
+<h2>La problématique</h2>
+<p>Prends deux personnes de 35 ans, un exemple imaginaire pour poser le problème. Camille pèse 58 kg, mange peu, ne bouge presque jamais. Thomas pèse 98 kg et s'entraîne quatre fois par semaine depuis des années. Sur une balance, Camille est « mieux ». Sur un test d'endurance ou de force, l'écart irait très probablement dans l'autre sens. Laquelle des deux a le plus de chances d'être en bonne santé dans vingt ans ?</p>
+<p>Beaucoup de gens répondent Camille sans hésiter, parce que la minceur sert de raccourci à la santé dans toute la culture du sport et de la santé publique. Ce raccourci est-il justifié ? C'est la question que posent, sans le dire, tous les tests de ce site : ils ne pèsent rien. Ils mesurent ce que ton corps sait faire, à une vitesse, une charge, une durée données. Si poids et condition physique étaient la même chose, ces tests ne t'apprendraient rien que ta balance ne sache déjà.</p>
+<div class="key ask"><b>La question</b><p>Le poids et la condition physique mesurent-ils la même chose ? Quand ta balance baisse, ta forme monte-t-elle, et quand ta balance est basse, es-tu en forme ?</p></div>
+
+<h2>Les enjeux</h2>
+<p>Ce n'est pas une querelle d'experts. Selon ce que tu crois, tu ne fais pas les mêmes choix, et ces choix ont des conséquences concrètes.</p>
+<p><b>Ta santé.</b> Si le poids est ton seul tableau de bord, une personne mince et sédentaire reçoit un faux signal rassurant. À l'inverse, une personne plus lourde qui s'entraîne régulièrement reçoit un signal d'échec permanent, alors que son corps fait peut-être exactement ce qu'il faut. Dans les deux cas, le chiffre ne dit pas ce que tu crois.</p>
+<p><b>Ta méthode.</b> Si l'objectif est un poids, on peut l'atteindre en mangeant moins et en bougeant peu. Cela ne construit aucune capacité, et la revue de Gaesser et Angadi (2021) rapporte que les variations répétées de poids sont associées à une perte de muscle.<sup><span>14</span></sup> Si l'objectif est une performance, le chemin passe par l'entraînement, qui change le corps de l'intérieur, qu'il fasse bouger la balance ou non.</p>
+<p><b>Ton autonomie et ta durée de vie.</b> Le muscle et l'endurance déterminent ce que tu peux faire à 40, 60 ou 80 ans : porter, monter, courir après un bus, te relever. Dans une étude de plus de 3 600 adultes âgés, le quart ayant la plus grande masse musculaire avait une mortalité plus faible que le quart en ayant le moins.<sup><span>12</span></sup> Ce que la balance regroupe sous un seul chiffre a donc des parties qui ne pèsent pas pareil sur ton avenir.</p>
+<p>Il serait malhonnête de répondre « le poids ne compte pas ». On va voir qu'il compte. Mais la question reste entière : compte-t-il pour la même raison, au même endroit, que la condition physique ? Tant qu'elle n'a pas de réponse, tu suis peut-être le mauvais chiffre.</p>
+
+</div></div></div></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script type="text/babel" src="components/site/Articles.jsx"></script>
+
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArticlesPage/>);
+  </script>
+
+  <!-- Session + compte partagés, puis i18n (chargés AVANT que Babel exécute le montage). -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-10.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
+  <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-13.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
+  <script src="components/site/i18n-dict-15.js"></script>
+  <script src="components/site/i18n-dict-16.js"></script>
+  <script src="components/site/i18n-dict-17.js"></script>
+  <script src="components/site/i18n-dict-18.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

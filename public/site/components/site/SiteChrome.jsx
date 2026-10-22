@@ -707,4 +707,44 @@ function useReveal() {
   }, []);
 }
 
-Object.assign(window, { LoginModal: LoginModal, SiteHeader: SiteHeader, SiteFooter: SiteFooter, AuthForm: AuthForm, authNext: authNext, AuthStyles: AuthStyles, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });
+
+/* ─── À lire : liens vers les articles liés (pages de tests, épreuves…). Données réelles via /api/articles. ─── */
+function ArticleLinks(props) {
+  var [items, setItems] = React.useState(null);
+  var slugs = props.slugs || [];
+  var key = slugs.join(',');
+  React.useEffect(function () {
+    var dead = false;
+    if (!window.__thwArticleList) {
+      window.__thwArticleList = fetch('/api/articles', { credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+        .then(function (j) { return j.articles || []; })
+        .catch(function () { window.__thwArticleList = null; return []; });
+    }
+    window.__thwArticleList.then(function (all) {
+      if (dead) return;
+      var by = {}; all.forEach(function (a) { by[a.slug] = a; });
+      setItems(slugs.map(function (sl) { return by[sl]; }).filter(Boolean).slice(0, props.max || 3));
+    });
+    return function () { dead = true; };
+  }, [key]);
+  if (!items || !items.length) return null;
+  return (
+    <div className="ak-wrap">
+      <style>{'.ak-wrap{max-width:1120px;margin:0 auto;padding:8px 24px 56px}.ak-card{background:var(--bg-card,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.1));border-radius:16px;padding:22px}.ak-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ak-head h2{margin:0;font-size:1.15rem;font-family:var(--font-display,inherit)}.ak-head a{font-size:.9rem;color:var(--brand,#38bdf8);text-decoration:none}.ak-head a:hover{text-decoration:underline}.ak-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.ak-item{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:12px;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s}.ak-item:hover{border-color:var(--brand,#38bdf8);transform:translateY(-2px)}.ak-item .t{font-weight:600;line-height:1.3}.ak-item .m{font-size:.8rem;opacity:.7}@media (max-width:600px){.ak-wrap{padding:8px 16px 40px}}@media (prefers-reduced-motion:reduce){.ak-item{transition:none}.ak-item:hover{transform:none}}'}</style>
+      <div className="ak-card">
+        <div className="ak-head"><h2>{props.title || 'À lire sur le sujet'}</h2><a href="articles.html">Tous les articles</a></div>
+        <div className="ak-grid">
+          {items.map(function (a) {
+            return <a key={a.slug} className="ak-item" href={'/articles/' + a.slug + '.html'}>
+              <span className="t" data-no-i18n="1">{a.title}</span>
+              <span className="m"><span data-no-i18n="1">{a.minutes}</span> min de lecture</span>
+            </a>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { ArticleLinks: ArticleLinks, LoginModal: LoginModal, SiteHeader: SiteHeader, SiteFooter: SiteFooter, AuthForm: AuthForm, authNext: authNext, AuthStyles: AuthStyles, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });

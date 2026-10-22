@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/"/>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Mon enfant manque de forme : par où commencer ? — THW Coaching</title>
+  <meta name="robots" content="index,follow"/>
+  <meta name="description" content="Ton enfant s'essouffle vite, finit dernier aux jeux de course, préfère l'écran au parc. Tu te demandes s'il faut le « faire s'entraîner ». La recherche répond autrement : à cet âge, on ne fait pas…"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+  <link rel="stylesheet" href="articles.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+<script src="/site/stats.js" defer></script>
+  <!--SEO-START-->
+  <link rel="canonical" href="https://www.the-hybridway.com/articles/enfant-en-manque-de-forme.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:title" content="Mon enfant manque de forme : par où commencer ?"/>
+  <meta property="og:description" content="Ton enfant s'essouffle vite, finit dernier aux jeux de course, préfère l'écran au parc. Tu te demandes s'il faut le « faire s'entraîner ». La recherche répond autrement : à cet âge, on ne fait pas…"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/articles/enfant-en-manque-de-forme.html"/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Mon enfant manque de forme : par où commencer ?"/>
+  <meta name="twitter:description" content="Ton enfant s'essouffle vite, finit dernier aux jeux de course, préfère l'écran au parc. Tu te demandes s'il faut le « faire s'entraîner ». La recherche répond autrement : à cet âge, on ne fait pas…"/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Mon enfant manque de forme : par où commencer ?","description":"Ton enfant s'essouffle vite, finit dernier aux jeux de course, préfère l'écran au parc. Tu te demandes s'il faut le « faire s'entraîner ». La recherche répond autrement : à cet âge, on ne fait pas de plan d'entraînement. On fait de la place au jeu, aux habiletés motrices, au sommeil, et on le fait ensemble, longtemps. Le plan ci-dessous est écrit pour toi, le parent, et il se lit en jeux et en habitudes, pas en séances.","inLanguage":"fr","mainEntityOfPage":"https://www.the-hybridway.com/articles/enfant-en-manque-de-forme.html","url":"https://www.the-hybridway.com/articles/enfant-en-manque-de-forme.html","author":{"@type":"Organization","name":"THW Coaching"},"publisher":{"@type":"Organization","name":"THW Coaching"},"dateModified":"2026-10-22","articleSection":"Enfant, 6 à 11 ans","isAccessibleForFree":false,"hasPart":{"@type":"WebPageElement","isAccessibleForFree":false,"cssSelector":".arx-reader"}}</script>
+  <!--SEO-END-->
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"><div class="arx-ssr"><style>.ax{
+  --bg:#ffffff; --fg:#0f1720; --body:#2a343d; --muted:#5b6670; --rule:#dfe5ea; --panel:#f3f6f8;
+  --accent:#0b6b7a; --hot:#b42318; --bar:#8aa0ad; --ref:#c4ccd2; --strip:#0f1720; --strip-fg:#ffffff;
+  --note-bg:#fff7e0; --note-bd:#b08400; --note-fg:#4d3b00; --link:#0b6b7a; --key:#e8f2f4;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+;}html.dark .ax{
+  --bg:#0e1419; --fg:#eef2f5; --body:#c9d2d9; --muted:#97a3ad; --rule:#2b363f; --panel:#161e25;
+  --accent:#5cc0d0; --hot:#f2766b; --bar:#6f8795; --ref:#4a5963; --strip:#000000; --strip-fg:#ffffff;
+  --note-bg:#2a2410; --note-bd:#b08400; --note-fg:#f0dca0; --link:#5cc0d0; --key:#14262b; color-scheme:dark;}.ax{color:var(--fg);font-family:var(--font)}
+.ax .kick{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax h1{font-size:clamp(28px,6vw,40px);line-height:1.12;margin:12px 0 16px;text-wrap:balance;color:var(--fg)}
+.ax .lede{font-size:19px;line-height:1.55;color:var(--body);margin:0 0 14px}
+.ax h2{font-size:24px;line-height:1.25;margin:48px 0 12px;text-wrap:balance;color:var(--fg)}
+.ax h3{font-size:17px;margin:22px 0 6px;color:var(--fg)}
+.ax p{font-size:17px;line-height:1.65;color:var(--body);margin:0 0 14px}
+.ax a{color:var(--link)}
+.ax sup a{text-decoration:none;font-size:.75em;padding:0 1px}
+.ax .key{background:var(--key);border-radius:10px;padding:16px 18px;margin:20px 0}
+.ax .key b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .key p{margin:0;font-size:17px;color:var(--fg)}
+.ax .fig{background:var(--panel);border-radius:10px;padding:20px 20px 14px;margin:22px 0}
+.ax .fig h3{font-size:15px;margin:0 0 10px}
+.ax .fig svg{display:block;max-width:100%;height:auto}
+.ax .cap{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.ax .steps{display:grid;gap:12px;margin:18px 0;padding:0;list-style:none;counter-reset:s}
+.ax .steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start}
+.ax .steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;grid-row:1 / span 2}
+.ax .steps b{font-size:17px;color:var(--fg)}
+.ax .steps span{font-size:16px;line-height:1.6;color:var(--body)}
+.ax .limit{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:24px 0}
+.ax .limit b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.ax .limit ul{margin:0;padding-left:18px}
+.ax .limit li{font-size:15px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .faq h3{margin-top:20px}
+.ax .src{font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px}
+.ax .src li{margin-bottom:6px}
+.ax svg .grid{stroke:var(--rule);stroke-width:1}
+.ax svg .grid.base{stroke:var(--muted);stroke-dasharray:4 4}
+.ax svg .bar{fill:var(--bar)}
+.ax svg .hot{fill:var(--hot)}
+.ax svg .ref{fill:var(--ref)}
+.ax svg .acc{fill:var(--accent)}
+.ax svg .lab{font:12px var(--font);fill:var(--body)}
+.ax svg .tick{font:11px var(--font);fill:var(--muted)}
+.ax svg .val{font:600 14px var(--font);fill:var(--fg)}
+.ax svg .note-t{font:600 12px var(--font);fill:var(--accent)}
+.ax svg .arrow{stroke:var(--accent);stroke-width:2;fill:none}
+.ax svg .gv{transform-box:fill-box;transform-origin:50% 100%}
+.ax svg .gh{transform-box:fill-box;transform-origin:0 50%}
+.ax .play svg .gv{animation:ax-gv .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .gh{animation:ax-gh .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .fade{animation:ax-fade .6s ease both;animation-delay:var(--d,1s)}
+@keyframes ax-gv{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ax-gh{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes ax-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gv,.ax .play svg .gh,.ax .play svg .fade{animation:none}}
+.ax svg .gd{transform-box:fill-box;transform-origin:50% 0}
+.ax .play svg .gd{animation:ax-gd .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+@keyframes ax-gd{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gd{animation:none}}
+.ax .tests{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:18px 0}
+.ax .tests div{border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
+.ax .tests b{display:block;font-size:15px;color:var(--fg);margin-bottom:3px}
+.ax .tests span{font-size:14px;line-height:1.5;color:var(--body)}
+.ax .phase{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:16px 0}
+.ax .phase h3{margin:0 0 4px;font-size:18px}
+.ax .phase .when{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax .phase ul{margin:8px 0 0;padding-left:20px}
+.ax .phase li{font-size:16px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .phase li b{color:var(--fg)}
+.ax .flag{border-left:4px solid var(--hot);background:var(--panel);padding:14px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+.ax .flag b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--hot);margin-bottom:6px}
+.ax .flag p,.ax .flag li{font-size:16px}
+.ax .flag ul{margin:6px 0 0;padding-left:20px}
+.ax .q{border:2px solid var(--accent);border-radius:10px;padding:16px 18px;margin:22px 0}
+.ax .q b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .q p{margin:0;font-size:19px;line-height:1.5;color:var(--fg)}
+.ax .errs{list-style:none;padding:0;display:grid;gap:12px;margin:14px 0}
+.ax .errs b{display:block;font-size:17px;color:var(--fg)}
+.ax .errs span{font-size:16px;line-height:1.6;color:var(--body)}</style><div class="arx-reader"><div class="ax"><div class="kick">Parents · Enfant de 6 à 11 ans</div>
+<h1>Mon enfant manque de forme : par où commencer ?</h1>
+<p class="lede">Ton enfant s'essouffle vite, finit dernier aux jeux de course, préfère l'écran au parc. Tu te demandes s'il faut le « faire s'entraîner ». La recherche répond autrement : à cet âge, on ne fait pas de plan d'entraînement. On fait de la place au jeu, aux habiletés motrices, au sommeil, et on le fait ensemble, longtemps. Le plan ci-dessous est écrit pour toi, le parent, et il se lit en jeux et en habitudes, pas en séances.</p>
+
+<h2>La question</h2>
+<div class="q"><b>La question</b><p>Un enfant de 6 à 11 ans manque de forme. Que faire concrètement, sans en faire ni un patient ni un petit sportif, et comment savoir quand demander un avis médical ?</p></div>
+<p>Pour poser le problème, prenons un enfant de 8 ans. C'est un profil illustratif, pas une personne réelle. Il aime les dessins animés et les jeux vidéo. En sport à l'école, il n'aime pas la course, parce qu'il arrive souvent derrière les autres. Il est parfois un peu rond. Il s'endort tard. Ses parents voient qu'il se fatigue plus vite que ses cousins et hésitent entre trois réponses : l'inscrire à un sport, « le mettre au régime », ou attendre que ça passe.</p>
+<p>Chacune de ces trois réponses peut mal tourner. Un sport choisi sans lui peut renforcer l'idée qu'il n'est « pas doué ». Un régime décidé sur son corps peut abîmer son rapport à lui-même. Attendre laisse s'installer des habitudes qui deviendront plus lentes à changer. L'objectif de cet article est de te donner une quatrième voie, appuyée sur ce qui a été mesuré.</p>
+
+<h2>Les enjeux</h2>
+<p>Ce qui est en jeu n'est pas la performance. C'est la place que le mouvement prendra dans la vie de ton enfant. Un enfant qui se sent compétent dans les gestes de base (courir, sauter, lancer, attraper) a des raisons de bouger. Un enfant qui se sent maladroit en a de moins en moins, et se met à l'écart des jeux où il pourrait progresser. Nous verrons plus loin qu'une étude de suivi relie justement ces deux choses.<sup><span>7</span></sup></p>
+<p>Il y a aussi un enjeu collectif, qui te concerne sans que tu y sois pour rien. Selon Santé publique France, dans l'étude Esteban (2014-2016), seulement la moitié des garçons et un tiers des filles atteignaient les recommandations d'activité physique de l'OMS, sans amélioration depuis 2006-2007, avec un temps d'écran quotidien en forte hausse.<sup><span>16</span></sup> Ton enfant n'est donc pas une exception : le contexte actuel pousse à l'immobilité. Ce n'est pas un défaut de ta part ni de la sienne.</p>
+<p>Enfin, il y a un risque inverse, qu'il faut nommer : transformer un manque de forme en problème de poids, puis en sujet de honte. La Haute Autorité de santé (HAS) écrit que prévenir et combattre la stigmatisation est « primordial ».<sup><span>4</span></sup> Toute la suite est construite pour que ton enfant ne soit jamais le sujet du problème, mais un membre de la famille qui change ses habitudes avec les autres.</p>
+
+<div class="key"><b>Ce qui change selon le profil, et ce qui ne change pas</b><p>Le fond d'un plan de remise en forme est commun à tous les âges : un peu de volume régulier, de la force, de la progression, une mesure, de la récupération. Chez l'enfant de 6 à 11 ans, ce qui change, c'est le point de départ (le jeu, pas la séance), la dose (une moyenne de 60 minutes par jour, tout mouvement compris), ce qu'on évite (le régime, les comparaisons, le chrono pris au sérieux), les obstacles (c'est le parent qui organise la journée) et les moments où il faut demander un avis médical.</p></div>
+
+</div></div></div></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script type="text/babel" src="components/site/Articles.jsx"></script>
+
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArticlesPage/>);
+  </script>
+
+  <!-- Session + compte partagés, puis i18n (chargés AVANT que Babel exécute le montage). -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-10.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
+  <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-13.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
+  <script src="components/site/i18n-dict-15.js"></script>
+  <script src="components/site/i18n-dict-16.js"></script>
+  <script src="components/site/i18n-dict-17.js"></script>
+  <script src="components/site/i18n-dict-18.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

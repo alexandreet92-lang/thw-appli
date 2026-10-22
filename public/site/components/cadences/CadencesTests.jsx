@@ -263,6 +263,7 @@
           {!pr.data ? <Loading err={pr.err} retry={pr.retry}/> : (filter === 'all' ? <GroupedTests list={list}/> : <CardsGrid list={list}/>)}
           <AllEpreuves/>
         </main>
+        {window.ArticleLinks ? <window.ArticleLinks slugs={['mesurer-pour-progresser', 'test-standardise-ou-ressenti', 'lire-un-bareme', 'tester-sa-forme-chez-soi']}/> : null}
         <SiteFooter/>
       </div>
     );

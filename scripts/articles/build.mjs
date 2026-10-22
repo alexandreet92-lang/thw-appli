@@ -124,7 +124,7 @@ for (const [id] of LIST) {
   REF[key] = { slug, title }
 }
 used.clear()
-const link = (k, label) => `<a href="articles.html?a=${REF[k].slug}" data-art="${REF[k].slug}">${label}</a>`
+const link = (k, label) => `<a href="/articles/${REF[k].slug}.html" data-art="${REF[k].slug}">${label}</a>`
 function linkRefs(html) {
   let inSvg = false, inA = false
   return html.split(/(<[^>]+>)/).map(t => {

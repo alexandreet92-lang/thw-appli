@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/"/>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Mesurer pour progresser : s'entraîner ne suffit pas — THW Coaching</title>
+  <meta name="robots" content="index,follow"/>
+  <meta name="description" content="Tu t'entraînes, tu te sens de mieux en mieux, et personne ne te demande jamais de chiffre. Cet article pose une question simple et la traite jusqu'au bout : à quoi sert de mesurer sa condition…"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+  <link rel="stylesheet" href="articles.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+<script src="/site/stats.js" defer></script>
+  <!--SEO-START-->
+  <link rel="canonical" href="https://www.the-hybridway.com/articles/mesurer-pour-progresser.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:title" content="Mesurer pour progresser : s'entraîner ne suffit pas"/>
+  <meta property="og:description" content="Tu t'entraînes, tu te sens de mieux en mieux, et personne ne te demande jamais de chiffre. Cet article pose une question simple et la traite jusqu'au bout : à quoi sert de mesurer sa condition…"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/articles/mesurer-pour-progresser.html"/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Mesurer pour progresser : s'entraîner ne suffit pas"/>
+  <meta name="twitter:description" content="Tu t'entraînes, tu te sens de mieux en mieux, et personne ne te demande jamais de chiffre. Cet article pose une question simple et la traite jusqu'au bout : à quoi sert de mesurer sa condition…"/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Mesurer pour progresser : s'entraîner ne suffit pas","description":"Tu t'entraînes, tu te sens de mieux en mieux, et personne ne te demande jamais de chiffre. Cet article pose une question simple et la traite jusqu'au bout : à quoi sert de mesurer sa condition physique, quand on s'entraîne déjà ? On part de ce que tu ressens, on descend vers ce qui se passe réellement dans le corps, puis on regarde ce que cela change pour ta santé. À la fin, tu sauras ce qui est démontré, ce qui ne l'est pas, et quoi faire concrètement.","inLanguage":"fr","mainEntityOfPage":"https://www.the-hybridway.com/articles/mesurer-pour-progresser.html","url":"https://www.the-hybridway.com/articles/mesurer-pour-progresser.html","author":{"@type":"Organization","name":"THW Coaching"},"publisher":{"@type":"Organization","name":"THW Coaching"},"dateModified":"2026-10-22","articleSection":"Central · Mesure","isAccessibleForFree":false,"hasPart":{"@type":"WebPageElement","isAccessibleForFree":false,"cssSelector":".arx-reader"}}</script>
+  <!--SEO-END-->
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"><div class="arx-ssr"><style>.ax{
+  --bg:#ffffff; --fg:#0f1720; --body:#2a343d; --muted:#5b6670; --rule:#dfe5ea; --panel:#f3f6f8;
+  --accent:#0b6b7a; --hot:#b42318; --bar:#8aa0ad; --ref:#c4ccd2; --strip:#0f1720; --strip-fg:#ffffff;
+  --note-bg:#fff7e0; --note-bd:#b08400; --note-fg:#4d3b00; --link:#0b6b7a; --key:#e8f2f4;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+;}html.dark .ax{
+  --bg:#0e1419; --fg:#eef2f5; --body:#c9d2d9; --muted:#97a3ad; --rule:#2b363f; --panel:#161e25;
+  --accent:#5cc0d0; --hot:#f2766b; --bar:#6f8795; --ref:#4a5963; --strip:#000000; --strip-fg:#ffffff;
+  --note-bg:#2a2410; --note-bd:#b08400; --note-fg:#f0dca0; --link:#5cc0d0; --key:#14262b; color-scheme:dark;}.ax{color:var(--fg);font-family:var(--font)}
+.ax .kick{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax h1{font-size:clamp(28px,6vw,40px);line-height:1.12;margin:12px 0 16px;text-wrap:balance;color:var(--fg)}
+.ax .lede{font-size:19px;line-height:1.55;color:var(--body);margin:0 0 14px}
+.ax h2{font-size:24px;line-height:1.25;margin:48px 0 12px;text-wrap:balance;color:var(--fg)}
+.ax h3{font-size:17px;margin:22px 0 6px;color:var(--fg)}
+.ax p{font-size:17px;line-height:1.65;color:var(--body);margin:0 0 14px}
+.ax a{color:var(--link)}
+.ax sup a{text-decoration:none;font-size:.75em;padding:0 1px}
+.ax .key{background:var(--key);border-radius:10px;padding:16px 18px;margin:20px 0}
+.ax .key b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .key p{margin:0 0 10px;font-size:17px;color:var(--fg)}
+.ax .key p:last-child{margin-bottom:0}
+.ax .fig{background:var(--panel);border-radius:10px;padding:20px 20px 14px;margin:22px 0;min-width:0}
+.ax .fig h3{font-size:15px;margin:0 0 10px}
+.ax .fig svg{display:block;max-width:100%;height:auto}
+.ax .cap{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.ax .leg{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--body);margin:8px 0 0}
+.ax .leg i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.ax .steps{display:grid;gap:12px;margin:18px 0;padding:0;list-style:none;counter-reset:s}
+.ax .steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start}
+.ax .steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;grid-row:1 / span 2}
+.ax .steps b{font-size:17px;color:var(--fg)}
+.ax .steps span{font-size:16px;line-height:1.6;color:var(--body)}
+.ax .limit{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:24px 0}
+.ax .limit b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.ax .limit ul{margin:0;padding-left:18px}
+.ax .limit li{font-size:15px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .faq h3{margin-top:20px}
+.ax .src{font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px}
+.ax .src li{margin-bottom:6px}
+.ax svg .grid{stroke:var(--rule);stroke-width:1}
+.ax svg .grid.base{stroke:var(--muted);stroke-dasharray:4 4}
+.ax svg .bar{fill:var(--bar)}
+.ax svg .hot{fill:var(--hot)}
+.ax svg .ref{fill:var(--ref)}
+.ax svg .acc{fill:var(--accent)}
+.ax svg .lab{font:12px var(--font);fill:var(--body)}
+.ax svg .tick{font:11px var(--font);fill:var(--muted)}
+.ax svg .val{font:600 14px var(--font);fill:var(--fg)}
+.ax svg .note-t{font:600 12px var(--font);fill:var(--accent)}
+.ax svg .arrow{stroke:var(--accent);stroke-width:2;fill:none}
+.ax svg .line{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:1}
+.ax svg .line.m{stroke:var(--accent)}
+.ax svg .line.f{stroke:var(--hot)}
+.ax svg .dot.m{fill:var(--accent)}
+.ax svg .dot.f{fill:var(--hot)}
+.ax svg .gv{transform-box:fill-box;transform-origin:50% 100%}
+.ax svg .gh{transform-box:fill-box;transform-origin:0 50%}
+.ax .play svg .gv{animation:ax-gv .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .gh{animation:ax-gh .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .fade{animation:ax-fade .6s ease both;animation-delay:var(--d,1s)}
+.ax .play svg .line{animation:ax-draw 1.4s ease both;animation-delay:var(--d,0s)}
+@keyframes ax-gv{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ax-gh{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes ax-fade{from{opacity:0}to{opacity:1}}
+@keyframes ax-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gv,.ax .play svg .gh,.ax .play svg .fade,.ax .play svg .line{animation:none}}
+.ax .q{border:2px solid var(--accent);border-radius:10px;padding:18px 20px;margin:22px 0;background:var(--bg)}
+.ax .q b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.ax .q p{font-size:20px;line-height:1.45;color:var(--fg);margin:0;font-weight:600}
+.ax .stepk{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+.ax .plan{margin:16px 0 8px;padding-left:22px}
+.ax .plan li{font-size:16px;line-height:1.55;color:var(--body);margin-bottom:4px}
+.ax .bridge{font-style:italic}</style><div class="arx-reader"><div class="ax"><div class="kick">Central · Mesure</div>
+<h1>Mesurer pour progresser : s'entraîner ne suffit pas</h1>
+<p class="lede">Tu t'entraînes, tu te sens de mieux en mieux, et personne ne te demande jamais de chiffre. Cet article pose une question simple et la traite jusqu'au bout : à quoi sert de mesurer sa condition physique, quand on s'entraîne déjà ? On part de ce que tu ressens, on descend vers ce qui se passe réellement dans le corps, puis on regarde ce que cela change pour ta santé. À la fin, tu sauras ce qui est démontré, ce qui ne l'est pas, et quoi faire concrètement.</p>
+
+<h2>La question</h2>
+<p>Presque tout le monde pense qu'une bonne façon de progresser est de s'entraîner davantage. C'est vrai, et rien dans cet article ne dit le contraire. Mais si c'était suffisant, personne n'aurait besoin de mesurer quoi que ce soit : il suffirait de bouger régulièrement et d'attendre les résultats.</p>
+<p>Or il existe une pratique différente, très courante chez les athlètes et dans les protocoles de recherche : on passe un test standardisé, on note le chiffre, on le compare à un repère, puis on refait le test plus tard. Cela prend du temps, parfois des efforts désagréables, et peut donner un résultat décevant. On a donc le droit de se demander si le jeu en vaut la chandelle.</p>
+
+<div class="q"><b>La question</b>
+<p>Pourquoi s'entraîner sans mesurer ne suffit pas : qu'est-ce qu'un test chiffré t'apporte que ton ressenti et ton entraînement ne t'apportent pas ?</p></div>
+
+<p>Si tu t'es déjà dit « je sens bien que je progresse », cette question te concerne. Ton ressenti est un outil réel, mais il n'a jamais été vérifié contre autre chose que lui-même. Tant qu'on ne le confronte pas à une mesure, on ne sait pas s'il est juste.</p>
+
+<h2>Les enjeux</h2>
+<p>Ce n'est pas une querelle de spécialistes. Cinq choses sont en jeu pour toi, concrètement.</p>
+<p><b>Ta santé à long terme.</b> La capacité de ton cœur, de tes poumons et de tes muscles à utiliser l'oxygène (la condition cardio-respiratoire) est suivie par les cardiologues parce qu'elle est liée à la durée de vie. Si tu ne sais pas où tu te situes, tu ne sais pas si tu es dans la zone où l'on gagne le plus à progresser.</p>
+<p><b>Ton temps et ton énergie.</b> Un entraînement mal réglé, trop facile ou trop dur, coûte des semaines. Régler un effort suppose de savoir d'où l'on part.</p>
+<p><b>Ton autonomie.</b> La capacité physique baisse avec l'âge. Savoir à quelle vitesse la tienne évolue te permet d'agir avant que la gêne apparaisse dans la vie quotidienne : monter des escaliers, porter des courses, suivre ses enfants ou ses petits-enfants.</p>
+<p><b>Ta performance.</b> Si tu prépares une course, une compétition ou un défi, tu as besoin de vérifier que ta préparation produit l'effet attendu, avant le jour J et non après.</p>
+<p><b>Ton mental.</b> Un chiffre peut motiver, et il peut aussi décourager. Comment on le reçoit compte autant que le chiffre lui-même, et on y reviendra.</p>
+<p>Ces enjeux ne peuvent pas rester sans réponse : chacun pousse à agir sur une base fragile, le ressenti, tant qu'on ne l'a pas testée. La démonstration qui suit va du plus général au plus précis, en six étapes.</p>
+<ol class="plan">
+<li>Se juger au ressenti : est-ce fiable ?</li>
+<li>Pourquoi un même entraînement ne donne pas le même résultat à tout le monde.</li>
+<li>Ce que le suivi par des chiffres change dans la tenue d'un objectif.</li>
+<li>Un test de terrain est-il un bon instrument, et comment lire un chiffre ?</li>
+<li>Pourquoi cette mesure compte pour la santé.</li>
+<li>Les objections, et ce qui reste incertain.</li>
+</ol>
+
+</div></div></div></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script type="text/babel" src="components/site/Articles.jsx"></script>
+
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArticlesPage/>);
+  </script>
+
+  <!-- Session + compte partagés, puis i18n (chargés AVANT que Babel exécute le montage). -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-10.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
+  <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-13.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
+  <script src="components/site/i18n-dict-15.js"></script>
+  <script src="components/site/i18n-dict-16.js"></script>
+  <script src="components/site/i18n-dict-17.js"></script>
+  <script src="components/site/i18n-dict-18.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

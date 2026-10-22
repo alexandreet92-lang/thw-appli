@@ -145,9 +145,23 @@
             </div>
           ) : (!err ? <div style={{ minHeight: 240 }}/> : null)}
         </main>
+        {window.ArticleLinks ? <window.ArticleLinks slugs={epreuveArticles(cfg.slug)}/> : null}
         {F ? <F/> : null}
       </div>
     );
+  }
+
+
+  /* Articles liés à une épreuve : un article propre à la qualité mesurée, puis les articles de méthode. */
+  function epreuveArticles(slug) {
+    var s = String(slug || ''), own = [];
+    if (/grip|hang|pullup/.test(s)) own = ['force-de-poigne', 'force-et-sante'];
+    else if (/chair|up-and-go|stand|balance|flamingo|walk/.test(s)) own = ['se-lever-du-sol', 'le-corps-et-la-chaise'];
+    else if (/pushup|plank|tap/.test(s)) own = ['pompes-et-coeur', 'force-et-sante'];
+    else if (/jump|sprint|agility|shuttle|repeat/.test(s)) own = ['puissance-et-force', 'le-mouvement-des-jeunes'];
+    else if (/run|row|swim|bike|navette|conditioning|burpees|circuit|mixed/.test(s)) own = ['cardio-et-longevite', 'dose-de-sport'];
+    else if (/squat|bench|deadlift|clean|press|curl|rm/.test(s)) own = ['force-et-sante', 'puissance-et-force'];
+    return own.concat(['lire-un-bareme', 'test-standardise-ou-ressenti', 'mesurer-pour-progresser']).slice(0, 3);
   }
 
   window.CadEpreuvePage = CadEpreuvePage;

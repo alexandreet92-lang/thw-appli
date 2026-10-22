@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/"/>
+  <!-- Icônes : chemins ABSOLUS (la page est servie à la racine du domaine). -->
+  <link rel="icon" href="/favicon.ico" sizes="any"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#070b0f"/>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>À 75 ans et plus : se renforcer, garder l'équilibre et ne pas avoir peur de bouger — THW Coaching</title>
+  <meta name="robots" content="index,follow"/>
+  <meta name="description" content="Tu as 75 ans ou plus, ou tu lis cet article pour un parent, un conjoint, un ami. Cet article suit une question : à cet âge, et même avec des maladies chroniques, l'exercice change-t-il quelque…"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="site.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="app-page.css"/>
+  <link rel="stylesheet" href="articles.css"/>
+
+  <!-- Thème appliqué avant le premier paint (anti-flash) — identique au reste du site. -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'light'; } catch (e) { return 'dark'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <link rel="stylesheet" href="stade.css"/>
+  <script src="stade.js"></script>
+<script src="/site/stats.js" defer></script>
+  <!--SEO-START-->
+  <link rel="canonical" href="https://www.the-hybridway.com/articles/bouger-apres-75-ans.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="THW Coaching"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:title" content="À 75 ans et plus : se renforcer, garder l'équilibre et ne pas avoir peur de bouger"/>
+  <meta property="og:description" content="Tu as 75 ans ou plus, ou tu lis cet article pour un parent, un conjoint, un ami. Cet article suit une question : à cet âge, et même avec des maladies chroniques, l'exercice change-t-il quelque…"/>
+  <meta property="og:url" content="https://www.the-hybridway.com/articles/bouger-apres-75-ans.html"/>
+  <meta property="og:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="À 75 ans et plus : se renforcer, garder l'équilibre et ne pas avoir peur de bouger"/>
+  <meta name="twitter:description" content="Tu as 75 ans ou plus, ou tu lis cet article pour un parent, un conjoint, un ami. Cet article suit une question : à cet âge, et même avec des maladies chroniques, l'exercice change-t-il quelque…"/>
+  <meta name="twitter:image" content="https://www.the-hybridway.com/og-image.png"/>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"À 75 ans et plus : se renforcer, garder l'équilibre et ne pas avoir peur de bouger","description":"Tu as 75 ans ou plus, ou tu lis cet article pour un parent, un conjoint, un ami. Cet article suit une question : à cet âge, et même avec des maladies chroniques, l'exercice change-t-il quelque chose, par où commencer sans se faire mal, et comment tenir ? Il finit par un plan en phases. C'est une proposition de rédaction, pas une prescription : elle ne remplace ni ton médecin ni un professionnel de l'activité physique adaptée.","inLanguage":"fr","mainEntityOfPage":"https://www.the-hybridway.com/articles/bouger-apres-75-ans.html","url":"https://www.the-hybridway.com/articles/bouger-apres-75-ans.html","author":{"@type":"Organization","name":"THW Coaching"},"publisher":{"@type":"Organization","name":"THW Coaching"},"dateModified":"2026-10-22","articleSection":"75 ans et plus","isAccessibleForFree":false,"hasPart":{"@type":"WebPageElement","isAccessibleForFree":false,"cssSelector":".arx-reader"}}</script>
+  <!--SEO-END-->
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="root"><div class="arx-ssr"><style>.ax{
+  --bg:#ffffff; --fg:#0f1720; --body:#2a343d; --muted:#5b6670; --rule:#dfe5ea; --panel:#f3f6f8;
+  --accent:#0b6b7a; --hot:#b42318; --bar:#8aa0ad; --ref:#c4ccd2; --strip:#0f1720; --strip-fg:#ffffff;
+  --note-bg:#fff7e0; --note-bd:#b08400; --note-fg:#4d3b00; --link:#0b6b7a; --key:#e8f2f4;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+;}html.dark .ax{
+  --bg:#0e1419; --fg:#eef2f5; --body:#c9d2d9; --muted:#97a3ad; --rule:#2b363f; --panel:#161e25;
+  --accent:#5cc0d0; --hot:#f2766b; --bar:#6f8795; --ref:#4a5963; --strip:#000000; --strip-fg:#ffffff;
+  --note-bg:#2a2410; --note-bd:#b08400; --note-fg:#f0dca0; --link:#5cc0d0; --key:#14262b; color-scheme:dark;}.ax{color:var(--fg);font-family:var(--font)}
+.ax .kick{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.ax h1{font-size:clamp(28px,6vw,40px);line-height:1.12;margin:12px 0 16px;text-wrap:balance;color:var(--fg)}
+.ax .lede{font-size:19px;line-height:1.55;color:var(--body);margin:0 0 14px}
+.ax h2{font-size:24px;line-height:1.25;margin:48px 0 12px;text-wrap:balance;color:var(--fg)}
+.ax h3{font-size:17px;margin:22px 0 6px;color:var(--fg)}
+.ax p{font-size:17px;line-height:1.65;color:var(--body);margin:0 0 14px}
+.ax a{color:var(--link)}
+.ax sup a{text-decoration:none;font-size:.75em;padding:0 1px}
+.ax .key{background:var(--key);border-radius:10px;padding:16px 18px;margin:20px 0}
+.ax .key b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .key p{margin:0;font-size:17px;color:var(--fg)}
+.ax .fig{background:var(--panel);border-radius:10px;padding:20px 20px 14px;margin:22px 0}
+.ax .fig h3{font-size:15px;margin:0 0 10px}
+.ax .fig svg{display:block;max-width:100%;height:auto}
+.ax .cap{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.ax .steps{display:grid;gap:12px;margin:18px 0;padding:0;list-style:none;counter-reset:s}
+.ax .steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start}
+.ax .steps li::before{counter-increment:s;content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;grid-row:1 / span 2}
+.ax .steps b{font-size:17px;color:var(--fg)}
+.ax .steps span{font-size:16px;line-height:1.6;color:var(--body)}
+.ax .limit{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:24px 0}
+.ax .limit b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.ax .limit ul{margin:0;padding-left:18px}
+.ax .limit li{font-size:15px;line-height:1.6;color:var(--body);margin-bottom:6px}
+.ax .faq h3{margin-top:20px}
+.ax .q{border:2px solid var(--accent);border-radius:10px;padding:18px 20px;margin:22px 0}
+.ax .q b{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.ax .q p{margin:0;font-size:20px;line-height:1.45;color:var(--fg);font-weight:500}
+.ax .etape{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:52px 0 0}
+.ax .etape + h2{margin-top:6px}
+.ax .toc{margin:16px 0 8px;padding:0;list-style:none;display:grid;gap:6px;counter-reset:t}
+.ax .toc li{font-size:15px;color:var(--body);padding-left:0}
+.ax .toc b{color:var(--fg)}
+.ax .aside{border-left:3px solid var(--rule);padding:2px 0 2px 16px;margin:18px 0}
+.ax .aside p{font-size:16px;margin:0}
+.ax .src{font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px}
+.ax .src li{margin-bottom:6px}
+.ax svg .grid{stroke:var(--rule);stroke-width:1}
+.ax svg .grid.base{stroke:var(--muted);stroke-dasharray:4 4}
+.ax svg .bar{fill:var(--bar)}
+.ax svg .hot{fill:var(--hot)}
+.ax svg .ref{fill:var(--ref)}
+.ax svg .acc{fill:var(--accent)}
+.ax svg .lab{font:12px var(--font);fill:var(--body)}
+.ax svg .tick{font:11px var(--font);fill:var(--muted)}
+.ax svg .val{font:600 14px var(--font);fill:var(--fg)}
+.ax svg .note-t{font:600 12px var(--font);fill:var(--accent)}
+.ax svg .arrow{stroke:var(--accent);stroke-width:2;fill:none}
+.ax svg .gv{transform-box:fill-box;transform-origin:50% 100%}
+.ax svg .gh{transform-box:fill-box;transform-origin:0 50%}
+.ax .play svg .gv{animation:ax-gv .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .gh{animation:ax-gh .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}
+.ax .play svg .fade{animation:ax-fade .6s ease both;animation-delay:var(--d,1s)}
+@keyframes ax-gv{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ax-gh{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes ax-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ax .play svg .gv,.ax .play svg .gh,.ax .play svg .fade{animation:none}}</style><div class="arx-reader"><div class="ax"><div class="kick">Profil · 75 ans et plus</div>
+<h1>À 75 ans et plus : se renforcer, garder l'équilibre et ne pas avoir peur de bouger</h1>
+<p class="lede">Tu as 75 ans ou plus, ou tu lis cet article pour un parent, un conjoint, un ami. Cet article suit une question : à cet âge, et même avec des maladies chroniques, l'exercice change-t-il quelque chose, par où commencer sans se faire mal, et comment tenir ? Il finit par un plan en phases. C'est une proposition de rédaction, pas une prescription : elle ne remplace ni ton médecin ni un professionnel de l'activité physique adaptée.</p>
+
+<h2>La question</h2>
+<p>Un profil type, pour fixer les idées. Ce personnage est illustratif, il ne correspond à aucune personne réelle. Une femme de 82 ans vit seule dans un appartement avec un escalier. Elle a de l'hypertension et de l'arthrose, elle prend plusieurs médicaments. Il y a un an, elle est tombée dans la salle de bains sans gravité. Depuis, elle sort moins, elle évite l'escalier, elle se lève prudemment de son fauteuil. Sa fille, qui l'appelle chaque soir, se demande s'il faut la pousser à marcher ou, au contraire, lui demander de ne plus prendre de risques.</p>
+<p>Cette situation pose deux problèmes qui se nourrissent. Le premier est physique : les muscles des jambes, l'équilibre et la vitesse de marche baissent, souvent sans qu'on s'en aperçoive. Le second est psychologique : la peur de retomber pousse à bouger moins, ce qui fragilise encore.</p>
+<div class="q"><b>La question</b><p>Après 75 ans, avec de la fragilité, des maladies chroniques ou la peur de tomber, un programme d'exercice mesurable peut-il vraiment améliorer la force, l'équilibre et le risque de chute, et comment le commencer sans danger et le tenir dans la durée ?</p></div>
+<p>On y répond en six étapes : ce qu'est la fragilité, ce que dit la recherche sur les personnes très âgées, ce qui marche pour les chutes, ce qu'on sait de la peur de tomber, ce qu'il faut savoir sur les protéines, puis ce qui fait tenir. Le plan d'action vient ensuite.</p>
+
+<h2>Les enjeux</h2>
+<p>Après 75 ans, l'enjeu n'est pas la performance. C'est de rester capable de se lever, de marcher dehors, de se laver, de rentrer chez soi, sans dépendre de quelqu'un. L'article <a href="/articles/rester-autonome-apres-65-ans.html" data-art="rester-autonome-apres-65-ans">« Rester autonome après 65 ans »</a> de cette série montre que le risque de chute s'envole entre 65 et 85 ans : à 85 ans et plus, le taux d'hospitalisation après une chute est environ neuf fois celui des 65-74 ans, et le taux de décès environ vingt-neuf fois (rapports donnés par Santé publique France). Une chute n'est pas seulement un os cassé : c'est souvent le début d'un cercle où l'on sort moins et où l'on perd encore de la force.</p>
+<p>Il y a aussi un enjeu de choix : se ménager passe pour de la prudence, mais si l'exercice est efficace et sûr, c'est un coût. Et un enjeu pour l'aidant : aider sans décider à la place de l'autre.</p>
+
+</div></div></div></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+  <script type="text/babel" src="components/site/Articles.jsx"></script>
+
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArticlesPage/>);
+  </script>
+
+  <!-- Session + compte partagés, puis i18n (chargés AVANT que Babel exécute le montage). -->
+  <script src="components/site/account.js"></script>
+  <script src="components/site/i18n-dict.js"></script>
+  <script src="components/site/i18n-dict-2.js"></script>
+  <script src="components/site/i18n-dict-3.js"></script>
+  <script src="components/site/i18n-dict-4.js"></script>
+  <script src="components/site/i18n-dict-5.js"></script>
+  <script src="components/site/i18n-dict-6.js"></script>
+  <script src="components/site/i18n-dict-7.js"></script>
+  <script src="components/site/i18n-dict-8.js"></script>
+  <script src="components/site/i18n-dict-9.js"></script>
+  <script src="components/site/i18n-dict-10.js"></script>
+  <script src="components/site/i18n-dict-11.js"></script>
+  <script src="components/site/i18n-dict-12.js"></script>
+  <script src="components/site/i18n-dict-13.js"></script>
+  <script src="components/site/i18n-dict-14.js"></script>
+  <script src="components/site/i18n-dict-15.js"></script>
+  <script src="components/site/i18n-dict-16.js"></script>
+  <script src="components/site/i18n-dict-17.js"></script>
+  <script src="components/site/i18n-dict-18.js"></script>
+  <script src="components/site/i18n.js"></script>
+</body>
+</html>

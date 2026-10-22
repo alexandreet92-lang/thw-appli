@@ -19,8 +19,15 @@ var ART_GROUPS = [
 var ART_START = ['passer-a-l-action-et-tenir', 'condition-physique-en-recul'];
 
 function artGroupLabel(g) { for (var i = 0; i < ART_GROUPS.length; i++) if (ART_GROUPS[i][0] === g) return ART_GROUPS[i][1]; return ''; }
-function artSlugFromUrl() { try { return new URLSearchParams(window.location.search).get('a') || null; } catch (e) { return null; } }
-function artUrl(slug) { return window.location.pathname + (slug ? '?a=' + encodeURIComponent(slug) : ''); }
+function artSlugFromUrl() {
+  try {
+    var m = window.location.pathname.match(/\/articles\/([^\/]+?)(?:\.html)?\/?$/);
+    if (m) return decodeURIComponent(m[1]);
+    return new URLSearchParams(window.location.search).get('a') || null;
+  } catch (e) { return null; }
+}
+/* Chaque article a sa propre adresse (page statique : référencement + aperçu de partage). */
+function artUrl(slug) { return slug ? '/articles/' + encodeURIComponent(slug) + '.html' : '/articles.html'; }
 function artFetch(url, opts) {
   return (window.__thwSessionReady || Promise.resolve()).catch(function () {}).then(function () {
     return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
@@ -101,7 +108,7 @@ function ArtShare(props) {
   var [open, setOpen] = React.useState(false);
   var [copied, setCopied] = React.useState(false);
   var ref = React.useRef(null);
-  var url = new URL('articles.html?a=' + encodeURIComponent(props.slug), window.location.href).href;
+  var url = new URL(artUrl(props.slug), window.location.href).href;
   var title = props.title;
   React.useEffect(function () {
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
@@ -186,7 +193,13 @@ function ArtReader(props) {
     } else { els.forEach(function (el) { el.classList.add('play'); }); }
     var onClick = function (e) {
       var a = e.target.closest && e.target.closest('a[data-art]');
-      if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); props.onOpen(a.getAttribute('data-art')); }
+      if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); props.onOpen(a.getAttribute('data-art')); return; }
+      /* Renvois internes (#s12…) : la page peut avoir une <base>, on défile nous-mêmes. */
+      var h = e.target.closest && e.target.closest('a[href^="#"]');
+      if (h) {
+        var t = root.querySelector('[id="' + h.getAttribute('href').slice(1).replace(/"/g, '') + '"]');
+        if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
     };
     root.addEventListener('click', onClick);
     var onScroll = function () {

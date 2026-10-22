@@ -1140,6 +1140,7 @@ html.dark .tf-track{--tk-ink:#eef3f8;--tk-mut:#9db1c8;--tk-line:#27405f;--tk-rai
         <FormeStyle/>
         {H ? <H active="cadences"/> : null}
         <main className="tf-wrap" style={{ minHeight: '60vh' }}>{ready ? <FormeApp account={account}/> : null}</main>
+        {window.ArticleLinks ? <window.ArticleLinks slugs={['condition-physique-en-recul', 'tester-sa-forme-chez-soi', 'lire-un-bareme', 'le-minimum-efficace']}/> : null}
         {F ? <F/> : null}
       </div>
     );

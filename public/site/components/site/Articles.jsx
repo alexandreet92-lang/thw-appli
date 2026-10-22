@@ -3,8 +3,8 @@
    « lu », « enregistré », partage, articles du même thème.
    ────────────────────────────────────────────────────────────────
    • Liste : GET /api/articles (métadonnées + état du membre).
-   • Article : GET /api/articles/[slug]. Un visiteur ne reçoit QUE le début (coupure côté serveur).
-   • Lu / enregistré : PATCH /api/articles/[slug] (membres).
+   • Article : GET /api/articles/item?slug=. Un visiteur ne reçoit QUE le début (coupure côté serveur).
+   • Lu / enregistré : PATCH /api/articles/item?slug= (membres).
    • Adresse d'un article : articles.html?a=<slug> (historique du navigateur géré ici).
    Le texte des articles est en français (data-no-i18n) ; les libellés de l'interface sont traduits.
    ════════════════════════════════════════════════════════════════ */
@@ -166,7 +166,7 @@ function ArtReader(props) {
 
   var load = function () {
     setArt(null); setErr(false);
-    artFetch('/api/articles/' + encodeURIComponent(slug)).then(function (r) {
+    artFetch('/api/articles/item?slug=' + encodeURIComponent(slug)).then(function (r) {
       if (!r.ok) throw new Error('http');
       return r.json();
     }).then(function (j) { setArt(j); props.onSession(j.loggedIn); window.scrollTo(0, 0); })
@@ -341,7 +341,7 @@ function ArticlesPage() {
     var upd = Object.assign({}, cur); upd[key] = next;
     var all = Object.assign({}, states); all[s] = upd; setStates(all);
     var body = {}; body[key] = next;
-    artFetch('/api/articles/' + encodeURIComponent(s), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    artFetch('/api/articles/item?slug=' + encodeURIComponent(s), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) {
         if (r.status === 401) { setMember(false); setStates(prev); askLogin(); return null; }
         if (!r.ok) throw new Error('http');

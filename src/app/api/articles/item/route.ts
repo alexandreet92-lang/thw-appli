@@ -1,6 +1,8 @@
+// Route STATIQUE à dessein : sur le domaine du site, la règle /:path* → /site/:path* (next.config)
+// capte les segments dynamiques avant leur résolution (404). Le slug passe donc en paramètre.
 // ══════════════════════════════════════════════════════════════
-// GET   /api/articles/[slug]  → article : complet pour un membre connecté, début seul pour un visiteur
-// PATCH /api/articles/[slug]  → { read?: boolean, saved?: boolean } : lu / enregistré (membres)
+// GET   /api/articles/item?slug=…  → article : complet pour un membre connecté, début seul pour un visiteur
+// PATCH /api/articles/item?slug=…  → { read?: boolean, saved?: boolean } : lu / enregistré (membres)
 // ══════════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -8,10 +10,12 @@ import { articleForViewer, findMeta, NO_STORE, type ArticleState } from '@/lib/a
 
 export const dynamic = 'force-dynamic'
 
-type Ctx = { params: Promise<{ slug: string }> }
+function slugOf(req: Request): string {
+  return new URL(req.url).searchParams.get('slug') ?? ''
+}
 
-export async function GET(_req: Request, ctx: Ctx) {
-  const { slug } = await ctx.params
+export async function GET(req: Request) {
+  const slug = slugOf(req)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const art = await articleForViewer(slug, !!user)
@@ -28,8 +32,8 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ ...art, loggedIn: !!user, state }, { headers: NO_STORE })
 }
 
-export async function PATCH(req: Request, ctx: Ctx) {
-  const { slug } = await ctx.params
+export async function PATCH(req: Request) {
+  const slug = slugOf(req)
   if (!findMeta(slug)) return NextResponse.json({ error: 'not_found' }, { status: 404, headers: NO_STORE })
 
   const supabase = await createClient()

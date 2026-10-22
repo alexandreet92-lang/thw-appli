@@ -21,3 +21,9 @@
 - Aperçus de partage par article (balises Open Graph) : demande un rendu serveur par article.
 - Relecture par un professionnel de santé des articles P7, P8 et P9 ; vérifier le numéro d'écoute de P9 à la source.
 - Contrôle visuel mobile et mode sombre des 41 articles (un seul article a été parcouru de bout en bout).
+
+## Mise à jour (23/10)
+- Route article STATIQUE `/api/articles/item?slug=` : sur the-hybridway.com la règle `/:path*` → `/site/:path*` capte les segments dynamiques (`[slug]`) avant leur résolution (404). Ne pas réintroduire de route dynamique pour le site.
+- Pages dédiées : `node scripts/articles/build.mjs <dossier sources>` puis `node scripts/articles/pages.mjs` génèrent `public/site/articles/<slug>.html` (meta, Open Graph, JSON-LD, début du texte dans le HTML), l'index de secours de `articles.html` et les entrées du sitemap. À relancer à chaque modification d'article.
+- Liens vers les articles : composant `ArticleLinks` (SiteChrome.jsx) sur Test de forme, Tests et chaque épreuve (mapping dans CadencesEpreuve.jsx).
+- Reste : texte des articles en français seulement ; relecture santé P7/P8/P9 ; numéro d'aide P9 à vérifier à la source.

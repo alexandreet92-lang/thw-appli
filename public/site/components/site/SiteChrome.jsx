@@ -11,6 +11,7 @@ var MENU_ITEMS = [
   { label: 'Le test Decaform',             href: 'cadences.html' },
   { label: 'Tous les tests',              href: 'tests.html' },
   { label: 'Test de forme',               href: 'test-de-forme.html' },
+  { label: 'Articles',                    href: 'articles.html' },
   { label: 'Mon historique',              href: 'historique.html' },
   { label: 'Abonnement athlète',          href: 'abonnement-athlete.html', group: 'shop' },
   { label: 'Abonnement coach',            href: 'abonnement-coach.html', group: 'shop' },
@@ -423,6 +424,7 @@ function AccountMenu(props) {
           </div>
         </div>
         <a role="menuitem" className="thw-acc-item" href="compte.html" tabIndex={open ? 0 : -1}>Mon compte</a>
+        <a role="menuitem" className="thw-acc-item" href="articles.html?f=saved" tabIndex={open ? 0 : -1}>Mes articles enregistrés</a>
         {isAdmin ? <a role="menuitem" className="thw-acc-item" href="statistiques.html" tabIndex={open ? 0 : -1}>Statistiques</a> : null}
         <div className="thw-acc-sep"/>
         <div className="thw-acc-label">Apparence</div>
@@ -484,6 +486,7 @@ function SiteHeader(props) {
   var navLinks = [
     { label: 'Accueil', href: 'index.html', key: 'home' },
     { label: 'Decaform', href: 'cadences.html', key: 'cadences' },
+    { label: 'Articles', href: 'articles.html', key: 'articles' },
   ];
   // Une fois connecté : accès direct à l'historique des tests (page dédiée).
   if (account) { navLinks.push({ label: 'Mon historique', href: 'historique.html', key: 'history' }); }
@@ -643,7 +646,7 @@ function SiteFooter() {
             </a>
             <p>Ton entraînement hybride — endurance + force — piloté par une IA qui te connaît.</p>
           </div>
-          {!IN_APP && col('Découvrir', [['Tous les piliers', 'index.html#grille'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences']])}
+          {!IN_APP && col('Découvrir', [['Tous les piliers', 'index.html#grille'], ['Coach IA', 'theme.html#coach-ia'], ['Performances', 'theme.html#performances'], ['Compétences', 'theme.html#competences'], ['Articles', 'articles.html']])}
           {!IN_APP && col('Produit', [['Plans & tarifs', 'theme.html#abonnements'], ['Abonnement coach', 'abonnement-coach.html'], ['Système de tokens', 'theme.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
           {col('Support & légal', [['Mentions légales', 'mentions-legales.html'], ['Conditions d\'utilisation', 'conditions-utilisation.html'], ['Confidentialité', 'confidentialite.html'], ['Exporter mes données', 'exporter-mes-donnees.html']])}
         </div>
@@ -704,4 +707,4 @@ function useReveal() {
   }, []);
 }
 
-Object.assign(window, { SiteHeader: SiteHeader, SiteFooter: SiteFooter, AuthForm: AuthForm, authNext: authNext, AuthStyles: AuthStyles, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });
+Object.assign(window, { LoginModal: LoginModal, SiteHeader: SiteHeader, SiteFooter: SiteFooter, AuthForm: AuthForm, authNext: authNext, AuthStyles: AuthStyles, useReveal: useReveal, APP_URL: APP_URL, hexToRgb: hexToRgb });

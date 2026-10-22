@@ -1,0 +1,140 @@
+/* ════════════════════════════════════════════════════════════════
+   THW — Page Articles (liste, lecteur, accès limité, partage).
+   Utilise les jetons du site (colors_and_type.css) : thème sombre par défaut, .light en clair.
+   ════════════════════════════════════════════════════════════════ */
+html { --site-bg: var(--bg); }
+
+.arx-page { padding-bottom: 40px; }
+.arx-hero { padding: 72px 0 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
+.arx-hero h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; font-size: clamp(32px, 5vw, 52px); margin: 0 0 14px; text-wrap: balance; color: var(--text); }
+.arx-hero p.lead { margin: 0; max-width: 60ch; color: var(--text-mid); font-size: 17px; line-height: 1.6; }
+.arx-stats { display: flex; gap: 28px; margin-top: 26px; flex-wrap: wrap; }
+.arx-stat b { display: block; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1.1; }
+.arx-stat span { font-size: 13px; color: var(--text-dim); }
+@media (max-width: 760px) { .arx-hero { grid-template-columns: 1fr; padding-top: 44px; } }
+
+/* Anneau de progression (membre) */
+.arx-ring { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border); }
+.arx-ring svg { width: 64px; height: 64px; flex: none; }
+.arx-ring .trk { stroke: var(--border-mid); fill: none; stroke-width: 6; }
+.arx-ring .val { stroke: var(--brand); fill: none; stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1); }
+.arx-ring b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; display: block; line-height: 1.1; }
+.arx-ring span { font-size: 13px; color: var(--text-dim); }
+
+/* Bandeau visiteur */
+.arx-visitor { margin-top: 28px; padding: 16px 20px; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border); display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.arx-visitor p { margin: 0; color: var(--text-mid); font-size: 14.5px; max-width: 62ch; }
+.arx-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Barre d'outils */
+.arx-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 36px 0 14px; }
+.arx-search { flex: 1 1 240px; min-width: 0; padding: 11px 14px; border-radius: var(--radius-btn); border: 1px solid var(--border-mid); background: var(--input-bg); color: var(--text); font: inherit; font-size: 14.5px; }
+.arx-search:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,200,224,.18); }
+.arx-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.arx-chip { appearance: none; font: inherit; font-size: 13.5px; font-weight: 500; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-mid); background: transparent; color: var(--text-mid); cursor: pointer; transition: all .16s; }
+.arx-chip:hover { border-color: var(--brand); color: var(--text); }
+.arx-chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #04121a; }
+.arx-chip small { opacity: .7; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.arx-chips.status { margin-bottom: 0; }
+.arx-chips.status .arx-chip { font-size: 13px; padding: 5px 12px; }
+
+/* Commencer ici */
+.arx-start { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0 8px; }
+@media (max-width: 700px) { .arx-start { grid-template-columns: 1fr; } }
+.arx-hero-card { text-align: left; font: inherit; color: inherit; cursor: pointer; padding: 22px; border-radius: var(--radius-xl); background: linear-gradient(135deg, rgba(0,200,224,.12), rgba(91,111,255,.10)); border: 1px solid var(--border-mid); display: flex; flex-direction: column; gap: 8px; min-width: 0; transition: transform .2s, border-color .2s; }
+.arx-hero-card:hover { transform: translateY(-2px); border-color: var(--brand); }
+.arx-hero-card .k { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); font-weight: 600; }
+.arx-hero-card h2 { margin: 0; font-family: var(--font-display); font-size: 21px; line-height: 1.25; letter-spacing: -0.02em; text-wrap: balance; }
+.arx-hero-card p { margin: 0; color: var(--text-mid); font-size: 14.5px; }
+
+/* Sections et cartes */
+.arx-sec { display: flex; align-items: center; gap: 14px; margin: 38px 0 14px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); font-weight: 600; }
+.arx-sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.arx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+.arx-card { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; min-width: 0; text-align: left; font: inherit; color: inherit; padding: 0; opacity: 0; transform: translateY(12px); animation: arxIn .55s cubic-bezier(.2,.7,.2,1) forwards; transition: border-color .2s, transform .2s, box-shadow .2s; }
+.arx-card:hover { border-color: var(--brand); transform: translateY(-3px); box-shadow: var(--shadow-brand-sm); }
+@keyframes arxIn { to { opacity: 1; transform: none; } }
+.arx-thumb { display: block; width: 100%; height: 88px; background: linear-gradient(180deg, rgba(0,200,224,.09), transparent); border-bottom: 1px solid var(--border); }
+.arx-thumb .gl { stroke: var(--border-mid); stroke-width: 1; }
+.arx-thumb .ln { stroke: var(--brand); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 320; stroke-dashoffset: 320; animation: arxDraw 1.5s .2s forwards; }
+.arx-thumb .ln.soft { stroke: var(--text-dim); opacity: .6; animation-delay: .4s; }
+.arx-thumb .bar { fill: var(--brand); transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(0); animation: arxGrow .9s .2s forwards; }
+.arx-thumb .dot { fill: var(--brand); animation: arxPulse 2.4s infinite ease-in-out; }
+@keyframes arxDraw { to { stroke-dashoffset: 0; } }
+@keyframes arxGrow { to { transform: scaleY(1); } }
+@keyframes arxPulse { 50% { opacity: .3; } }
+.arx-card .body { padding: 16px 18px 16px; display: flex; flex-direction: column; gap: 9px; flex: 1; min-width: 0; }
+.arx-card .meta { font-size: 12px; color: var(--text-dim); display: flex; justify-content: space-between; gap: 10px; }
+.arx-card h3 { margin: 0; font-family: var(--font-display); font-size: 17px; line-height: 1.3; letter-spacing: -0.015em; font-weight: 600; text-wrap: balance; color: var(--text); }
+.arx-card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text-mid); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.arx-card .foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-dim); }
+.arx-state { display: inline-flex; align-items: center; gap: 6px; }
+.arx-state svg { width: 14px; height: 14px; }
+.arx-state.read { color: var(--brand); }
+.arx-card.is-read .arx-thumb { opacity: .55; }
+.arx-bm { appearance: none; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; padding: 6px; margin: -6px; border-radius: 8px; display: inline-flex; }
+.arx-bm:hover { color: var(--brand); background: var(--bg-hover); }
+.arx-bm[aria-pressed="true"] { color: var(--brand); }
+.arx-bm svg { width: 17px; height: 17px; }
+.arx-empty { padding: 36px; text-align: center; color: var(--text-dim); border: 1px dashed var(--border-mid); border-radius: var(--radius-lg); margin-top: 20px; }
+
+/* Squelette */
+.arx-sk { background: linear-gradient(90deg, var(--bg-card), var(--bg-hover), var(--bg-card)); background-size: 200% 100%; animation: arxSk 1.4s infinite linear; border-radius: 8px; }
+@keyframes arxSk { to { background-position: -200% 0; } }
+
+/* Lecteur */
+.arx-prog { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 300; background: transparent; }
+.arx-prog i { display: block; height: 100%; width: 0; background: var(--brand-gradient-h); transition: width .1s linear; }
+.arx-reader { padding: 28px 0 8px; }
+.arx-back { appearance: none; background: transparent; border: 0; color: var(--text-mid); font: inherit; font-size: 14px; cursor: pointer; padding: 8px 0; display: inline-flex; align-items: center; gap: 8px; }
+.arx-back:hover { color: var(--brand); }
+.arx-col { max-width: 760px; margin: 0 auto; }
+.arx-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px; position: relative; }
+.arx-act { appearance: none; font: inherit; font-size: 13.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-mid); background: var(--bg-card); color: var(--text); cursor: pointer; transition: all .16s; }
+.arx-act:hover { border-color: var(--brand); color: var(--brand); }
+.arx-act[aria-pressed="true"] { background: rgba(0,200,224,.14); border-color: var(--brand); color: var(--brand); }
+.arx-act svg { width: 16px; height: 16px; }
+.arx-time { margin-left: auto; font-size: 13px; color: var(--text-dim); }
+.arx-share { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; min-width: 270px; padding: 8px; border-radius: var(--radius-lg); background: var(--nav-bg); border: 1px solid var(--border-mid); box-shadow: var(--shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: grid; gap: 2px; animation: arxIn .2s forwards; opacity: 0; }
+.arx-share a, .arx-share button { appearance: none; font: inherit; font-size: 14px; text-align: left; border: 0; background: transparent; color: var(--text-mid); padding: 10px 12px; border-radius: 9px; cursor: pointer; text-decoration: none; display: block; }
+.arx-share a:hover, .arx-share button:hover { background: var(--bg-hover); color: var(--brand); }
+
+.ax-wrap { margin-top: 8px; }
+.arx-clip { -webkit-mask-image: linear-gradient(#000 62%, transparent); mask-image: linear-gradient(#000 62%, transparent); padding-bottom: 80px; }
+.arx-gate { margin: -40px auto 24px; max-width: 640px; padding: 28px; border-radius: var(--radius-xl); background: var(--bg-card); border: 1px solid var(--border-mid); box-shadow: var(--shadow); position: relative; }
+.arx-gate h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: 24px; letter-spacing: -0.02em; text-wrap: balance; }
+.arx-gate p { margin: 0 0 14px; color: var(--text-mid); }
+.arx-gate ul { margin: 0 0 22px; padding-left: 20px; color: var(--text-mid); font-size: 14.5px; display: grid; gap: 6px; }
+.arx-done { margin: 36px auto 8px; max-width: 760px; padding: 22px; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border); display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.arx-done p { margin: 0; color: var(--text-mid); max-width: 46ch; }
+.arx-cta { margin: 28px auto 0; max-width: 760px; padding: 26px; border-radius: var(--radius-xl); background: linear-gradient(135deg, rgba(0,200,224,.12), rgba(91,111,255,.10)); border: 1px solid var(--border-mid); }
+.arx-cta h2 { margin: 0 0 6px; font-family: var(--font-display); font-size: 22px; letter-spacing: -0.02em; }
+.arx-cta p { margin: 0 0 16px; color: var(--text-mid); }
+.arx-rel { margin-top: 56px; }
+.arx-rel h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: -0.02em; margin: 0 0 4px; }
+.arx-rel .sub { color: var(--text-dim); font-size: 14px; margin: 0 0 18px; }
+.arx-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 400; background: var(--night); color: var(--night-ink); padding: 11px 18px; border-radius: 999px; font-size: 14px; box-shadow: var(--shadow); border: 1px solid var(--night-line); animation: arxIn .25s forwards; opacity: 0; }
+
+/* ─── Corps d'article : jetons alignés sur le site ─────────────────
+   Chaque article apporte son propre CSS, isolé sous .ax. On y superpose les jetons du site
+   (spécificité volontairement supérieure à celle des blocs clair/sombre de l'article). */
+.ax.ax, html.dark .ax.ax, html.light .ax.ax { --bg: var(--site-bg); --fg: var(--text); --rule: var(--border-mid); --panel: var(--bg-card); font-family: var(--font-body); color: var(--text-mid); }
+html.dark .ax.ax { --body: #cbd6e2; --panel: rgba(238,243,248,.05); --key: rgba(0,200,224,.09); }
+html.light .ax.ax { --panel: #ffffff; --key: #e4f3f6; }
+.ax.ax h1, .ax.ax h2 { font-family: var(--font-display); letter-spacing: -0.02em; }
+.ax.ax h1 { font-weight: 700; }
+.ax.ax .fig, .ax.ax .key, .ax.ax .limit, .ax.ax .q { border-radius: var(--radius-md); }
+.ax.ax table { max-width: 100%; }
+.ax.ax img { max-width: 100%; height: auto; }
+.ax.ax a { color: var(--brand); }
+.ax-scroll { overflow-x: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .arx-card { animation: none; opacity: 1; transform: none; }
+  .arx-thumb .ln { animation: none; stroke-dashoffset: 0; }
+  .arx-thumb .bar { animation: none; transform: none; }
+  .arx-thumb .dot { animation: none; }
+  .arx-ring .val { transition: none; }
+}
+
+html.light .arx-chip[aria-pressed="true"] { color: #fff; }

@@ -25,6 +25,6 @@ export async function POST(): Promise<NextResponse> {
     })
     return NextResponse.json({ ok: true, to: admin.email })
   } catch (e) {
-    return NextResponse.json({ erreur: e instanceof Error ? e.message.slice(0, 200) : 'Envoi impossible.' }, { status: 502 })
+    return NextResponse.json({ erreur: e instanceof Error ? e.message.slice(0, 700) : 'Envoi impossible.' }, { status: 502 })
   }
 }

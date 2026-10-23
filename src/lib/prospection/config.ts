@@ -1,8 +1,8 @@
 import type { RampInfo } from './types'
 
-// Montée en puissance : un domaine d'envoi neuf qui envoie 200 emails dès le
-// premier jour finit en spam. Plafond par semaine depuis le premier envoi ;
-// l'objectif réglé par l'admin reste le maximum.
+// Montée en puissance : un domaine d'envoi neuf qui envoie beaucoup dès le
+// premier jour finit en spam. Le plafond par semaine n'est qu'une RECOMMANDATION
+// affichée à l'admin : la limite réellement appliquée est l'objectif qu'il règle.
 export const RAMP_CAPS = [20, 40, 70, 100, 150, 200] as const
 
 export const TZ = 'Europe/Paris'
@@ -31,5 +31,5 @@ export function rampInfo(rampStart: string | null, target: number, now: Date = n
     week = Math.max(1, Math.floor((today - start) / (7 * 86_400_000)) + 1)
   }
   const cap = RAMP_CAPS[Math.min(week, weeks) - 1]
-  return { week: Math.min(week, weeks), weeks, cap, limit: Math.min(target, cap) }
+  return { week: Math.min(week, weeks), weeks, cap, limit: target }
 }

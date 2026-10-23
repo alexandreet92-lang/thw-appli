@@ -47,8 +47,8 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     }
   }
   if (typeof p.daily_target === 'number') {
-    if (!Number.isInteger(p.daily_target) || p.daily_target < 1 || p.daily_target > 200) {
-      return NextResponse.json({ erreur: 'Objectif entre 1 et 200.' }, { status: 400 })
+    if (!Number.isInteger(p.daily_target) || p.daily_target < 1 || p.daily_target > 1_000_000) {
+      return NextResponse.json({ erreur: 'Objectif : un nombre entier supérieur ou égal à 1.' }, { status: 400 })
     }
     upd.daily_target = p.daily_target
   }

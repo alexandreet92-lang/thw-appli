@@ -7,7 +7,6 @@ import type { ProspectionOverview, SendRow } from '@/lib/prospection/types'
 import { lng, makeT, type Lng } from './labels'
 
 type T = ReturnType<typeof makeT>
-const TARGETS = [50, 100, 150, 200]
 const LOCALE: Record<Lng, string> = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES', it: 'it-IT', de: 'de-DE' }
 const FB = 'var(--font-body)'
 const FD = 'var(--font-display)'
@@ -86,6 +85,10 @@ export function ProspectionClient() {
   const [list, setList] = useState('')
   const [source, setSource] = useState('')
   const [consent, setConsent] = useState('')
+  const [target, setTarget] = useState('')
+  const [testMsg, setTestMsg] = useState<string | null>(null)
+  const [testBusy, setTestBusy] = useState(false)
+  const [dark, setDark] = useState(false)
   const [preview, setPreview] = useState<{ subject: string; html: string; from: string } | null>(null)
 
   useEffect(() => {
@@ -104,12 +107,22 @@ export function ProspectionClient() {
     return () => window.clearTimeout(id)
   }, [data, subject, body, fromName, fromEmail, postal])
 
+  useEffect(() => {
+    const el = document.documentElement
+    const read = () => setDark(el.classList.contains('dark') || (!el.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    read()
+    const mo = new MutationObserver(read)
+    mo.observe(el, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    return () => mo.disconnect()
+  }, [])
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/prospection', { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const d = (await res.json()) as ProspectionOverview
       setData(d)
+      setTarget(String(d.settings.daily_target))
       setSubject(d.settings.subject); setBody(d.settings.body)
       setFromName(d.settings.from_name); setFromEmail(d.settings.from_email); setPostal(d.settings.postal_address)
       setError(false)
@@ -138,9 +151,13 @@ export function ProspectionClient() {
   }
 
   const sendTest = async () => {
-    const res = await fetch('/api/admin/prospection/test', { method: 'POST' })
-    const j = (await res.json()) as { to?: string; erreur?: string }
-    setMsg(res.ok ? t('m_test_ok', { to: j.to ?? '' }) : (j.erreur ?? t('error')))
+    setTestBusy(true); setTestMsg(t('m_test_busy'))
+    try {
+      const res = await fetch('/api/admin/prospection/test', { method: 'POST' })
+      const j = (await res.json()) as { to?: string; erreur?: string }
+      setTestMsg(res.ok ? t('m_test_ok', { to: j.to ?? '' }) : (j.erreur ?? t('error')))
+    } catch { setTestMsg(t('error')) }
+    setTestBusy(false)
   }
 
   if (error) return <div style={{ padding: 32, fontFamily: FB, color: 'var(--text-mid)' }}>{t('error')}</div>
@@ -172,25 +189,26 @@ export function ProspectionClient() {
           <h3 style={h3}>{t('s_title')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={label}>{t('s_target')}</div>
-            <div role="group" aria-label={t('s_target')} style={{ display: 'flex', gap: 6, background: 'var(--bg-card)', padding: 4, borderRadius: 'var(--r-pill)', width: 'fit-content' }}>
-              {TARGETS.map(n => (
-                <button key={n} type="button" aria-pressed={d.settings.daily_target === n}
-                  onClick={() => void patch({ daily_target: n })}
-                  style={{ border: 'none', cursor: 'pointer', borderRadius: 'var(--r-pill)', padding: '8px 18px', fontFamily: FB, fontSize: 14, fontVariantNumeric: 'tabular-nums',
-                    background: d.settings.daily_target === n ? 'var(--primary)' : 'transparent',
-                    color: d.settings.daily_target === n ? 'var(--bg)' : 'var(--text-mid)', fontWeight: d.settings.daily_target === n ? 600 : 400 }}>{n}</button>
-              ))}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input id="pr-target" type="number" min={1} step={1} inputMode="numeric" aria-label={t('s_target')} value={target}
+                onChange={e => setTarget(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { const n = Number(target); if (Number.isInteger(n) && n >= 1) void patch({ daily_target: n }) } }}
+                style={{ ...field, width: 120, fontVariantNumeric: 'tabular-nums' }} />
+              <button type="button" style={quietBtn}
+                disabled={!Number.isInteger(Number(target)) || Number(target) < 1 || Number(target) === d.settings.daily_target}
+                onClick={() => void patch({ daily_target: Number(target) })}>{t('s_target_set')}</button>
             </div>
             <p style={hint}>{t('s_target_h')}</p>
           </div>
           <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FB, fontSize: 13 }}>
               <span>{t('s_ramp', { w: d.ramp.week, n: d.ramp.weeks })}</span>
-              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('s_today', { n: d.ramp.limit })}</span>
+              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('s_today', { n: d.ramp.cap })}</span>
             </div>
             <div style={{ height: 6, background: 'var(--bg-card2)', borderRadius: 'var(--r-pill)', marginTop: 10 }}>
               <div style={{ width: `${(d.ramp.week / d.ramp.weeks) * 100}%`, height: 6, background: 'var(--primary)', borderRadius: 'var(--r-pill)' }} />
             </div>
+            {d.settings.daily_target > d.ramp.cap && <p style={{ ...hint, color: 'var(--charge-hard)', marginTop: 8 }}>{t('s_warn')}</p>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: FB, fontSize: 14 }}>
             <span>{t('s_auto')}</span>
@@ -264,7 +282,7 @@ export function ProspectionClient() {
             <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('p_from')} : <span style={{ color: 'var(--text)' }}>{preview.from}</span></div>
             <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('p_subject')} : <span style={{ color: 'var(--text)', fontWeight: 500 }}>{preview.subject}</span></div>
             <iframe title={t('p_title')} sandbox="" srcDoc={preview.html}
-              style={{ width: '100%', height: 560, border: 'none', borderRadius: 'var(--r-md)', background: 'var(--bg-card)' }} />
+              style={{ width: '100%', height: 560, border: 'none', borderRadius: 'var(--r-md)', background: 'var(--bg-card)', filter: dark ? 'invert(0.9) hue-rotate(180deg)' : 'none' }} />
           </>
         )}
       </div>
@@ -298,8 +316,9 @@ export function ProspectionClient() {
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" style={primaryBtn}
               onClick={() => void patch({ subject, body, from_name: fromName, from_email: fromEmail, postal_address: postal })}>{t('save')}</button>
-            <button type="button" style={quietBtn} onClick={() => void sendTest()}>{t('m_test')}</button>
+            <button type="button" style={quietBtn} disabled={testBusy} onClick={() => void sendTest()}>{t('m_test')}</button>
           </div>
+          {testMsg && <p role="status" style={{ ...hint, color: 'var(--text)' }}>{testMsg}</p>}
         </div>
       </div>
     </div>

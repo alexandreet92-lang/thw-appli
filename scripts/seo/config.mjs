@@ -21,7 +21,7 @@ export const PUBLIC = [
 
 // Pages privées ou doublons : noindex (et canonical vers la page de référence si doublon).
 export const PRIVATE = [
-  { file: 'compte.html' }, { file: 'statistiques.html' }, { file: 'historique.html' },
+  { file: 'compte.html' }, { file: 'statistiques.html' }, { file: 'prospection.html' }, { file: 'historique.html' },
   { file: 'login.html' }, { file: 'tests-perso.html' }, { file: 'questionnaire.html' },
   { file: 'coach-ia.html' }, { file: 'recharge-tokens.html' }, { file: 'exporter-mes-donnees.html' },
   { file: 'index-hero.html', canonical: '/' },

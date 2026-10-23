@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -17,6 +18,7 @@ User-agent: GPTBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -31,6 +33,7 @@ User-agent: OAI-SearchBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -45,6 +48,7 @@ User-agent: ChatGPT-User
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -59,6 +63,7 @@ User-agent: ClaudeBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -73,6 +78,7 @@ User-agent: Claude-SearchBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -87,6 +93,7 @@ User-agent: Claude-User
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -101,6 +108,7 @@ User-agent: PerplexityBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -115,6 +123,7 @@ User-agent: Perplexity-User
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -129,6 +138,7 @@ User-agent: Google-Extended
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -143,6 +153,7 @@ User-agent: Applebot-Extended
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html
@@ -157,6 +168,7 @@ User-agent: CCBot
 Allow: /
 Disallow: /compte.html
 Disallow: /statistiques.html
+Disallow: /prospection.html
 Disallow: /historique.html
 Disallow: /login.html
 Disallow: /tests-perso.html

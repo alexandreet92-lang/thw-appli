@@ -16,7 +16,7 @@
     },
     {
       "day": 3,
-      "label": "Natation (matin) & navette (après-midi)",
+      "label": "Natation (matin) & navette (après-midi)", "rewarm_before": ["shuttle_20m"],
       "rest": false
     },
     {

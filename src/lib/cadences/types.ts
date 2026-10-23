@@ -67,7 +67,7 @@ export interface Criterion {
 }
 
 /** Un jour du plan (séance ou repos). */
-export interface DayPlan { day: number; label: string; rest: boolean }
+export interface DayPlan { day: number; label: string; rest: boolean; rewarm_before?: string[] }
 
 export interface CadencesConfig {
   version: string

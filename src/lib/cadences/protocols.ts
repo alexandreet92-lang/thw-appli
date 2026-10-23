@@ -60,6 +60,21 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
     texte: "5 à 10 min de marche facile, puis mobilité douce (chevilles, hanches, épaules, nuque) et quelques levers de chaise lents. " +
       "Aucune accélération : on monte en intensité progressivement, et on arrête au moindre vertige.",
   },
+  force_ado: {
+    titre: 'Salle · force au poids du corps et à la barre',
+    texte: "5 min de cardio léger (rameur, vélo ou corde). Mobilité épaules, poignets et hanches. 2 séries de pompes lentes et une suspension courte à la barre. " +
+      "Barre à vide, puis montée progressive : 50 % de la charge visée ×8, 70 % ×5, 85 % ×3 avant la série de 5 répétitions. Chaque série avec un pareur.",
+  },
+  senior_actif: {
+    titre: 'Seniors actifs',
+    texte: "10 min de marche rapide puis de footing très léger, mobilité dynamique (chevilles, hanches, épaules). " +
+      "Puis 4 à 6 accélérations progressives de 20–30 m à 60, 70, 80 puis 90 % de la vitesse, avec une récupération complète. " +
+      "Premier essai de sprint à 90 % maximum. Aucun départ à froid.",
+  },
+  rameur: {
+    titre: 'Rameur',
+    texte: "5 min de rameur facile, puis 3 × 10 coups à intensité croissante. Mobilité hanches et dos. Départ prudent : l'allure se gère sur toute la distance.",
+  },
   hyrox: {
     titre: 'Conditioning / circuit',
     texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
@@ -73,7 +88,12 @@ const WARMUP_SENIOR = new Set(['chair_stand_30s', 'arm_curl_30s', 'grip_strength
 const WARMUP_HYROX = new Set(['hyrox_circuit', 'conditioning', 'amrap_20min'])
 
 /** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
-export function warmupForTest(slug: string): { titre: string; texte: string } {
+export function warmupForTest(slug: string, testKey?: string | null): { titre: string; texte: string } {
+  if (testKey === 'senior_actif' && !WARMUP_FORCE.has(slug)) return ECHAUFFEMENTS.senior_actif
+  if (slug === 'bench_5rm' || slug === 'pullups_max' || slug === 'pushups_max' || slug === 'knee_pushups_max' || slug === 'knee_pushups_30s' || slug === 'hang_hold') return ECHAUFFEMENTS.force_ado
+  if (slug.startsWith('circuit') || slug === 'box_stepup_100' || slug === 'burpees_nopushup') return ECHAUFFEMENTS.hyrox
+  if (slug.startsWith('row')) return ECHAUFFEMENTS.rameur
+  if (slug.startsWith('shuttle')) return ECHAUFFEMENTS.course
   if (WARMUP_FORCE.has(slug)) return ECHAUFFEMENTS.force
   if (WARMUP_HALTERO.has(slug)) return ECHAUFFEMENTS.haltero
   if (WARMUP_HYROX.has(slug)) return ECHAUFFEMENTS.hyrox
@@ -617,10 +637,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Chrono', 'Repère de 20 m'],
     etapes: [
       'Un tour = 5 burpees sans pompe + 20 m de marche de l\'ours (dos horizontal, fesses non relevées) + 20 montées de genoux (mains au niveau du bassin, le genou touche la main) + 10 squats.',
-      '3 tours, 1 min 30 de récup entre les tours.',
-      'Chaque tour est chronométré ; le score est la somme des temps des 3 tours.',
+      '3 tours enchaînés, sans aucune pause ni récupération entre les tours.',
+      'Un seul chrono du début à la fin : le score est le temps total.',
     ],
-    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    saisie: 'Le temps total (mm:ss).',
     securite: 'Marche de l\'ours dos parallèle au sol. Squats contrôlés.',
     flag: true,
   },

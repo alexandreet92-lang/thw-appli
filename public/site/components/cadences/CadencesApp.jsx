@@ -1395,6 +1395,7 @@
       var day = cat.days.filter(function (d) { return d.day === openDay; })[0];
       var tests = testsByDay(openDay);
       var warm = null; tests.forEach(function (t) { var p = cat.protocols[t.slug]; if (!warm && p && p.warmup) warm = p.warmup; });
+      var rewarm = (day && day.warmups && day.warmups.length > 1) ? day.warmups.filter(function (w) { return !!w.avant; }) : [];
       var steps = ['Échauffement'].concat(tests.map(function (t) { return t.name.replace(/\s*\(.*\)$/, ''); }));
       var cur = stepIdx > 0 ? tests[stepIdx - 1] : null;
       var goStep = function (i) { setErr(null); setStepIdx(Math.max(0, Math.min(steps.length, i))); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } };
@@ -1433,6 +1434,16 @@
               <button type="button" className="thw-btn-primary" onClick={function () { setOpenDay(null); setStepIdx(0); }}>Retour au calendrier</button>
             </div>
           ) : (
+            <React.Fragment>
+              {rewarm.filter(function (w) { return w.avant === cur.name; }).map(function (w) {
+                return (
+                  <div key="rw" className="cad-card" style={{ marginBottom: 12 }}>
+                    <div className="cad-ec-h">Nouvel échauffement · {w.titre}</div>
+                    <p className="cad-p" style={{ margin: '4px 0 0' }}>{w.texte}</p>
+                    <p className="cad-p" style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '8px 0 0' }}>Plusieurs heures séparent cette séance de la précédente : on se réchauffe de nouveau.</p>
+                  </div>
+                );
+              })}
             <TestStep key={cur.slug} t={cur} idx={stepIdx} n={tests.length} cat={cat} camp={camp} mode={props.mode}
                       draft={drafts[cur.slug]} setDraft={function (p) { setDraft(cur.slug, p); }}
                       result={resultBySlug[cur.slug]} score={(score.byTest && score.byTest[cur.slug]) || null} scoreA={(scoreA.byTest && scoreA.byTest[cur.slug]) || null}
@@ -1440,6 +1451,7 @@
                       onSkip={function (reason) { skip(cur, reason, function () { goStep(stepIdx + 1); }); }}
                       onClear={function () { clear(cur); }}
                       onPrev={function () { goStep(stepIdx - 1); }} onNext={function () { goStep(stepIdx + 1); }} />
+            </React.Fragment>
           )}
         </div>
       );

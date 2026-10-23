@@ -420,11 +420,14 @@
               <div className="cad-ec-h">Matériel du jour</div>
               <div className="cad-ti-tags">{gear.map(function (g) { return <span key={g}>{g}</span>; })}</div>
             </div>
-            {warm.map(function (w) {
+            {((!isDeca(catalog) && cur.warmups && cur.warmups.length) ? cur.warmups : warm).map(function (w, wi) {
               return (
-                <div key={w.titre}>
-                  <div className="cad-ec-h">Échauffement · {w.titre}</div>
+                <div key={wi + w.titre}>
+                  <div className="cad-ec-h">{w.avant ? 'Nouvel échauffement ·' : 'Échauffement ·'} {w.titre}</div>
                   <p className="cad-ec-p">{w.texte}</p>
+                  {w.avant ? <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Plusieurs heures séparent cette séance de la précédente : on se réchauffe de nouveau.</p> : null}
+                  {(!w.avant && !isDeca(catalog) && cur.warmups && cur.warmups.length > 1) ? <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Cet échauffement vaut pour toute la séance du matin : les épreuves s’enchaînent sans se réchauffer de nouveau.</p> : null}
+                  {(!w.avant && !isDeca(catalog) && !(cur.warmups && cur.warmups.length > 1)) ? <p className="cad-ec-p" style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Les épreuves s’enchaînent : un seul échauffement suffit. Chacun peut s’échauffer comme il le souhaite, ceci n’est qu’un exemple.</p> : null}
                 </div>
               );
             })}

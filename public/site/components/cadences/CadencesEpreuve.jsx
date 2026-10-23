@@ -40,7 +40,7 @@
   function fmt(v, unit) {
     if (v == null) return '—';
     if (unit === 's' && v >= 60) { var m = Math.floor(v / 60), s = Math.round(v - m * 60); return m + ':' + ('0' + s).slice(-2) + ' min'; }
-    var n = Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    var n = Number(v).toLocaleString({ en: 'en-US', es: 'es-ES', it: 'it-IT', de: 'de-DE' }[lang()] || 'fr-FR', { maximumFractionDigits: 2 });
     return n + (unit ? ' ' + unit : '');
   }
 

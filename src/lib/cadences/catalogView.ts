@@ -9,7 +9,7 @@ import { daysOf, qualityShare } from './catalog'
 import { PROTOCOLS, protocolFor, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, CONDITIONING_LOADS, warmupForTest } from './protocols'
 import { LEVEL_COLORS } from './palette'
 import { presentationOf } from './presentations'
-import type { CadencesConfig } from './types'
+import type { CadencesConfig, DayPlan } from './types'
 
 const TRACK = new Set(['sprint_30m', 'sprint_100m', 'run_400m', 'run_3200m'])
 const SWIM = new Set(['swim_50m', 'swim_200m'])
@@ -49,6 +49,18 @@ export function buildTestsMeta(config: CadencesConfig) {
   }))
 }
 
+/** Échauffements d'un jour : un par séance (un seul si les épreuves s'enchaînent ; un de plus après une longue pause). */
+function warmupsOfDay(config: CadencesConfig, d: DayPlan): { titre: string; texte: string; avant: string | null }[] {
+  const tests = config.tests.filter((t) => t.day === d.day).sort((a, b) => a.order_in_day - b.order_in_day)
+  const breaks = new Set(d.rewarm_before ?? [])
+  const sessions: typeof tests[] = []
+  for (const t of tests) {
+    if (!sessions.length || breaks.has(t.slug)) sessions.push([])
+    sessions[sessions.length - 1].push(t)
+  }
+  return sessions.map((ss, i) => ({ ...warmupForTest(ss[0].slug, config.test_key), avant: i === 0 ? null : ss[0].name }))
+}
+
 export function buildCatalogView(config: CadencesConfig) {
   return {
     testKey: config.test_key ?? 'decaform',
@@ -60,14 +72,14 @@ export function buildCatalogView(config: CadencesConfig) {
     rm5Factor: config.rm5_to_3rm ?? 1.06,            // 5RM → équivalent 3RM
     anchors: config.anchors,                         // {ref_pct, max_pct}
     age: config.age,                                 // {min,max,bands,pf}
-    days: daysOf(config),
+    days: daysOf(config).map((d) => ({ ...d, warmups: warmupsOfDay(config, d) })),
     tests: buildTestsMeta(config),
     // Protocoles par épreuve DU PRODUIT : protocole dédié s'il existe (slugs
     // Decaform réutilisés), sinon protocole minimal synthétisé (nouvelles épreuves).
     protocols: Object.fromEntries(
       config.tests.map((t) => {
         const p = protocolFor(t.slug, config.test_key)
-        if (p) return [t.slug, { ...p, warmup: warmupForTest(t.slug) }]
+        if (p) return [t.slug, { ...p, warmup: warmupForTest(t.slug, config.test_key) }]
         return [t.slug, {
           objectif: t.name,
           materiel: [] as string[],

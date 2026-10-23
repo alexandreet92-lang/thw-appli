@@ -3,7 +3,7 @@
    Chaque parcours/saut est un tracé continu ordonné : un point (l'athlète)
    le parcourt au clic sur « ▶ Lancer la simulation », avec l'indication de
    la phase en cours (Avant, Pas chassés, Sprint 30 m…). Lisible clair/sombre.
-   Publie window.CadDiagram : <CadDiagram name="square|move|slalom|longjump|triplejump|chimere"/>.
+   Publie window.CadDiagram : <CadDiagram name="square|move|slalom|longjump|triplejump|chimere|cross"/>.
    ════════════════════════════════════════════════════════════════ */
 (function () {
   var AVANT = '#00c8e0';     // course avant
@@ -393,6 +393,31 @@
       caption: "100 m, sept étapes, un mode de déplacement différent à chaque fois : course, marche du canard, sauts de haies espacées d'environ 1 m (4 pour les hommes, 2 pour les femmes), course jusqu'à la ligne des 50 m, marche de l'ours, 3 galipettes, course jusqu'à la ligne des 100 m. 3 essais, 4 à 5 min de récup : meilleur temps." };
   }
 
+  // ── CROIX 15-12-10-5 (agilité 90°, ados 15-17) ──
+  function crossData() {
+    var S = 10, CX = 190, CY = 186;
+    var C = [CX, CY], N = [CX, CY - 15 * S], E = [CX + 12 * S, CY], So = [CX, CY + 10 * S], Wp = [CX - 5 * S, CY];
+    var path = [C, N, C, E, C, So, C, Wp, C, N];
+    var labels = ['Aller au plot de 15 m', 'Retour au centre', 'Aller au plot de 12 m', 'Retour au centre', 'Aller au plot de 10 m', 'Retour au centre',
+      'Aller au plot de 5 m', 'Retour au centre', 'Dernier aller : plot de 15 m — arrivée'];
+    var colors = labels.map(function () { return AVANT; });
+    var extras = (
+      <g>
+        <line x1={N[0]} y1={N[1]} x2={So[0]} y2={So[1]} stroke="var(--border-mid)" strokeWidth={1} strokeDasharray="3 4" />
+        <line x1={Wp[0]} y1={Wp[1]} x2={E[0]} y2={E[1]} stroke="var(--border-mid)" strokeWidth={1} strokeDasharray="3 4" />
+        {plot(C[0], C[1], null)}{plot(N[0], N[1], null)}{plot(E[0], E[1], null)}{plot(So[0], So[1], null)}{plot(Wp[0], Wp[1], null)}
+        <text x={N[0] + 10} y={N[1] + 4} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>15 m</text>
+        <text x={E[0] - 4} y={E[1] - 10} textAnchor="end" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>12 m</text>
+        <text x={So[0] + 10} y={So[1] + 4} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>10 m</text>
+        <text x={Wp[0] + 4} y={Wp[1] - 10} textAnchor="start" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, fill: 'var(--text-dim)' }}>5 m</text>
+        {flag(C[0] + 24, C[1] + 22, 'Départ')}
+      </g>
+    );
+    return { w: 380, h: 330, maxWidth: 420, durMax: 12000, path: path, labels: labels, colors: colors, extras: extras, legend: null,
+      aria: 'Simulation de l\'agilité en croix 15, 12, 10 et 5 m',
+      caption: "Un plot central et quatre plots à 15, 12, 10 et 5 m, à 90° les uns des autres. Aller-retour vers chacun, dans l'ordre, puis un dernier aller jusqu'au plot de 15 m : c'est l'arrivée (environ 99 m). 3 essais : meilleur temps." };
+  }
+
   function CadDiagram(props) {
     var data = null;
     if (props.name === 'square') data = squareData();
@@ -401,6 +426,7 @@
     else if (props.name === 'longjump') data = longJumpData();
     else if (props.name === 'triplejump') data = tripleJumpData();
     else if (props.name === 'chimere') data = chimereData();
+    else if (props.name === 'cross') data = crossData();
     if (!data) return null;
     return <CadCourseSim {...data} />;
   }

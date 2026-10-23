@@ -22,6 +22,10 @@ export interface EquipmentRule {
   applies_when: string     // 'pointes' | 'ceinture' | 'regression'
   pct: number
   rule: 'result_x_(1+pct)' | 'result_x_(1-pct)'
+  /** Version accessible d'une épreuve (field 'regression') : libellés du choix affiché à la saisie. */
+  label?: string
+  normal_label?: string
+  regression_label?: string
 }
 
 export interface Threshold { ref: number; max: number }

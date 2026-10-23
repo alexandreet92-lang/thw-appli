@@ -1,5 +1,5 @@
 {
-  "version": "v1.0", "test_key": "senior", "title": "Decaform Senior", "population": "seniors 65 ans et +",
+  "version": "v1.1", "test_key": "senior", "title": "Decaform Senior Autonomie", "population": "seniors 65 ans et + en reprise ou en forme modérée",
   "days": [
     {"day": 1, "label": "Force & autonomie", "rest": false},
     {"day": 2, "label": "Endurance & équilibre", "rest": false},

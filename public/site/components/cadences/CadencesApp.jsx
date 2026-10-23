@@ -1361,7 +1361,7 @@
       var rawParts = t.isAmrap ? [Number(d.parts[0]), Number(d.partialReps || 0)]
         : (partCountOf(t) > 1 ? d.parts.map(function (p) { return parsePart(t, p); }).filter(function (v) { return v != null; }) : null);
       var skippedIdx = (t.partLabels && d.skipped) ? d.skipped.map(function (v, i) { return v ? i + 1 : 0; }).filter(Boolean) : [];
-      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', notes: skippedIdx.length ? 'stations_passees=' + skippedIdx.join(',') : null, equipment: (d.equipment === 'strictes' || (t.equipmentField === 'regression' && camp.scale_sex === 'F')) ? null : d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
+      put({ campaignId: camp.id, slug: t.slug, value: value, rawParts: rawParts, status: 'validated', notes: skippedIdx.length ? 'stations_passees=' + skippedIdx.join(',') : null, equipment: (d.equipment === 'strictes' || (t.equipmentField === 'regression' && camp.scale_sex === 'F' && !(t.equipment && t.equipment.label))) ? null : d.equipment, variant: t.rmChoice ? (d.variant === 'rm5' ? 'rm5' : null) : d.variant, timingMethod: d.timing, poolLength: d.pool,
             venue: venue, temperatureC: venue === 'outdoor' ? tempN : null, weather: venue === 'outdoor' ? d.weather : null })
         .then(function (ok) { if (ok) { props.reload(); if (after) after(); } });
     }
@@ -1695,7 +1695,8 @@
             {t.hasTiming ? <Sel label="Chrono" value={d.timing || 'manuel'} onChange={function (v) { props.setDraft({ timing: v }); }} options={[['manuel', 'Manuel'], ['cellules', 'Cellules'], ['montre', 'Montre']]}/> : null}
             {t.hasPool ? <Sel label="Bassin" value={String(d.pool || 25)} onChange={function (v) { props.setDraft({ pool: Number(v) }); }} options={[['25', '25 m'], ['50', '50 m']]}/> : null}
             {t.rmChoice ? <Sel label="Charge saisie" value={d.variant || 'rm3'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['rm3', '3RM (3 répétitions)'], ['rm5', '5RM (5 répétitions)']]}/> : null}
-            {t.equipmentField === 'regression' && camp.scale_sex !== 'F' ? <Sel label="Tractions et pompes" value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', 'Strictes (tractions) et classiques (pompes)'], ['regression', 'Australiennes et / ou pompes sur les genoux (+5 %)']]}/> : null}
+            {t.equipmentField === 'regression' && t.equipment && t.equipment.label ? <Sel label={t.equipment.label} value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', t.equipment.normal_label], ['regression', t.equipment.regression_label]]}/> : null}
+            {t.equipmentField === 'regression' && !(t.equipment && t.equipment.label) && camp.scale_sex !== 'F' ? <Sel label="Tractions et pompes" value={d.equipment || 'strictes'} onChange={function (v) { props.setDraft({ equipment: v }); }} options={[['strictes', 'Strictes (tractions) et classiques (pompes)'], ['regression', 'Australiennes et / ou pompes sur les genoux (+5 %)']]}/> : null}
             {t.hasVariant ? <Sel label="Burpee" value={d.variant || 'box'} onChange={function (v) { props.setDraft({ variant: v }); }} options={[['box', 'Box jump'], ['plate', 'To plate']]}/> : null}
           </div>
 

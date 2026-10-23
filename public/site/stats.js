@@ -5,6 +5,12 @@
   'use strict';
   if (window.thwTrack) return;
   var off = false;
+  // Lien de réglage : ?notrack=1 exclut cet appareil des statistiques, ?notrack=0 le réactive.
+  try {
+    var nt = new URLSearchParams(location.search).get('notrack');
+    if (nt === '1') localStorage.setItem('thw_no_track', '1');
+    else if (nt === '0') localStorage.removeItem('thw_no_track');
+  } catch (e) {}
   try { off = localStorage.getItem('thw_no_track') === '1'; } catch (e) {}
   if (off || navigator.doNotTrack === '1' || /^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)) { window.thwTrack = function () {}; return; }
 
@@ -19,7 +25,7 @@
     var q = new URLSearchParams(location.search), refHost = '';
     try { refHost = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
     if (refHost && /(^|\.)the-hybridway\.com$|thw-appli/.test(refHost)) refHost = '';
-    lp = { r: refHost, u: q.get('utm_source') || '', c: q.get('utm_campaign') || '', q: /\/defi/.test(location.pathname) ? (q.get('s') || '') : '' };
+    lp = { r: refHost, u: q.get('utm_source') || '', c: q.get('utm_campaign') || '', q: q.get('qr') || (/\/defi/.test(location.pathname) ? (q.get('s') || '') : '') };
     ss('thw_lp', JSON.stringify(lp));
   }
 

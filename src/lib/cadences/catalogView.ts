@@ -6,7 +6,7 @@
 // l'affichage dès qu'une version retire une épreuve).
 // ══════════════════════════════════════════════════════════════════
 import { daysOf, qualityShare } from './catalog'
-import { PROTOCOLS, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, CONDITIONING_LOADS, warmupForTest } from './protocols'
+import { PROTOCOLS, protocolFor, ECHAUFFEMENT_GENERAL, HYROX_THRUSTER_KG, CONDITIONING_LOADS, warmupForTest } from './protocols'
 import { LEVEL_COLORS } from './palette'
 import { presentationOf } from './presentations'
 import type { CadencesConfig } from './types'
@@ -29,7 +29,7 @@ export function buildTestsMeta(config: CadencesConfig) {
     aggregate: t.aggregate ?? 'best',
     criteria: t.criteria ?? null,                   // [{aggregate,pts_max}] : meilleur + total des essais
     partCount: t.slug === 'amrap_20min' ? 1 : (t.attempts && t.attempts > 1 ? t.attempts : 1),
-    partLabels: PROTOCOLS[t.slug]?.stations ?? null,        // libellés des parts (stations du Conditioning)
+    partLabels: protocolFor(t.slug, config.test_key)?.stations ?? null,        // libellés des parts (stations du Conditioning)
     partLabelsF: PROTOCOLS[t.slug]?.stationsF ?? null,      // libellés pour les femmes (australiennes, pompes sur les genoux)
     partShare: PROTOCOLS[t.slug]?.stationShare ?? null,     // part du temps attendue par station (niveau Référence, hommes)
     partShareF: PROTOCOLS[t.slug]?.stationShareF ?? null,   // idem pour les femmes
@@ -66,7 +66,7 @@ export function buildCatalogView(config: CadencesConfig) {
     // Decaform réutilisés), sinon protocole minimal synthétisé (nouvelles épreuves).
     protocols: Object.fromEntries(
       config.tests.map((t) => {
-        const p = PROTOCOLS[t.slug]
+        const p = protocolFor(t.slug, config.test_key)
         if (p) return [t.slug, { ...p, warmup: warmupForTest(t.slug) }]
         return [t.slug, {
           objectif: t.name,

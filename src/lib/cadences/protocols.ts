@@ -20,7 +20,7 @@ export interface Protocol {
   stationsF?: string[]             // libellés des stations pour les femmes (variantes : australiennes, pompes sur les genoux)
   stationShare?: number[]          // part du temps total attendue par station à niveau Référence, hommes (somme = 1)
   stationShareF?: number[]         // idem pour les femmes (rameur +12 %, régressions)
-  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere'   // schéma du mouvement / parcours
+  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere' | 'cross'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
 }
 
@@ -55,6 +55,11 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
     titre: 'Vélo',
     texte: "10 min progressif, 3 min facile, 3 accélérations de 1 min proches du seuil, puis 5 min facile avant le test.",
   },
+  senior: {
+    titre: 'Seniors',
+    texte: "5 à 10 min de marche facile, puis mobilité douce (chevilles, hanches, épaules, nuque) et quelques levers de chaise lents. " +
+      "Aucune accélération : on monte en intensité progressivement, et on arrête au moindre vertige.",
+  },
   hyrox: {
     titre: 'Conditioning / circuit',
     texte: "5–8 min de cardio léger (rameur, vélo ou corde) + mobilité, puis les mouvements du circuit à vide ou en " +
@@ -64,6 +69,7 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
 
 const WARMUP_FORCE = new Set(['squat_3rm', 'bench_press_3rm', 'deadlift_3rm', 'military_press_3rm', 'weighted_pullup_3rm', 'dead_hang'])
 const WARMUP_HALTERO = new Set(['clean_2rm', 'clean_and_press_2rm', 'front_squat_3rm'])
+const WARMUP_SENIOR = new Set(['chair_stand_30s', 'arm_curl_30s', 'grip_strength', 'walk_6min', 'up_and_go', 'single_leg_balance', 'functional_flex', 'sit_to_stand_5x', 'walk_2km', 'single_leg_balance_eyes_closed', 'sit_rise_test'])
 const WARMUP_HYROX = new Set(['hyrox_circuit', 'conditioning', 'amrap_20min'])
 
 /** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
@@ -71,6 +77,7 @@ export function warmupForTest(slug: string): { titre: string; texte: string } {
   if (WARMUP_FORCE.has(slug)) return ECHAUFFEMENTS.force
   if (WARMUP_HALTERO.has(slug)) return ECHAUFFEMENTS.haltero
   if (WARMUP_HYROX.has(slug)) return ECHAUFFEMENTS.hyrox
+  if (WARMUP_SENIOR.has(slug)) return ECHAUFFEMENTS.senior
   if (slug.startsWith('swim')) return ECHAUFFEMENTS.natation
   if (slug === 'bike_20min') return ECHAUFFEMENTS.velo
   if (slug.startsWith('run') || slug.startsWith('repeat_200')) return ECHAUFFEMENTS.course
@@ -635,11 +642,11 @@ export const PROTOCOLS: Record<string, Protocol> = {
     objectif: 'Force et endurance du haut du corps.',
     materiel: ['Tapis'],
     etapes: [
-      'Position de pompe bras tendus, corps gainé, mains largeur d\'épaules.',
-      'Descendre poitrine près du sol puis remonter, sans cadence imposée, jusqu\'à l\'échec.',
-      'Variante genoux possible (comptée comme telle).',
+      'Pompes classiques : position de pompe bras tendus, corps gainé, mains largeur d\'épaules.',
+      'Descendre la poitrine près du sol puis remonter, sans cadence imposée, jusqu\'à l\'échec. 1 seul essai.',
+      'Si les pompes classiques sont impossibles : pompes sur les genoux (même consigne, corps aligné des genoux aux épaules). Dans le score, 2 pompes sur les genoux comptent pour 1 pompe classique.',
     ],
-    saisie: 'Le nombre de pompes propres.',
+    saisie: 'Le nombre de pompes propres (avec la variante « sur les genoux » si c\'est ton cas).',
     flag: true,
   },
   circuit_teens: {
@@ -662,9 +669,9 @@ export const PROTOCOLS: Record<string, Protocol> = {
     etapes: [
       'Départ arrêté, en ligne droite.',
       'Sprint maximal sur 50 m.',
-      '2 essais, on retient le meilleur temps.',
+      '3 essais, récupération complète entre chaque, on retient le meilleur temps.',
     ],
-    saisie: 'Le meilleur temps (s).',
+    saisie: 'Les 3 temps (s) ; le meilleur est retenu.',
     flag: true,
   },
   repeat_100m_x10: {
@@ -681,14 +688,16 @@ export const PROTOCOLS: Record<string, Protocol> = {
   },
   agility_90: {
     objectif: 'Agilité et coordination dans les changements de direction à 90°.',
-    materiel: ['Plots', 'Chrono', 'Repères au sol (10 / 8 / 6 / 4 / 2 m)'],
+    materiel: ['5 plots (1 au centre, 4 aux extrémités)', 'Mètre ruban', 'Chrono', 'Gazon ou sol non glissant'],
     etapes: [
-      'Parcours en changements de direction à 90°, sur des segments décroissants : 10 m, puis 8, 6, 4 et 2 m.',
-      'On parcourt un segment, on contourne le plot (de l\'extérieur vers l\'intérieur), puis virage à 90° vers le segment suivant, en alternant les côtés.',
-      '2 essais, on retient le meilleur temps.',
+      'Parcours en croix : un plot central (le départ) et quatre plots placés à 15 m, 12 m, 10 m et 5 m du centre, dans les quatre directions, à 90° les unes des autres.',
+      'Départ du plot central. Courir jusqu\'au plot de 15 m, le contourner de l\'extérieur vers l\'intérieur, revenir au centre. Même chose vers le plot de 12 m, puis celui de 10 m, puis celui de 5 m (à chaque fois un aller-retour, avec un virage à 90° au centre).',
+      'Après l\'aller-retour des 5 m, un dernier aller simple jusqu\'au plot de 15 m : c\'est l\'arrivée (environ 99 m au total).',
+      '3 essais, récupération complète entre chaque, on retient le meilleur temps.',
     ],
-    saisie: 'Le meilleur temps total (s).',
-    securite: 'Sol non glissant. Appuis contrôlés dans les virages.',
+    saisie: 'Les 3 temps (s) ; le meilleur est retenu.',
+    securite: 'Sol non glissant. Appuis contrôlés dans les virages. Échauffement complet avant le premier essai.',
+    diagram: 'cross',
     flag: true,
   },
   bench_5rm: {
@@ -707,11 +716,11 @@ export const PROTOCOLS: Record<string, Protocol> = {
     objectif: 'Force de tirage du haut du corps.',
     materiel: ['Barre de traction'],
     etapes: [
-      'Tractions : menton au-dessus de la barre, bras tendus en bas, sans élan.',
-      'Maximum de répétitions propres.',
-      'Variante si aucune traction possible : tenue bras fléchis en haut de la barre le plus longtemps (le temps tenu sert alors de résultat).',
+      'Tractions strictes : menton au-dessus de la barre, bras tendus en bas, sans élan.',
+      'Maximum de répétitions propres, en 1 seul essai.',
+      'Si aucune traction n\'est possible : suspension à la barre, bras tendus, le plus longtemps possible. Le temps tenu est converti pour le score : 10 s de suspension = 1 traction.',
     ],
-    saisie: 'Le nombre de tractions (ou le temps de tenue, s, si variante).',
+    saisie: 'Le nombre de tractions ou, avec la variante « suspension », le temps tenu (s).',
     flag: true,
   },
   swim_100m: {
@@ -905,7 +914,125 @@ export const PROTOCOLS: Record<string, Protocol> = {
   },
 }
 
+// ── Senior Actif (seniors déjà en forme) ──
+const SENIOR_ACTIF_PROTOCOLS: Record<string, Protocol> = {
+  sit_to_stand_5x: {
+    objectif: 'Force et puissance des jambes : 5 levers de chaise le plus vite possible.',
+    materiel: ['Chaise stable sans accoudoirs, adossée à un mur', 'Chrono'],
+    etapes: [
+      'Assis au milieu de la chaise, dos droit, bras croisés sur la poitrine, pieds à plat.',
+      'Au top : se lever complètement puis se rasseoir, 5 fois de suite, le plus vite possible, sans s\'aider des bras.',
+      'Le chrono s\'arrête à la 5e remise en position assise. 1 seul essai, après une démonstration à vitesse modérée.',
+    ],
+    saisie: 'Le temps (s) pour les 5 levers.',
+    securite: 'Chaise contre un mur, chaussures stables. On arrête au moindre vertige.',
+    flag: true,
+  },
+  walk_2km: {
+    objectif: 'Endurance aérobie : marche rapide sur 2 km (inspirée du test de marche de Rockport).',
+    materiel: ['Parcours plat balisé de 2 km (ou 5 tours de piste de 400 m)', 'Chrono'],
+    etapes: [
+      'Marcher 2 km le plus vite possible, sans jamais courir (un pied reste toujours au sol).',
+      'Allure soutenue mais régulière, sans pause sauf malaise.',
+      'On relève le temps à l\'arrivée. 1 seul essai.',
+    ],
+    saisie: 'Le temps (s) sur 2 km.',
+    securite: 'Marche uniquement. Arrêt immédiat en cas de douleur thoracique, de vertige ou d\'essoufflement anormal.',
+    flag: true,
+  },
+  single_leg_balance_eyes_closed: {
+    objectif: 'Équilibre statique sans le secours de la vue (prévention des chutes).',
+    materiel: ['Chrono', 'Mur ou chaise à portée de main', 'Sol plat non glissant'],
+    etapes: [
+      'Debout, pieds nus, mains sur les hanches : lever un pied du sol.',
+      'Fermer les yeux et tenir le plus longtemps possible (plafonné à 30 s).',
+      'Le chrono s\'arrête quand le pied levé touche le sol ou quand on ouvre les yeux. 3 essais sur la jambe de ton choix, on retient le meilleur temps.',
+    ],
+    saisie: 'Les 3 temps (s) ; le meilleur est retenu (30 s maximum).',
+    securite: 'Un partenaire à côté de toi, un mur à portée de main.',
+    flag: true,
+  },
+  sit_rise_test: {
+    objectif: 'Mobilité, force et coordination : s\'asseoir au sol puis se relever (test assis-debout, sitting-rising test).',
+    materiel: ['Tapis', 'Un partenaire à côté'],
+    etapes: [
+      'Debout, pieds nus, au milieu du tapis : s\'asseoir au sol en croisant les jambes, puis se relever, le plus simplement possible et sans s\'aider si possible.',
+      'Chaque mouvement (s\'asseoir, se relever) vaut 5 points, soit 10 au total. On retire 1 point par appui utilisé (main, genou, avant-bras, côté de la jambe, main sur le genou ou la cuisse) et 0,5 point en cas de déséquilibre.',
+      '1 seul essai.',
+    ],
+    saisie: 'Le score sur 10 (par pas de 0,5).',
+    securite: 'Si l\'épreuve n\'est pas faisable sans risque, ne pas la passer. Un appui stable à portée de main.',
+    flag: true,
+  },
+}
+
+/** Protocoles propres à un produit : remplacent (champ par champ) le protocole commun d'un slug partagé. */
+const PROTOCOL_OVERRIDES: Record<string, Record<string, Partial<Protocol>>> = {
+  teens_15_17: {
+    standing_long_jump: {
+      objectif: 'Explosivité horizontale des membres inférieurs. Première épreuve du jour 1, à froid après l\'échauffement.',
+      etapes: [
+        'Départ pieds joints derrière la ligne, sans élan.',
+        'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.',
+        'Mesurer du bord de la ligne au talon le plus proche.',
+        '3 essais, on retient le meilleur saut.',
+      ],
+      saisie: 'Les 3 distances (cm) ; la meilleure est retenue.',
+      diagram: 'longjump',
+    },
+    swim_100m: {
+      etapes: [
+        '100 m en nage libre, départ plongé ou poussée au mur.',
+        'Allure gérée pour tenir la distance.',
+        'À passer le matin du jour 3 ; la navette de 20 m se fait l\'après-midi.',
+      ],
+    },
+    shuttle_20m: {
+      etapes: [
+        'Faire des allers-retours entre deux lignes distantes de 20 m, au rythme des bips.',
+        'La vitesse imposée augmente à chaque palier : il faut atteindre la ligne avant le bip.',
+        'On s\'arrête quand on ne tient plus le rythme (deux retards consécutifs).',
+        'À passer l\'après-midi du jour 3, après la natation du matin. Sans le temps, on la reporte au jour 4.',
+      ],
+    },
+    row_2000m: {
+      etapes: [
+        'Régler l\'écran sur 2000 m. Départ à l\'arrêt.',
+        'Couvrir les 2000 m le plus vite possible en gérant l\'allure.',
+        'À passer le jour 4 (le jour 5 si la navette a été reportée au jour 4).',
+      ],
+    },
+  },
+  teens_13_14: { standing_long_jump: { etapes: ['Départ pieds joints derrière la ligne, sans élan.', 'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.', 'Mesurer du bord de la ligne au talon le plus proche.', '3 essais, on retient le meilleur saut.'], saisie: 'Les 3 distances (cm) ; la meilleure est retenue.' } },
+  kids_11_12: { standing_long_jump: { etapes: ['Départ pieds joints derrière la ligne, sans élan.', 'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.', 'Mesurer du bord de la ligne au talon le plus proche.', '3 essais, on retient le meilleur saut.'], saisie: 'Les 3 distances (cm) ; la meilleure est retenue.' } },
+  kids_8_10: { standing_long_jump: { etapes: ['Départ pieds joints derrière la ligne, sans élan.', 'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.', 'Mesurer du bord de la ligne au talon le plus proche.', '3 essais, on retient le meilleur saut.'], saisie: 'Les 3 distances (cm) ; la meilleure est retenue.' } },
+  senior_actif: {
+    grip_strength: {
+      objectif: 'Force de préhension — prédicteur de santé reconnu chez le senior.',
+      etapes: [
+        'Debout ou assis, bras le long du corps, serrer le dynamomètre à fond.',
+        '3 essais sur la main dominante, 1 min de récupération entre chaque, on retient le meilleur.',
+      ],
+      saisie: 'Les 3 forces (kg) ; la meilleure est retenue.',
+    },
+    dead_hang: {
+      objectif: 'Endurance de la force de préhension et santé des épaules.',
+      etapes: [
+        'Suspension à la barre, bras tendus, deux mains, immobile, jusqu\'au lâcher.',
+        'Dernière épreuve de la séance de force (elle fatigue la préhension). 1 seul essai.',
+      ],
+      securite: 'Barre à hauteur d\'un marchepied pour monter et descendre. Pas d\'épaule douloureuse.',
+    },
+    functional_flex: {
+      saisie: 'L\'atteinte en cm (négatif = n\'atteint pas). Fais la moyenne des deux mesures si tu en prends plusieurs.',
+    },
+  },
+}
+
 /** Protocole d'une épreuve (ou undefined si contenu non défini). */
-export function protocolFor(slug: string): Protocol | undefined {
-  return PROTOCOLS[slug]
+export function protocolFor(slug: string, testKey?: string | null): Protocol | undefined {
+  const base = (testKey === 'senior_actif' ? SENIOR_ACTIF_PROTOCOLS[slug] : undefined) ?? PROTOCOLS[slug]
+  const over = testKey ? PROTOCOL_OVERRIDES[testKey]?.[slug] : undefined
+  if (!base) return undefined
+  return over ? { ...base, ...over } : base
 }

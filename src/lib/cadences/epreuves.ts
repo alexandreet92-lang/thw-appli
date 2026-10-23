@@ -16,7 +16,7 @@ export interface EpreuveRef {
 }
 
 /** Ordre de préférence : la batterie qui décrit le mieux l'épreuve passe en premier. */
-const PRIORITE = ['decaform', 'start', 'senior', 'forme', 'teens_15_17', 'teens_13_14', 'kids_11_12', 'kids_8_10']
+const PRIORITE = ['decaform', 'start', 'senior', 'senior_actif', 'forme', 'teens_15_17', 'teens_13_14', 'kids_11_12', 'kids_8_10']
 
 export const epreuveFile = (slug: string): string => `epreuve-${slug.replace(/_/g, '-')}.html`
 

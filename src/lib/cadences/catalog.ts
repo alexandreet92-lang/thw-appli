@@ -16,6 +16,7 @@ import teens_13_14 from './configs/teens_13_14.config.json'
 import teens_15_17 from './configs/teens_15_17.config.json'
 import start from './configs/start.config.json'
 import senior from './configs/senior.config.json'
+import senior_actif from './configs/senior_actif.config.json'
 import forme from './configs/forme.config.json'
 import type { CadencesConfig, TestConfig, DayPlan } from './types'
 
@@ -37,6 +38,7 @@ const REGISTRY: Record<string, CadencesConfig> = {
   teens_15_17: teens_15_17 as unknown as CadencesConfig,
   start: start as unknown as CadencesConfig,
   senior: senior as unknown as CadencesConfig,
+  senior_actif: senior_actif as unknown as CadencesConfig,
   forme: forme as unknown as CadencesConfig,
 }
 
@@ -61,7 +63,7 @@ export function productMeta(): { testKey: string; title: string; population: str
 }
 
 /** L'ordre d'affichage : par public, du plus jeune au plus âgé. */
-const ORDRE_PRODUITS = ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17', 'forme', 'decaform', 'start', 'senior']
+const ORDRE_PRODUITS = ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17', 'forme', 'decaform', 'start', 'senior', 'senior_actif']
 
 /** Part de chaque qualité dans le score (somme des points × poids), en fraction de 1. */
 export function qualityShare(c: CadencesConfig): { key: string; label: string; share: number }[] {

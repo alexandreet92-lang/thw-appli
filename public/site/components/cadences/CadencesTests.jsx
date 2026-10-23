@@ -108,7 +108,7 @@
 
   /* Groupes d'affichage hors Decaform : adultes puis jeunes (du plus jeune au plus âgé). */
   var GROUPS = [
-    { id: 'adultes', title: 'Adultes et seniors', sub: 'Une version pour débuter, une version adaptée à partir de 65 ans.', keys: ['start', 'senior'] },
+    { id: 'adultes', title: 'Adultes et seniors', sub: 'Une version pour débuter, et deux versions à partir de 65 ans : remise en forme ou déjà actif.', keys: ['start', 'senior', 'senior_actif'] },
     { id: 'jeunes', title: 'Enfants et ados', sub: 'Des épreuves adaptées à chaque âge, sans danger.', keys: ['kids_8_10', 'kids_11_12', 'teens_13_14', 'teens_15_17'] },
   ];
 

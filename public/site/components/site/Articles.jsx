@@ -28,9 +28,13 @@ function artSlugFromUrl() {
 }
 /* Chaque article a sa propre adresse (page statique : référencement + aperçu de partage). */
 function artUrl(slug) { return slug ? '/articles/' + encodeURIComponent(slug) + '.html' : '/articles.html'; }
+/* Langue du site (FR par défaut) : l'API renvoie l'article traduit s'il existe. */
+function artLang() { try { return (window.THWLang && window.THWLang.getLang()) || 'fr'; } catch (e) { return 'fr'; } }
 function artFetch(url, opts) {
+  var lg = artLang();
+  var u = lg !== 'fr' && (!opts || !opts.method || opts.method === 'GET') ? url + (url.indexOf('?') < 0 ? '?' : '&') + 'lang=' + encodeURIComponent(lg) : url;
   return (window.__thwSessionReady || Promise.resolve()).catch(function () {}).then(function () {
-    return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+    return fetch(u, Object.assign({ credentials: 'same-origin' }, opts || {}));
   });
 }
 
@@ -185,6 +189,8 @@ function ArtReader(props) {
   React.useEffect(function () {
     if (!art || !bodyRef.current) return undefined;
     var root = bodyRef.current;
+    /* Widgets interactifs (curseurs, tableaux) : le HTML injecté n'exécute pas de script, on les branche ici. */
+    try { if (window.THW_ARTICLE_WIDGETS && window.THW_ARTICLE_WIDGETS[slug]) window.THW_ARTICLE_WIDGETS[slug](art.lang || 'fr'); } catch (e) { /* le texte reste lisible */ }
     var els = root.querySelectorAll('[data-play]');
     var io = null;
     if ('IntersectionObserver' in window) {
@@ -246,7 +252,7 @@ function ArtReader(props) {
 
       <div className="arx-col ax-wrap" ref={bodyRef}>
         <div className={art.locked ? 'arx-clip' : ''} data-no-i18n="1">
-          <div className="ax" dangerouslySetInnerHTML={{ __html: '<style>' + art.css + '</style>' + art.html }}/>
+          <div className="ax" data-no-i18n="1" dangerouslySetInnerHTML={{ __html: '<style>' + art.css + '</style>' + art.html }}/>
         </div>
         {art.locked && (
           <div className="arx-gate" role="region" aria-labelledby="arx-gate-t">
@@ -325,6 +331,12 @@ function ArticlesPage() {
   React.useEffect(loadList, []);
   /* Le compte peut apparaître après coup (auto-connexion) : on recharge l'état. */
   React.useEffect(function () { if (account && !member && list) { loadList(); setReloadKey(function (k) { return k + 1; }); } }, [!!account]);
+
+  /* Changement de langue : on recharge la liste et l'article ouvert dans la nouvelle langue. */
+  React.useEffect(function () {
+    if (!window.THWLang || !window.THWLang.onChange) return undefined;
+    return window.THWLang.onChange(function () { loadList(); setReloadKey(function (k) { return k + 1; }); });
+  }, []);
 
   React.useEffect(function () {
     var onPop = function () { setSlug(artSlugFromUrl()); };

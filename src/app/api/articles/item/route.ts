@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { articleForViewer, findMeta, NO_STORE, type ArticleState } from '@/lib/articles/access'
+import { parseLang } from '@/content/articles/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,8 @@ export async function GET(req: Request) {
   const slug = slugOf(req)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const art = await articleForViewer(slug, !!user)
+  const lang = parseLang(new URL(req.url).searchParams.get('lang'))
+  const art = await articleForViewer(slug, !!user, lang)
   if (!art) return NextResponse.json({ error: 'not_found' }, { status: 404, headers: NO_STORE })
 
   let state: ArticleState = { read: false, saved: false }

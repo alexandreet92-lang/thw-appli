@@ -1,0 +1,21 @@
+{
+  "<b>Ce que ça veut dire</b>": ["<b>What this means</b>", "<b>Qué significa esto</b>", "<b>Cosa significa</b>", "<b>Was das bedeutet</b>"],
+  "<b>La question</b>": ["<b>The question</b>", "<b>La pregunta</b>", "<b>La domanda</b>", "<b>Die Frage</b>"],
+  "La question": ["The question", "La pregunta", "La domanda", "Die Frage"],
+  "Questions fréquentes": ["Frequently asked questions", "Preguntas frecuentes", "Domande frequenti", "Häufige Fragen"],
+  "Sources": ["Sources", "Fuentes", "Fonti", "Quellen"],
+  "Les enjeux": ["What is at stake", "Lo que está en juego", "Cosa c'è in gioco", "Worum es geht"],
+  "Ce qui est en jeu": ["What is at stake", "Lo que está en juego", "Cosa c'è in gioco", "Worum es geht"],
+  "<b>Ce que ces chiffres ne disent pas</b>": ["<b>What these figures do not say</b>", "<b>Lo que estas cifras no dicen</b>", "<b>Ciò che questi numeri non dicono</b>", "<b>Was diese Zahlen nicht sagen</b>"],
+  "Ce qu'on met en place": ["What to put in place", "Qué poner en práctica", "Cosa mettere in pratica", "Was man umsetzt"],
+  "La problématique": ["The problem", "El problema", "La problematica", "Die Problemstellung"],
+  "La réponse à la problématique": ["The answer to the problem", "La respuesta al problema", "La risposta alla problematica", "Die Antwort auf die Problemstellung"],
+  "La réponse à la question": ["The answer to the question", "La respuesta a la pregunta", "La risposta alla domanda", "Die Antwort auf die Frage"],
+  "Réponse à la question": ["Answer to the question", "Respuesta a la pregunta", "Risposta alla domanda", "Antwort auf die Frage"],
+  "Hommes": ["Men", "Hombres", "Uomini", "Männer"],
+  "Femmes": ["Women", "Mujeres", "Donne", "Frauen"],
+  "Garçons": ["Boys", "Chicos", "Ragazzi", "Jungen"],
+  "Filles": ["Girls", "Chicas", "Ragazze", "Mädchen"],
+  "<b>Pour les parents</b>": ["<b>For parents</b>", "<b>Para los padres</b>", "<b>Per i genitori</b>", "<b>Für Eltern</b>"],
+  "<b>Limites</b>": ["<b>Limitations</b>", "<b>Limitaciones</b>", "<b>Limiti</b>", "<b>Einschränkungen</b>"]
+}

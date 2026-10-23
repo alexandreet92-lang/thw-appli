@@ -7,7 +7,7 @@ export const RAMP_CAPS = [20, 40, 70, 100, 150, 200] as const
 
 export const TZ = 'Europe/Paris'
 export const SITE_URL = process.env.PROSPECT_SITE_URL ?? 'https://www.the-hybridway.com'
-export const TRACK_BASE = process.env.PROSPECT_TRACK_BASE ?? 'https://thw-appli.vercel.app'
+export const TRACK_BASE = process.env.PROSPECT_TRACK_BASE ?? 'https://www.the-hybridway.com'
 export const LANDING_PATH = '/test-de-forme'
 // Logo du message : URL absolue obligatoire (les clients mail n'accèdent qu'à des URL publiques).
 export const LOGO_URL = process.env.EMAIL_LOGO_URL ?? `${TRACK_BASE}/branding/logo-thw-email.png`

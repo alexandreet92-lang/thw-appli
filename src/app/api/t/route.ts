@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Le propriétaire (admin) n'est jamais compté : si la requête porte une session
     // Supabase, on vérifie côté serveur que ce n'est pas le compte admin.
-    const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '').trim().toLowerCase()
+    const adminEmail = (process.env.ADMIN_EMAIL ?? process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '').trim().toLowerCase()
     if (adminEmail && (request.headers.get('cookie') ?? '').includes('sb-')) {
       const { data: { user: viewer } } = await (await createClient()).auth.getUser()
       if (viewer?.email?.toLowerCase() === adminEmail) return done()

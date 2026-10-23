@@ -20,7 +20,7 @@ export interface Protocol {
   stationsF?: string[]             // libellés des stations pour les femmes (variantes : australiennes, pompes sur les genoux)
   stationShare?: number[]          // part du temps total attendue par station à niveau Référence, hommes (somme = 1)
   stationShareF?: number[]         // idem pour les femmes (rameur +12 %, régressions)
-  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere' | 'cross'   // schéma du mouvement / parcours
+  diagram?: 'square' | 'slalom' | 'move' | 'longjump' | 'triplejump' | 'chimere' | 'line'   // schéma du mouvement / parcours
   flag?: boolean                   // contenu estimé / à faire relire
 }
 
@@ -69,7 +69,7 @@ export const ECHAUFFEMENTS: Record<string, { titre: string; texte: string }> = {
 
 const WARMUP_FORCE = new Set(['squat_3rm', 'bench_press_3rm', 'deadlift_3rm', 'military_press_3rm', 'weighted_pullup_3rm', 'dead_hang'])
 const WARMUP_HALTERO = new Set(['clean_2rm', 'clean_and_press_2rm', 'front_squat_3rm'])
-const WARMUP_SENIOR = new Set(['chair_stand_30s', 'arm_curl_30s', 'grip_strength', 'walk_6min', 'up_and_go', 'single_leg_balance', 'functional_flex', 'sit_to_stand_5x', 'walk_2km', 'single_leg_balance_eyes_closed', 'sit_rise_test'])
+const WARMUP_SENIOR = new Set(['chair_stand_30s', 'arm_curl_30s', 'grip_strength', 'walk_6min', 'up_and_go', 'single_leg_balance', 'functional_flex'])
 const WARMUP_HYROX = new Set(['hyrox_circuit', 'conditioning', 'amrap_20min'])
 
 /** Profil d'échauffement adapté à chaque épreuve (séance/sport). */
@@ -654,10 +654,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Chrono', 'Tapis'],
     etapes: [
       'Un tour = 5 burpees complets + 10 fentes alternées + 15 squats + 20 mountain climbers.',
-      '3 tours, 1 min de récup entre les tours.',
-      'Le score est la somme des temps des 3 tours.',
+      '3 tours enchaînés, sans aucune pause ni récupération entre les tours.',
+      'Un seul chrono, du premier burpee au dernier mountain climber : le score est le temps total.',
     ],
-    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    saisie: 'Le temps total (mm:ss).',
     securite: 'Technique avant vitesse. Réceptions souples.',
     flag: true,
   },
@@ -687,17 +687,18 @@ export const PROTOCOLS: Record<string, Protocol> = {
     flag: true,
   },
   agility_90: {
-    objectif: 'Agilité et coordination dans les changements de direction à 90°.',
-    materiel: ['5 plots (1 au centre, 4 aux extrémités)', 'Mètre ruban', 'Chrono', 'Gazon ou sol non glissant'],
+    objectif: 'Agilité, changements de direction et course arrière : parcours avant-arrière sur plots alignés.',
+    materiel: ['6 plots alignés (départ + 15, 12, 10, 7 et 5 m)', 'Mètre ruban', 'Chrono', 'Gazon ou sol non glissant'],
     etapes: [
-      'Parcours en croix : un plot central (le départ) et quatre plots placés à 15 m, 12 m, 10 m et 5 m du centre, dans les quatre directions, à 90° les unes des autres.',
-      'Départ du plot central. Courir jusqu\'au plot de 15 m, le contourner de l\'extérieur vers l\'intérieur, revenir au centre. Même chose vers le plot de 12 m, puis celui de 10 m, puis celui de 5 m (à chaque fois un aller-retour, avec un virage à 90° au centre).',
-      'Après l\'aller-retour des 5 m, un dernier aller simple jusqu\'au plot de 15 m : c\'est l\'arrivée (environ 99 m au total).',
-      '3 essais, récupération complète entre chaque, on retient le meilleur temps.',
+      'Tous les plots sont sur une même ligne droite : le plot de départ, puis des plots à 5, 7, 10, 12 et 15 m.',
+      'Départ au plot de départ. Courir jusqu\'au plot de 15 m, le contourner, puis revenir en reculant jusqu\'au plot de départ et le contourner.',
+      'Même chose avec le plot de 12 m, puis celui de 10 m, puis celui de 7 m, puis celui de 5 m : à chaque fois, aller, contourner le plot, retour en reculant, contourner le plot de départ.',
+      'Après le retour du plot de 5 m, un dernier aller simple, en courant, jusqu\'au plot de 15 m : c\'est l\'arrivée (environ 113 m au total).',
+      '3 essais, 2 à 3 min de récupération entre chaque, on retient le meilleur temps.',
     ],
     saisie: 'Les 3 temps (s) ; le meilleur est retenu.',
-    securite: 'Sol non glissant. Appuis contrôlés dans les virages. Échauffement complet avant le premier essai.',
-    diagram: 'cross',
+    securite: 'Sol non glissant. Course arrière contrôlée, regard par-dessus l\'épaule. Échauffement complet avant le premier essai.',
+    diagram: 'line',
     flag: true,
   },
   bench_5rm: {
@@ -734,15 +735,17 @@ export const PROTOCOLS: Record<string, Protocol> = {
     flag: true,
   },
   circuit_teens_salle: {
-    objectif: 'Endurance musculaire et cardio (circuit ado 15-17, type Hyrox allégé).',
-    materiel: ['Haltères (6 / 8 / 10 kg)', 'Corde à sauter', 'Chrono'],
+    objectif: 'Endurance musculaire et cardio : circuit pyramide au poids du corps, chronométré.',
+    materiel: ['Tapis', 'Chrono', 'Banc ou box (pour la variante des burpees)'],
     etapes: [
-      'Un tour = 10 burpees complets + 10 goblet squats (haltère) + 10 thrusters + 30 sauts à la corde.',
-      '3 tours, 1 min de récup entre les tours.',
-      'Le score est la somme des temps des 3 tours.',
+      'Un tour = 4 exercices dans l\'ordre : burpees, pompes, fentes alternées, squats.',
+      '5 tours, avec un nombre de répétitions qui monte puis redescend : 12, 8, 4, 8 puis 12 répétitions de chaque exercice (44 répétitions de chaque exercice au total).',
+      'Le chrono tourne sans interruption du premier burpee au dernier squat : on peut se reposer, mais le temps continue.',
+      'Variante accessible : burpees sans aller au sol (les mains se posent sur un banc ou un box, sans poitrine au sol) et pompes sur les genoux. Le temps est alors majoré de 10 % dans le score.',
+      '1 seul essai.',
     ],
-    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
-    securite: 'Charge adaptée au niveau. Technique des thrusters avant la vitesse.',
+    saisie: 'Le temps total (mm:ss) ; indique si tu as pris la variante accessible.',
+    securite: 'Technique avant vitesse. Fentes contrôlées, genou arrière près du sol sans le poser. On arrête à la moindre douleur.',
     flag: true,
   },
 
@@ -792,15 +795,17 @@ export const PROTOCOLS: Record<string, Protocol> = {
     flag: true,
   },
   circuit_plank_taps: {
-    objectif: 'Coordination, gainage et cardio (circuit en position pompe).',
+    objectif: 'Coordination, gainage et cardio : circuit en position de pompe.',
     materiel: ['Chrono', 'Tapis'],
     etapes: [
-      'En position de pompe : 10 tape-pied + 10 tape-genou + 20 tape-épaule + 20 mountain climbers.',
-      '3 tours, 45 s de récup entre les tours.',
-      'Ceux qui ne peuvent pas : on divise le nombre de répétitions par 2. Le score est la somme des 3 temps.',
+      'Un tour, en position de pompe (bras tendus, corps gainé) : 4 tape-pied (une main touche le pied opposé), 8 tape-genou (une main touche le genou opposé), 16 tape-épaule (une main touche l\'épaule opposée).',
+      'Puis 5 montées-descentes : passer de la position de pompe sur les avant-bras (un bras après l\'autre), puis se remettre en position de pompe.',
+      '3 tours, 30 s de récupération entre les tours.',
+      'Chaque tour est chronométré ; le score est la somme des temps des 3 tours.',
+      'Variante accessible : tout le circuit en position de pompe sur les genoux. Le temps est alors majoré de 10 % dans le score.',
     ],
-    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
-    securite: 'Bassin stable, dos gainé.',
+    saisie: 'Les 3 temps de tour (s) ; le score est leur somme. Indique si tu as pris la variante sur les genoux.',
+    securite: 'Bassin stable, dos gainé. Technique avant vitesse.',
     flag: true,
   },
   circuit_start: {
@@ -808,10 +813,10 @@ export const PROTOCOLS: Record<string, Protocol> = {
     materiel: ['Chrono', 'Repère de 30 m'],
     etapes: [
       'Un tour = 5 burpees (sans descendre complètement) + 10 squats + 20 montées de genoux + 30 m de marche de l\'ours.',
-      '3 tours, 1 min de récup entre les tours.',
-      'Le score est la somme des temps des 3 tours.',
+      '3 tours enchaînés, sans aucune pause ni récupération entre les tours.',
+      'Un seul chrono du début à la fin : le score est le temps total.',
     ],
-    saisie: 'Les 3 temps de tour (s) ; le score est leur somme.',
+    saisie: 'Le temps total (mm:ss).',
     flag: true,
   },
 
@@ -916,52 +921,17 @@ export const PROTOCOLS: Record<string, Protocol> = {
 
 // ── Senior Actif (seniors déjà en forme) ──
 const SENIOR_ACTIF_PROTOCOLS: Record<string, Protocol> = {
-  sit_to_stand_5x: {
-    objectif: 'Force et puissance des jambes : 5 levers de chaise le plus vite possible.',
-    materiel: ['Chaise stable sans accoudoirs, adossée à un mur', 'Chrono'],
+  run_1km_allers_retours: {
+    objectif: 'Endurance et cardio : 1 km chronométré, de préférence sur herbe plate (milieu d\'une piste d\'athlétisme).',
+    materiel: ['2 plots à 100 m l\'un de l\'autre', 'Chrono', 'Terrain plat, herbe ou piste'],
     etapes: [
-      'Assis au milieu de la chaise, dos droit, bras croisés sur la poitrine, pieds à plat.',
-      'Au top : se lever complètement puis se rasseoir, 5 fois de suite, le plus vite possible, sans s\'aider des bras.',
-      'Le chrono s\'arrête à la 5e remise en position assise. 1 seul essai, après une démonstration à vitesse modérée.',
+      'Placer deux plots à 100 m l\'un de l\'autre, sur un terrain plat (herbe de préférence).',
+      'Faire 5 allers-retours entre les deux plots, soit 10 fois 100 m = 1 km, avec 9 demi-tours.',
+      'Le but est de réaliser le meilleur temps possible : on court, et on peut alterner marche et course si besoin, le chrono ne s\'arrête pas.',
+      'À passer le jour 2, reposé. 1 seul essai.',
     ],
-    saisie: 'Le temps (s) pour les 5 levers.',
-    securite: 'Chaise contre un mur, chaussures stables. On arrête au moindre vertige.',
-    flag: true,
-  },
-  walk_2km: {
-    objectif: 'Endurance aérobie : marche rapide sur 2 km (inspirée du test de marche de Rockport).',
-    materiel: ['Parcours plat balisé de 2 km (ou 5 tours de piste de 400 m)', 'Chrono'],
-    etapes: [
-      'Marcher 2 km le plus vite possible, sans jamais courir (un pied reste toujours au sol).',
-      'Allure soutenue mais régulière, sans pause sauf malaise.',
-      'On relève le temps à l\'arrivée. 1 seul essai.',
-    ],
-    saisie: 'Le temps (s) sur 2 km.',
-    securite: 'Marche uniquement. Arrêt immédiat en cas de douleur thoracique, de vertige ou d\'essoufflement anormal.',
-    flag: true,
-  },
-  single_leg_balance_eyes_closed: {
-    objectif: 'Équilibre statique sans le secours de la vue (prévention des chutes).',
-    materiel: ['Chrono', 'Mur ou chaise à portée de main', 'Sol plat non glissant'],
-    etapes: [
-      'Debout, pieds nus, mains sur les hanches : lever un pied du sol.',
-      'Fermer les yeux et tenir le plus longtemps possible (plafonné à 30 s).',
-      'Le chrono s\'arrête quand le pied levé touche le sol ou quand on ouvre les yeux. 3 essais sur la jambe de ton choix, on retient le meilleur temps.',
-    ],
-    saisie: 'Les 3 temps (s) ; le meilleur est retenu (30 s maximum).',
-    securite: 'Un partenaire à côté de toi, un mur à portée de main.',
-    flag: true,
-  },
-  sit_rise_test: {
-    objectif: 'Mobilité, force et coordination : s\'asseoir au sol puis se relever (test assis-debout, sitting-rising test).',
-    materiel: ['Tapis', 'Un partenaire à côté'],
-    etapes: [
-      'Debout, pieds nus, au milieu du tapis : s\'asseoir au sol en croisant les jambes, puis se relever, le plus simplement possible et sans s\'aider si possible.',
-      'Chaque mouvement (s\'asseoir, se relever) vaut 5 points, soit 10 au total. On retire 1 point par appui utilisé (main, genou, avant-bras, côté de la jambe, main sur le genou ou la cuisse) et 0,5 point en cas de déséquilibre.',
-      '1 seul essai.',
-    ],
-    saisie: 'Le score sur 10 (par pas de 0,5).',
-    securite: 'Si l\'épreuve n\'est pas faisable sans risque, ne pas la passer. Un appui stable à portée de main.',
+    saisie: 'Le temps total (mm:ss).',
+    securite: 'Demi-tours progressifs, sans pivot brusque. Un partenaire à proximité. On arrête au moindre vertige ou essoufflement anormal.',
     flag: true,
   },
 }
@@ -1007,24 +977,13 @@ const PROTOCOL_OVERRIDES: Record<string, Record<string, Partial<Protocol>>> = {
   kids_11_12: { standing_long_jump: { etapes: ['Départ pieds joints derrière la ligne, sans élan.', 'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.', 'Mesurer du bord de la ligne au talon le plus proche.', '3 essais, on retient le meilleur saut.'], saisie: 'Les 3 distances (cm) ; la meilleure est retenue.' } },
   kids_8_10: { standing_long_jump: { etapes: ['Départ pieds joints derrière la ligne, sans élan.', 'Flexion-extension, saut le plus loin possible vers l\'avant, réception stabilisée sur les deux pieds.', 'Mesurer du bord de la ligne au talon le plus proche.', '3 essais, on retient le meilleur saut.'], saisie: 'Les 3 distances (cm) ; la meilleure est retenue.' } },
   senior_actif: {
-    grip_strength: {
-      objectif: 'Force de préhension — prédicteur de santé reconnu chez le senior.',
-      etapes: [
-        'Debout ou assis, bras le long du corps, serrer le dynamomètre à fond.',
-        '3 essais sur la main dominante, 1 min de récupération entre chaque, on retient le meilleur.',
-      ],
-      saisie: 'Les 3 forces (kg) ; la meilleure est retenue.',
-    },
     dead_hang: {
       objectif: 'Endurance de la force de préhension et santé des épaules.',
       etapes: [
         'Suspension à la barre, bras tendus, deux mains, immobile, jusqu\'au lâcher.',
-        'Dernière épreuve de la séance de force (elle fatigue la préhension). 1 seul essai.',
+        'Dernière épreuve de la séance du jour 1 (elle fatigue la préhension). 1 seul essai.',
       ],
       securite: 'Barre à hauteur d\'un marchepied pour monter et descendre. Pas d\'épaule douloureuse.',
-    },
-    functional_flex: {
-      saisie: 'L\'atteinte en cm (négatif = n\'atteint pas). Fais la moyenne des deux mesures si tu en prends plusieurs.',
     },
   },
 }

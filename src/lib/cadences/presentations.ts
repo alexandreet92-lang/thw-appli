@@ -97,16 +97,16 @@ export const PRESENTATIONS: Record<string, Presentation> = {
   senior_actif: {
     audience: 'seniors',
     audienceLabel: 'Seniors 65 ans et +, déjà actifs',
-    tagline: 'Un vrai test de forme pour les seniors actifs : force, endurance, équilibre et mobilité, sans effet plafond.',
-    forWho: 'Des personnes de 65 ans et plus déjà actives (marche régulière, vélo, sport, musculation) et à l’aise physiquement. Ce n’est pas un test de remise en forme : si tu reprends une activité, passe plutôt le test Senior Autonomie.',
+    tagline: 'Un vrai test sportif pour les seniors actifs : vitesse, saut, force et endurance, avec de vraies épreuves.',
+    forWho: 'Des personnes de 65 ans et plus déjà actives (course, vélo, sport, musculation) et à l’aise physiquement. Ce n’est pas un test de remise en forme : si tu reprends une activité, passe plutôt le test Senior Autonomie.',
     perDay: '30 – 45 min',
-    total: 'environ 2 h au total sur 3 jours',
+    total: 'environ 1 h 15 au total sur 2 jours',
     frequency: 'Une à deux fois par an, pour suivre l’évolution.',
     gear: [
-      { k: 'Intérieur', items: ['Chaise stable sans accoudoirs', 'Dynamomètre à main', 'Barre de traction', 'Tapis', 'Chrono', 'Mètre ruban'] },
-      { k: 'Extérieur', items: ['Parcours plat de 2 km (ou piste de 400 m)'] },
+      { k: 'Extérieur', items: ['Terrain plat de 100 m (herbe ou piste)', '2 plots', 'Chrono', 'Mètre ruban'] },
+      { k: 'Salle', items: ['Barre de traction', 'Tapis'] },
     ],
-    safety: 'Effort soutenu mais jamais maximal : avis médical conseillé avant de commencer. Un partenaire à côté pour l’équilibre et le lever du sol, et on arrête au moindre vertige ou essoufflement anormal.',
+    safety: 'Effort soutenu mais jamais maximal : avis médical conseillé avant de commencer. Un partenaire à proximité, et on arrête au moindre vertige ou essoufflement anormal.',
   },
   kids_8_10: {
     audience: 'enfants',

@@ -37,6 +37,12 @@ const L: Record<string, Row> = {
   s_hour: ['Heure d’envoi', 'Sending time', 'Hora de envío', 'Ora di invio', 'Versandzeit'], s_hour_v: ['Vers 10 h (Paris)', 'Around 10:00 (Paris)', 'Hacia las 10:00 (París)', 'Verso le 10:00 (Parigi)', 'Gegen 10 Uhr (Paris)'],
   s_queue: ['Contacts en attente', 'Contacts waiting', 'Contactos en espera', 'Contatti in attesa', 'Wartende Kontakte'],
   s_total: ['Contacts au total', 'Total contacts', 'Contactos en total', 'Contatti totali', 'Kontakte insgesamt'],
+  q_title: ['QR codes', 'QR codes', 'Códigos QR', 'Codici QR', 'QR-Codes'],
+  q_hint: ['Pour les flyers, affiches et cartes. Chaque code porte un repère pour savoir d’où viennent les visites.', 'For flyers, posters and cards. Each code carries a tag so you can tell where visits come from.', 'Para folletos, carteles y tarjetas. Cada código lleva una marca para saber de dónde vienen las visitas.', 'Per volantini, poster e biglietti. Ogni codice porta un contrassegno per sapere da dove arrivano le visite.', 'Für Flyer, Plakate und Karten. Jeder Code trägt eine Markierung, damit du siehst, woher die Besuche kommen.'],
+  q_site: ['Site THW', 'THW website', 'Sitio THW', 'Sito THW', 'THW-Website'],
+  q_tests: ['Page des tests', 'Tests page', 'Página de pruebas', 'Pagina dei test', 'Testseite'],
+  q_png: ['Télécharger en PNG', 'Download PNG', 'Descargar PNG', 'Scarica PNG', 'Als PNG laden'],
+  q_svg: ['Télécharger en SVG (impression)', 'Download SVG (print)', 'Descargar SVG (impresión)', 'Scarica SVG (stampa)', 'Als SVG laden (Druck)'],
   save: ['Enregistrer', 'Save', 'Guardar', 'Salva', 'Speichern'], saved: ['Enregistré', 'Saved', 'Guardado', 'Salvato', 'Gespeichert'],
   save_err: ['Enregistrement impossible', 'Could not save', 'No se pudo guardar', 'Salvataggio non riuscito', 'Speichern nicht möglich'],
   // Graphique

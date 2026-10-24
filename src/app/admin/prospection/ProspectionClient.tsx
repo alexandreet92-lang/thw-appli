@@ -274,6 +274,22 @@ export function ProspectionClient() {
         )}
       </div>
 
+      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h3 style={h3}>{t('q_title')}</h3>
+        <p style={hint}>{t('q_hint')}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          {([['site', 'q_site'], ['tests', 'q_tests']] as const).map(([k, lab]) => (
+            <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+              <span style={label}>{t(lab)}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/qr/qr-${k}.png`} alt={t(lab)} width={180} height={180} style={{ borderRadius: 'var(--r-md)', background: '#fff' }} />
+              <a href={`/qr/qr-${k}.png`} download style={{ ...hint, color: 'var(--primary)' }}>{t('q_png')}</a>
+              <a href={`/qr/qr-${k}.svg`} download style={{ ...hint, color: 'var(--primary)' }}>{t('q_svg')}</a>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h3 style={h3}>{t('p_title')}</h3>
         <p style={hint}>{t('p_hint')}</p>

@@ -1,4 +1,4 @@
-import { LOGO_URL, TRACK_BASE } from './config'
+import { LOGO_URL, TRACK_BASE, INSTAGRAM_URL, INSTAGRAM_ICON, HERO_GIF } from './config'
 import type { ProspectContact, ProspectSettings } from './types'
 
 function esc(s: string): string {
@@ -30,15 +30,18 @@ export function renderEmail(s: ProspectSettings, c: ProspectContact): RenderedEm
       .replace(/\{desinscription\}/g, mode === 'html' ? `<a href="${unsub}" style="font-size:12px;color:#6b7480">Se désinscrire</a>` : unsubLine)
   }
 
-  const text = fill(s.body, 'text') + footer
+  const text = fill(s.body, 'text') + `\n\nInstagram : ${INSTAGRAM_URL}` + footer
   const htmlBody = fill(esc(s.body), 'html').split('\n').join('<br>')
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f6f8">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8"><tr><td align="center" style="padding:28px 12px">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px">
 <tr><td style="padding:28px 32px 8px"><img src="${LOGO_URL}" width="56" height="56" alt="THW" style="display:block;border:0;width:56px;height:56px"></td></tr>
-<tr><td style="padding:8px 32px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111111">${htmlBody}${
-    footer ? `<br><br><span style="font-size:12px;color:#6b7480">${esc(footer.trim())}</span>` : ''
+${HERO_GIF ? `<tr><td style="padding:8px 32px 0"><a href="${link}"><img src="${HERO_GIF}" width="496" alt="Aperçu de l’application THW" style="display:block;border:0;width:100%;max-width:496px;height:auto;border-radius:8px"></a></td></tr>` : ''}
+<tr><td style="padding:8px 32px 8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111111">${htmlBody}</td></tr>
+<tr><td style="padding:8px 32px 20px"><a href="${link}" style="display:inline-block;background:#0b6fa8;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px">Faire le test</a></td></tr>
+<tr><td style="padding:0 32px 28px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6b7480"><a href="${INSTAGRAM_URL}" style="color:#6b7480;text-decoration:none"><img src="${INSTAGRAM_ICON}" width="20" height="20" alt="Instagram" style="vertical-align:middle;border:0;margin-right:6px">@thwthehybridway</a>${
+    footer ? `<br><br>${esc(footer.trim())}` : ''
   }</td></tr>
 </table></td></tr></table>
 <img src="${pixelUrl(c)}" width="1" height="1" alt="" style="display:none">

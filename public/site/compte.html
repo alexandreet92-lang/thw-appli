@@ -687,6 +687,42 @@
       );
     }
 
+    function fmtDur(sec) {
+      const h = Math.floor((sec || 0) / 3600), m = Math.floor(((sec || 0) % 3600) / 60);
+      return h > 0 ? h + ' h ' + String(m).padStart(2, '0') : m + ' min';
+    }
+    function fmtKm(m) { return ((m || 0) / 1000).toFixed(1).replace('.', ',') + ' km'; }
+    function Training({ t }) {
+      if (!t) return null;
+      const none = !t.month || t.month.count === 0;
+      return (
+        <section className="ac-section" aria-labelledby="h-train">
+          <div className="ac-sec-head">
+            <div><span className="eyebrow">Mon entraînement</span><h2 id="h-train">Mes séances récentes</h2></div>
+            <a className="ac-link" href="/activities">Toutes mes activités</a>
+          </div>
+          {none
+            ? <p className="ac-note">Aucune séance sur les 30 derniers jours. Connecte Strava ou enregistre une séance dans l'app : elle apparaîtra ici.</p>
+            : <React.Fragment>
+                <div className="ac-cards" style={{ marginTop: 0 }}>
+                  <div className="ac-card"><div className="ac-card-label">7 derniers jours</div>
+                    <p style={{ margin: '10px 0 0', fontSize: 15 }}>{t.week.count} séance{t.week.count > 1 ? 's' : ''} · {fmtDur(t.week.seconds)} · {fmtKm(t.week.meters)}</p></div>
+                  <div className="ac-card"><div className="ac-card-label">30 derniers jours</div>
+                    <p style={{ margin: '10px 0 0', fontSize: 15 }}>{t.month.count} séance{t.month.count > 1 ? 's' : ''} · {fmtDur(t.month.seconds)} · {fmtKm(t.month.meters)}</p></div>
+                </div>
+                <div className="ac-card" style={{ marginTop: 16 }}>
+                  {t.recent.map((r) => (
+                    <a key={r.id} href={'/activities?id=' + encodeURIComponent(r.id)} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>
+                      <span>{r.title || r.sport || 'Séance'}</span>
+                      <span style={{ color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {fmtDur(r.seconds)}</span>
+                    </a>
+                  ))}
+                </div>
+              </React.Fragment>}
+        </section>
+      );
+    }
+
     function Dashboard({ account, onLogout, ov }) {
       // Lien « Statistiques » : visible uniquement par l'administrateur (vérifié côté serveur).
       const [isAdmin, setIsAdmin] = useState(false);
@@ -747,6 +783,8 @@
                 cta={APP_NOPRICE || studioUnlimited ? null : ['Recharger le Studio', 'recharge-tokens.html']}/>
             )}
           </div>
+
+          <Training t={ov && ov.training}/>
 
           <section className="ac-section" aria-labelledby="h-usage">
             <div className="ac-sec-head"><div><span className="eyebrow">Consommation</span><h2 id="h-usage">Tokens utilisés mois par mois</h2></div></div>

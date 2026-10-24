@@ -91,6 +91,7 @@ function AuthPageInner() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState<SocialProvider | null>(null)
   const [error, setError] = useState(expired ? t('auth.expired') : linkMsg(linkError))
@@ -214,7 +215,9 @@ function AuthPageInner() {
         emailRedirectTo: authCallbackUrl('/'),
         // RGPD : trace de l'acceptation CGU + confidentialité (date + version).
         // `lang` : les templates d'email Supabase ne lisent que les métadonnées.
-        data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION, lang },
+        data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION, lang,
+          // Accord marketing (RGPD) : facultatif, décoché par défaut, daté.
+          ...(marketingOptIn ? { marketing_optin_at: new Date().toISOString() } : {}) },
       },
     })
     setLoading(false)
@@ -322,6 +325,7 @@ function AuthPageInner() {
                 <a href="/site/confidentialite.html" target="_blank" rel="noopener" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>{t('auth.termsPrivacy')}</a>
               </span>
             </button>
+            <ToggleRow checked={marketingOptIn} onChange={setMarketingOptIn} label={t('auth.marketingOptIn')} />
           </>
         )}
 

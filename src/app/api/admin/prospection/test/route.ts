@@ -4,7 +4,7 @@ import { checkAdmin } from '@/lib/admin/guard'
 import { createServiceClient } from '@/lib/supabase/server'
 import { loadSettings } from '@/lib/prospection/service'
 import { renderEmail } from '@/lib/prospection/template'
-import { sendProspectEmail, sesConfigured } from '@/lib/prospection/ses'
+import { sendProspectEmail, mailConfigured } from '@/lib/prospection/mailer'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -14,7 +14,7 @@ export const maxDuration = 30
 export async function POST(): Promise<NextResponse> {
   const admin = await checkAdmin()
   if (!admin.ok || !admin.email) return NextResponse.json({ erreur: 'Non autorisé.' }, { status: admin.status })
-  if (!sesConfigured()) return NextResponse.json({ erreur: 'SES non configuré (clés AWS manquantes).' }, { status: 409 })
+  if (!mailConfigured()) return NextResponse.json({ erreur: 'Envoi non configuré (clé Brevo manquante).' }, { status: 409 })
   try {
     const s = await loadSettings(createServiceClient())
     if (!s.from_email.trim()) return NextResponse.json({ erreur: 'Renseigne l’adresse expéditeur.' }, { status: 409 })

@@ -173,7 +173,7 @@ export function ProspectionClient() {
         <h1 style={{ fontFamily: FD, fontSize: 28, fontWeight: 600, margin: '4px 0 0' }}>{t('title')}</h1>
       </div>
       <p style={hint}>{t('note')}</p>
-      {!d.sesReady && <p style={{ ...hint, color: 'var(--charge-hard)' }}>{t('sesOff')}</p>}
+      {!d.mailReady && <p style={{ ...hint, color: 'var(--charge-hard)' }}>{t('mailOff')}</p>}
       {msg && <p role="status" style={{ ...hint, color: 'var(--text)' }}>{msg}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>

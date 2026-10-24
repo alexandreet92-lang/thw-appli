@@ -23,7 +23,7 @@ Maquette validée : « Maquette Prospection THW » (écran Emails).
 - Webhook SNS : `src/app/api/prospection/ses-events/route.ts` (livraison, rebonds, plaintes).
 
 ## Variables d'environnement (Vercel)
-- `THW_AWS_ACCESS_KEY_ID`, `THW_AWS_SECRET_ACCESS_KEY`, `THW_AWS_REGION` (ex. `eu-west-3`) — Vercel réserve les noms `AWS_*`, le code lit `THW_AWS_*` en priorité
+- `BREVO_API_KEY` — envoi via Brevo (l’ancien envoi Amazon SES est abandonné : le compte AWS bloque SES)
 - `AWS_SES_CONFIGURATION_SET` (optionnel, nécessaire pour les rebonds / plaintes)
 - `PROSPECT_WEBHOOK_SECRET` (secret de l'URL du webhook SNS)
 - `PROSPECT_SITE_URL` (défaut `https://www.the-hybridway.com`), `PROSPECT_TRACK_BASE` (défaut `https://thw-appli.vercel.app`)

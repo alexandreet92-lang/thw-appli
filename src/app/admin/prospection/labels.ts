@@ -10,7 +10,7 @@ const L: Record<string, Row> = {
   loading: ['Chargement…', 'Loading…', 'Cargando…', 'Caricamento…', 'Wird geladen…'],
   error: ['Données indisponibles. Réessaie dans un instant.', 'Data unavailable. Try again shortly.', 'Datos no disponibles. Inténtalo de nuevo en un momento.', 'Dati non disponibili. Riprova tra poco.', 'Daten nicht verfügbar. Versuche es gleich noch einmal.'],
   forbidden: ['Accès réservé à l’administrateur.', 'Access reserved for the administrator.', 'Acceso reservado al administrador.', 'Accesso riservato all’amministratore.', 'Zugriff nur für den Administrator.'],
-  sesOff: ['Amazon SES n’est pas configuré : les clés AWS manquent côté serveur, aucun message ne partira.', 'Amazon SES is not configured: the AWS keys are missing on the server, no message will be sent.', 'Amazon SES no está configurado: faltan las claves de AWS en el servidor, no saldrá ningún mensaje.', 'Amazon SES non è configurato: mancano le chiavi AWS sul server, nessun messaggio partirà.', 'Amazon SES ist nicht konfiguriert: Die AWS-Schlüssel fehlen auf dem Server, es wird nichts versendet.'],
+  mailOff: ['L’envoi n’est pas configuré : la clé d’API Brevo manque côté serveur, aucun message ne partira.', 'Sending is not configured: the Brevo API key is missing on the server, no message will go out.', 'El envío no está configurado: falta la clave de API de Brevo en el servidor, no saldrá ningún mensaje.', 'L’invio non è configurato: manca la chiave API di Brevo sul server, nessun messaggio partirà.', 'Der Versand ist nicht konfiguriert: Auf dem Server fehlt der Brevo-API-Schlüssel, es wird keine Nachricht verschickt.'],
   // KPI
   k_sent: ['Envoyés aujourd’hui', 'Sent today', 'Enviados hoy', 'Inviati oggi', 'Heute gesendet'],
   k_errors: ['Erreurs et rebonds', 'Errors and bounces', 'Errores y rebotes', 'Errori e rimbalzi', 'Fehler und Bounces'],
@@ -68,7 +68,7 @@ const L: Record<string, Row> = {
   m_hint: ['Variables : {prenom}, {lien} (lien suivi vers le site), {desinscription}.', 'Variables: {prenom}, {lien} (tracked link to the site), {desinscription}.', 'Variables: {prenom}, {lien} (enlace con seguimiento al sitio), {desinscription}.', 'Variabili: {prenom}, {lien} (link tracciato verso il sito), {desinscription}.', 'Variablen: {prenom}, {lien} (verfolgter Link zur Website), {desinscription}.'],
   m_subject: ['Objet', 'Subject', 'Asunto', 'Oggetto', 'Betreff'], m_body: ['Message', 'Message', 'Mensaje', 'Messaggio', 'Nachricht'],
   m_name: ['Nom de l’expéditeur', 'Sender name', 'Nombre del remitente', 'Nome del mittente', 'Absendername'],
-  m_from: ['Adresse expéditeur (domaine vérifié dans SES)', 'Sender address (domain verified in SES)', 'Dirección del remitente (dominio verificado en SES)', 'Indirizzo mittente (dominio verificato in SES)', 'Absenderadresse (in SES verifizierte Domain)'],
+  m_from: ['Adresse expéditeur (validée dans Brevo)', 'Sender address (validated in Brevo)', 'Dirección del remitente (validada en Brevo)', 'Indirizzo del mittente (convalidato in Brevo)', 'Absenderadresse (in Brevo bestätigt)'],
   m_addr: ['Adresse postale (affichée en pied de message)', 'Postal address (shown in the footer)', 'Dirección postal (se muestra al pie)', 'Indirizzo postale (mostrato a piè di messaggio)', 'Postanschrift (in der Fußzeile angezeigt)'],
   m_test: ['M’envoyer un test', 'Send me a test', 'Enviarme una prueba', 'Inviami un test', 'Test an mich senden'],
   m_test_ok: ['Test envoyé à {to}', 'Test sent to {to}', 'Prueba enviada a {to}', 'Test inviato a {to}', 'Test an {to} gesendet'],

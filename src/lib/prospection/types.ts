@@ -46,7 +46,7 @@ export interface DayPoint { day: string; sent: number; clicks: number }
 export interface ProspectionOverview {
   settings: ProspectSettings
   ramp: RampInfo
-  sesReady: boolean
+  mailReady: boolean
   today: {
     sent: number
     failed: number

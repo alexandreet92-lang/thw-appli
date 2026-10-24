@@ -10,7 +10,15 @@
 import 'server-only'
 import { createServiceClient } from '@/lib/supabase/server'
 import { checkAdmin } from './guard'
-import type { AdminMetrics, DayPoint } from './types'
+import type { AdminMetrics, AdminAccount, DayPoint, RealOffer } from './types'
+import { COACH_OWNER_ID } from '@/lib/coach/owner'
+
+const TRIAL_DAYS = 14
+const maskEmail = (e: string | undefined | null): string => {
+  if (!e) return '—'
+  const [u, d] = e.split('@')
+  return `${u.slice(0, 2)}***@${d ?? ''}`
+}
 
 // Prix abonnement (EUR / mois) — source : tier-limits (Premium 14 · Pro 26 · Expert 49).
 const TIER_PRICE_EUR: Record<string, number> = { premium: 14, pro: 26, expert: 49 }
@@ -81,23 +89,71 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   }
 
   // ── Abonnements & revenus ─────────────────────────────────────
-  const { data: subs } = await sb.from('user_subscriptions').select('tier, status').limit(ROW_CAP)
-  const activeSubs = (subs ?? []).filter(s => s.status === 'active' || s.status === 'trialing')
+  const { data: subs } = await sb.from('user_subscriptions')
+    .select('user_id, tier, status, stripe_subscription_id, provider_sub_id').limit(ROW_CAP)
+  // Abonnement RÉEL = identifiant Stripe (hors sceau 'comp' = accès offert) ou du store.
+  const isRealSub = (r: { stripe_subscription_id?: string | null; provider_sub_id?: string | null }) =>
+    (!!r.stripe_subscription_id && r.stripe_subscription_id !== 'comp') || !!r.provider_sub_id
+  const activeSubs = (subs ?? []).filter(s => (s.status === 'active' || s.status === 'trialing') && isRealSub(s))
+  // ── Comptes : offre RÉELLE de chacun (règle identique à getUserTier) ──────
+  const authUsers: { id: string; email?: string; created_at: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; app_metadata?: { provider?: string } }[] = []
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 })
+    if (error || !data?.users?.length) break
+    authUsers.push(...(data.users as unknown as typeof authUsers))
+    if (data.users.length < 1000) break
+  }
+  const { data: seenRows } = await sb.from('profiles').select('id, last_seen_at').limit(ROW_CAP)
+  const seenById = new Map<string, string | null>((seenRows ?? []).map(r => [r.id as string, (r.last_seen_at as string | null) ?? null]))
+  const subById = new Map((subs ?? []).map(r => [r.user_id as string, r]))
+  const accounts: AdminAccount[] = authUsers.map(u => {
+    const sub = subById.get(u.id)
+    const ageDays = (now - new Date(u.created_at).getTime()) / D
+    let offer: RealOffer = 'free'
+    let tier: string | null = null
+    if (u.id === COACH_OWNER_ID) offer = 'owner'
+    else if (sub && sub.status === 'active' && isRealSub(sub)) { offer = 'paid'; tier = sub.tier ?? null }
+    else if (sub && sub.status === 'active' && sub.stripe_subscription_id === 'comp') { offer = 'comp'; tier = sub.tier ?? null }
+    else if (ageDays < TRIAL_DAYS) offer = 'trial'
+    const abandoned = !!sub && !isRealSub(sub) && sub.stripe_subscription_id !== 'comp' && (sub.status === 'trialing' || sub.status === 'active') && offer !== 'owner'
+    return {
+      id: u.id, emailMasked: maskEmail(u.email), createdAt: u.created_at,
+      lastSignInAt: u.last_sign_in_at ?? null, lastSeenAt: seenById.get(u.id) ?? null,
+      emailConfirmed: !!u.email_confirmed_at, provider: u.app_metadata?.provider ?? 'email',
+      offer, tier, trialDaysLeft: offer === 'trial' ? Math.max(0, Math.ceil(TRIAL_DAYS - ageDays)) : null,
+      abandonedCheckout: abandoned,
+    }
+  }).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+
+  // Inscriptions par mois (12 derniers mois)
+  const signupsByMonth: { month: string; count: number }[] = []
+  for (let i = 11; i >= 0; i--) {
+    const dm = new Date(); dm.setDate(1); dm.setMonth(dm.getMonth() - i)
+    const key = `${dm.getFullYear()}-${String(dm.getMonth() + 1).padStart(2, '0')}`
+    signupsByMonth.push({ month: key, count: accounts.filter(a => a.createdAt.startsWith(key)).length })
+  }
+  const funnel = {
+    created: accounts.length,
+    confirmed: accounts.filter(a => a.emailConfirmed).length,
+    signedIn: accounts.filter(a => !!a.lastSignInAt).length,
+    active30: mau,
+    paid: accounts.filter(a => a.offer === 'paid').length,
+  }
+
   const tierMap = new Map<string, number>()
-  for (const s of activeSubs) tierMap.set(s.tier ?? 'inconnu', (tierMap.get(s.tier ?? 'inconnu') ?? 0) + 1)
-  // Fallback profiles.plan si aucune souscription
-  if (tierMap.size === 0) {
-    const { data: plans } = await sb.from('profiles').select('plan').limit(ROW_CAP)
-    for (const p of plans ?? []) tierMap.set(p.plan ?? 'inconnu', (tierMap.get(p.plan ?? 'inconnu') ?? 0) + 1)
+  for (const a of accounts) {
+    const key = a.offer === 'paid' ? (a.tier ?? 'paid') : a.offer
+    tierMap.set(key, (tierMap.get(key) ?? 0) + 1)
   }
   const tierBreakdown = [...tierMap.entries()].map(([tier, count]) => ({ tier, count })).sort((a, b) => b.count - a.count)
 
   const paidSubs = activeSubs.filter(s => s.status === 'active' && TIER_PRICE_EUR[s.tier ?? ''] != null)
-  const trials = activeSubs.filter(s => s.status === 'trialing' || (s.tier ?? '') === 'trial').length
+  const trials = accounts.filter(a => a.offer === 'trial').length
+  const endedTrials = accounts.filter(a => a.offer === 'free').length
   const mrrEur = paidSubs.reduce((sum, s) => sum + (TIER_PRICE_EUR[s.tier ?? ''] ?? 0), 0)
   const activePaid = paidSubs.length
   const arpuEur = activePaid > 0 ? Math.round((mrrEur / activePaid) * 100) / 100 : 0
-  const trialToPaidPct = (activePaid + trials) > 0 ? Math.round((activePaid / (activePaid + trials)) * 100) : null
+  const trialToPaidPct = (activePaid + endedTrials) > 0 ? Math.round((activePaid / (activePaid + endedTrials)) * 100) : null
   // MRR par palier (€) : abonnés payants × prix du palier.
   const paidByTier = new Map<string, number>()
   for (const s of paidSubs) paidByTier.set(s.tier ?? '', (paidByTier.get(s.tier ?? '') ?? 0) + 1)
@@ -230,6 +286,9 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     signupsCumulative,
     signupsByDay,
     tierBreakdown,
+    accounts,
+    signupsByMonth,
+    funnel,
     revenue: { mrrEur, arrEur: mrrEur * 12, arpuEur, trialToPaidPct, activePaid, trials, mrrByTierEur },
     ai: { models, totalTokens, totalCalls, totalCostEur, tokensByDay, callsByDay, conversations, features, topConsumers, marginAlert },
     product: { enabled: analyticsEnabled, topPages, topFeatures, mobilePct, activities },

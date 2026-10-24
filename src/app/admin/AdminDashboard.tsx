@@ -4,16 +4,18 @@
 // comme la page Récupération) et la charte de l'app (tokens, fond, logo shuriken).
 // Aucune lib de charts : SVG brut. Données reçues en props (calculées serveur).
 
-import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug, MessageCircle, Users } from 'lucide-react'
+import { LayoutDashboard, Euro, UserRound, Cpu, MousePointerClick, Activity, Plug, MessageCircle, Users } from 'lucide-react'
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
 import type { AdminMetrics } from '@/lib/admin/types'
 import type { FeedbackRow } from '@/lib/admin/feedback'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { OverviewV2, RevenueV2, AccountsV2 } from './CockpitViews'
+import { lng, makeT } from './cockpit-labels'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const TIER_COLOR: Record<string, string> = {
-  premium: 'var(--charge-low)', pro: 'var(--primary)', expert: 'var(--ai-accent)', trial: 'var(--charge-mid)', inconnu: 'var(--text-dim)',
+  premium: 'var(--charge-low)', pro: 'var(--primary)', expert: 'var(--ai-accent)', trial: 'var(--charge-mid)', owner: 'var(--ai-accent)', comp: 'var(--charge-mid)', free: 'var(--text-dim)', paid: 'var(--primary)', inconnu: 'var(--text-dim)',
 }
 const fmt = (n: number) => n.toLocaleString(currentLocale())
 const eur = (n: number) => `${n.toLocaleString(currentLocale(), { maximumFractionDigits: 2 })} €`
@@ -131,56 +133,21 @@ function Donut({ segments }: { segments: { label: string; value: number; color: 
 
 // ── Onglets ───────────────────────────────────────────────────────
 function Overview({ m }: { m: AdminMetrics }) {
-  const { t } = useI18n()
-  const o = m.overview
+  const { lang } = useI18n()
+  const ct = makeT(lng(lang))
+  const label = (k: string) => { const v = ct(`tier_${k}`); return v === `tier_${k}` ? k : v }
   return (
     <div>
-      <Grid>
-        <Stat label={t('admin.stat.users')} value={fmt(o.totalUsers)} sub={t('admin.overview.netGrowthSub', { n: `${o.netGrowthMonth >= 0 ? '+' : ''}${o.netGrowthMonth}` })} />
-        <Stat label={t('admin.overview.activeNow')} value={fmt(o.activeNow)} sub="< 5 min" />
-        <Stat label="MRR" value={eur(o.mrrEur)} sub={`ARR ${eur(o.mrrEur * 12)}`} />
-        <Stat label="Stickiness" value={`${o.stickinessPct}%`} sub="DAU / MAU" />
-      </Grid>
-      <Section title={t('admin.section.activity')}><Grid>
-        <Stat label="DAU" value={fmt(o.dau)} sub={t('admin.overview.dauSub')} />
-        <Stat label="WAU" value={fmt(o.wau)} sub={t('admin.overview.wauSub')} />
-        <Stat label="MAU" value={fmt(o.mau)} sub={t('admin.overview.mauSub')} />
-      </Grid></Section>
-      <Section title={t('admin.overview.growthTitle')}>
-        <Spark points={m.signupsCumulative} label={t('admin.overview.signups')} />
-        <div style={{ height: 'var(--space-3)' }} />
-        <Spark points={m.signupsByDay} label="Nouveaux / jour" />
-      </Section>
-      <Section title={t('admin.overview.tierTitle')}>
-        <Donut segments={m.tierBreakdown.map(row => ({ label: row.tier, value: row.count, color: TIER_COLOR[row.tier] ?? 'var(--text-dim)' }))} />
+      <OverviewV2 m={m} />
+      <Section title={ct('tier_title')}>
+        <Donut segments={m.tierBreakdown.map(row => ({ label: label(row.tier), value: row.count, color: TIER_COLOR[row.tier] ?? 'var(--text-dim)' }))} />
       </Section>
     </div>
   )
 }
 
 function Revenue({ m }: { m: AdminMetrics }) {
-  const { t } = useI18n()
-  const r = m.revenue
-  return (
-    <div>
-      <Grid>
-        <Stat label="MRR" value={eur(r.mrrEur)} />
-        <Stat label="ARR" value={eur(r.arrEur)} />
-        <Stat label="ARPU" value={eur(r.arpuEur)} sub={t('admin.revenue.arpuSub')} />
-        <Stat label={t('admin.revenue.trialConv')} value={r.trialToPaidPct == null ? '—' : `${r.trialToPaidPct}%`} />
-      </Grid>
-      <Section title="Funnel"><Grid>
-        <Stat label={t('admin.revenue.activePaid')} value={fmt(r.activePaid)} />
-        <Stat label={t('admin.revenue.trials')} value={fmt(r.trials)} />
-      </Grid></Section>
-      <Section title={t('admin.revenue.mrrByTier')}>
-        <BarList rows={m.tierBreakdown.map(row => ({ label: row.tier, value: row.count, color: TIER_COLOR[row.tier], right: `${row.count}` }))} />
-      </Section>
-      <Section title="MRR par palier (€)">
-        <BarList rows={r.mrrByTierEur.map(row => ({ label: row.tier, value: row.eur, color: TIER_COLOR[row.tier], right: eur(row.eur) }))} />
-      </Section>
-    </div>
-  )
+  return <RevenueV2 m={m} />
 }
 
 function AI({ m }: { m: AdminMetrics }) {
@@ -330,7 +297,8 @@ function Messages({ rows }: { rows: FeedbackRow[] }) {
 }
 
 export function AdminDashboard({ metrics, adminEmail, feedback }: { metrics: AdminMetrics; adminEmail: string | null; feedback: FeedbackRow[] }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const ct = makeT(lng(lang))
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -355,7 +323,8 @@ export function AdminDashboard({ metrics, adminEmail, feedback }: { metrics: Adm
 
   const sections: SectionDef[] = [
     { id: 'overview', label: t('admin.tab.overview'), short: t('admin.tab.overviewShort'), subtitle: t('admin.tab.overviewSub'), icon: LayoutDashboard, content: <Overview m={metrics} /> },
-    { id: 'revenue', label: t('admin.tab.revenue'), subtitle: 'MRR · ARPU · funnel', icon: Euro, content: <Revenue m={metrics} /> },
+    { id: 'revenue', label: t('admin.tab.revenue'), subtitle: ct('k_mrr'), icon: Euro, content: <Revenue m={metrics} /> },
+    { id: 'accounts', label: ct('tab_accounts'), subtitle: ct('tab_accounts_sub'), icon: UserRound, content: <AccountsV2 m={metrics} /> },
     { id: 'ai', label: t('admin.tab.ai'), short: t('admin.tab.aiShort'), subtitle: t('admin.tab.aiSub'), icon: Cpu, content: <AI m={metrics} /> },
     { id: 'product', label: t('admin.tab.product'), subtitle: t('admin.tab.productSub'), icon: MousePointerClick, content: <Product m={metrics} /> },
     { id: 'engagement', label: 'Engagement', subtitle: t('admin.tab.engagementSub'), icon: Activity, content: <Engagement m={metrics} /> },
